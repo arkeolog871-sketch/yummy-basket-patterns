@@ -121,9 +121,13 @@ function CartPage() {
         ) : null}
 
         <Button asChild disabled={missing > 0} className="mt-5 w-full rounded-full" size="lg">
-          <Link to={user ? "/odeme" : "/auth"} search={user ? undefined : { redirect: "/odeme" }}>
-            {user ? "Ödemeye geç" : "Giriş yap ve devam et"}
-          </Link>
+          {user ? (
+            <Link to="/odeme">Ödemeye geç</Link>
+          ) : (
+            <Link to="/auth" search={{ redirect: "/odeme" }}>
+              Giriş yap ve devam et
+            </Link>
+          )}
         </Button>
       </div>
     </div>

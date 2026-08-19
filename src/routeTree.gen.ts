@@ -10,13 +10,33 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdreslerimRouteImport } from './routes/adreslerim'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as OdemeRouteImport } from './routes/odeme'
 import { Route as RestoranlarRouteImport } from './routes/restoranlar'
 import { Route as SepetRouteImport } from './routes/sepet'
+import { Route as SiparislerimRouteImport } from './routes/siparislerim'
 import { Route as RestoranSlugRouteImport } from './routes/restoran.$slug'
+import { Route as SiparisIdRouteImport } from './routes/siparis.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdreslerimRoute = AdreslerimRouteImport.update({
+  id: '/adreslerim',
+  path: '/adreslerim',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OdemeRoute = OdemeRouteImport.update({
+  id: '/odeme',
+  path: '/odeme',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RestoranlarRoute = RestoranlarRouteImport.update({
@@ -29,44 +49,102 @@ const SepetRoute = SepetRouteImport.update({
   path: '/sepet',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SiparislerimRoute = SiparislerimRouteImport.update({
+  id: '/siparislerim',
+  path: '/siparislerim',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RestoranSlugRoute = RestoranSlugRouteImport.update({
   id: '/restoran/$slug',
   path: '/restoran/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SiparisIdRoute = SiparisIdRouteImport.update({
+  id: '/siparis/$id',
+  path: '/siparis/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/adreslerim': typeof AdreslerimRoute
+  '/auth': typeof AuthRoute
+  '/odeme': typeof OdemeRoute
   '/restoranlar': typeof RestoranlarRoute
   '/sepet': typeof SepetRoute
+  '/siparislerim': typeof SiparislerimRoute
   '/restoran/$slug': typeof RestoranSlugRoute
+  '/siparis/$id': typeof SiparisIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/adreslerim': typeof AdreslerimRoute
+  '/auth': typeof AuthRoute
+  '/odeme': typeof OdemeRoute
   '/restoranlar': typeof RestoranlarRoute
   '/sepet': typeof SepetRoute
+  '/siparislerim': typeof SiparislerimRoute
   '/restoran/$slug': typeof RestoranSlugRoute
+  '/siparis/$id': typeof SiparisIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/adreslerim': typeof AdreslerimRoute
+  '/auth': typeof AuthRoute
+  '/odeme': typeof OdemeRoute
   '/restoranlar': typeof RestoranlarRoute
   '/sepet': typeof SepetRoute
+  '/siparislerim': typeof SiparislerimRoute
   '/restoran/$slug': typeof RestoranSlugRoute
+  '/siparis/$id': typeof SiparisIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/restoranlar' | '/sepet' | '/restoran/$slug'
+  fullPaths:
+    | '/'
+    | '/adreslerim'
+    | '/auth'
+    | '/odeme'
+    | '/restoranlar'
+    | '/sepet'
+    | '/siparislerim'
+    | '/restoran/$slug'
+    | '/siparis/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/restoranlar' | '/sepet' | '/restoran/$slug'
-  id: '__root__' | '/' | '/restoranlar' | '/sepet' | '/restoran/$slug'
+  to:
+    | '/'
+    | '/adreslerim'
+    | '/auth'
+    | '/odeme'
+    | '/restoranlar'
+    | '/sepet'
+    | '/siparislerim'
+    | '/restoran/$slug'
+    | '/siparis/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/adreslerim'
+    | '/auth'
+    | '/odeme'
+    | '/restoranlar'
+    | '/sepet'
+    | '/siparislerim'
+    | '/restoran/$slug'
+    | '/siparis/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdreslerimRoute: typeof AdreslerimRoute
+  AuthRoute: typeof AuthRoute
+  OdemeRoute: typeof OdemeRoute
   RestoranlarRoute: typeof RestoranlarRoute
   SepetRoute: typeof SepetRoute
+  SiparislerimRoute: typeof SiparislerimRoute
   RestoranSlugRoute: typeof RestoranSlugRoute
+  SiparisIdRoute: typeof SiparisIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -76,6 +154,27 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/adreslerim': {
+      id: '/adreslerim'
+      path: '/adreslerim'
+      fullPath: '/adreslerim'
+      preLoaderRoute: typeof AdreslerimRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/odeme': {
+      id: '/odeme'
+      path: '/odeme'
+      fullPath: '/odeme'
+      preLoaderRoute: typeof OdemeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/restoranlar': {
@@ -92,6 +191,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SepetRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/siparislerim': {
+      id: '/siparislerim'
+      path: '/siparislerim'
+      fullPath: '/siparislerim'
+      preLoaderRoute: typeof SiparislerimRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/restoran/$slug': {
       id: '/restoran/$slug'
       path: '/restoran/$slug'
@@ -99,14 +205,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RestoranSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/siparis/$id': {
+      id: '/siparis/$id'
+      path: '/siparis/$id'
+      fullPath: '/siparis/$id'
+      preLoaderRoute: typeof SiparisIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdreslerimRoute: AdreslerimRoute,
+  AuthRoute: AuthRoute,
+  OdemeRoute: OdemeRoute,
   RestoranlarRoute: RestoranlarRoute,
   SepetRoute: SepetRoute,
+  SiparislerimRoute: SiparislerimRoute,
   RestoranSlugRoute: RestoranSlugRoute,
+  SiparisIdRoute: SiparisIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
