@@ -83,33 +83,6 @@ function AuthPage() {
     }
   }
 
-  async function handleSubmitLegacy(event: React.FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: { full_name: fullName },
-          },
-        });
-        if (error) throw error;
-        toast.success("Kayıt alındı. E-postanızı doğrulayın.");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        toast.success("Hoş geldiniz!");
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Bir şeyler ters gitti.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <div className="mx-auto w-full max-w-md px-4 py-16">
       <h1 className="text-3xl">{mode === "signin" ? "Giriş yap" : "Hesap oluştur"}</h1>
