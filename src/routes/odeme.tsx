@@ -144,6 +144,20 @@ function CheckoutPage() {
         />
       </div>
 
+      <div className="mt-6 space-y-3">
+        <p className="font-semibold">Ödeme yöntemi</p>
+        <div className="flex items-start gap-3 rounded-3xl border border-primary bg-card p-4 shadow-card">
+          <input type="radio" name="payment" className="mt-1" checked readOnly />
+          <span className="text-sm">
+            <span className="block font-semibold">Kapıda ödeme</span>
+            <span className="block text-muted-foreground">
+              Siparişinizi kurye teslim ederken nakit veya kredi kartıyla ödeyebilirsiniz. Şu an tek ödeme
+              yöntemimiz kapıda ödemedir.
+            </span>
+          </span>
+        </div>
+      </div>
+
       <div className="mt-6 rounded-3xl border border-border/70 bg-card p-5 shadow-card">
         <div className="space-y-1.5 text-sm">
           <div className="flex justify-between text-muted-foreground">
@@ -159,13 +173,14 @@ function CheckoutPage() {
             <span>{formatPrice(cart.total)}</span>
           </div>
         </div>
+        <p className="mt-3 text-xs text-muted-foreground">Ödeme: kapıda ödeme</p>
         <Button
           className="mt-5 w-full rounded-full"
           size="lg"
           disabled={!selectedId || place.isPending || !cart.meetsMinimum}
           onClick={() => place.mutate()}
         >
-          Siparişi onayla
+          Siparişi onayla · Kapıda ödeme
         </Button>
       </div>
     </div>
