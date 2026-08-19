@@ -7,7 +7,7 @@ import { RestaurantCard } from "@/components/restaurant/RestaurantCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-type RestoranSearch = { q?: string; kategori?: string };
+type RestoranSearch = { q?: string | undefined; kategori?: string | undefined };
 
 function restaurantsQuery(search: RestoranSearch) {
   return queryOptions({
@@ -26,9 +26,9 @@ const categoriesQuery = queryOptions({
 
 export const Route = createFileRoute("/restoranlar")({
   validateSearch: (search: Record<string, unknown>): RestoranSearch => ({
-    q: typeof search.q === "string" && search.q ? search.q : undefined,
+    q: typeof search["q"] === "string" && search["q"] ? search["q"] : undefined,
     kategori:
-      typeof search.kategori === "string" && search.kategori ? search.kategori : undefined,
+      typeof search["kategori"] === "string" && search["kategori"] ? search["kategori"] : undefined,
   }),
   loaderDeps: ({ search }) => search,
   loader: async ({ context, deps }) => {

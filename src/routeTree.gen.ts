@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdreslerimRouteImport } from './routes/adreslerim'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as OdemeRouteImport } from './routes/odeme'
 import { Route as RestoranlarRouteImport } from './routes/restoranlar'
 import { Route as SepetRouteImport } from './routes/sepet'
 import { Route as SiparislerimRouteImport } from './routes/siparislerim'
@@ -31,6 +32,11 @@ const AdreslerimRoute = AdreslerimRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OdemeRoute = OdemeRouteImport.update({
+  id: '/odeme',
+  path: '/odeme',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RestoranlarRoute = RestoranlarRouteImport.update({
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/adreslerim': typeof AdreslerimRoute
   '/auth': typeof AuthRoute
+  '/odeme': typeof OdemeRoute
   '/restoranlar': typeof RestoranlarRoute
   '/sepet': typeof SepetRoute
   '/siparislerim': typeof SiparislerimRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/adreslerim': typeof AdreslerimRoute
   '/auth': typeof AuthRoute
+  '/odeme': typeof OdemeRoute
   '/restoranlar': typeof RestoranlarRoute
   '/sepet': typeof SepetRoute
   '/siparislerim': typeof SiparislerimRoute
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/adreslerim': typeof AdreslerimRoute
   '/auth': typeof AuthRoute
+  '/odeme': typeof OdemeRoute
   '/restoranlar': typeof RestoranlarRoute
   '/sepet': typeof SepetRoute
   '/siparislerim': typeof SiparislerimRoute
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/adreslerim'
     | '/auth'
+    | '/odeme'
     | '/restoranlar'
     | '/sepet'
     | '/siparislerim'
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/adreslerim'
     | '/auth'
+    | '/odeme'
     | '/restoranlar'
     | '/sepet'
     | '/siparislerim'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '/'
     | '/adreslerim'
     | '/auth'
+    | '/odeme'
     | '/restoranlar'
     | '/sepet'
     | '/siparislerim'
@@ -127,6 +139,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdreslerimRoute: typeof AdreslerimRoute
   AuthRoute: typeof AuthRoute
+  OdemeRoute: typeof OdemeRoute
   RestoranlarRoute: typeof RestoranlarRoute
   SepetRoute: typeof SepetRoute
   SiparislerimRoute: typeof SiparislerimRoute
@@ -155,6 +168,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/odeme': {
+      id: '/odeme'
+      path: '/odeme'
+      fullPath: '/odeme'
+      preLoaderRoute: typeof OdemeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/restoranlar': {
@@ -199,6 +219,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdreslerimRoute: AdreslerimRoute,
   AuthRoute: AuthRoute,
+  OdemeRoute: OdemeRoute,
   RestoranlarRoute: RestoranlarRoute,
   SepetRoute: SepetRoute,
   SiparislerimRoute: SiparislerimRoute,
