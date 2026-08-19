@@ -71,6 +71,18 @@ function AuthPage() {
     }
   }
 
+  async function handleGoogle() {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/` },
+      });
+      if (error) throw error;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Google girişi başlatılamadı.");
+    }
+  }
+
   return (
     <div className="mx-auto w-full max-w-md px-4 py-16">
       <h1 className="text-3xl">{mode === "signin" ? "Giriş yap" : "Hesap oluştur"}</h1>
@@ -123,6 +135,22 @@ function AuthPage() {
           {mode === "signin" ? "Giriş yap" : "Kayıt ol"}
         </Button>
       </form>
+
+      <div className="mt-4 flex items-center gap-3 text-xs text-muted-foreground">
+        <span className="h-px flex-1 bg-border" />
+        veya
+        <span className="h-px flex-1 bg-border" />
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        size="lg"
+        className="mt-4 w-full rounded-full"
+        onClick={() => void handleGoogle()}
+      >
+        Google ile devam et
+      </Button>
 
       <button
         type="button"
