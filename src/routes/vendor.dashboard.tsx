@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Store, LogOut, ClipboardList, Package, ExternalLink } from "lucide-react";
+import { useState } from "react";
+import { Store, LogOut, ClipboardList, Package, ExternalLink, KeyRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import { AccessDenied } from "@/components/auth/AccessDenied";
@@ -24,6 +25,9 @@ import {
 } from "@/lib/format";
 import { isBusinessOpen } from "@/lib/hours";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { changeVendorPassword } from "@/lib/vendor-auth.functions";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -242,6 +246,9 @@ function VendorDashboard() {
             <TabsTrigger value="urunler">
               <Package className="size-4" /> Ürünler ve stok
             </TabsTrigger>
+            <TabsTrigger value="guvenlik">
+              <KeyRound className="size-4" /> Şifre
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="siparisler" className="mt-6 space-y-3">
@@ -376,6 +383,88 @@ function VendorDashboard() {
         </Tabs>
       </div>
     </div>
+  );
+}
+
+function PasswordPanel() {
+  const change = useServerFn(changeVendorPassword);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [repeatPassword, setRepeatPassword] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: (input: { currentPassword: string; newPassword: string }) =>
+      change({ data: input }),
+    onSuccess: () => {
+      toast.success("Şifreniz güncellendi.");
+      setCurrentPassword("");
+      setNewPassword("");
+      setRepeatPassword("");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (newPassword !== repeatPassword) {
+          toast.error("Yeni şifreler birbiriyle eşleşmiyor.");
+          return;
+        }
+        mutation.mutate({ currentPassword, newPassword });
+      }}
+      className="max-w-md space-y-4 rounded-3xl border border-border bg-card p-6 shadow-card"
+    >
+      <div>
+        <p className="font-semibold">Şifre değiştir</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Mevcut şifreniz doğrulandıktan sonra yeni şifreniz kaydedilir. Şifrenizi belirledikten
+          sonra telefon + tek kullanımlık kod ile girmeye devam edebilirsiniz.
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="current-password">Mevcut şifre</Label>
+        <Input
+          id="current-password"
+          type="password"
+          autoComplete="current-password"
+          value={currentPassword}
+          onChange={(event) => setCurrentPassword(event.target.value)}
+          required
+          className="rounded-xl"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="new-password">Yeni şifre</Label>
+        <Input
+          id="new-password"
+          type="password"
+          autoComplete="new-password"
+          minLength={8}
+          value={newPassword}
+          onChange={(event) => setNewPassword(event.target.value)}
+          required
+          className="rounded-xl"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="repeat-password">Yeni şifre (tekrar)</Label>
+        <Input
+          id="repeat-password"
+          type="password"
+          autoComplete="new-password"
+          minLength={8}
+          value={repeatPassword}
+          onChange={(event) => setRepeatPassword(event.target.value)}
+          required
+          className="rounded-xl"
+        />
+      </div>
+      <Button type="submit" disabled={mutation.isPending} className="w-full rounded-full">
+        {mutation.isPending ? "Kaydediliyor…" : "Şifreyi güncelle"}
+      </Button>
+    </form>
   );
 }
 
