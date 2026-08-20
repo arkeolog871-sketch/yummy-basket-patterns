@@ -278,6 +278,7 @@ function FounderDashboard() {
           <TabsTrigger value="kategoriler">Menü kategorileri</TabsTrigger>
           <TabsTrigger value="urunler">Ürünler</TabsTrigger>
           <TabsTrigger value="kullanicilar">Kullanıcılar</TabsTrigger>
+          <TabsTrigger value="guvenlik">Güvenlik</TabsTrigger>
           <TabsTrigger value="siparisler">Siparişler</TabsTrigger>
           <TabsTrigger value="denetim">Denetim kaydı</TabsTrigger>
         </TabsList>
@@ -313,6 +314,10 @@ function FounderDashboard() {
 
         <TabsContent value="kullanicilar" className="mt-6">
           <UserPanel users={users.data ?? []} onDone={invalidate} />
+        </TabsContent>
+
+        <TabsContent value="guvenlik" className="mt-6">
+          <SecurityPanel />
         </TabsContent>
 
         <TabsContent value="siparisler" className="mt-6">
