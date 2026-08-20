@@ -1,5 +1,6 @@
-import { Star, Clock, Bike, MapPin } from "lucide-react";
+import { Star, Clock, Bike } from "lucide-react";
 import { formatPrice } from "@/lib/format";
+import { LocationButton } from "@/components/business/LocationButton";
 import type { BusinessCardData } from "@/lib/sectors";
 
 export function BusinessCard({ business }: { business: BusinessCardData }) {
@@ -48,9 +49,7 @@ export function BusinessCard({ business }: { business: BusinessCardData }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <MapPin className="size-3.5" /> {business.district}
-          </span>
+          <LocationButton business={{ name: business.name, district: business.district }} />
           {deliverable ? (
             <>
               <span className="flex items-center gap-1">
