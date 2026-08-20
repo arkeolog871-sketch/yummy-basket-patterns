@@ -34,7 +34,9 @@ export async function logAudit(entry: AuditEntry): Promise<void> {
       entity: entry.entity,
       entity_id: entry.entityId ?? null,
       status: entry.status ?? "success",
-      detail: { ...requestMeta(), ...(entry.detail ?? {}) },
+      detail: JSON.parse(
+        JSON.stringify({ ...requestMeta(), ...(entry.detail ?? {}) }),
+      ) as Record<string, string | number | boolean | null>,
     });
   } catch (error) {
     // Denetim kaydı yazılamazsa asıl işlemi bozmuyoruz.
