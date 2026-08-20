@@ -377,6 +377,7 @@ type BusinessRow = {
   name: string;
   tagline: string | null;
   category: string;
+  sector: string;
   cuisines: string[];
   delivery_minutes: number;
   delivery_fee: number | string;
@@ -596,6 +597,7 @@ function BusinessPanel({
                       name: business.name,
                       tagline: business.tagline ?? "",
                       category: business.category,
+                      sector: business.sector ?? "yemek",
                       cuisines: (business.cuisines ?? []).join(", "),
                       delivery_minutes: business.delivery_minutes,
                       delivery_fee: Number(business.delivery_fee),
