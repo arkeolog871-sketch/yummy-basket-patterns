@@ -18,7 +18,7 @@ import { CategoryPanel } from "@/components/founder/CategoryPanel";
 import { ServiceAreaPanel } from "@/components/founder/ServiceAreaPanel";
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { SECTORS } from "@/lib/sectors";
-import { formatPrice, formatDateTime, ORDER_STATUS_LABELS } from "@/lib/format";
+import { formatPrice, formatDateTime, ORDER_STATUS_LABELS, slugify } from "@/lib/format";
 import {
   claimFounder,
   listAdminData,
@@ -615,13 +615,21 @@ function BusinessPanel({
         <Input
           placeholder="Ad"
           value={form.name}
-          onChange={(event) => setForm({ ...form, name: event.target.value })}
+          onChange={(event) => {
+            const name = event.target.value;
+            setForm((current) => ({
+              ...current,
+              name,
+              slug:
+                editingId || current.slug !== slugify(current.name) ? current.slug : slugify(name),
+            }));
+          }}
           required
         />
         <Input
           placeholder="URL adı (ornek-isletme)"
           value={form.slug}
-          onChange={(event) => setForm({ ...form, slug: event.target.value })}
+          onChange={(event) => setForm({ ...form, slug: slugify(event.target.value) })}
           required
         />
         <Textarea
