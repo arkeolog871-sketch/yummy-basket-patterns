@@ -396,6 +396,9 @@ type BusinessRow = {
   longitude?: number | string | null;
   maps_url?: string | null;
   is_active: boolean;
+  opens_at?: string | null;
+  closes_at?: string | null;
+  is_open_manual?: boolean | null;
 };
 
 const emptyBusiness = {
@@ -416,6 +419,9 @@ const emptyBusiness = {
   longitude: "",
   maps_url: "",
   is_active: true,
+  opens_at: "",
+  closes_at: "",
+  is_open_manual: true,
 };
 
 function BusinessPanel({
@@ -463,6 +469,9 @@ function BusinessPanel({
               : null,
           maps_url: form.maps_url.trim() || null,
           is_active: form.is_active,
+          opens_at: /^\d{2}:\d{2}$/.test(form.opens_at) ? form.opens_at : null,
+          closes_at: /^\d{2}:\d{2}$/.test(form.closes_at) ? form.closes_at : null,
+          is_open_manual: form.is_open_manual,
         },
       }),
     onSuccess: () => {
