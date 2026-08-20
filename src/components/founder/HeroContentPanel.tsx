@@ -66,14 +66,54 @@ export function HeroContentPanel() {
         {field("hero_subtitle", "Açıklama", "Başlığın altındaki kısa tanıtım cümlesi.")}
       </div>
 
-      <div className="mt-6 rounded-2xl border border-border bg-gradient-hero p-5">
-        <span className="inline-flex items-center rounded-full bg-background/70 px-3 py-1 text-xs font-semibold text-muted-foreground">
-          8 {form.hero_badge}
-        </span>
-        <h3 className="mt-3 text-2xl leading-tight">
-          {form.hero_title} <span className="text-accent">{form.hero_title_accent}</span>
-        </h3>
-        <p className="mt-2 text-sm text-muted-foreground">{form.hero_subtitle}</p>
+      <div className="mt-6 flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold">Önizleme</p>
+        <div className="flex gap-1 rounded-full border border-border p-1">
+          <Button
+            type="button"
+            size="sm"
+            variant={device === "mobile" ? "default" : "ghost"}
+            className="rounded-full"
+            aria-pressed={device === "mobile"}
+            onClick={() => setDevice("mobile")}
+          >
+            <Smartphone className="size-4" /> Mobil
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={device === "desktop" ? "default" : "ghost"}
+            className="rounded-full"
+            aria-pressed={device === "desktop"}
+            onClick={() => setDevice("desktop")}
+          >
+            <Monitor className="size-4" /> Masaüstü
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-3 flex justify-center rounded-2xl border border-border bg-muted/40 p-4">
+        <div
+          className={`w-full overflow-hidden rounded-2xl border border-border bg-gradient-hero p-5 ${
+            device === "mobile" ? "max-w-[360px]" : "max-w-full"
+          }`}
+        >
+          <span className="inline-flex items-center rounded-full bg-background/70 px-3 py-1 text-xs font-semibold text-muted-foreground">
+            8 {form.hero_badge}
+          </span>
+          <h3
+            className={`mt-3 leading-tight ${device === "mobile" ? "text-2xl" : "text-4xl"}`}
+          >
+            {form.hero_title} <span className="text-accent">{form.hero_title_accent}</span>
+          </h3>
+          <p
+            className={`mt-2 text-muted-foreground ${
+              device === "mobile" ? "text-sm" : "max-w-md text-base"
+            }`}
+          >
+            {form.hero_subtitle}
+          </p>
+        </div>
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2">
