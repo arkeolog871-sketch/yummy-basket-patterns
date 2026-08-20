@@ -22,6 +22,10 @@ export function VendorPhoneLogin() {
     setBusy(true);
     try {
       const result = await requestCode({ data: { identifier } });
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
       setMaskedEmail(result.maskedEmail);
       toast.success("Tek kullanımlık kod gönderildi.");
     } catch (error) {
@@ -47,6 +51,9 @@ export function VendorPhoneLogin() {
 
   async function verifyVendorSession() {
     const tokens = await verifyCode({ data: { identifier, code } });
+    if (!tokens.ok) {
+      throw new Error(tokens.error);
+    }
     const { error } = await supabase.auth.setSession({
       access_token: tokens.accessToken,
       refresh_token: tokens.refreshToken,

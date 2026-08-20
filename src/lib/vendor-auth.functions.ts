@@ -29,7 +29,10 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
         status: "denied",
         detail: { reason: "Telefon/e-postaya bağlı işletme hesabı yok" },
       });
-      throw new Error("Bu telefon numarası veya e-posta ile bir işletme hesabı bulunamadı.");
+      return {
+        ok: false as const,
+        error: "Bu bilgiye bağlı aktif bir işletme hesabı yok. Kurucu panelinden işletmenin iletişim bilgilerini kaydedin.",
+      };
     }
 
     const supabase = createServerPublicClient();
@@ -47,7 +50,7 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
       entityId: vendor.userId,
     });
 
-    return { maskedEmail: maskEmail(vendor.email) };
+    return { ok: true as const, maskedEmail: maskEmail(vendor.email) };
   });
 
 /** Kodu doğrular ve tarayıcıda oturum kurmak için jetonları döner. */
@@ -62,8 +65,12 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
     const { logAudit } = await import("./audit.server");
 
     const vendor = await findVendorUser(data.identifier);
-    if (!vendor)
-      throw new Error("Bu telefon numarası veya e-posta ile bir işletme hesabı bulunamadı.");
+    if (!vendor) {
+      return {
+        ok: false as const,
+        error: "Bu bilgiye bağlı aktif bir işletme hesabı yok. Kurucu panelinden işletmenin iletişim bilgilerini kaydedin.",
+      };
+    }
 
     const supabase = createServerPublicClient();
     const { data: verified, error } = await supabase.auth.verifyOtp({
@@ -94,6 +101,7 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
     });
 
     return {
+      ok: true as const,
       accessToken: verified.session.access_token,
       refreshToken: verified.session.refresh_token,
     };

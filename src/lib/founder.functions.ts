@@ -101,15 +101,12 @@ const businessSchema = z.object({
     .trim()
     .max(160)
     .email("Geçerli bir e-posta girin")
-    .nullable()
-    .default(null),
+    .transform((value) => value.toLowerCase()),
   contact_phone: z
     .string()
     .trim()
     .max(30)
-    .regex(/^[0-9+()\s-]{10,30}$/, "Geçerli bir telefon numarası girin")
-    .nullable()
-    .default(null),
+    .regex(/^[0-9+()\s-]{10,30}$/, "Geçerli bir telefon numarası girin"),
   is_active: z.boolean().default(true),
 });
 
@@ -267,7 +264,7 @@ export const saveBusiness = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => businessWithHoursSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { assertFounder } = await import("./founder.server");
+    const { assertFounder, ensureBusinessVendorAccount } = await import("./founder.server");
     const { audited } = await import("./audit.server");
     await assertFounder(context.supabase, context.userId);
     const { id, ...values } = data;
@@ -281,11 +278,18 @@ export const saveBusiness = createServerFn({ method: "POST" })
         detail: { name: values.name, slug: values.slug, category: values.category },
       },
       async () => {
+        const businessId = id ?? crypto.randomUUID();
         const { error } = id
           ? await context.supabase.from("restaurants").update(values).eq("id", id)
-          : await context.supabase.from("restaurants").insert(values);
+          : await context.supabase.from("restaurants").insert({ ...values, id: businessId });
         if (error) throw new Error(error.message);
-        return { ok: true };
+        await ensureBusinessVendorAccount({
+          restaurantId: businessId,
+          businessName: values.name,
+          email: values.contact_email,
+          phone: values.contact_phone,
+        });
+        return { ok: true, vendorLinked: true };
       },
     );
   });
