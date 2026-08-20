@@ -1,12 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Crown, Plus, Trash2, Pencil, ShieldCheck, LogOut, ExternalLink } from "lucide-react";
+import { Crown, Plus, Trash2, Pencil, ShieldCheck, LogOut, ExternalLink, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { readTwoFactorState, clearTwoFactorFlag } from "@/lib/two-factor";
+import { SecurityPanel } from "@/components/founder/SecurityPanel";
 import { SECTORS } from "@/lib/sectors";
 import { formatPrice, formatDateTime, ORDER_STATUS_LABELS } from "@/lib/format";
 import {
@@ -22,6 +24,7 @@ import {
   deleteMenuItem,
   setUserRole,
   deleteUser,
+  createStaffUser,
 } from "@/lib/founder.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
