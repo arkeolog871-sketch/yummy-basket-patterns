@@ -6,6 +6,7 @@ import { getRestaurantBySlug } from "@/lib/catalog.functions";
 import { LocationButton } from "@/components/business/LocationButton";
 import { useCart } from "@/hooks/useCart";
 import { formatPrice } from "@/lib/format";
+import { isBusinessOpen, hoursLabel, closedReason } from "@/lib/hours";
 import { Button } from "@/components/ui/button";
 
 function detailQuery(slug: string) {
@@ -63,6 +64,8 @@ function RestaurantDetail() {
 
   if (!data) return <RestaurantNotFound />;
   const { restaurant, categories, items } = data;
+  const open = isBusinessOpen(restaurant);
+  const hours = hoursLabel(restaurant);
 
   const grouped = categories.map((category) => ({
     ...category,
@@ -80,6 +83,10 @@ function RestaurantDetail() {
   };
 
   function add(item: { id: string; name: string; price: number; image_url: string | null }) {
+    if (!open) {
+      toast.error("İşletme şu an kapalı", { description: closedReason(restaurant) });
+      return;
+    }
     const switching = cart.restaurant && cart.restaurant.id !== restaurant.id;
     cart.addItem(cartRestaurant, {
       menuItemId: item.id,
@@ -137,8 +144,26 @@ function RestaurantDetail() {
           <span className="text-muted-foreground">
             Min. sepet {formatPrice(Number(restaurant.min_order))}
           </span>
+          {hours ? (
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <Clock className="size-4" /> {hours}
+            </span>
+          ) : null}
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+              open ? "bg-success text-success-foreground" : "bg-foreground/85 text-background"
+            }`}
+          >
+            {open ? "Şu An Açık" : "Şu An Kapalı"}
+          </span>
           <LocationButton business={restaurant} className="text-muted-foreground" />
         </div>
+
+        {open ? null : (
+          <div className="mt-4 rounded-3xl border border-border bg-warm px-4 py-3 text-sm text-warm-foreground">
+            {closedReason(restaurant)} Sepete ürün ekleyemezsiniz.
+          </div>
+        )}
 
         <div className="grid gap-8 py-10 lg:grid-cols-[1fr_320px]">
           <div className="space-y-10">
@@ -172,6 +197,7 @@ function RestaurantDetail() {
                         <Button
                           size="icon"
                           className="size-10 shrink-0 rounded-full"
+                          disabled={!open}
                           aria-label={`${item.name} sepete ekle`}
                           onClick={() => add(item)}
                         >
