@@ -16,7 +16,7 @@ export const listRestaurants = createServerFn({ method: "GET" })
     let query = supabase
       .from("restaurants")
       .select(
-        "id, slug, name, tagline, category, sector, cuisines, rating, review_count, delivery_fee, delivery_minutes, min_order, cover_image_url",
+        "id, slug, name, tagline, category, sector, cuisines, rating, review_count, delivery_fee, delivery_minutes, min_order, cover_image_url, address, district, city, latitude, longitude, maps_url",
       )
       .eq("is_active", true)
       .order("rating", { ascending: false });
