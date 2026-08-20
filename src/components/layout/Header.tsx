@@ -10,10 +10,12 @@ import {
   ClipboardList,
   Search,
   ChevronDown,
+  Crown,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SECTORS, CITIES } from "@/lib/sectors";
@@ -31,6 +33,7 @@ import {
 export function Header() {
   const { user } = useAuth();
   const { itemCount } = useCart();
+  const { settings, isFounder } = useSiteSettings();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [city, setCity] = useState<string>(CITIES[0]);
@@ -50,7 +53,9 @@ export function Header() {
           <span className="flex size-9 items-center justify-center rounded-2xl bg-gradient-warm text-primary-foreground shadow-glow">
             <UtensilsCrossed className="size-5" />
           </span>
-          <span className="font-display text-lg font-semibold tracking-tight">SofraKapımda</span>
+          <span className="font-display text-lg font-semibold tracking-tight">
+            {settings.brand_name}
+          </span>
         </Link>
 
         <DropdownMenu>
@@ -130,6 +135,13 @@ export function Header() {
                     <MapPin className="size-4" /> Adreslerim
                   </Link>
                 </DropdownMenuItem>
+                {isFounder ? (
+                  <DropdownMenuItem asChild>
+                    <Link to="/kurucu">
+                      <Crown className="size-4" /> Kurucu paneli
+                    </Link>
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => void handleSignOut()}>
                   <LogOut className="size-4" /> Çıkış yap
