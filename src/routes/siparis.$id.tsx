@@ -7,7 +7,8 @@ import {
   formatPrice,
   formatDateTime,
   ORDER_STATUS_LABELS,
-  ORDER_STATUS_FLOW,
+  ORDER_TRACK_STEPS,
+  orderStepIndex,
 } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 
@@ -35,7 +36,7 @@ function OrderDetailPage() {
   const { data: order, isLoading } = useQuery({
     queryKey: ["order", id],
     queryFn: () => fetchOrder({ data: { id } }),
-    refetchInterval: 15000,
+    refetchInterval: 10000,
   });
 
   if (isLoading) {
@@ -53,9 +54,8 @@ function OrderDetailPage() {
     );
   }
 
-  const currentIndex = ORDER_STATUS_FLOW.indexOf(
-    order.status as (typeof ORDER_STATUS_FLOW)[number],
-  );
+  const cancelled = order.status === "cancelled";
+  const currentIndex = orderStepIndex(order.status);
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-10">
@@ -64,21 +64,40 @@ function OrderDetailPage() {
         {formatDateTime(order.created_at)} · {ORDER_STATUS_LABELS[order.status] ?? order.status}
       </p>
 
-      <ol className="mt-6 space-y-2 rounded-3xl border border-border/70 bg-card p-5 shadow-card">
-        {ORDER_STATUS_FLOW.map((status, index) => (
-          <li
-            key={status}
-            className={`flex items-center gap-3 text-sm ${
-              index <= currentIndex ? "font-medium text-foreground" : "text-muted-foreground"
-            }`}
-          >
-            <span
-              className={`size-2.5 rounded-full ${index <= currentIndex ? "bg-primary" : "bg-border"}`}
-            />
-            {ORDER_STATUS_LABELS[status]}
-          </li>
-        ))}
-      </ol>
+      {cancelled ? (
+        <div className="mt-6 rounded-3xl border border-destructive/40 bg-card p-5 text-sm shadow-card">
+          <p className="font-semibold text-destructive">Sipariş iptal edildi</p>
+          <p className="mt-1 text-muted-foreground">
+            Bu sipariş iptal edildiği için takip adımları görüntülenmiyor.
+          </p>
+        </div>
+      ) : (
+        <ol className="mt-6 flex gap-2 rounded-3xl border border-border/70 bg-card p-5 shadow-card">
+          {ORDER_TRACK_STEPS.map((step, index) => {
+            const done = index <= currentIndex;
+            const active = index === currentIndex;
+            return (
+              <li key={step.label} className="flex-1">
+                <span
+                  className={`block h-1.5 rounded-full ${done ? "bg-primary" : "bg-border"}`}
+                  aria-hidden
+                />
+                <span
+                  className={`mt-2 block text-xs sm:text-sm ${
+                    active
+                      ? "font-semibold text-primary"
+                      : done
+                        ? "font-medium text-foreground"
+                        : "text-muted-foreground"
+                  }`}
+                >
+                  {step.label}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+      )}
 
       <div className="mt-6 rounded-3xl border border-border/70 bg-card p-5 shadow-card">
         <p className="font-semibold">Sipariş içeriği</p>
