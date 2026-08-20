@@ -11,3 +11,5 @@ type: feature
 - Boş veri durumlarında `EmptyState` bileşeni kullanılır.
 - İşletme girişi telefon numarası + tek kullanımlık kod ile yapılır: numara `profiles.phone` üzerinden vendor hesabına eşlenir, kod hesabın kayıtlı e-postasına gönderilir, oturum sunucudan dönen jetonlarla kurulur. E-posta UI'da maskelenir.
 - İşletme kendi panelindeki "Şifre" sekmesinden mevcut şifresini doğrulayarak yeni şifre belirleyebilir.
+- Kurucu panelinde hesap oluştururken e-posta, telefon ve ad soyad zorunludur; telefon `profiles.phone` alanına normalize edilerek yazılır ve tekil olmalıdır (işletme telefon girişinin çalışması için gerekli).
+- Müşteri kaydında da telefon numarası zorunludur (metadata `phone` → `handle_new_user` ile profiles'a işlenir).
