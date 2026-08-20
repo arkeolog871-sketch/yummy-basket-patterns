@@ -43,7 +43,7 @@ const emptyForm = {
   is_active: true,
 };
 
-export function CategoryPanel({ businesses }: { businesses: { category: string }[] }) {
+export function CategoryPanel({ businesses }: { businesses: { sector: string }[] }) {
   const { categories } = useAppCategories({ includeHidden: true });
   const queryClient = useQueryClient();
   const save = useServerFn(saveCategory);
