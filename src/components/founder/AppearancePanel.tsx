@@ -44,7 +44,7 @@ const PRESETS: Preset[] = [
     theme_mode: "light",
     layout_variant: "classic",
     primary_color: "#2f9e6b",
-    accent_color: "#f2ا".slice(0, 0) + "#f2b705",
+    accent_color: "#f2b705",
     secondary_color: "#e4f5ec",
     background_color: "#f7fdf9",
   },
