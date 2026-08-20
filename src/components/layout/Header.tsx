@@ -16,9 +16,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useAppCategories, useServiceAreas, areaLabel } from "@/hooks/useTaxonomy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SECTORS, CITIES } from "@/lib/sectors";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,10 +34,14 @@ export function Header() {
   const { user } = useAuth();
   const { itemCount } = useCart();
   const { settings, isFounder, founderExists } = useSiteSettings();
+  const { categories } = useAppCategories();
+  const { areas } = useServiceAreas();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [city, setCity] = useState<string>(CITIES[0]);
+  const [city, setCity] = useState<string>("");
   const [term, setTerm] = useState("");
+  const areaOptions = areas.map(areaLabel);
+  const activeCity = city || areaOptions[0] || "Bölge seçin";
 
   async function handleSignOut() {
     await queryClient.cancelQueries();
@@ -50,9 +54,17 @@ export function Header() {
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
         <Link to="/" className="flex items-center gap-2">
-          <span className="flex size-9 items-center justify-center rounded-2xl bg-gradient-warm text-primary-foreground shadow-glow">
-            <UtensilsCrossed className="size-5" />
-          </span>
+          {settings.logo_url ? (
+            <img
+              src={settings.logo_url}
+              alt={`${settings.brand_name} logosu`}
+              className="size-9 rounded-2xl object-cover"
+            />
+          ) : (
+            <span className="flex size-9 items-center justify-center rounded-2xl bg-gradient-warm text-primary-foreground shadow-glow">
+              <UtensilsCrossed className="size-5" />
+            </span>
+          )}
           <span className="font-display text-lg font-semibold tracking-tight">
             {settings.brand_name}
           </span>
@@ -62,7 +74,7 @@ export function Header() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="rounded-full px-3 text-sm">
               <MapPin className="size-4 text-accent" />
-              <span className="max-w-[9rem] truncate">{city}</span>
+              <span className="max-w-[9rem] truncate">{activeCity}</span>
               <ChevronDown className="size-3.5 opacity-60" />
             </Button>
           </DropdownMenuTrigger>
@@ -71,8 +83,8 @@ export function Header() {
               Teslimat bölgesi
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuRadioGroup value={city} onValueChange={setCity}>
-              {CITIES.map((option) => (
+            <DropdownMenuRadioGroup value={activeCity} onValueChange={setCity}>
+              {areaOptions.map((option) => (
                 <DropdownMenuRadioItem key={option} value={option}>
                   {option}
                 </DropdownMenuRadioItem>
@@ -160,7 +172,7 @@ export function Header() {
         aria-label="Kategoriler"
         className="no-scrollbar mx-auto flex w-full max-w-6xl gap-1 overflow-x-auto border-t border-border/60 px-4 py-2"
       >
-        {SECTORS.map((sector) => (
+        {categories.map((sector) => (
           <Link
             key={sector.slug}
             to="/"
