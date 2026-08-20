@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccess } from "@/hooks/useAccess";
 import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
+import { VendorPhoneLogin } from "@/components/auth/VendorPhoneLogin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -130,7 +131,7 @@ function AuthPage() {
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
         {vendorPortal
-          ? "İşletme hesabınızla giriş yapın; doğrudan işletme panelinize yönlendirilirsiniz. İşletme hesapları kurucu tarafından tanımlanır."
+          ? "Telefon numaranızı girin, hesabınıza tek kullanımlık şifre gönderilir. İşletme hesapları kurucu tarafından tanımlanır."
           : "Sipariş vermek ve adreslerinizi kaydetmek için hesabınızı kullanın."}
       </p>
 
@@ -158,7 +159,11 @@ function AuthPage() {
         </div>
       ) : null}
 
-      {mode === "signin" && method === "code" ? (
+      {vendorPortal ? (
+        <div className="mt-8 rounded-3xl border border-border/70 bg-card p-6 shadow-card">
+          <VendorPhoneLogin />
+        </div>
+      ) : mode === "signin" && method === "code" ? (
         <div className="mt-6 rounded-3xl border border-border/70 bg-card p-6 shadow-card">
           <EmailCodeLogin
             idPrefix="user-otp"
@@ -216,21 +221,25 @@ function AuthPage() {
       </form>
       )}
 
-      <div className="mt-4 flex items-center gap-3 text-xs text-muted-foreground">
-        <span className="h-px flex-1 bg-border" />
-        veya
-        <span className="h-px flex-1 bg-border" />
-      </div>
+      {vendorPortal ? null : (
+        <>
+          <div className="mt-4 flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            veya
+            <span className="h-px flex-1 bg-border" />
+          </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        size="lg"
-        className="mt-4 w-full rounded-full"
-        onClick={() => void handleGoogle()}
-      >
-        Google ile devam et
-      </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="mt-4 w-full rounded-full"
+            onClick={() => void handleGoogle()}
+          >
+            Google ile devam et
+          </Button>
+        </>
+      )}
 
       {vendorPortal ? (
         <p className="mt-5 text-center text-xs text-muted-foreground">
