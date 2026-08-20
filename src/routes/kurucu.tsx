@@ -377,6 +377,7 @@ type BusinessRow = {
   name: string;
   tagline: string | null;
   category: string;
+  sector: string;
   cuisines: string[];
   delivery_minutes: number;
   delivery_fee: number | string;
@@ -389,7 +390,8 @@ const emptyBusiness = {
   slug: "",
   name: "",
   tagline: "",
-  category: SECTORS[0].label as string,
+  category: "",
+  sector: SECTORS[0].slug as string,
   cuisines: "",
   delivery_minutes: 30,
   delivery_fee: 0,
@@ -419,7 +421,8 @@ function BusinessPanel({
           slug: form.slug,
           name: form.name,
           tagline: form.tagline || null,
-          category: form.category,
+          category: form.category || "Genel",
+          sector: form.sector,
           cuisines: form.cuisines
             .split(",")
             .map((value) => value.trim())
@@ -483,9 +486,9 @@ function BusinessPanel({
             <button
               key={sector.slug}
               type="button"
-              onClick={() => setForm({ ...form, category: sector.label })}
+              onClick={() => setForm({ ...form, sector: sector.slug })}
               className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
-                form.category === sector.label
+                form.sector === sector.slug
                   ? "border-transparent bg-primary text-primary-foreground"
                   : "border-border"
               }`}
@@ -494,6 +497,11 @@ function BusinessPanel({
             </button>
           ))}
         </div>
+        <Input
+          placeholder="Alt tür (Kebap, Pizza, Manav…)"
+          value={form.category}
+          onChange={(event) => setForm({ ...form, category: event.target.value })}
+        />
         <Input
           placeholder="Etiketler (virgülle)"
           value={form.cuisines}
@@ -589,6 +597,7 @@ function BusinessPanel({
                       name: business.name,
                       tagline: business.tagline ?? "",
                       category: business.category,
+                      sector: business.sector ?? "yemek",
                       cuisines: (business.cuisines ?? []).join(", "),
                       delivery_minutes: business.delivery_minutes,
                       delivery_fee: Number(business.delivery_fee),

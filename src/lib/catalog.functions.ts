@@ -4,6 +4,7 @@ import { z } from "zod";
 const listSchema = z.object({
   search: z.string().trim().max(80).optional(),
   category: z.string().trim().max(40).optional(),
+  sector: z.string().trim().max(40).optional(),
 });
 
 export const listRestaurants = createServerFn({ method: "GET" })
@@ -15,12 +16,13 @@ export const listRestaurants = createServerFn({ method: "GET" })
     let query = supabase
       .from("restaurants")
       .select(
-        "id, slug, name, tagline, category, cuisines, rating, review_count, delivery_fee, delivery_minutes, min_order, cover_image_url",
+        "id, slug, name, tagline, category, sector, cuisines, rating, review_count, delivery_fee, delivery_minutes, min_order, cover_image_url",
       )
       .eq("is_active", true)
       .order("rating", { ascending: false });
 
     if (data.category) query = query.eq("category", data.category);
+    if (data.sector) query = query.eq("sector", data.sector);
     if (data.search) {
       const term = `%${data.search}%`;
       query = query.or(`name.ilike.${term},tagline.ilike.${term},category.ilike.${term}`);

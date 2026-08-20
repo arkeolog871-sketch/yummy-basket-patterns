@@ -395,6 +395,7 @@ export type Database = {
           name: string
           rating: number
           review_count: number
+          sector: string
           slug: string
           tagline: string | null
           updated_at: string
@@ -412,6 +413,7 @@ export type Database = {
           name: string
           rating?: number
           review_count?: number
+          sector?: string
           slug: string
           tagline?: string | null
           updated_at?: string
@@ -429,6 +431,7 @@ export type Database = {
           name?: string
           rating?: number
           review_count?: number
+          sector?: string
           slug?: string
           tagline?: string | null
           updated_at?: string

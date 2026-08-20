@@ -8,6 +8,7 @@ export type RestaurantSummary = {
   name: string;
   tagline: string | null;
   category: string;
+  sector?: string;
   cuisines: string[];
   rating: number;
   review_count: number;
