@@ -234,9 +234,11 @@ export const listAdminData = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { assertFounder } = await import("./founder.server");
     await assertFounder(context.supabase, context.userId);
+    // Kurucu doğrulandıktan sonra iletişim alanlarını da okuyabilmek için yetkili istemci.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const [businesses, categories, items, orders] = await Promise.all([
-      context.supabase.from("restaurants").select("*").order("name"),
+      supabaseAdmin.from("restaurants").select("*").order("name"),
       context.supabase.from("menu_categories").select("*").order("position"),
       context.supabase.from("menu_items").select("*").order("name"),
       context.supabase
