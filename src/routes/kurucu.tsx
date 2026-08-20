@@ -1,10 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Crown, Plus, Trash2, Pencil, ShieldCheck } from "lucide-react";
-import { RequireAuth } from "@/components/auth/RequireAuth";
+import { Crown, Plus, Trash2, Pencil, ShieldCheck, LogOut, ExternalLink } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { SECTORS } from "@/lib/sectors";
 import { formatPrice, formatDateTime, ORDER_STATUS_LABELS } from "@/lib/format";
@@ -46,12 +47,78 @@ export const Route = createFileRoute("/kurucu")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: () => (
-    <RequireAuth>
-      <FounderPage />
-    </RequireAuth>
-  ),
+  component: FounderRoute,
 });
+
+function FounderRoute() {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  async function handleSignOut() {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await supabase.auth.signOut();
+    navigate({ to: "/kurucu-giris", replace: true });
+  }
+
+  if (loading) {
+    return (
+      <div className="px-4 py-24 text-center text-sm text-muted-foreground">Yükleniyor…</div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-24 text-center">
+        <span className="mx-auto flex size-14 items-center justify-center rounded-3xl bg-warm text-warm-foreground">
+          <Crown className="size-6" />
+        </span>
+        <h1 className="mt-5 text-3xl">Kurucu girişi gerekli</h1>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Bu çalışma alanı yalnızca kurucu portalından erişilebilir.
+        </p>
+        <Button asChild className="mt-6 rounded-full">
+          <Link to="/kurucu-giris">Kurucu girişine git</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-muted/30">
+      <header className="border-b border-border/70 bg-card/90 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="flex size-9 items-center justify-center rounded-xl bg-gradient-warm text-primary-foreground">
+              <Crown className="size-4" />
+            </span>
+            <div className="leading-tight">
+              <p className="font-display text-sm font-semibold">Kurucu çalışma alanı</p>
+              <p className="text-xs text-muted-foreground">{user.email}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button asChild variant="ghost" size="sm" className="rounded-full">
+              <Link to="/">
+                <ExternalLink className="size-4" /> Siteyi gör
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              onClick={() => void handleSignOut()}
+            >
+              <LogOut className="size-4" /> Çıkış
+            </Button>
+          </div>
+        </div>
+      </header>
+      <FounderPage />
+    </div>
+  );
+}
 
 function FounderPage() {
   const { isFounder, founderExists, refresh } = useSiteSettings();
