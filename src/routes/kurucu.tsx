@@ -349,7 +349,7 @@ const emptyBusiness = {
   slug: "",
   name: "",
   tagline: "",
-  category: SECTORS[0].label,
+  category: SECTORS[0].label as string,
   cuisines: "",
   delivery_minutes: 30,
   delivery_fee: 0,

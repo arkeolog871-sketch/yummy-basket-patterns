@@ -21,13 +21,13 @@ const businessSchema = z.object({
     .max(60)
     .regex(/^[a-z0-9-]+$/, "Sadece küçük harf, rakam ve tire"),
   name: z.string().trim().min(2).max(80),
-  tagline: z.string().trim().max(160).optional().nullable(),
+  tagline: z.string().trim().max(160).nullable().default(null),
   category: z.string().trim().min(2).max(40),
   cuisines: z.array(z.string().trim().min(1).max(30)).max(8).default([]),
   delivery_minutes: z.number().int().min(0).max(600),
   delivery_fee: z.number().min(0).max(10000),
   min_order: z.number().min(0).max(100000),
-  cover_image_url: z.string().trim().max(500).optional().nullable(),
+  cover_image_url: z.string().trim().max(500).nullable().default(null),
   is_active: z.boolean().default(true),
 });
 
@@ -41,11 +41,11 @@ const menuCategorySchema = z.object({
 const menuItemSchema = z.object({
   id: z.string().uuid().optional(),
   restaurant_id: z.string().uuid(),
-  category_id: z.string().uuid().nullable().optional(),
+  category_id: z.string().uuid().nullable().default(null),
   name: z.string().trim().min(2).max(80),
-  description: z.string().trim().max(300).optional().nullable(),
+  description: z.string().trim().max(300).nullable().default(null),
   price: z.number().min(0).max(100000),
-  image_url: z.string().trim().max(500).optional().nullable(),
+  image_url: z.string().trim().max(500).nullable().default(null),
   is_popular: z.boolean().default(false),
   is_available: z.boolean().default(true),
 });
