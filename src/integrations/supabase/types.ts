@@ -342,6 +342,39 @@ export type Database = {
         }
         Relationships: []
       }
+      site_settings: {
+        Row: {
+          accent_color: string
+          brand_name: string
+          created_at: string
+          id: string
+          layout_variant: string
+          primary_color: string
+          theme_mode: string
+          updated_at: string
+        }
+        Insert: {
+          accent_color?: string
+          brand_name?: string
+          created_at?: string
+          id?: string
+          layout_variant?: string
+          primary_color?: string
+          theme_mode?: string
+          updated_at?: string
+        }
+        Update: {
+          accent_color?: string
+          brand_name?: string
+          created_at?: string
+          id?: string
+          layout_variant?: string
+          primary_color?: string
+          theme_mode?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -377,7 +410,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role: "admin" | "user" | "founder"
       order_status:
         | "pending"
         | "confirmed"
@@ -513,7 +546,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "founder"],
       order_status: [
         "pending",
         "confirmed",
