@@ -191,6 +191,25 @@ function AuthPage() {
             />
           </div>
         ) : null}
+        {mode === "signup" ? (
+          <div className="space-y-2">
+            <Label htmlFor="phone">Telefon numarası</Label>
+            <Input
+              id="phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="05xx xxx xx xx"
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              required
+              className="rounded-xl"
+            />
+            <p className="text-xs text-muted-foreground">
+              Kurye iletişimi ve giriş doğrulaması için zorunludur.
+            </p>
+          </div>
+        ) : null}
         <div className="space-y-2">
           <Label htmlFor="email">E-posta</Label>
           <Input
