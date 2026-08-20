@@ -1358,6 +1358,30 @@ function UserPanel({
                 {formatDateTime(user.created_at)} ·{" "}
                 {user.roles.length ? user.roles.join(", ") : "yetki yok"}
               </p>
+              <div className="mt-2 flex items-center gap-2">
+                <label className="text-xs text-muted-foreground" htmlFor={`vendor-${user.id}`}>
+                  İşletme:
+                </label>
+                <select
+                  id={`vendor-${user.id}`}
+                  value={user.vendorRestaurantId ?? ""}
+                  disabled={assignMutation.isPending}
+                  onChange={(event) =>
+                    assignMutation.mutate({
+                      userId: user.id,
+                      restaurantId: event.target.value || null,
+                    })
+                  }
+                  className="h-8 max-w-[14rem] rounded-lg border border-input bg-background px-2 text-xs"
+                >
+                  <option value="">Atanmadı</option>
+                  {businesses.map((business) => (
+                    <option key={business.id} value={business.id}>
+                      {business.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="flex flex-wrap gap-1">
               {(["admin", "founder"] as const).map((roleName) => {
