@@ -503,6 +503,8 @@ type BusinessRow = {
   latitude?: number | string | null;
   longitude?: number | string | null;
   maps_url?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
   is_active: boolean;
   opens_at?: string | null;
   closes_at?: string | null;
@@ -526,6 +528,8 @@ const emptyBusiness = {
   latitude: "",
   longitude: "",
   maps_url: "",
+  contact_email: "",
+  contact_phone: "",
   is_active: true,
   opens_at: "",
   closes_at: "",
@@ -576,6 +580,8 @@ function BusinessPanel({
               ? Number(form.longitude)
               : null,
           maps_url: form.maps_url.trim() || null,
+          contact_email: form.contact_email.trim() || null,
+          contact_phone: form.contact_phone.trim() || null,
           is_active: form.is_active,
           opens_at: /^\d{2}:\d{2}$/.test(form.opens_at) ? form.opens_at : null,
           closes_at: /^\d{2}:\d{2}$/.test(form.closes_at) ? form.closes_at : null,
@@ -743,6 +749,28 @@ function BusinessPanel({
             onChange={(event) => setForm({ ...form, maps_url: event.target.value })}
           />
         </div>
+        <div className="space-y-2 rounded-2xl border border-border p-3">
+          <p className="text-xs font-medium text-muted-foreground">
+            İletişim — işletme girişinde bu e-posta veya telefon kullanılır
+          </p>
+          <Input
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            placeholder="İşletme e-postası (ornek@isletme.com)"
+            value={form.contact_email}
+            onChange={(event) => setForm({ ...form, contact_email: event.target.value })}
+            required
+          />
+          <Input
+            type="tel"
+            inputMode="tel"
+            placeholder="İşletme telefonu (05xx xxx xx xx)"
+            value={form.contact_phone}
+            onChange={(event) => setForm({ ...form, contact_phone: event.target.value })}
+            required
+          />
+        </div>
         <div className="flex items-center justify-between rounded-2xl border border-border p-3">
           <span className="text-sm">Yayında</span>
           <Switch
@@ -851,6 +879,8 @@ function BusinessPanel({
                           ? ""
                           : String(business.longitude),
                       maps_url: business.maps_url ?? "",
+                      contact_email: business.contact_email ?? "",
+                      contact_phone: business.contact_phone ?? "",
                       is_active: business.is_active,
                       opens_at: (business.opens_at ?? "").slice(0, 5),
                       closes_at: (business.closes_at ?? "").slice(0, 5),

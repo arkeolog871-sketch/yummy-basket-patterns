@@ -96,6 +96,20 @@ const businessSchema = z.object({
     .refine((value) => value === "" || /^https?:\/\//i.test(value), "Geçerli bir bağlantı girin")
     .nullable()
     .default(null),
+  contact_email: z
+    .string()
+    .trim()
+    .max(160)
+    .email("Geçerli bir e-posta girin")
+    .nullable()
+    .default(null),
+  contact_phone: z
+    .string()
+    .trim()
+    .max(30)
+    .regex(/^[0-9+()\s-]{10,30}$/, "Geçerli bir telefon numarası girin")
+    .nullable()
+    .default(null),
   is_active: z.boolean().default(true),
 });
 
