@@ -62,3 +62,26 @@ export async function audited<T>(entry: AuditEntry, run: () => Promise<T>): Prom
     throw error;
   }
 }
+/**
+ * Kimlik doğrulaması gerektirmeyen giriş denemesi kaydı için basit hız sınırı:
+ * aynı IP son 10 dakikada 10'dan fazla kayıt yazamaz.
+ */
+export async function tooManyRecentLoginLogs(limit = 10): Promise<boolean> {
+  try {
+    const meta = requestMeta() as { ip?: string | null };
+    const ip = meta.ip ?? null;
+    if (!ip) return false;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { count, error } = await supabaseAdmin
+      .from("audit_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("action", "founder.login")
+      .gte("created_at", since)
+      .eq("detail->>ip", ip);
+    if (error) return false;
+    return (count ?? 0) >= limit;
+  } catch {
+    return false;
+  }
+}
