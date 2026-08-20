@@ -1319,15 +1319,24 @@ function UserPanel({
             <select
               id="staff-role"
               value={role}
-              onChange={(event) => setRoleValue(event.target.value as "founder" | "admin" | "user")}
+              onChange={(event) =>
+                setRoleValue(event.target.value as "founder" | "admin" | "user" | "vendor")
+              }
               className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm"
             >
               <option value="founder">Kurucu</option>
               <option value="admin">Yönetici</option>
+              <option value="vendor">İşletme</option>
               <option value="user">Kullanıcı</option>
             </select>
           </div>
         </div>
+        {role === "vendor" ? (
+          <p className="mt-3 text-xs text-muted-foreground">
+            İşletme hesabı oluşturduktan sonra aşağıdaki listeden hangi işletmeye bağlı olduğunu
+            seçin; atama yapılmadan işletme paneline erişemez.
+          </p>
+        ) : null}
         <Button type="submit" className="mt-4 rounded-full" disabled={createMutation.isPending}>
           <UserPlus className="size-4" />{" "}
           {createMutation.isPending ? "Oluşturuluyor…" : "Hesabı oluştur"}
