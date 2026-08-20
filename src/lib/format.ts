@@ -1,3 +1,27 @@
+const TR_MAP: Record<string, string> = {
+  ç: "c",
+  ğ: "g",
+  ı: "i",
+  i̇: "i",
+  ö: "o",
+  ş: "s",
+  ü: "u",
+  â: "a",
+  î: "i",
+  û: "u",
+};
+
+export function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[çğıöşüâîû]/g, (char) => TR_MAP[char] ?? char)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+}
+
 export function formatPrice(value: number): string {
   return new Intl.NumberFormat("tr-TR", {
     style: "currency",
