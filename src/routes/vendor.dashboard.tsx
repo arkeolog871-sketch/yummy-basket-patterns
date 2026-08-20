@@ -380,11 +380,11 @@ function VendorDashboard() {
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="guvenlik" className="mt-6">
+            <PasswordPanel />
+          </TabsContent>
         </Tabs>
-      </div>
-    </div>
-  );
-}
       </div>
     </div>
   );
