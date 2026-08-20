@@ -1,12 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Crown, Plus, Trash2, Pencil, ShieldCheck, LogOut, ExternalLink } from "lucide-react";
+import { Crown, Plus, Trash2, Pencil, ShieldCheck, LogOut, ExternalLink, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { readTwoFactorState, clearTwoFactorFlag } from "@/lib/two-factor";
+import { SecurityPanel } from "@/components/founder/SecurityPanel";
 import { SECTORS } from "@/lib/sectors";
 import { formatPrice, formatDateTime, ORDER_STATUS_LABELS } from "@/lib/format";
 import {
@@ -22,6 +24,7 @@ import {
   deleteMenuItem,
   setUserRole,
   deleteUser,
+  createStaffUser,
 } from "@/lib/founder.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,9 +62,75 @@ function FounderRoute() {
   async function handleSignOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
+    clearTwoFactorFlag();
     await supabase.auth.signOut();
     navigate({ to: "/kurucu-giris", replace: true });
   }
+
+  return (
+    <TwoFactorGate>
+      <FounderShell onSignOut={handleSignOut} loading={loading} email={user?.email ?? null} hasUser={Boolean(user)} />
+    </TwoFactorGate>
+  );
+}
+
+/** 2FA etkinse, ikinci adımı geçmemiş oturumlara paneli göstermez. */
+function TwoFactorGate({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const [blocked, setBlocked] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      setBlocked(false);
+      return;
+    }
+    let active = true;
+    void readTwoFactorState(user.id)
+      .then((state) => {
+        if (active) setBlocked(state.enrolled && !state.satisfied);
+      })
+      .catch(() => active && setBlocked(false));
+    return () => {
+      active = false;
+    };
+  }, [user, loading]);
+
+  if (blocked === null && user) {
+    return <div className="px-4 py-24 text-center text-sm text-muted-foreground">Doğrulanıyor…</div>;
+  }
+
+  if (blocked) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-24 text-center">
+        <span className="mx-auto flex size-14 items-center justify-center rounded-3xl bg-warm text-warm-foreground">
+          <ShieldCheck className="size-6" />
+        </span>
+        <h1 className="mt-5 text-3xl">İki adımlı doğrulama gerekli</h1>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Bu oturum ikinci adımı geçmedi. Kurucu girişinden doğrulama kodunuzu veya bir yedek kodu girin.
+        </p>
+        <Button asChild className="mt-6 rounded-full">
+          <Link to="/kurucu-giris">Doğrulamaya git</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+function FounderShell({
+  onSignOut,
+  loading,
+  email,
+  hasUser,
+}: {
+  onSignOut: () => Promise<void>;
+  loading: boolean;
+  email: string | null;
+  hasUser: boolean;
+}) {
 
   if (loading) {
     return (
@@ -69,7 +138,7 @@ function FounderRoute() {
     );
   }
 
-  if (!user) {
+  if (!hasUser) {
     return (
       <div className="mx-auto max-w-lg px-4 py-24 text-center">
         <span className="mx-auto flex size-14 items-center justify-center rounded-3xl bg-warm text-warm-foreground">
@@ -96,7 +165,7 @@ function FounderRoute() {
             </span>
             <div className="leading-tight">
               <p className="font-display text-sm font-semibold">Kurucu çalışma alanı</p>
-              <p className="text-xs text-muted-foreground">{user.email}</p>
+              <p className="text-xs text-muted-foreground">{email}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -109,7 +178,7 @@ function FounderRoute() {
               variant="outline"
               size="sm"
               className="rounded-full"
-              onClick={() => void handleSignOut()}
+              onClick={() => void onSignOut()}
             >
               <LogOut className="size-4" /> Çıkış
             </Button>
@@ -209,6 +278,7 @@ function FounderDashboard() {
           <TabsTrigger value="kategoriler">Menü kategorileri</TabsTrigger>
           <TabsTrigger value="urunler">Ürünler</TabsTrigger>
           <TabsTrigger value="kullanicilar">Kullanıcılar</TabsTrigger>
+          <TabsTrigger value="guvenlik">Güvenlik</TabsTrigger>
           <TabsTrigger value="siparisler">Siparişler</TabsTrigger>
           <TabsTrigger value="denetim">Denetim kaydı</TabsTrigger>
         </TabsList>
@@ -244,6 +314,10 @@ function FounderDashboard() {
 
         <TabsContent value="kullanicilar" className="mt-6">
           <UserPanel users={users.data ?? []} onDone={invalidate} />
+        </TabsContent>
+
+        <TabsContent value="guvenlik" className="mt-6">
+          <SecurityPanel />
         </TabsContent>
 
         <TabsContent value="siparisler" className="mt-6">
@@ -999,6 +1073,10 @@ type UserRow = { id: string; email: string; created_at: string; roles: string[] 
 function UserPanel({ users, onDone }: { users: UserRow[]; onDone: () => void }) {
   const setRole = useServerFn(setUserRole);
   const removeUser = useServerFn(deleteUser);
+  const createUser = useServerFn(createStaffUser);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRoleValue] = useState<"founder" | "admin" | "user">("founder");
 
   const roleMutation = useMutation({
     mutationFn: (input: { userId: string; role: "admin" | "founder" | "user"; grant: boolean }) =>
@@ -1019,8 +1097,75 @@ function UserPanel({ users, onDone }: { users: UserRow[]; onDone: () => void }) 
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const createMutation = useMutation({
+    mutationFn: () => createUser({ data: { email, password, role } }),
+    onSuccess: () => {
+      toast.success("Yetkili hesap oluşturuldu");
+      setEmail("");
+      setPassword("");
+      onDone();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   return (
-    <div className="overflow-hidden rounded-3xl border border-border bg-card">
+    <div className="space-y-4">
+      <form
+        className="rounded-3xl border border-border bg-card p-6"
+        onSubmit={(event) => {
+          event.preventDefault();
+          createMutation.mutate();
+        }}
+      >
+        <h2 className="text-xl">Yetkili kullanıcı ekle</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Yeni hesap doğrudan oluşturulur, seçilen rol atanır ve işlem denetim kaydına yazılır.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="space-y-2">
+            <Label htmlFor="staff-email">E-posta</Label>
+            <Input
+              id="staff-email"
+              type="email"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className="rounded-xl"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="staff-password">Geçici şifre</Label>
+            <Input
+              id="staff-password"
+              type="text"
+              minLength={8}
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="rounded-xl"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="staff-role">Rol</Label>
+            <select
+              id="staff-role"
+              value={role}
+              onChange={(event) => setRoleValue(event.target.value as "founder" | "admin" | "user")}
+              className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm"
+            >
+              <option value="founder">Kurucu</option>
+              <option value="admin">Yönetici</option>
+              <option value="user">Kullanıcı</option>
+            </select>
+          </div>
+        </div>
+        <Button type="submit" className="mt-4 rounded-full" disabled={createMutation.isPending}>
+          <UserPlus className="size-4" />{" "}
+          {createMutation.isPending ? "Oluşturuluyor…" : "Hesabı oluştur"}
+        </Button>
+      </form>
+
+      <div className="overflow-hidden rounded-3xl border border-border bg-card">
       {users.length === 0 ? (
         <p className="p-6 text-sm text-muted-foreground">Kullanıcı bulunamadı.</p>
       ) : (
@@ -1037,20 +1182,20 @@ function UserPanel({ users, onDone }: { users: UserRow[]; onDone: () => void }) 
               </p>
             </div>
             <div className="flex flex-wrap gap-1">
-              {(["admin", "founder"] as const).map((role) => {
-                const has = user.roles.includes(role);
+              {(["admin", "founder"] as const).map((roleName) => {
+                const has = user.roles.includes(roleName);
                 return (
                   <Button
-                    key={role}
+                    key={roleName}
                     size="sm"
                     variant={has ? "secondary" : "outline"}
                     className="rounded-full"
                     disabled={roleMutation.isPending}
                     onClick={() =>
-                      roleMutation.mutate({ userId: user.id, role, grant: !has })
+                      roleMutation.mutate({ userId: user.id, role: roleName, grant: !has })
                     }
                   >
-                    {has ? `${role} kaldır` : `${role} ver`}
+                    {has ? `${roleName} kaldır` : `${roleName} ver`}
                   </Button>
                 );
               })}
@@ -1067,6 +1212,7 @@ function UserPanel({ users, onDone }: { users: UserRow[]; onDone: () => void }) 
           </div>
         ))
       )}
+      </div>
     </div>
   );
 }

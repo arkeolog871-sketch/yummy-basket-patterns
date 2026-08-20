@@ -1,9 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Crown, Lock } from "lucide-react";
+import { Crown, Lock, Mail, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { logFounderLoginAttempt } from "@/lib/audit.functions";
+import { redeemBackupCode } from "@/lib/security.functions";
+import { markBackupCodeVerified, readTwoFactorState } from "@/lib/two-factor";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,10 +18,12 @@ export const Route = createFileRoute("/kurucu-giris")({
       { title: "Kurucu Girişi — SofraKapımda" },
       {
         name: "description",
-        content: "SofraKapımda kurucu yönetim portalına güvenli giriş.",
+        content: "SofraKapımda kurucu yönetim portalına iki adımlı doğrulamalı güvenli giriş.",
       },
       { property: "og:title", content: "Kurucu Girişi — SofraKapımda" },
       { property: "og:description", content: "Kurucu yönetim portalı girişi." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -37,32 +42,71 @@ async function readFounderState(userId: string) {
   };
 }
 
+type Step = "password" | "mfa" | "forgot";
+
 function FounderLoginPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const redeem = useServerFn(redeemBackupCode);
+  const [step, setStep] = useState<Step>("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [factorId, setFactorId] = useState<string | null>(null);
+  const [otp, setOtp] = useState("");
+  const [useBackup, setUseBackup] = useState(false);
   const [busy, setBusy] = useState(false);
   const [checking, setChecking] = useState(false);
 
-  // Zaten oturumu olan bir kurucu doğrudan panele gider.
+  // Zaten oturumu olan bir kurucu doğrudan panele gider (ikinci adım tamamsa).
   useEffect(() => {
-    if (loading || !user) return;
+    if (loading || !user || step === "mfa") return;
     let active = true;
     setChecking(true);
-    void readFounderState(user.id)
-      .then((state) => {
-        if (!active) return;
-        if (state.isFounder || !state.founderExists) {
-          navigate({ to: "/kurucu", replace: true });
-        }
-      })
+    void (async () => {
+      const state = await readFounderState(user.id);
+      const mfa = await readTwoFactorState(user.id);
+      if (!active) return;
+      if (mfa.enrolled && !mfa.satisfied) {
+        setFactorId(mfa.factorId);
+        setStep("mfa");
+        return;
+      }
+      if (state.isFounder || !state.founderExists) {
+        navigate({ to: "/kurucu", replace: true });
+      }
+    })()
       .catch(() => {})
       .finally(() => active && setChecking(false));
     return () => {
       active = false;
     };
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, step]);
+
+  async function continueAfterAuth(userId: string, loginEmail: string) {
+    const state = await readFounderState(userId);
+    if (!state.isFounder && state.founderExists) {
+      void logFounderLoginAttempt({
+        data: { email: loginEmail, status: "denied", reason: "Kurucu yetkisi yok", userId },
+      }).catch(() => {});
+      await supabase.auth.signOut();
+      toast.error("Bu hesabın kurucu yetkisi yok.");
+      return;
+    }
+
+    const mfa = await readTwoFactorState(userId);
+    if (mfa.enrolled && !mfa.satisfied) {
+      setFactorId(mfa.factorId);
+      setStep("mfa");
+      toast.info("İki adımlı doğrulama kodunu girin.");
+      return;
+    }
+
+    void logFounderLoginAttempt({
+      data: { email: loginEmail, status: "success", userId },
+    }).catch(() => {});
+    toast.success(state.isFounder ? "Kurucu paneline hoş geldiniz" : "Kurucu profili tanımlanabilir");
+    navigate({ to: "/kurucu", replace: true });
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -77,28 +121,68 @@ function FounderLoginPage() {
       }
       const signedIn = data.user;
       if (!signedIn) throw new Error("Oturum açılamadı");
-
-      const state = await readFounderState(signedIn.id);
-      if (!state.isFounder && state.founderExists) {
-        void logFounderLoginAttempt({
-          data: {
-            email,
-            status: "denied",
-            reason: "Kurucu yetkisi yok",
-            userId: signedIn.id,
-          },
-        }).catch(() => {});
-        await supabase.auth.signOut();
-        toast.error("Bu hesabın kurucu yetkisi yok.");
-        return;
-      }
-      void logFounderLoginAttempt({
-        data: { email, status: "success", userId: signedIn.id },
-      }).catch(() => {});
-      toast.success(state.isFounder ? "Kurucu paneline hoş geldiniz" : "Kurucu profili tanımlanabilir");
-      navigate({ to: "/kurucu", replace: true });
+      await continueAfterAuth(signedIn.id, email);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Giriş yapılamadı.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleMfa(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getUser();
+      const currentUser = sessionData.user;
+      if (!currentUser) throw new Error("Oturum bulunamadı, yeniden giriş yapın.");
+
+      if (useBackup) {
+        await redeem({ data: { code: otp } });
+        markBackupCodeVerified(currentUser.id);
+      } else {
+        if (!factorId) throw new Error("Doğrulama yöntemi bulunamadı.");
+        const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code: otp.trim() });
+        if (error) throw error;
+      }
+
+      void logFounderLoginAttempt({
+        data: {
+          email: currentUser.email ?? email,
+          status: "success",
+          reason: useBackup ? "Yedek kod ile doğrulandı" : "2FA doğrulandı",
+          userId: currentUser.id,
+        },
+      }).catch(() => {});
+      toast.success("Doğrulama tamamlandı");
+      navigate({ to: "/kurucu", replace: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Doğrulama başarısız.";
+      void logFounderLoginAttempt({
+        data: { email, status: "denied", reason: message },
+      }).catch(() => {});
+      toast.error(message);
+    } finally {
+      setBusy(false);
+      setOtp("");
+    }
+  }
+
+  async function handleForgot(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/sifre-sifirlama`,
+      });
+      if (error) throw error;
+      void logFounderLoginAttempt({
+        data: { email, status: "success", reason: "Şifre sıfırlama bağlantısı istendi" },
+      }).catch(() => {});
+      toast.success("Sıfırlama bağlantısı e-postanıza gönderildi.");
+      setStep("password");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Bağlantı gönderilemedi.");
     } finally {
       setBusy(false);
     }
@@ -111,53 +195,127 @@ function FounderLoginPage() {
           <span className="mx-auto flex size-14 items-center justify-center rounded-3xl bg-gradient-warm text-primary-foreground shadow-glow">
             <Crown className="size-6" />
           </span>
-          <h1 className="mt-5 text-3xl">Kurucu girişi</h1>
+          <h1 className="mt-5 text-3xl">
+            {step === "forgot" ? "Şifremi unuttum" : step === "mfa" ? "İki adımlı doğrulama" : "Kurucu girişi"}
+          </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Bu portal yalnızca kurucu hesabı içindir ve normal kullanıcı girişinden bağımsızdır.
+            {step === "forgot"
+              ? "Kurucu e-postanızı girin, güvenli sıfırlama bağlantısını gönderelim."
+              : step === "mfa"
+                ? "Doğrulama uygulamanızdaki 6 haneli kodu ya da yedek kodlarınızdan birini girin."
+                : "Bu portal yalnızca kurucu hesabı içindir ve normal kullanıcı girişinden bağımsızdır."}
           </p>
         </div>
 
-        <form
-          onSubmit={(event) => void handleSubmit(event)}
-          className="mt-8 space-y-4 rounded-3xl border border-border/70 bg-card p-6 shadow-card"
-        >
-          <div className="space-y-2">
-            <Label htmlFor="founder-email">Kurucu e-postası</Label>
-            <Input
-              id="founder-email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-              className="rounded-xl"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="founder-password">Şifre</Label>
-            <Input
-              id="founder-password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              minLength={6}
-              required
-              className="rounded-xl"
-            />
-          </div>
-          <Button
-            type="submit"
-            size="lg"
-            disabled={busy || checking}
-            className="w-full rounded-full"
+        {step === "password" ? (
+          <form
+            onSubmit={(event) => void handleSubmit(event)}
+            className="mt-8 space-y-4 rounded-3xl border border-border/70 bg-card p-6 shadow-card"
           >
-            <Lock className="size-4" /> {busy ? "Doğrulanıyor…" : "Kurucu olarak giriş yap"}
-          </Button>
-          <p className="text-xs text-muted-foreground">
-            Yetkisiz hesaplarla yapılan girişler otomatik olarak kapatılır.
-          </p>
-        </form>
+            <div className="space-y-2">
+              <Label htmlFor="founder-email">Kurucu e-postası</Label>
+              <Input
+                id="founder-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="founder-password">Şifre</Label>
+              <Input
+                id="founder-password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                minLength={6}
+                required
+                className="rounded-xl"
+              />
+            </div>
+            <Button type="submit" size="lg" disabled={busy || checking} className="w-full rounded-full">
+              <Lock className="size-4" /> {busy ? "Doğrulanıyor…" : "Kurucu olarak giriş yap"}
+            </Button>
+            <button
+              type="button"
+              className="w-full text-center text-sm text-muted-foreground underline-offset-4 hover:underline"
+              onClick={() => setStep("forgot")}
+            >
+              Şifremi unuttum
+            </button>
+            <p className="text-xs text-muted-foreground">
+              Yetkisiz hesaplarla yapılan girişler otomatik olarak kapatılır.
+            </p>
+          </form>
+        ) : null}
+
+        {step === "forgot" ? (
+          <form
+            onSubmit={(event) => void handleForgot(event)}
+            className="mt-8 space-y-4 rounded-3xl border border-border/70 bg-card p-6 shadow-card"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="forgot-email">Kurucu e-postası</Label>
+              <Input
+                id="forgot-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+                className="rounded-xl"
+              />
+            </div>
+            <Button type="submit" size="lg" disabled={busy} className="w-full rounded-full">
+              <Mail className="size-4" /> {busy ? "Gönderiliyor…" : "Sıfırlama bağlantısı gönder"}
+            </Button>
+            <button
+              type="button"
+              className="w-full text-center text-sm text-muted-foreground underline-offset-4 hover:underline"
+              onClick={() => setStep("password")}
+            >
+              Girişe dön
+            </button>
+          </form>
+        ) : null}
+
+        {step === "mfa" ? (
+          <form
+            onSubmit={(event) => void handleMfa(event)}
+            className="mt-8 space-y-4 rounded-3xl border border-border/70 bg-card p-6 shadow-card"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="otp">{useBackup ? "Yedek kod" : "Doğrulama kodu"}</Label>
+              <Input
+                id="otp"
+                inputMode={useBackup ? "text" : "numeric"}
+                autoComplete="one-time-code"
+                value={otp}
+                onChange={(event) => setOtp(event.target.value)}
+                placeholder={useBackup ? "XXXX-XXXX" : "123456"}
+                required
+                className="rounded-xl tracking-widest"
+              />
+            </div>
+            <Button type="submit" size="lg" disabled={busy} className="w-full rounded-full">
+              <ShieldCheck className="size-4" /> {busy ? "Doğrulanıyor…" : "Doğrula ve devam et"}
+            </Button>
+            <button
+              type="button"
+              className="w-full text-center text-sm text-muted-foreground underline-offset-4 hover:underline"
+              onClick={() => {
+                setUseBackup((value) => !value);
+                setOtp("");
+              }}
+            >
+              {useBackup ? "Doğrulama uygulaması kodunu kullan" : "Yedek kod kullan"}
+            </button>
+          </form>
+        ) : null}
 
         <div className="mt-5 flex justify-center gap-4 text-sm">
           <Link to="/" className="text-muted-foreground underline-offset-4 hover:underline">
