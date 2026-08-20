@@ -580,8 +580,8 @@ function BusinessPanel({
               ? Number(form.longitude)
               : null,
           maps_url: form.maps_url.trim() || null,
-          contact_email: form.contact_email.trim() || null,
-          contact_phone: form.contact_phone.trim() || null,
+          contact_email: form.contact_email.trim(),
+          contact_phone: form.contact_phone.trim(),
           is_active: form.is_active,
           opens_at: /^\d{2}:\d{2}$/.test(form.opens_at) ? form.opens_at : null,
           closes_at: /^\d{2}:\d{2}$/.test(form.closes_at) ? form.closes_at : null,
@@ -589,7 +589,11 @@ function BusinessPanel({
         },
       }),
     onSuccess: () => {
-      toast.success(editingId ? "İşletme güncellendi" : "İşletme eklendi");
+      toast.success(
+        editingId
+          ? "İşletme ve giriş hesabı güncellendi"
+          : "İşletme ve giriş hesabı oluşturuldu",
+      );
       setEditingId(null);
       setForm(emptyBusiness);
       onDone();

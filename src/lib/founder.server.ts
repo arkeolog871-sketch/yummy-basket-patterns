@@ -19,3 +19,81 @@ export async function assertFounder(
 ): Promise<void> {
   if (!(await isFounderUser(supabase, userId))) throw new Error("Forbidden");
 }
+
+type BusinessVendorInput = {
+  restaurantId: string;
+  businessName: string;
+  email: string;
+  phone: string;
+};
+
+/**
+ * İşletme iletişim e-postasını mevcut müşteri hesabıyla birleştirir; hesap yoksa
+ * OTP ile etkinleşebilen yeni bir hesap oluşturur ve işletmeye atar.
+ */
+export async function ensureBusinessVendorAccount(input: BusinessVendorInput): Promise<void> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { normalizePhone } = await import("./vendor-auth.server");
+  const email = input.email.trim().toLowerCase();
+  const phone = normalizePhone(input.phone);
+
+  const { data: currentAssignment, error: currentAssignmentError } = await supabaseAdmin
+    .from("vendor_assignments")
+    .select("user_id")
+    .eq("restaurant_id", input.restaurantId)
+    .maybeSingle();
+  if (currentAssignmentError) throw new Error(currentAssignmentError.message);
+  if (currentAssignment) return;
+
+  let matchedUserId: string | null = null;
+  for (let page = 1; page <= 10 && !matchedUserId; page += 1) {
+    const { data: users, error: usersError } = await supabaseAdmin.auth.admin.listUsers({
+      page,
+      perPage: 200,
+    });
+    if (usersError) throw new Error(usersError.message);
+    matchedUserId =
+      users.users.find((user) => user.email?.trim().toLowerCase() === email)?.id ?? null;
+    if (users.users.length < 200) break;
+  }
+
+  if (!matchedUserId) {
+    const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      email_confirm: false,
+      user_metadata: { full_name: input.businessName, phone },
+    });
+    if (createError) throw new Error(createError.message);
+    matchedUserId = created.user?.id ?? null;
+  }
+  if (!matchedUserId) throw new Error("İşletme hesabı oluşturulamadı");
+
+  const { data: otherAssignment, error: otherAssignmentError } = await supabaseAdmin
+    .from("vendor_assignments")
+    .select("restaurant_id")
+    .eq("user_id", matchedUserId)
+    .maybeSingle();
+  if (otherAssignmentError) throw new Error(otherAssignmentError.message);
+  if (otherAssignment && otherAssignment.restaurant_id !== input.restaurantId) {
+    throw new Error("Bu e-posta başka bir işletme hesabına atanmış");
+  }
+
+  const { error: profileError } = await supabaseAdmin
+    .from("profiles")
+    .upsert(
+      { id: matchedUserId, phone, full_name: input.businessName },
+      { onConflict: "id" },
+    );
+  if (profileError) throw new Error(profileError.message);
+
+  const { error: roleError } = await supabaseAdmin
+    .from("user_roles")
+    .upsert({ user_id: matchedUserId, role: "vendor" }, { onConflict: "user_id,role" });
+  if (roleError) throw new Error(roleError.message);
+
+  const { error: assignmentError } = await supabaseAdmin.from("vendor_assignments").upsert(
+    { user_id: matchedUserId, restaurant_id: input.restaurantId },
+    { onConflict: "user_id" },
+  );
+  if (assignmentError) throw new Error(assignmentError.message);
+}
