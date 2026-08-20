@@ -7,7 +7,7 @@ import { CodeBox, EmailShell, FallbackLink, Title, styles } from "./brand";
 interface MagicLinkEmailProps {
   siteName: string;
   confirmationUrl: string;
-  token?: string;
+  token?: string | undefined;
 }
 
 export const MagicLinkEmail = ({ siteName, confirmationUrl, token }: MagicLinkEmailProps) => (

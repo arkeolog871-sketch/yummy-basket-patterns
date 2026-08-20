@@ -10,7 +10,7 @@ interface EmailChangeEmailProps {
   email: string;
   newEmail: string;
   confirmationUrl: string;
-  token?: string;
+  token?: string | undefined;
 }
 
 export const EmailChangeEmail = ({

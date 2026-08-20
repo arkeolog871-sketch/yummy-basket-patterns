@@ -96,7 +96,7 @@ export const EmailShell = ({
 );
 
 /** 6 haneli doğrulama kodunu gösterir; kod yoksa hiçbir şey basmaz. */
-export const CodeBox = ({ token }: { token?: string }) =>
+export const CodeBox = ({ token }: { token?: string | undefined }) =>
   token ? (
     <>
       <Text style={styles.text}>Doğrulama kodunuz:</Text>

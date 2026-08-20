@@ -7,7 +7,7 @@ import { CodeBox, EmailShell, FallbackLink, Title, styles } from "./brand";
 interface RecoveryEmailProps {
   siteName: string;
   confirmationUrl: string;
-  token?: string;
+  token?: string | undefined;
 }
 
 export const RecoveryEmail = ({ siteName, confirmationUrl, token }: RecoveryEmailProps) => (
