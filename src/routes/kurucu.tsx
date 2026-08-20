@@ -407,6 +407,7 @@ function BusinessPanel({
 }) {
   const save = useServerFn(saveBusiness);
   const remove = useServerFn(deleteBusiness);
+  const { categories } = useAppCategories();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyBusiness);
 
@@ -478,7 +479,7 @@ function BusinessPanel({
           onChange={(event) => setForm({ ...form, tagline: event.target.value })}
         />
         <div className="flex flex-wrap gap-2">
-          {SECTORS.map((sector) => (
+          {categories.map((sector) => (
             <button
               key={sector.slug}
               type="button"
