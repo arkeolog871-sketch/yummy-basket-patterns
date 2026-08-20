@@ -6,7 +6,6 @@ const loginAttemptSchema = z.object({
   email: z.string().trim().email().max(200),
   status: z.enum(["success", "error", "denied"]),
   reason: z.string().trim().max(200).optional(),
-  userId: z.string().uuid().optional(),
 });
 
 const listSchema = z.object({
@@ -15,21 +14,35 @@ const listSchema = z.object({
   status: z.enum(["all", "success", "error", "denied"]).default("all"),
 });
 
-/** Kurucu giriş denemelerini kaydeder (giriş başarısız olabileceği için kimlik doğrulaması gerekmez). */
+/** E-postayı maskeler; denetim kaydına ham istemci verisi yazılmaz. */
+function maskEmail(email: string): string {
+  const [local, domain] = email.toLowerCase().split("@");
+  const visible = local.slice(0, 2);
+  return `${visible}${"*".repeat(Math.max(local.length - 2, 1))}@${domain ?? ""}`;
+}
+
+/**
+ * Kurucu giriş denemelerini kaydeder (giriş başarısız olabileceği için kimlik doğrulaması
+ * gerekmez). Yazılan alanlar sabittir, e-posta maskelenir ve aynı istemci için hız sınırı
+ * uygulanır; böylece denetim kaydı istemci verisiyle şişirilemez.
+ */
 export const logFounderLoginAttempt = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => loginAttemptSchema.parse(input))
   .handler(async ({ data }) => {
-    const { logAudit } = await import("./audit.server");
+    const { logAudit, tooManyRecentLoginLogs } = await import("./audit.server");
+    if (await tooManyRecentLoginLogs()) return { ok: false };
+
     await logAudit({
-      actorId: data.userId ?? null,
-      actorEmail: data.email,
+      actorId: null,
+      actorEmail: maskEmail(data.email),
       action: "founder.login",
       entity: "auth",
       status: data.status,
-      detail: data.reason ? { reason: data.reason } : {},
+      detail: { source: "client", ...(data.reason ? { reason: data.reason } : {}) },
     });
     return { ok: true };
   });
+
 
 export const listAuditLogs = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
