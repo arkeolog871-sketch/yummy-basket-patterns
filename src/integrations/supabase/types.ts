@@ -59,6 +59,39 @@ export type Database = {
         }
         Relationships: []
       }
+      app_categories: {
+        Row: {
+          created_at: string
+          icon: string
+          id: string
+          is_active: boolean
+          label: string
+          position: number
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          icon?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          position?: number
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          icon?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          position?: number
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -402,34 +435,79 @@ export type Database = {
         }
         Relationships: []
       }
+      service_areas: {
+        Row: {
+          city: string
+          created_at: string
+          district: string
+          id: string
+          is_active: boolean
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          district: string
+          id?: string
+          is_active?: boolean
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          district?: string
+          id?: string
+          is_active?: boolean
+          position?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       site_settings: {
         Row: {
           accent_color: string
+          background_color: string
+          banner_url: string | null
           brand_name: string
           created_at: string
+          favicon_url: string | null
           id: string
           layout_variant: string
+          logo_url: string | null
           primary_color: string
+          secondary_color: string
           theme_mode: string
           updated_at: string
         }
         Insert: {
           accent_color?: string
+          background_color?: string
+          banner_url?: string | null
           brand_name?: string
           created_at?: string
+          favicon_url?: string | null
           id?: string
           layout_variant?: string
+          logo_url?: string | null
           primary_color?: string
+          secondary_color?: string
           theme_mode?: string
           updated_at?: string
         }
         Update: {
           accent_color?: string
+          background_color?: string
+          banner_url?: string | null
           brand_name?: string
           created_at?: string
+          favicon_url?: string | null
           id?: string
           layout_variant?: string
+          logo_url?: string | null
           primary_color?: string
+          secondary_color?: string
           theme_mode?: string
           updated_at?: string
         }
