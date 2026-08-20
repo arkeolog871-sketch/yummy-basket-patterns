@@ -359,6 +359,7 @@ function FounderDashboard() {
 
 type BusinessRow = {
   id: string;
+*** placeholder ***
   slug: string;
   name: string;
   tagline: string | null;
