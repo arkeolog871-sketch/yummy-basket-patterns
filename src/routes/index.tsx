@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Search, Clock, ShieldCheck, Sparkles } from "lucide-react";
 import { BusinessCard } from "@/components/business/BusinessCard";
 import { MOCK_BUSINESSES, SECTORS, isSectorSlug, type SectorSlug } from "@/lib/sectors";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import heroImage from "@/assets/hero-sofra.jpg";
@@ -35,8 +36,16 @@ export const Route = createFileRoute("/")({
 function Index() {
   const search = Route.useSearch();
   const navigate = useNavigate();
+  const { settings } = useSiteSettings();
   const [term, setTerm] = useState(search.q ?? "");
   const activeSector = search.kategori;
+
+  const gridClass =
+    settings.layout_variant === "compact"
+      ? "mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+      : settings.layout_variant === "spotlight"
+        ? "mt-7 grid gap-6 lg:grid-cols-2"
+        : "mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3";
 
   const results = useMemo(() => {
     const q = (search.q ?? "").toLocaleLowerCase("tr");
@@ -179,7 +188,7 @@ function Index() {
             </Button>
           </div>
         ) : (
-          <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className={gridClass}>
             {results.map((business) => (
               <BusinessCard key={business.id} business={business} />
             ))}

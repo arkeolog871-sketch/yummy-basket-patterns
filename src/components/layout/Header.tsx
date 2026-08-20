@@ -33,7 +33,7 @@ import {
 export function Header() {
   const { user } = useAuth();
   const { itemCount } = useCart();
-  const { settings, isFounder } = useSiteSettings();
+  const { settings, isFounder, founderExists } = useSiteSettings();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [city, setCity] = useState<string>(CITIES[0]);
@@ -135,7 +135,7 @@ export function Header() {
                     <MapPin className="size-4" /> Adreslerim
                   </Link>
                 </DropdownMenuItem>
-                {isFounder ? (
+                {isFounder || !founderExists ? (
                   <DropdownMenuItem asChild>
                     <Link to="/kurucu">
                       <Crown className="size-4" /> Kurucu paneli
