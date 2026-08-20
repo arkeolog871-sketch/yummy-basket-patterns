@@ -14,6 +14,40 @@ const settingsSchema = z.object({
   layout_variant: z.enum(["classic", "compact", "spotlight"]),
 });
 
+const heroSchema = z.object({
+  hero_badge: z.string().trim().min(2).max(120),
+  hero_title: z.string().trim().min(2).max(120),
+  hero_title_accent: z.string().trim().max(120),
+  hero_subtitle: z.string().trim().min(2).max(300),
+});
+
+export const updateHeroContent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => heroSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { assertFounder } = await import("./founder.server");
+    const { audited } = await import("./audit.server");
+    await assertFounder(context.supabase, context.userId);
+    return audited(
+      {
+        actorId: context.userId,
+        actorEmail: (context.claims as { email?: string } | null)?.email ?? null,
+        action: "hero.update",
+        entity: "site_settings",
+        entityId: "global",
+        detail: { ...data },
+      },
+      async () => {
+        const { error } = await context.supabase
+          .from("site_settings")
+          .update(data)
+          .eq("id", "global");
+        if (error) throw new Error(error.message);
+        return { ok: true };
+      },
+    );
+  });
+
 const businessSchema = z.object({
   id: z.string().uuid().optional(),
   slug: z
