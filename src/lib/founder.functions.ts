@@ -299,6 +299,48 @@ export const deleteBusiness = createServerFn({ method: "POST" })
     );
   });
 
+/** Kurucu, gelen siparişin durumunu anlık olarak değiştirir. */
+export const updateOrderStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        status: z.enum([
+          "pending",
+          "confirmed",
+          "preparing",
+          "on_the_way",
+          "delivered",
+          "cancelled",
+        ]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { assertFounder } = await import("./founder.server");
+    const { audited } = await import("./audit.server");
+    await assertFounder(context.supabase, context.userId);
+    return audited(
+      {
+        actorId: context.userId,
+        actorEmail: (context.claims as { email?: string } | null)?.email ?? null,
+        action: "order.status",
+        entity: "orders",
+        entityId: data.id,
+        detail: { status: data.status },
+      },
+      async () => {
+        const { error } = await context.supabase
+          .from("orders")
+          .update({ status: data.status })
+          .eq("id", data.id);
+        if (error) throw new Error(error.message);
+        return { ok: true };
+      },
+    );
+  });
+
 export const saveMenuCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => menuCategorySchema.parse(input))
