@@ -609,7 +609,7 @@ function BusinessPanel({
                       name: business.name,
                       tagline: business.tagline ?? "",
                       category: business.category,
-                      sector: business.sector ?? "yemek",
+                      sector: business.sector ?? "",
                       cuisines: (business.cuisines ?? []).join(", "),
                       delivery_minutes: business.delivery_minutes,
                       delivery_fee: Number(business.delivery_fee),
