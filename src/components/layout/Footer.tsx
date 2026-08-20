@@ -37,7 +37,10 @@ export function Footer() {
         </div>
       </div>
       <div className="border-t border-border/70 py-4 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} SofraKapımda. Tüm hakları saklıdır.
+        © {new Date().getFullYear()} SofraKapımda. Tüm hakları saklıdır. ·{" "}
+        <Link to="/kurucu-giris" className="underline-offset-4 hover:underline">
+          Kurucu girişi
+        </Link>
       </div>
     </footer>
   );
