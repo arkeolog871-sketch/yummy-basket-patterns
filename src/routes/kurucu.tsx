@@ -11,6 +11,7 @@ import { readTwoFactorState, clearTwoFactorFlag } from "@/lib/two-factor";
 import { SecurityPanel } from "@/components/founder/SecurityPanel";
 import { AppearancePanel } from "@/components/founder/AppearancePanel";
 import { BrandingPanel } from "@/components/founder/BrandingPanel";
+import { HeroContentPanel } from "@/components/founder/HeroContentPanel";
 import { CategoryPanel } from "@/components/founder/CategoryPanel";
 import { ServiceAreaPanel } from "@/components/founder/ServiceAreaPanel";
 import { useAppCategories } from "@/hooks/useTaxonomy";
@@ -278,6 +279,7 @@ function FounderDashboard() {
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
           <TabsTrigger value="gorunum">Görünüm</TabsTrigger>
           <TabsTrigger value="gorseller">Görseller</TabsTrigger>
+          <TabsTrigger value="anasayfa">Ana sayfa</TabsTrigger>
           <TabsTrigger value="sektorler">Kategoriler</TabsTrigger>
           <TabsTrigger value="bolgeler">Bölgeler</TabsTrigger>
           <TabsTrigger value="isletmeler">İşletmeler</TabsTrigger>
@@ -295,6 +297,10 @@ function FounderDashboard() {
 
         <TabsContent value="gorseller" className="mt-6">
           <BrandingPanel />
+        </TabsContent>
+
+        <TabsContent value="anasayfa" className="mt-6">
+          <HeroContentPanel />
         </TabsContent>
 
         <TabsContent value="sektorler" className="mt-6">
