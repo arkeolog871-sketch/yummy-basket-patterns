@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Crown, Plus, Trash2, Pencil, ShieldCheck, LogOut, ExternalLink, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAccess } from "@/hooks/useAccess";
+import { AccessDenied } from "@/components/auth/AccessDenied";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { readTwoFactorState, clearTwoFactorFlag } from "@/lib/two-factor";
 import { SecurityPanel } from "@/components/founder/SecurityPanel";
@@ -31,6 +33,7 @@ import {
   deleteUser,
   createStaffUser,
   updateOrderStatus,
+  setVendorAssignment,
 } from "@/lib/founder.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
