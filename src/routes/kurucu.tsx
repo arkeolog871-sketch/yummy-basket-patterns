@@ -1073,6 +1073,10 @@ type UserRow = { id: string; email: string; created_at: string; roles: string[] 
 function UserPanel({ users, onDone }: { users: UserRow[]; onDone: () => void }) {
   const setRole = useServerFn(setUserRole);
   const removeUser = useServerFn(deleteUser);
+  const createUser = useServerFn(createStaffUser);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRoleValue] = useState<"founder" | "admin" | "user">("founder");
 
   const roleMutation = useMutation({
     mutationFn: (input: { userId: string; role: "admin" | "founder" | "user"; grant: boolean }) =>
@@ -1093,8 +1097,75 @@ function UserPanel({ users, onDone }: { users: UserRow[]; onDone: () => void }) 
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const createMutation = useMutation({
+    mutationFn: () => createUser({ data: { email, password, role } }),
+    onSuccess: () => {
+      toast.success("Yetkili hesap oluşturuldu");
+      setEmail("");
+      setPassword("");
+      onDone();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   return (
-    <div className="overflow-hidden rounded-3xl border border-border bg-card">
+    <div className="space-y-4">
+      <form
+        className="rounded-3xl border border-border bg-card p-6"
+        onSubmit={(event) => {
+          event.preventDefault();
+          createMutation.mutate();
+        }}
+      >
+        <h2 className="text-xl">Yetkili kullanıcı ekle</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Yeni hesap doğrudan oluşturulur, seçilen rol atanır ve işlem denetim kaydına yazılır.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="space-y-2">
+            <Label htmlFor="staff-email">E-posta</Label>
+            <Input
+              id="staff-email"
+              type="email"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className="rounded-xl"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="staff-password">Geçici şifre</Label>
+            <Input
+              id="staff-password"
+              type="text"
+              minLength={8}
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="rounded-xl"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="staff-role">Rol</Label>
+            <select
+              id="staff-role"
+              value={role}
+              onChange={(event) => setRoleValue(event.target.value as "founder" | "admin" | "user")}
+              className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm"
+            >
+              <option value="founder">Kurucu</option>
+              <option value="admin">Yönetici</option>
+              <option value="user">Kullanıcı</option>
+            </select>
+          </div>
+        </div>
+        <Button type="submit" className="mt-4 rounded-full" disabled={createMutation.isPending}>
+          <UserPlus className="size-4" />{" "}
+          {createMutation.isPending ? "Oluşturuluyor…" : "Hesabı oluştur"}
+        </Button>
+      </form>
+
+      <div className="overflow-hidden rounded-3xl border border-border bg-card">
       {users.length === 0 ? (
         <p className="p-6 text-sm text-muted-foreground">Kullanıcı bulunamadı.</p>
       ) : (
@@ -1111,20 +1182,20 @@ function UserPanel({ users, onDone }: { users: UserRow[]; onDone: () => void }) 
               </p>
             </div>
             <div className="flex flex-wrap gap-1">
-              {(["admin", "founder"] as const).map((role) => {
-                const has = user.roles.includes(role);
+              {(["admin", "founder"] as const).map((roleName) => {
+                const has = user.roles.includes(roleName);
                 return (
                   <Button
-                    key={role}
+                    key={roleName}
                     size="sm"
                     variant={has ? "secondary" : "outline"}
                     className="rounded-full"
                     disabled={roleMutation.isPending}
                     onClick={() =>
-                      roleMutation.mutate({ userId: user.id, role, grant: !has })
+                      roleMutation.mutate({ userId: user.id, role: roleName, grant: !has })
                     }
                   >
-                    {has ? `${role} kaldır` : `${role} ver`}
+                    {has ? `${roleName} kaldır` : `${roleName} ver`}
                   </Button>
                 );
               })}
@@ -1141,6 +1212,7 @@ function UserPanel({ users, onDone }: { users: UserRow[]; onDone: () => void }) 
           </div>
         ))
       )}
+      </div>
     </div>
   );
 }
