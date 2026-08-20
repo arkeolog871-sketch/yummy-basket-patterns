@@ -412,6 +412,7 @@ function BusinessPanel({
   const { categories } = useAppCategories();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyBusiness);
+  const activeSector = form.sector || categories[0]?.slug || "";
 
   const saveMutation = useMutation({
     mutationFn: () =>
