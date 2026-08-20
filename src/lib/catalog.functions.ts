@@ -58,7 +58,9 @@ export const getRestaurantBySlug = createServerFn({ method: "GET" })
 
     const { data: restaurant, error } = await supabase
       .from("restaurants")
-      .select("*")
+      .select(
+        "id, slug, name, tagline, category, sector, cuisines, rating, review_count, delivery_fee, delivery_minutes, min_order, cover_image_url, is_active, address, district, city, latitude, longitude, maps_url, opens_at, closes_at, is_open_manual, created_at, updated_at",
+      )
       .eq("slug", data.slug)
       .eq("is_active", true)
       .maybeSingle();
