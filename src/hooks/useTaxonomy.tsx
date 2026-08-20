@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { SECTORS, CITIES } from "@/lib/sectors";
+import { SECTORS } from "@/lib/sectors";
 
 export type AppCategory = {
   id: string;
@@ -28,16 +28,7 @@ const FALLBACK_CATEGORIES: AppCategory[] = SECTORS.map((sector, index) => ({
   is_active: true,
 }));
 
-const FALLBACK_AREAS: ServiceArea[] = CITIES.map((entry, index) => {
-  const [district, city] = entry.split(", ");
-  return {
-    id: entry,
-    city: city ?? entry,
-    district: district ?? entry,
-    position: index + 1,
-    is_active: true,
-  };
-});
+// Teslimat bölgeleri yalnızca kurucu panelinden yönetilir; sabit yedek liste yoktur.
 
 /** Kurucu panelinden yönetilen dinamik kategoriler (herkese açık okuma). */
 export function useAppCategories(options?: { includeHidden?: boolean }) {
@@ -76,7 +67,7 @@ export function useServiceAreas(options?: { includeHidden?: boolean }) {
     },
   });
 
-  const rows = query.data && query.data.length > 0 ? query.data : FALLBACK_AREAS;
+  const rows = query.data ?? [];
   return {
     areas: includeHidden ? rows : rows.filter((row) => row.is_active),
     isLoading: query.isLoading,
