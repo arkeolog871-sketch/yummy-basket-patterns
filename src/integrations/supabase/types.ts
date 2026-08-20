@@ -576,6 +576,38 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_assignments: {
+        Row: {
+          created_at: string
+          id: string
+          restaurant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          restaurant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          restaurant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_assignments_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -588,6 +620,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_vendor_of: {
+        Args: { _restaurant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      vendor_restaurant_id: { Args: { _user_id: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "user" | "founder" | "vendor"
