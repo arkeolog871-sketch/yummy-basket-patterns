@@ -9,7 +9,7 @@ import { EmailChangeEmail } from '@/lib/email-templates/email-change'
 import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
 
 // Configuration
-const SITE_NAME = "yummy-basket-patterns"
+const SITE_NAME = "SofraKapımda"
 const SENDER_DOMAIN = "notify.uygulamamcebimde.com"
 const ROOT_DOMAIN = "uygulamamcebimde.com"
 const FROM_DOMAIN = "notify.uygulamamcebimde.com"
@@ -28,17 +28,18 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
           sendUrl: process.env['LOVABLE_SEND_URL'],
           emails: {
             signup: {
-              subject: 'Confirm your email',
+              subject: 'SofraKapımda hesabınızı doğrulayın',
               render: (data) =>
                 React.createElement(SignupEmail, {
                   siteName: SITE_NAME,
                   siteUrl: SITE_URL,
                   recipient: data.email,
                   confirmationUrl: data.url,
+                  token: data.token ?? undefined,
                 }),
             },
             invite: {
-              subject: "You've been invited",
+              subject: "SofraKapımda ekibine davet edildiniz",
               render: (data) =>
                 React.createElement(InviteEmail, {
                   siteName: SITE_NAME,
@@ -47,23 +48,25 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
                 }),
             },
             magiclink: {
-              subject: 'Your login link',
+              subject: 'SofraKapımda giriş kodunuz',
               render: (data) =>
                 React.createElement(MagicLinkEmail, {
                   siteName: SITE_NAME,
                   confirmationUrl: data.url,
+                  token: data.token ?? undefined,
                 }),
             },
             recovery: {
-              subject: 'Reset your password',
+              subject: 'SofraKapımda şifre sıfırlama',
               render: (data) =>
                 React.createElement(RecoveryEmail, {
                   siteName: SITE_NAME,
                   confirmationUrl: data.url,
+                  token: data.token ?? undefined,
                 }),
             },
             email_change: {
-              subject: 'Confirm your new email',
+              subject: 'Yeni e-posta adresinizi onaylayın',
               render: (data) =>
                 React.createElement(EmailChangeEmail, {
                   siteName: SITE_NAME,
@@ -71,12 +74,13 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
                   email: data.email,
                   newEmail: data.new_email ?? '',
                   confirmationUrl: data.url,
+                  token: data.token ?? undefined,
                 }),
             },
             reauthentication: {
-              subject: 'Your verification code',
+              subject: 'SofraKapımda doğrulama kodunuz',
               render: (data) =>
-                React.createElement(ReauthenticationEmail, { token: data.token ?? '' }),
+                React.createElement(ReauthenticationEmail, { token: data.token ?? '', siteName: SITE_NAME }),
             },
           },
         })
