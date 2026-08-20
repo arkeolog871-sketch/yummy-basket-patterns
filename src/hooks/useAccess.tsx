@@ -19,6 +19,12 @@ export function useAccess() {
 
   const role: AccessRole = !user ? "guest" : (query.data?.role ?? "customer");
 
+  const homePath: "/kurucu" | "/vendor/dashboard" | "/" = query.data?.isFounder
+    ? "/kurucu"
+    : query.data?.isVendor
+      ? "/vendor/dashboard"
+      : "/";
+
   return {
     loading: loading || (Boolean(user) && query.isLoading),
     role,
@@ -26,6 +32,6 @@ export function useAccess() {
     isVendor: query.data?.isVendor ?? false,
     restaurantId: query.data?.restaurantId ?? null,
     /** Rolün varsayılan giriş sonrası hedefi. */
-    homePath: query.data?.isFounder ? "/kurucu" : query.data?.isVendor ? "/vendor/dashboard" : "/",
+    homePath,
   };
 }
