@@ -589,6 +589,7 @@ export const createStaffUser = createServerFn({ method: "POST" })
           .regex(/^[0-9+()\s-]+$/, "Telefon numarası geçersiz"),
         fullName: z.string().trim().max(120).optional(),
         role: z.enum(["admin", "founder", "user", "vendor"]),
+        verifyEmail: z.boolean().optional().default(true),
       })
       .parse(input),
   )
@@ -603,7 +604,7 @@ export const createStaffUser = createServerFn({ method: "POST" })
         actorEmail: (context.claims as { email?: string } | null)?.email ?? null,
         action: "user.create",
         entity: "auth.users",
-        detail: { email: data.email, role: data.role },
+        detail: { email: data.email, role: data.role, verifyEmail: data.verifyEmail },
       },
       async () => {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -623,7 +624,7 @@ export const createStaffUser = createServerFn({ method: "POST" })
         const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
           email: data.email,
           password: data.password,
-          email_confirm: true,
+          email_confirm: !data.verifyEmail,
           user_metadata: { full_name: data.fullName ?? "", phone },
         });
         if (error) throw new Error(error.message);
@@ -642,7 +643,19 @@ export const createStaffUser = createServerFn({ method: "POST" })
           .from("user_roles")
           .upsert({ user_id: newId, role: data.role }, { onConflict: "user_id,role" });
         if (roleError) throw new Error(roleError.message);
-        return { ok: true, userId: newId };
+
+        // Müşteri girişindeki ile aynı doğrulama akışı: e-postaya tek kullanımlık kod gönderilir.
+        let verificationSent = false;
+        if (data.verifyEmail) {
+          const { createServerPublicClient } = await import("./vendor-auth.server");
+          const publicClient = createServerPublicClient();
+          const { error: otpError } = await publicClient.auth.signInWithOtp({
+            email: data.email,
+            options: { shouldCreateUser: false },
+          });
+          verificationSent = !otpError;
+        }
+        return { ok: true, userId: newId, verificationSent };
       },
     );
   });
