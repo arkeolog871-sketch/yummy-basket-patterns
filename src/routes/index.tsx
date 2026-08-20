@@ -8,7 +8,6 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import heroImage from "@/assets/hero-sofra.jpg";
 
 type HomeSearch = { kategori?: string | undefined; q?: string | undefined };
 
