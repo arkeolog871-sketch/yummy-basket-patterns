@@ -203,6 +203,7 @@ function FounderDashboard() {
       <Tabs defaultValue="gorunum" className="mt-8">
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
           <TabsTrigger value="gorunum">Görünüm</TabsTrigger>
+          <TabsTrigger value="sektorler">Kategoriler</TabsTrigger>
           <TabsTrigger value="isletmeler">İşletmeler</TabsTrigger>
           <TabsTrigger value="kategoriler">Menü kategorileri</TabsTrigger>
           <TabsTrigger value="urunler">Ürünler</TabsTrigger>
@@ -212,6 +213,10 @@ function FounderDashboard() {
 
         <TabsContent value="gorunum" className="mt-6">
           <AppearancePanel />
+        </TabsContent>
+
+        <TabsContent value="sektorler" className="mt-6">
+          <SectorPanel businesses={data.data?.businesses ?? []} />
         </TabsContent>
 
         <TabsContent value="isletmeler" className="mt-6">
