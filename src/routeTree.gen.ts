@@ -21,6 +21,7 @@ import { Route as SifreSifirlamaRouteImport } from './routes/sifre-sifirlama'
 import { Route as SiparislerimRouteImport } from './routes/siparislerim'
 import { Route as RestoranSlugRouteImport } from './routes/restoran.$slug'
 import { Route as SiparisIdRouteImport } from './routes/siparis.$id'
+import { Route as ApiPublicBrandSplatRouteImport } from './routes/api/public/brand.$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -82,6 +83,11 @@ const SiparisIdRoute = SiparisIdRouteImport.update({
   path: '/siparis/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicBrandSplatRoute = ApiPublicBrandSplatRouteImport.update({
+  id: '/api/public/brand/$',
+  path: '/api/public/brand/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/siparislerim': typeof SiparislerimRoute
   '/restoran/$slug': typeof RestoranSlugRoute
   '/siparis/$id': typeof SiparisIdRoute
+  '/api/public/brand/$': typeof ApiPublicBrandSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/siparislerim': typeof SiparislerimRoute
   '/restoran/$slug': typeof RestoranSlugRoute
   '/siparis/$id': typeof SiparisIdRoute
+  '/api/public/brand/$': typeof ApiPublicBrandSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/siparislerim': typeof SiparislerimRoute
   '/restoran/$slug': typeof RestoranSlugRoute
   '/siparis/$id': typeof SiparisIdRoute
+  '/api/public/brand/$': typeof ApiPublicBrandSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,6 +150,7 @@ export interface FileRouteTypes {
     | '/siparislerim'
     | '/restoran/$slug'
     | '/siparis/$id'
+    | '/api/public/brand/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -155,6 +165,7 @@ export interface FileRouteTypes {
     | '/siparislerim'
     | '/restoran/$slug'
     | '/siparis/$id'
+    | '/api/public/brand/$'
   id:
     | '__root__'
     | '/'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '/siparislerim'
     | '/restoran/$slug'
     | '/siparis/$id'
+    | '/api/public/brand/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -184,6 +196,7 @@ export interface RootRouteChildren {
   SiparislerimRoute: typeof SiparislerimRoute
   RestoranSlugRoute: typeof RestoranSlugRoute
   SiparisIdRoute: typeof SiparisIdRoute
+  ApiPublicBrandSplatRoute: typeof ApiPublicBrandSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -272,6 +285,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SiparisIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/brand/$': {
+      id: '/api/public/brand/$'
+      path: '/api/public/brand/$'
+      fullPath: '/api/public/brand/$'
+      preLoaderRoute: typeof ApiPublicBrandSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -288,6 +308,7 @@ const rootRouteChildren: RootRouteChildren = {
   SiparislerimRoute: SiparislerimRoute,
   RestoranSlugRoute: RestoranSlugRoute,
   SiparisIdRoute: SiparisIdRoute,
+  ApiPublicBrandSplatRoute: ApiPublicBrandSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
