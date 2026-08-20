@@ -43,7 +43,7 @@ const emptyForm = {
   is_active: true,
 };
 
-export function CategoryPanel({ businesses }: { businesses: { sector: string }[] }) {
+export function CategoryPanel({ businesses }: { businesses: { sector: string | null }[] }) {
   const { categories } = useAppCategories({ includeHidden: true });
   const queryClient = useQueryClient();
   const save = useServerFn(saveCategory);
@@ -213,7 +213,7 @@ export function CategoryPanel({ businesses }: { businesses: { sector: string }[]
                 </p>
                 <p className="text-xs text-muted-foreground">
                   /{category.slug} ·{" "}
-                  {businesses.filter((business) => business.sector === category.slug).length}{" "}
+                  {businesses.filter((business) => (business.sector ?? "") === category.slug).length}{" "}
                   işletme
                 </p>
               </div>
