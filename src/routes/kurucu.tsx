@@ -198,6 +198,7 @@ function FounderShell({
 
 function FounderPage() {
   const { isFounder, founderExists, refresh } = useSiteSettings();
+  const access = useAccess();
   const claim = useServerFn(claimFounder);
 
   const claimMutation = useMutation({
@@ -208,6 +209,17 @@ function FounderPage() {
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
+  if (access.loading) {
+    return <div className="px-4 py-24 text-center text-sm text-muted-foreground">Yükleniyor…</div>;
+  }
+
+  // İşletme hesapları kurucu URL'ine elle girse bile 403 alır ve kendi paneline döner.
+  if (!isFounder && access.isVendor) {
+    return (
+      <AccessDenied message="Kurucu paneli işletme hesaplarına kapalıdır. İşletme panelinize yönlendiriliyorsunuz." />
+    );
+  }
 
   if (!isFounder) {
     return (
