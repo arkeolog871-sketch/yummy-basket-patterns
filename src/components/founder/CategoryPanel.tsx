@@ -32,7 +32,7 @@ function CategoryIcon({ name, className }: { name: string; className?: string })
     ComponentType<{ className?: string }> | undefined
   >;
   const Component = registry[name] ?? registry["Sparkles"]!;
-  return <Component className={className} />;
+  return className ? <Component className={className} /> : <Component />;
 }
 
 const emptyForm = {

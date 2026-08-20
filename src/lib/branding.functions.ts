@@ -3,11 +3,11 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const KINDS = ["logo", "favicon", "banner"] as const;
-const COLUMN = {
-  logo: "logo_url",
-  favicon: "favicon_url",
-  banner: "banner_url",
-} as const;
+function patchFor(kind: (typeof KINDS)[number], value: string | null) {
+  if (kind === "logo") return { logo_url: value };
+  if (kind === "favicon") return { favicon_url: value };
+  return { banner_url: value };
+}
 
 const uploadSchema = z.object({
   kind: z.enum(KINDS),
@@ -52,7 +52,7 @@ export const uploadBrandAsset = createServerFn({ method: "POST" })
         const publicPath = `/api/public/brand/${path}`;
         const { error } = await supabaseAdmin
           .from("site_settings")
-          .update({ [COLUMN[data.kind]]: publicPath })
+          .update(patchFor(data.kind, publicPath))
           .eq("id", "global");
         if (error) throw new Error(error.message);
         return { ok: true, url: publicPath };
@@ -82,7 +82,7 @@ export const removeBrandAsset = createServerFn({ method: "POST" })
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { error } = await supabaseAdmin
           .from("site_settings")
-          .update({ [COLUMN[data.kind]]: null })
+          .update(patchFor(data.kind, null))
           .eq("id", "global");
         if (error) throw new Error(error.message);
         return { ok: true };
