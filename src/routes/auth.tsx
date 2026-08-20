@@ -67,6 +67,9 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "signup") {
+        if (phone.replace(/\D/g, "").length < 10) {
+          throw new Error("Telefon numarası en az 10 haneli olmalı.");
+        }
         const { error } = await supabase.auth.signUp({
           email,
           password,
