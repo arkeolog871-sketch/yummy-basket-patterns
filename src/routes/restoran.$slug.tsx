@@ -52,7 +52,7 @@ function RestaurantNotFound() {
 
 function RestaurantDetail() {
   const { slug } = Route.useParams();
-  const { data } = useSuspenseQuery(detailQuery(slug));
+  const { data } = useSuspenseQuery(restaurantDetailQuery(slug));
   const cart = useCart();
 
   if (!data) return <RestaurantNotFound />;
