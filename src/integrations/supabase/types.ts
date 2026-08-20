@@ -386,6 +386,7 @@ export type Database = {
           address: string | null
           category: string
           city: string | null
+          closes_at: string | null
           cover_image_url: string | null
           created_at: string
           cuisines: string[]
@@ -394,11 +395,13 @@ export type Database = {
           district: string | null
           id: string
           is_active: boolean
+          is_open_manual: boolean
           latitude: number | null
           longitude: number | null
           maps_url: string | null
           min_order: number
           name: string
+          opens_at: string | null
           rating: number
           review_count: number
           sector: string
@@ -410,6 +413,7 @@ export type Database = {
           address?: string | null
           category: string
           city?: string | null
+          closes_at?: string | null
           cover_image_url?: string | null
           created_at?: string
           cuisines?: string[]
@@ -418,11 +422,13 @@ export type Database = {
           district?: string | null
           id?: string
           is_active?: boolean
+          is_open_manual?: boolean
           latitude?: number | null
           longitude?: number | null
           maps_url?: string | null
           min_order?: number
           name: string
+          opens_at?: string | null
           rating?: number
           review_count?: number
           sector?: string
@@ -434,6 +440,7 @@ export type Database = {
           address?: string | null
           category?: string
           city?: string | null
+          closes_at?: string | null
           cover_image_url?: string | null
           created_at?: string
           cuisines?: string[]
@@ -442,11 +449,13 @@ export type Database = {
           district?: string | null
           id?: string
           is_active?: boolean
+          is_open_manual?: boolean
           latitude?: number | null
           longitude?: number | null
           maps_url?: string | null
           min_order?: number
           name?: string
+          opens_at?: string | null
           rating?: number
           review_count?: number
           sector?: string
