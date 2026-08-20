@@ -50,7 +50,10 @@ export function VendorPhoneLogin() {
   }
 
   async function verifyVendorSession() {
-    const tokens = await verifyCode({ data: { identifier, code } });
+    const digits = code.replace(/\D/g, "");
+    if (digits.length < 4) throw new Error("Lütfen e-postanıza gelen 6 haneli kodu girin.");
+    const tokens = await verifyCode({ data: { identifier, code: digits } });
+
     if (!tokens.ok) {
       throw new Error(tokens.error);
     }

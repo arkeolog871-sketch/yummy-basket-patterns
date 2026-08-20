@@ -56,13 +56,21 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
 /** Kodu doğrular ve tarayıcıda oturum kurmak için jetonları döner. */
 export const verifyVendorLoginCode = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
-    identifierSchema.extend({ code: z.string().trim().min(4).max(10) }).parse(input),
+    identifierSchema.extend({ code: z.string().trim().max(20) }).parse(input),
   )
   .handler(async ({ data }) => {
     const { findVendorUser, createServerPublicClient } = await import(
       "./vendor-auth.server"
     );
     const { logAudit } = await import("./audit.server");
+
+    const token = data.code.replace(/\D/g, "");
+    if (token.length < 4) {
+      return {
+        ok: false as const,
+        error: "Lütfen e-postanıza gelen 6 haneli kodu eksiksiz girin.",
+      };
+    }
 
     const vendor = await findVendorUser(data.identifier);
     if (!vendor) {
@@ -75,9 +83,10 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
     const supabase = createServerPublicClient();
     const { data: verified, error } = await supabase.auth.verifyOtp({
       email: vendor.email,
-      token: data.code.replace(/\s/g, ""),
+      token,
       type: "email",
     });
+
 
     if (error || !verified.session) {
       await logAudit({
