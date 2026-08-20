@@ -213,7 +213,7 @@ export function CategoryPanel({ businesses }: { businesses: { category: string }
                 </p>
                 <p className="text-xs text-muted-foreground">
                   /{category.slug} ·{" "}
-                  {businesses.filter((business) => business.category === category.label).length}{" "}
+                  {businesses.filter((business) => business.sector === category.slug).length}{" "}
                   işletme
                 </p>
               </div>
