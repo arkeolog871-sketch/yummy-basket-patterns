@@ -2,24 +2,24 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const phoneSchema = z.object({
-  phone: z
+const identifierSchema = z.object({
+  identifier: z
     .string()
     .trim()
-    .min(10, "Telefon numarasını eksiksiz girin")
-    .max(20, "Telefon numarası çok uzun"),
+    .min(6, "Telefon numarası veya e-posta adresi girin")
+    .max(120, "Girdi çok uzun"),
 });
 
-/** İşletme telefonuna karşılık gelen hesabın e-postasına tek kullanımlık kod gönderir. */
+/** İşletme telefonu veya e-postasına karşılık gelen hesaba tek kullanımlık kod gönderir. */
 export const requestVendorLoginCode = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => phoneSchema.parse(input))
+  .inputValidator((input: unknown) => identifierSchema.parse(input))
   .handler(async ({ data }) => {
-    const { findVendorUserByPhone, createServerPublicClient, maskEmail } = await import(
+    const { findVendorUser, createServerPublicClient, maskEmail } = await import(
       "./vendor-auth.server"
     );
     const { logAudit } = await import("./audit.server");
 
-    const vendor = await findVendorUserByPhone(data.phone);
+    const vendor = await findVendorUser(data.identifier);
     if (!vendor) {
       await logAudit({
         actorId: null,
@@ -27,9 +27,9 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
         action: "vendor.login.code_request",
         entity: "vendor_assignments",
         status: "denied",
-        detail: { reason: "Telefon numarasına bağlı işletme hesabı yok" },
+        detail: { reason: "Telefon/e-postaya bağlı işletme hesabı yok" },
       });
-      throw new Error("Bu telefon numarasına bağlı bir işletme hesabı bulunamadı.");
+      throw new Error("Bu telefon numarası veya e-posta ile bir işletme hesabı bulunamadı.");
     }
 
     const supabase = createServerPublicClient();
@@ -53,16 +53,17 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
 /** Kodu doğrular ve tarayıcıda oturum kurmak için jetonları döner. */
 export const verifyVendorLoginCode = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
-    phoneSchema.extend({ code: z.string().trim().min(4).max(10) }).parse(input),
+    identifierSchema.extend({ code: z.string().trim().min(4).max(10) }).parse(input),
   )
   .handler(async ({ data }) => {
-    const { findVendorUserByPhone, createServerPublicClient } = await import(
+    const { findVendorUser, createServerPublicClient } = await import(
       "./vendor-auth.server"
     );
     const { logAudit } = await import("./audit.server");
 
-    const vendor = await findVendorUserByPhone(data.phone);
-    if (!vendor) throw new Error("Bu telefon numarasına bağlı bir işletme hesabı bulunamadı.");
+    const vendor = await findVendorUser(data.identifier);
+    if (!vendor)
+      throw new Error("Bu telefon numarası veya e-posta ile bir işletme hesabı bulunamadı.");
 
     const supabase = createServerPublicClient();
     const { data: verified, error } = await supabase.auth.verifyOtp({
