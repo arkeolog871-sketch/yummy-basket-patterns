@@ -54,7 +54,7 @@ export async function findVendorUser(
 
   const { data: assignments, error } = await supabaseAdmin
     .from("vendor_assignments")
-    .select("user_id");
+    .select("user_id, restaurant_id");
   if (error) throw new Error(error.message);
   const vendorIds = (assignments ?? []).map((row) => row.user_id);
   if (vendorIds.length === 0) return null;
@@ -65,7 +65,7 @@ export async function findVendorUser(
       const email = user.user?.email ?? null;
       if (email && email.toLowerCase() === target) return { userId: id, email };
     }
-    return null;
+    return findByBusinessContact(supabaseAdmin, assignments ?? [], target, true);
   }
 
   const { data: profiles, error: profileError } = await supabaseAdmin
@@ -77,7 +77,7 @@ export async function findVendorUser(
   const match = (profiles ?? []).find(
     (row) => row.phone && normalizePhone(row.phone) === target,
   );
-  if (!match) return null;
+  if (!match) return findByBusinessContact(supabaseAdmin, assignments ?? [], target, false);
 
   const { data: user, error: userError } = await supabaseAdmin.auth.admin.getUserById(match.id);
   if (userError) throw new Error(userError.message);
@@ -85,4 +85,45 @@ export async function findVendorUser(
   if (!email) return null;
 
   return { userId: match.id, email };
+}
+
+/**
+ * Kullanıcı hesabında eşleşme yoksa, işletme kaydındaki iletişim bilgileriyle
+ * (contact_email / contact_phone) atanmış işletme kullanıcısını bulur.
+ */
+async function findByBusinessContact(
+  supabaseAdmin: Awaited<
+    typeof import("@/integrations/supabase/client.server")
+  >["supabaseAdmin"],
+  assignments: { user_id: string; restaurant_id: string }[],
+  target: string,
+  byEmail: boolean,
+): Promise<{ userId: string; email: string } | null> {
+  const restaurantIds = assignments.map((row) => row.restaurant_id);
+  if (restaurantIds.length === 0) return null;
+
+  const { data: businesses, error } = await supabaseAdmin
+    .from("restaurants")
+    .select("id, contact_email, contact_phone")
+    .in("id", restaurantIds);
+  if (error) throw new Error(error.message);
+
+  const business = (businesses ?? []).find((row) =>
+    byEmail
+      ? (row.contact_email ?? "").trim().toLowerCase() === target
+      : Boolean(row.contact_phone) && normalizePhone(row.contact_phone!) === target,
+  );
+  if (!business) return null;
+
+  const assignment = assignments.find((row) => row.restaurant_id === business.id);
+  if (!assignment) return null;
+
+  const { data: user, error: userError } = await supabaseAdmin.auth.admin.getUserById(
+    assignment.user_id,
+  );
+  if (userError) throw new Error(userError.message);
+  const email = user.user?.email ?? null;
+  if (!email) return null;
+
+  return { userId: assignment.user_id, email };
 }
