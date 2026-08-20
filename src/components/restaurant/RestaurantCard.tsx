@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Star, Clock, Bike } from "lucide-react";
 import { formatPrice } from "@/lib/format";
+import { LocationButton } from "@/components/business/LocationButton";
 
 export type RestaurantSummary = {
   id: string;
@@ -16,6 +17,12 @@ export type RestaurantSummary = {
   delivery_minutes: number;
   min_order: number;
   cover_image_url: string | null;
+  address?: string | null;
+  district?: string | null;
+  city?: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  maps_url?: string | null;
 };
 
 export function RestaurantCard({ restaurant }: { restaurant: RestaurantSummary }) {
@@ -72,6 +79,11 @@ export function RestaurantCard({ restaurant }: { restaurant: RestaurantSummary }
           </span>
           <span>Min. {formatPrice(Number(restaurant.min_order))}</span>
         </div>
+
+        <LocationButton
+          business={restaurant}
+          className="text-xs text-muted-foreground"
+        />
       </div>
     </Link>
   );
