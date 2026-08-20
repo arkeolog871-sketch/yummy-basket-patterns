@@ -8,6 +8,7 @@ import { logFounderLoginAttempt } from "@/lib/audit.functions";
 import { redeemBackupCode } from "@/lib/security.functions";
 import { markBackupCodeVerified, readTwoFactorState } from "@/lib/two-factor";
 import { useAuth } from "@/hooks/useAuth";
+import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,6 +50,7 @@ function FounderLoginPage() {
   const navigate = useNavigate();
   const redeem = useServerFn(redeemBackupCode);
   const [step, setStep] = useState<Step>("password");
+  const [method, setMethod] = useState<"password" | "code">("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [factorId, setFactorId] = useState<string | null>(null);
@@ -208,9 +210,57 @@ function FounderLoginPage() {
         </div>
 
         {step === "password" ? (
+          <>
+          <div className="mt-6 grid grid-cols-2 gap-1 rounded-full bg-muted p-1 text-sm">
+            {(
+              [
+                ["password", "Şifre ile"],
+                ["code", "E-posta kodu ile"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setMethod(value)}
+                className={`rounded-full px-3 py-2 transition ${
+                  method === value
+                    ? "bg-card font-medium shadow-card"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {method === "code" ? (
+            <div className="mt-5 rounded-3xl border border-border/70 bg-card p-6 shadow-card">
+              <EmailCodeLogin
+                idPrefix="founder-otp"
+                allowSignUp={false}
+                initialEmail={email}
+                onVerified={async (userId, verifiedEmail) => {
+                  setEmail(verifiedEmail);
+                  await continueAfterAuth(userId, verifiedEmail);
+                }}
+                onFailed={(failedEmail, message) => {
+                  void logFounderLoginAttempt({
+                    data: {
+                      email: failedEmail || email,
+                      status: "error",
+                      reason: `E-posta kodu: ${message}`.slice(0, 200),
+                    },
+                  }).catch(() => {});
+                }}
+              />
+              <p className="mt-4 text-xs text-muted-foreground">
+                Kod yalnızca kayıtlı kurucu e-postasına gönderilir; yetkisiz hesaplar otomatik
+                olarak çıkış yapılır.
+              </p>
+            </div>
+          ) : (
           <form
             onSubmit={(event) => void handleSubmit(event)}
-            className="mt-8 space-y-4 rounded-3xl border border-border/70 bg-card p-6 shadow-card"
+            className="mt-5 space-y-4 rounded-3xl border border-border/70 bg-card p-6 shadow-card"
           >
             <div className="space-y-2">
               <Label htmlFor="founder-email">Kurucu e-postası</Label>
@@ -251,6 +301,8 @@ function FounderLoginPage() {
               Yetkisiz hesaplarla yapılan girişler otomatik olarak kapatılır.
             </p>
           </form>
+          )}
+          </>
         ) : null}
 
         {step === "forgot" ? (
