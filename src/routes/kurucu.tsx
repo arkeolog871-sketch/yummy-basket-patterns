@@ -1243,6 +1243,7 @@ function UserPanel({
   const [phone, setPhone] = useState("");
   const [fullName, setFullName] = useState("");
   const [role, setRoleValue] = useState<"founder" | "admin" | "user" | "vendor">("founder");
+  const [verifyEmail, setVerifyEmail] = useState(true);
 
   const roleMutation = useMutation({
     mutationFn: (input: {
@@ -1277,9 +1278,15 @@ function UserPanel({
   });
 
   const createMutation = useMutation({
-    mutationFn: () => createUser({ data: { email, password, phone, fullName, role } }),
-    onSuccess: () => {
-      toast.success("Yetkili hesap oluşturuldu");
+    mutationFn: () => createUser({ data: { email, password, phone, fullName, role, verifyEmail } }),
+    onSuccess: (result: { verificationSent?: boolean }) => {
+      toast.success(
+        result?.verificationSent
+          ? "Hesap oluşturuldu, doğrulama kodu e-postaya gönderildi"
+          : verifyEmail
+            ? "Hesap oluşturuldu ancak doğrulama e-postası gönderilemedi"
+            : "Yetkili hesap oluşturuldu",
+      );
       setEmail("");
       setPassword("");
       setPhone("");
@@ -1300,8 +1307,9 @@ function UserPanel({
       >
         <h2 className="text-xl">Yetkili kullanıcı ekle</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          E-posta ve telefon numarası zorunludur. Telefon numarası müşteri/işletme girişinde
-          kullanılan profile kaydedilir, seçilen rol atanır ve işlem denetim kaydına yazılır.
+          E-posta ve telefon numarası zorunludur. E-posta doğrulama açıkken hesaba müşteri
+          girişindeki ile aynı tek kullanımlık kod gönderilir ve hesap kod doğrulanana kadar
+          onaysız kalır. Telefon numarası profile kaydedilir ve işlem denetim kaydına yazılır.
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <div className="space-y-2">
@@ -1314,6 +1322,9 @@ function UserPanel({
               onChange={(event) => setEmail(event.target.value)}
               className="rounded-xl"
             />
+            <p className="text-xs text-muted-foreground">
+              Giriş ve doğrulama kodları bu adrese gönderilir.
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="staff-phone">Telefon numarası</Label>
@@ -1373,6 +1384,15 @@ function UserPanel({
             seçin; atama yapılmadan işletme paneline erişemez.
           </p>
         ) : null}
+        <label className="mt-3 flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={verifyEmail}
+            onChange={(event) => setVerifyEmail(event.target.checked)}
+            className="size-4 rounded border-input"
+          />
+          E-posta doğrulama kodu gönder (önerilir)
+        </label>
         <Button type="submit" className="mt-4 rounded-full" disabled={createMutation.isPending}>
           <UserPlus className="size-4" />{" "}
           {createMutation.isPending ? "Oluşturuluyor…" : "Hesabı oluştur"}
