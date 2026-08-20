@@ -385,6 +385,10 @@ function VendorDashboard() {
     </div>
   );
 }
+      </div>
+    </div>
+  );
+}
 
 function PasswordPanel() {
   const change = useServerFn(changeVendorPassword);
