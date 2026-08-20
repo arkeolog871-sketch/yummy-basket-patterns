@@ -1,25 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Search, Clock, ShieldCheck, Sparkles } from "lucide-react";
 import { RestaurantCard } from "@/components/restaurant/RestaurantCard";
-import { listRestaurants } from "@/lib/catalog.functions";
+import { homeQuery, type HomeSearch } from "@/lib/catalog.queries";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-type HomeSearch = { kategori?: string | undefined; q?: string | undefined };
-
-function homeQuery(search: HomeSearch) {
-  return queryOptions({
-    queryKey: ["home-businesses", search.kategori ?? "", search.q ?? ""],
-    queryFn: () =>
-      listRestaurants({
-        data: { sector: search.kategori ?? undefined, search: search.q ?? undefined },
-      }),
-  });
-}
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>): HomeSearch => ({

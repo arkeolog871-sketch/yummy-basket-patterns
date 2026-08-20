@@ -1,28 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
-import { listRestaurants, listCategories } from "@/lib/catalog.functions";
+import {
+  restaurantsQuery,
+  categoriesQuery,
+  type RestoranSearch,
+} from "@/lib/catalog.queries";
 import { RestaurantCard } from "@/components/restaurant/RestaurantCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-
-type RestoranSearch = { q?: string | undefined; kategori?: string | undefined };
-
-function restaurantsQuery(search: RestoranSearch) {
-  return queryOptions({
-    queryKey: ["restaurants", search.q ?? "", search.kategori ?? ""],
-    queryFn: () =>
-      listRestaurants({
-        data: { search: search.q ?? undefined, category: search.kategori ?? undefined },
-      }),
-  });
-}
-
-const categoriesQuery = queryOptions({
-  queryKey: ["categories"],
-  queryFn: () => listCategories(),
-});
 
 export const Route = createFileRoute("/restoranlar")({
   validateSearch: (search: Record<string, unknown>): RestoranSearch => ({
