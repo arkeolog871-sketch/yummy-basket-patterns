@@ -1064,3 +1064,40 @@ function UserPanel({ users, onDone }: { users: UserRow[]; onDone: () => void }) 
     </div>
   );
 }
+type BusinessRow = { id: string; name: string; category: string; is_active: boolean };
+
+function SectorPanel({ businesses }: { businesses: BusinessRow[] }) {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-3xl border border-border bg-card p-6">
+        <h2 className="text-xl">Ana kategoriler</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Uygulama üst menüsünde bu 6 kategori yayınlanır. Bir işletmeyi kategoriye taşımak için
+          İşletmeler sekmesindeki kategori alanını değiştirin.
+        </p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {SECTORS.map((sector) => {
+          const inSector = businesses.filter((business) => business.category === sector.label);
+          const active = inSector.filter((business) => business.is_active).length;
+          return (
+            <div key={sector.slug} className="rounded-3xl border border-border bg-card p-5">
+              <p className="font-display text-lg font-semibold">{sector.label}</p>
+              <p className="mt-1 text-xs text-muted-foreground">/{sector.slug}</p>
+              <p className="mt-4 text-sm">
+                <span className="font-semibold">{inSector.length}</span> işletme ·{" "}
+                <span className="text-muted-foreground">{active} yayında</span>
+              </p>
+              <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
+                {inSector.slice(0, 4).map((business) => (
+                  <li key={business.id}>• {business.name}</li>
+                ))}
+                {inSector.length === 0 ? <li>Bu kategoride kayıt yok.</li> : null}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
