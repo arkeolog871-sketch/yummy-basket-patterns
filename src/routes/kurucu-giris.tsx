@@ -153,7 +153,7 @@ function FounderLoginPage() {
           email: currentUser.email ?? email,
           status: "success",
           reason: useBackup ? "Yedek kod ile doğrulandı" : "2FA doğrulandı",
-          userId: currentUser.id,
+          
         },
       }).catch(() => {});
       toast.success("Doğrulama tamamlandı");
