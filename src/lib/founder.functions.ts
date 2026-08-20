@@ -99,6 +99,13 @@ const businessSchema = z.object({
   is_active: z.boolean().default(true),
 });
 
+const timeField = z
+  .string()
+  .trim()
+  .regex(/^\d{2}:\d{2}$/, "Saati SS:DD biçiminde girin")
+  .nullable()
+  .default(null);
+
 const menuCategorySchema = z.object({
   id: z.string().uuid().optional(),
   restaurant_id: z.string().uuid(),
