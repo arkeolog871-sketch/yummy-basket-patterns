@@ -377,7 +377,7 @@ type BusinessRow = {
   name: string;
   tagline: string | null;
   category: string;
-  sector: string;
+  sector: string | null;
   cuisines: string[];
   delivery_minutes: number;
   delivery_fee: number | string;
@@ -391,7 +391,7 @@ const emptyBusiness = {
   name: "",
   tagline: "",
   category: "",
-  sector: SECTORS[0].slug as string,
+  sector: "" as string,
   cuisines: "",
   delivery_minutes: 30,
   delivery_fee: 0,
@@ -422,7 +422,7 @@ function BusinessPanel({
           name: form.name,
           tagline: form.tagline || null,
           category: form.category || "Genel",
-          sector: form.sector,
+          sector: form.sector || categories[0]?.slug || SECTORS[0].slug,
           cuisines: form.cuisines
             .split(",")
             .map((value) => value.trim())
@@ -481,14 +481,24 @@ function BusinessPanel({
           value={form.tagline}
           onChange={(event) => setForm({ ...form, tagline: event.target.value })}
         />
-        <div className="flex flex-wrap gap-2">
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">
+            Kategori (zorunlu) —{" "}
+            {categories.find((item) => item.slug === activeSector)?.label ?? "seçim yapılmadı"}
+          </p>
+          {categories.length === 0 ? (
+            <p className="text-xs text-destructive">
+              Önce “Kategoriler” sekmesinden en az bir kategori ekleyin.
+            </p>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
           {categories.map((sector) => (
             <button
               key={sector.slug}
               type="button"
               onClick={() => setForm({ ...form, sector: sector.slug })}
               className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
-                form.sector === sector.slug
+                activeSector === sector.slug
                   ? "border-transparent bg-primary text-primary-foreground"
                   : "border-border"
               }`}
@@ -496,6 +506,7 @@ function BusinessPanel({
               {sector.label}
             </button>
           ))}
+          </div>
         </div>
         <Input
           placeholder="Alt tür (Kebap, Pizza, Manav…)"
