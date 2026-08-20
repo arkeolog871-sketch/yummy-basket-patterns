@@ -17,6 +17,7 @@ import { Route as KurucuGirisRouteImport } from './routes/kurucu-giris'
 import { Route as OdemeRouteImport } from './routes/odeme'
 import { Route as RestoranlarRouteImport } from './routes/restoranlar'
 import { Route as SepetRouteImport } from './routes/sepet'
+import { Route as SifreSifirlamaRouteImport } from './routes/sifre-sifirlama'
 import { Route as SiparislerimRouteImport } from './routes/siparislerim'
 import { Route as RestoranSlugRouteImport } from './routes/restoran.$slug'
 import { Route as SiparisIdRouteImport } from './routes/siparis.$id'
@@ -61,6 +62,11 @@ const SepetRoute = SepetRouteImport.update({
   path: '/sepet',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SifreSifirlamaRoute = SifreSifirlamaRouteImport.update({
+  id: '/sifre-sifirlama',
+  path: '/sifre-sifirlama',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SiparislerimRoute = SiparislerimRouteImport.update({
   id: '/siparislerim',
   path: '/siparislerim',
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/odeme': typeof OdemeRoute
   '/restoranlar': typeof RestoranlarRoute
   '/sepet': typeof SepetRoute
+  '/sifre-sifirlama': typeof SifreSifirlamaRoute
   '/siparislerim': typeof SiparislerimRoute
   '/restoran/$slug': typeof RestoranSlugRoute
   '/siparis/$id': typeof SiparisIdRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByTo {
   '/odeme': typeof OdemeRoute
   '/restoranlar': typeof RestoranlarRoute
   '/sepet': typeof SepetRoute
+  '/sifre-sifirlama': typeof SifreSifirlamaRoute
   '/siparislerim': typeof SiparislerimRoute
   '/restoran/$slug': typeof RestoranSlugRoute
   '/siparis/$id': typeof SiparisIdRoute
@@ -113,6 +121,7 @@ export interface FileRoutesById {
   '/odeme': typeof OdemeRoute
   '/restoranlar': typeof RestoranlarRoute
   '/sepet': typeof SepetRoute
+  '/sifre-sifirlama': typeof SifreSifirlamaRoute
   '/siparislerim': typeof SiparislerimRoute
   '/restoran/$slug': typeof RestoranSlugRoute
   '/siparis/$id': typeof SiparisIdRoute
@@ -128,6 +137,7 @@ export interface FileRouteTypes {
     | '/odeme'
     | '/restoranlar'
     | '/sepet'
+    | '/sifre-sifirlama'
     | '/siparislerim'
     | '/restoran/$slug'
     | '/siparis/$id'
@@ -141,6 +151,7 @@ export interface FileRouteTypes {
     | '/odeme'
     | '/restoranlar'
     | '/sepet'
+    | '/sifre-sifirlama'
     | '/siparislerim'
     | '/restoran/$slug'
     | '/siparis/$id'
@@ -154,6 +165,7 @@ export interface FileRouteTypes {
     | '/odeme'
     | '/restoranlar'
     | '/sepet'
+    | '/sifre-sifirlama'
     | '/siparislerim'
     | '/restoran/$slug'
     | '/siparis/$id'
@@ -168,6 +180,7 @@ export interface RootRouteChildren {
   OdemeRoute: typeof OdemeRoute
   RestoranlarRoute: typeof RestoranlarRoute
   SepetRoute: typeof SepetRoute
+  SifreSifirlamaRoute: typeof SifreSifirlamaRoute
   SiparislerimRoute: typeof SiparislerimRoute
   RestoranSlugRoute: typeof RestoranSlugRoute
   SiparisIdRoute: typeof SiparisIdRoute
@@ -231,6 +244,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SepetRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sifre-sifirlama': {
+      id: '/sifre-sifirlama'
+      path: '/sifre-sifirlama'
+      fullPath: '/sifre-sifirlama'
+      preLoaderRoute: typeof SifreSifirlamaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/siparislerim': {
       id: '/siparislerim'
       path: '/siparislerim'
@@ -264,6 +284,7 @@ const rootRouteChildren: RootRouteChildren = {
   OdemeRoute: OdemeRoute,
   RestoranlarRoute: RestoranlarRoute,
   SepetRoute: SepetRoute,
+  SifreSifirlamaRoute: SifreSifirlamaRoute,
   SiparislerimRoute: SiparislerimRoute,
   RestoranSlugRoute: RestoranSlugRoute,
   SiparisIdRoute: SiparisIdRoute,
