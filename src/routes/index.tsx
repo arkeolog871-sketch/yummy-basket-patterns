@@ -8,7 +8,6 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import heroImage from "@/assets/hero-sofra.jpg";
 
 type HomeSearch = { kategori?: string | undefined; q?: string | undefined };
 
@@ -90,7 +89,7 @@ function Index() {
   return (
     <div>
       <section className="bg-gradient-hero">
-        <div className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-14 lg:grid-cols-2 lg:py-20">
+        <div className="mx-auto w-full max-w-6xl px-4 py-14 lg:py-20">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1 text-xs font-semibold text-muted-foreground">
               <Sparkles className="size-3.5" /> {results.length} işletme, dakikalar içinde kapınızda
@@ -133,20 +132,6 @@ function Index() {
                 <ShieldCheck className="size-4" /> Güvenli ödeme
               </span>
             </div>
-          </div>
-
-          <div className="relative">
-            <img
-              src={settings.banner_url ?? heroImage}
-              alt={
-                settings.banner_url
-                  ? `${settings.brand_name} tanıtım afişi`
-                  : "Türk mutfağından kebap, lahmacun ve mezelerle dolu bir sofra"
-              }
-              width={1024}
-              height={768}
-              className="aspect-[4/3] w-full rounded-4xl object-cover shadow-lifted"
-            />
           </div>
         </div>
       </section>
