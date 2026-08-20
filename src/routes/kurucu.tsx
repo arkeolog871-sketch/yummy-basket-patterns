@@ -9,13 +9,17 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { readTwoFactorState, clearTwoFactorFlag } from "@/lib/two-factor";
 import { SecurityPanel } from "@/components/founder/SecurityPanel";
+import { AppearancePanel } from "@/components/founder/AppearancePanel";
+import { BrandingPanel } from "@/components/founder/BrandingPanel";
+import { CategoryPanel } from "@/components/founder/CategoryPanel";
+import { ServiceAreaPanel } from "@/components/founder/ServiceAreaPanel";
+import { useAppCategories } from "@/hooks/useTaxonomy";
 import { SECTORS } from "@/lib/sectors";
 import { formatPrice, formatDateTime, ORDER_STATUS_LABELS } from "@/lib/format";
 import {
   claimFounder,
   listAdminData,
   listUsers,
-  updateSiteSettings,
   saveBusiness,
   deleteBusiness,
   saveMenuCategory,
@@ -273,7 +277,9 @@ function FounderDashboard() {
       <Tabs defaultValue="gorunum" className="mt-8">
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
           <TabsTrigger value="gorunum">Görünüm</TabsTrigger>
+          <TabsTrigger value="gorseller">Görseller</TabsTrigger>
           <TabsTrigger value="sektorler">Kategoriler</TabsTrigger>
+          <TabsTrigger value="bolgeler">Bölgeler</TabsTrigger>
           <TabsTrigger value="isletmeler">İşletmeler</TabsTrigger>
           <TabsTrigger value="kategoriler">Menü kategorileri</TabsTrigger>
           <TabsTrigger value="urunler">Ürünler</TabsTrigger>
@@ -287,8 +293,16 @@ function FounderDashboard() {
           <AppearancePanel />
         </TabsContent>
 
+        <TabsContent value="gorseller" className="mt-6">
+          <BrandingPanel />
+        </TabsContent>
+
         <TabsContent value="sektorler" className="mt-6">
-          <SectorPanel businesses={data.data?.businesses ?? []} />
+          <CategoryPanel businesses={data.data?.businesses ?? []} />
+        </TabsContent>
+
+        <TabsContent value="bolgeler" className="mt-6">
+          <ServiceAreaPanel />
         </TabsContent>
 
         <TabsContent value="isletmeler" className="mt-6">
