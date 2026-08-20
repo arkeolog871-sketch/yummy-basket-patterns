@@ -341,31 +341,11 @@ function FounderDashboard() {
         </TabsContent>
 
         <TabsContent value="siparisler" className="mt-6">
-          <div className="overflow-hidden rounded-3xl border border-border bg-card">
-            {(data.data?.orders ?? []).length === 0 ? (
-              <p className="p-6 text-sm text-muted-foreground">Henüz sipariş yok.</p>
-            ) : (
-              (data.data?.orders ?? []).map((order) => (
-                <div
-                  key={order.id}
-                  className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 p-4 last:border-0"
-                >
-                  <div>
-                    <p className="font-medium">{order.recipient_name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDateTime(order.created_at)} · {order.city}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <span className="rounded-full bg-warm px-3 py-1 text-xs font-semibold text-warm-foreground">
-                      {ORDER_STATUS_LABELS[order.status] ?? order.status}
-                    </span>
-                    <span className="font-semibold">{formatPrice(Number(order.total))}</span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+          <OrderPanel
+            orders={data.data?.orders ?? []}
+            loading={data.isFetching}
+            onDone={() => void queryClient.invalidateQueries({ queryKey: ["admin-data"] })}
+          />
         </TabsContent>
 
         <TabsContent value="denetim" className="mt-6">
