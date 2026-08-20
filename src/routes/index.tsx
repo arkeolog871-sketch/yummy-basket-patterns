@@ -118,8 +118,12 @@ function Index() {
 
           <div className="relative">
             <img
-              src={heroImage}
-              alt="Türk mutfağından kebap, lahmacun ve mezelerle dolu bir sofra"
+              src={settings.banner_url ?? heroImage}
+              alt={
+                settings.banner_url
+                  ? `${settings.brand_name} tanıtım afişi`
+                  : "Türk mutfağından kebap, lahmacun ve mezelerle dolu bir sofra"
+              }
               width={1024}
               height={768}
               className="aspect-[4/3] w-full rounded-4xl object-cover shadow-lifted"
