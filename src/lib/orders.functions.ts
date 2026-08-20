@@ -25,11 +25,14 @@ export const createOrder = createServerFn({ method: "POST" })
 
     const { data: restaurant, error: restaurantError } = await supabase
       .from("restaurants")
-      .select("id, delivery_fee, min_order, is_active")
+      .select("id, delivery_fee, min_order, is_active, opens_at, closes_at, is_open_manual")
       .eq("id", data.restaurant_id)
       .maybeSingle();
     if (restaurantError) throw new Error(restaurantError.message);
     if (!restaurant || !restaurant.is_active) throw new Error("Restoran şu anda sipariş almıyor.");
+
+    const { isBusinessOpen, closedReason } = await import("./hours");
+    if (!isBusinessOpen(restaurant)) throw new Error(closedReason(restaurant));
 
     const ids = data.items.map((item) => item.menu_item_id);
     const { data: menuItems, error: itemsError } = await supabase
