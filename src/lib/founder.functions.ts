@@ -382,6 +382,96 @@ export const setUserRole = createServerFn({ method: "POST" })
     );
   });
 
+/** Kurucu, yeni bir yetkili hesap oluşturur ve seçilen rolü atar. */
+export const createStaffUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        email: z.string().trim().email().max(200),
+        password: z.string().min(8).max(72),
+        role: z.enum(["admin", "founder", "user"]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { assertFounder } = await import("./founder.server");
+    const { audited } = await import("./audit.server");
+    await assertFounder(context.supabase, context.userId);
+
+    return audited(
+      {
+        actorId: context.userId,
+        actorEmail: (context.claims as { email?: string } | null)?.email ?? null,
+        action: "user.create",
+        entity: "auth.users",
+        detail: { email: data.email, role: data.role },
+      },
+      async () => {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+          email: data.email,
+          password: data.password,
+          email_confirm: true,
+        });
+        if (error) throw new Error(error.message);
+        const newId = created.user?.id;
+        if (!newId) throw new Error("Kullanıcı oluşturulamadı");
+
+        const { error: roleError } = await supabaseAdmin
+          .from("user_roles")
+          .upsert({ user_id: newId, role: data.role }, { onConflict: "user_id,role" });
+        if (roleError) throw new Error(roleError.message);
+        return { ok: true, userId: newId };
+      },
+    );
+  });
+
+const legacySetUserRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        userId: z.string().uuid(),
+        role: z.enum(["admin", "user", "founder"]),
+        grant: z.boolean(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { assertFounder } = await import("./founder.server");
+    const { audited } = await import("./audit.server");
+    await assertFounder(context.supabase, context.userId);
+
+    if (data.role === "founder" && !data.grant && data.userId === context.userId) {
+      throw new Error("Kendi kurucu yetkinizi kaldıramazsınız");
+    }
+
+    return audited(
+      {
+        actorId: context.userId,
+        actorEmail: (context.claims as { email?: string } | null)?.email ?? null,
+        action: data.grant ? "role.grant" : "role.revoke",
+        entity: "user_roles",
+        entityId: data.userId,
+        detail: { role: data.role },
+      },
+      async () => {
+        const { error } = data.grant
+          ? await context.supabase
+              .from("user_roles")
+              .upsert({ user_id: data.userId, role: data.role }, { onConflict: "user_id,role" })
+          : await context.supabase
+              .from("user_roles")
+              .delete()
+              .eq("user_id", data.userId)
+              .eq("role", data.role);
+        if (error) throw new Error(error.message);
+        return { ok: true };
+      },
+    );
+  });
+
 export const deleteUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ userId: z.string().uuid() }).parse(input))
