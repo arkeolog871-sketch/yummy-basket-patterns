@@ -1209,21 +1209,49 @@ function MenuItemPanel({
   );
 }
 
-type UserRow = { id: string; email: string; created_at: string; roles: string[] };
+type UserRow = {
+  id: string;
+  email: string;
+  created_at: string;
+  roles: string[];
+  vendorRestaurantId: string | null;
+};
 
-function UserPanel({ users, onDone }: { users: UserRow[]; onDone: () => void }) {
+function UserPanel({
+  users,
+  businesses,
+  onDone,
+}: {
+  users: UserRow[];
+  businesses: { id: string; name: string }[];
+  onDone: () => void;
+}) {
   const setRole = useServerFn(setUserRole);
   const removeUser = useServerFn(deleteUser);
   const createUser = useServerFn(createStaffUser);
+  const assignVendor = useServerFn(setVendorAssignment);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRoleValue] = useState<"founder" | "admin" | "user">("founder");
+  const [role, setRoleValue] = useState<"founder" | "admin" | "user" | "vendor">("founder");
 
   const roleMutation = useMutation({
-    mutationFn: (input: { userId: string; role: "admin" | "founder" | "user"; grant: boolean }) =>
-      setRole({ data: input }),
+    mutationFn: (input: {
+      userId: string;
+      role: "admin" | "founder" | "user" | "vendor";
+      grant: boolean;
+    }) => setRole({ data: input }),
     onSuccess: () => {
       toast.success("Yetkiler güncellendi");
+      onDone();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: (input: { userId: string; restaurantId: string | null }) =>
+      assignVendor({ data: input }),
+    onSuccess: () => {
+      toast.success("İşletme ataması güncellendi");
       onDone();
     },
     onError: (error: Error) => toast.error(error.message),
