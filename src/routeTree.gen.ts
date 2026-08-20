@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdreslerimRouteImport } from './routes/adreslerim'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as KurucuRouteImport } from './routes/kurucu'
+import { Route as KurucuGirisRouteImport } from './routes/kurucu-giris'
 import { Route as OdemeRouteImport } from './routes/odeme'
 import { Route as RestoranlarRouteImport } from './routes/restoranlar'
 import { Route as SepetRouteImport } from './routes/sepet'
@@ -38,6 +39,11 @@ const AuthRoute = AuthRouteImport.update({
 const KurucuRoute = KurucuRouteImport.update({
   id: '/kurucu',
   path: '/kurucu',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KurucuGirisRoute = KurucuGirisRouteImport.update({
+  id: '/kurucu-giris',
+  path: '/kurucu-giris',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OdemeRoute = OdemeRouteImport.update({
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/adreslerim': typeof AdreslerimRoute
   '/auth': typeof AuthRoute
   '/kurucu': typeof KurucuRoute
+  '/kurucu-giris': typeof KurucuGirisRoute
   '/odeme': typeof OdemeRoute
   '/restoranlar': typeof RestoranlarRoute
   '/sepet': typeof SepetRoute
@@ -88,6 +95,7 @@ export interface FileRoutesByTo {
   '/adreslerim': typeof AdreslerimRoute
   '/auth': typeof AuthRoute
   '/kurucu': typeof KurucuRoute
+  '/kurucu-giris': typeof KurucuGirisRoute
   '/odeme': typeof OdemeRoute
   '/restoranlar': typeof RestoranlarRoute
   '/sepet': typeof SepetRoute
@@ -101,6 +109,7 @@ export interface FileRoutesById {
   '/adreslerim': typeof AdreslerimRoute
   '/auth': typeof AuthRoute
   '/kurucu': typeof KurucuRoute
+  '/kurucu-giris': typeof KurucuGirisRoute
   '/odeme': typeof OdemeRoute
   '/restoranlar': typeof RestoranlarRoute
   '/sepet': typeof SepetRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/adreslerim'
     | '/auth'
     | '/kurucu'
+    | '/kurucu-giris'
     | '/odeme'
     | '/restoranlar'
     | '/sepet'
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/adreslerim'
     | '/auth'
     | '/kurucu'
+    | '/kurucu-giris'
     | '/odeme'
     | '/restoranlar'
     | '/sepet'
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/adreslerim'
     | '/auth'
     | '/kurucu'
+    | '/kurucu-giris'
     | '/odeme'
     | '/restoranlar'
     | '/sepet'
@@ -152,6 +164,7 @@ export interface RootRouteChildren {
   AdreslerimRoute: typeof AdreslerimRoute
   AuthRoute: typeof AuthRoute
   KurucuRoute: typeof KurucuRoute
+  KurucuGirisRoute: typeof KurucuGirisRoute
   OdemeRoute: typeof OdemeRoute
   RestoranlarRoute: typeof RestoranlarRoute
   SepetRoute: typeof SepetRoute
@@ -188,6 +201,13 @@ declare module '@tanstack/react-router' {
       path: '/kurucu'
       fullPath: '/kurucu'
       preLoaderRoute: typeof KurucuRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kurucu-giris': {
+      id: '/kurucu-giris'
+      path: '/kurucu-giris'
+      fullPath: '/kurucu-giris'
+      preLoaderRoute: typeof KurucuGirisRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/odeme': {
@@ -240,6 +260,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdreslerimRoute: AdreslerimRoute,
   AuthRoute: AuthRoute,
   KurucuRoute: KurucuRoute,
+  KurucuGirisRoute: KurucuGirisRoute,
   OdemeRoute: OdemeRoute,
   RestoranlarRoute: RestoranlarRoute,
   SepetRoute: SepetRoute,
