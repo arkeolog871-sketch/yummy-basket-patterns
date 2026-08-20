@@ -581,6 +581,13 @@ export const createStaffUser = createServerFn({ method: "POST" })
       .object({
         email: z.string().trim().email().max(200),
         password: z.string().min(8).max(72),
+        phone: z
+          .string()
+          .trim()
+          .min(10, "Telefon numarası en az 10 haneli olmalı")
+          .max(20)
+          .regex(/^[0-9+()\s-]+$/, "Telefon numarası geçersiz"),
+        fullName: z.string().trim().max(120).optional(),
         role: z.enum(["admin", "founder", "user", "vendor"]),
       })
       .parse(input),
@@ -600,14 +607,36 @@ export const createStaffUser = createServerFn({ method: "POST" })
       },
       async () => {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { normalizePhone } = await import("./vendor-auth.server");
+        const phone = normalizePhone(data.phone);
+        if (phone.length < 10) throw new Error("Telefon numarası en az 10 haneli olmalı");
+
+        const { data: existing, error: existingError } = await supabaseAdmin
+          .from("profiles")
+          .select("id, phone")
+          .not("phone", "is", null);
+        if (existingError) throw new Error(existingError.message);
+        if ((existing ?? []).some((row) => row.phone && normalizePhone(row.phone) === phone)) {
+          throw new Error("Bu telefon numarası başka bir hesapta kayıtlı");
+        }
+
         const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
           email: data.email,
           password: data.password,
           email_confirm: true,
+          user_metadata: { full_name: data.fullName ?? "", phone },
         });
         if (error) throw new Error(error.message);
         const newId = created.user?.id;
         if (!newId) throw new Error("Kullanıcı oluşturulamadı");
+
+        const { error: profileError } = await supabaseAdmin
+          .from("profiles")
+          .upsert(
+            { id: newId, phone, full_name: data.fullName?.trim() || null },
+            { onConflict: "id" },
+          );
+        if (profileError) throw new Error(profileError.message);
 
         const { error: roleError } = await supabaseAdmin
           .from("user_roles")
