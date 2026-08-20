@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Crown, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { logFounderLoginAttempt } from "@/lib/audit.functions";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,16 +69,32 @@ function FounderLoginPage() {
     setBusy(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      if (error) {
+        void logFounderLoginAttempt({
+          data: { email, status: "error", reason: error.message },
+        }).catch(() => {});
+        throw error;
+      }
       const signedIn = data.user;
       if (!signedIn) throw new Error("Oturum açılamadı");
 
       const state = await readFounderState(signedIn.id);
       if (!state.isFounder && state.founderExists) {
+        void logFounderLoginAttempt({
+          data: {
+            email,
+            status: "denied",
+            reason: "Kurucu yetkisi yok",
+            userId: signedIn.id,
+          },
+        }).catch(() => {});
         await supabase.auth.signOut();
         toast.error("Bu hesabın kurucu yetkisi yok.");
         return;
       }
+      void logFounderLoginAttempt({
+        data: { email, status: "success", userId: signedIn.id },
+      }).catch(() => {});
       toast.success(state.isFounder ? "Kurucu paneline hoş geldiniz" : "Kurucu profili tanımlanabilir");
       navigate({ to: "/kurucu", replace: true });
     } catch (error) {
