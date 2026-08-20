@@ -3,7 +3,13 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { listMyOrders } from "@/lib/orders.functions";
 import { RequireAuth } from "@/components/auth/RequireAuth";
-import { formatPrice, formatDateTime, ORDER_STATUS_LABELS } from "@/lib/format";
+import {
+  formatPrice,
+  formatDateTime,
+  ORDER_STATUS_LABELS,
+  ORDER_TRACK_STEPS,
+  orderStepIndex,
+} from "@/lib/format";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/siparislerim")({
@@ -29,6 +35,7 @@ function OrdersPage() {
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["orders"],
     queryFn: () => fetchOrders(),
+    refetchInterval: 15000,
   });
 
   return (
@@ -58,6 +65,18 @@ function OrdersPage() {
                 <p className="mt-1 text-sm text-muted-foreground">
                   {formatDateTime(order.created_at)} · {ORDER_STATUS_LABELS[order.status] ?? order.status}
                 </p>
+                {order.status === "cancelled" ? null : (
+                  <div className="mt-3 flex gap-1.5" aria-hidden>
+                    {ORDER_TRACK_STEPS.map((step, index) => (
+                      <span
+                        key={step.label}
+                        className={`h-1.5 flex-1 rounded-full ${
+                          index <= orderStepIndex(order.status) ? "bg-primary" : "bg-border"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
               <p className="font-semibold">{formatPrice(Number(order.total))}</p>
             </Link>

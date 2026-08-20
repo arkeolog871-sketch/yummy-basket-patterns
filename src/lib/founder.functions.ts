@@ -99,6 +99,21 @@ const businessSchema = z.object({
   is_active: z.boolean().default(true),
 });
 
+const timeField = z
+  .string()
+  .trim()
+  .regex(/^\d{2}:\d{2}$/, "Saati SS:DD biçiminde girin")
+  .nullable()
+  .default(null);
+
+const businessHoursFields = {
+  opens_at: timeField,
+  closes_at: timeField,
+  is_open_manual: z.boolean().default(true),
+};
+
+const businessWithHoursSchema = businessSchema.extend(businessHoursFields);
+
 const menuCategorySchema = z.object({
   id: z.string().uuid().optional(),
   restaurant_id: z.string().uuid(),
@@ -215,7 +230,9 @@ export const listAdminData = createServerFn({ method: "GET" })
       context.supabase.from("menu_items").select("*").order("name"),
       context.supabase
         .from("orders")
-        .select("id, status, total, recipient_name, city, created_at")
+        .select(
+          "id, status, payment_status, total, recipient_name, phone, street, district, city, created_at, restaurants(name)",
+        )
         .order("created_at", { ascending: false })
         .limit(50),
     ]);
@@ -234,7 +251,7 @@ export const listAdminData = createServerFn({ method: "GET" })
 
 export const saveBusiness = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => businessSchema.parse(input))
+  .inputValidator((input: unknown) => businessWithHoursSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
@@ -276,6 +293,48 @@ export const deleteBusiness = createServerFn({ method: "POST" })
       },
       async () => {
         const { error } = await context.supabase.from("restaurants").delete().eq("id", data.id);
+        if (error) throw new Error(error.message);
+        return { ok: true };
+      },
+    );
+  });
+
+/** Kurucu, gelen siparişin durumunu anlık olarak değiştirir. */
+export const updateOrderStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        status: z.enum([
+          "pending",
+          "confirmed",
+          "preparing",
+          "on_the_way",
+          "delivered",
+          "cancelled",
+        ]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { assertFounder } = await import("./founder.server");
+    const { audited } = await import("./audit.server");
+    await assertFounder(context.supabase, context.userId);
+    return audited(
+      {
+        actorId: context.userId,
+        actorEmail: (context.claims as { email?: string } | null)?.email ?? null,
+        action: "order.status",
+        entity: "orders",
+        entityId: data.id,
+        detail: { status: data.status },
+      },
+      async () => {
+        const { error } = await context.supabase
+          .from("orders")
+          .update({ status: data.status })
+          .eq("id", data.id);
         if (error) throw new Error(error.message);
         return { ok: true };
       },

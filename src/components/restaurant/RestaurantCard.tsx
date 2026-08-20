@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Star, Clock, Bike } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { LocationButton } from "@/components/business/LocationButton";
+import { isBusinessOpen, hoursLabel } from "@/lib/hours";
 
 export type RestaurantSummary = {
   id: string;
@@ -23,9 +24,14 @@ export type RestaurantSummary = {
   latitude?: number | string | null;
   longitude?: number | string | null;
   maps_url?: string | null;
+  opens_at?: string | null;
+  closes_at?: string | null;
+  is_open_manual?: boolean | null;
 };
 
 export function RestaurantCard({ restaurant }: { restaurant: RestaurantSummary }) {
+  const open = isBusinessOpen(restaurant);
+  const hours = hoursLabel(restaurant);
   return (
     <Link
       to="/restoran/$slug"
@@ -40,7 +46,9 @@ export function RestaurantCard({ restaurant }: { restaurant: RestaurantSummary }
             loading="lazy"
             width={1024}
             height={640}
-            className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className={`size-full object-cover transition-transform duration-500 group-hover:scale-105 ${
+              open ? "" : "grayscale"
+            }`}
           />
         ) : (
           <div className="size-full bg-warm" />
@@ -48,7 +56,11 @@ export function RestaurantCard({ restaurant }: { restaurant: RestaurantSummary }
         <span className="absolute left-3 top-3 rounded-full bg-background/90 px-3 py-1 text-xs font-semibold">
           {restaurant.category}
         </span>
-        {Number(restaurant.delivery_fee) === 0 ? (
+        {!open ? (
+          <span className="absolute right-3 top-3 rounded-full bg-foreground/85 px-3 py-1 text-xs font-semibold text-background">
+            Şu An Kapalı
+          </span>
+        ) : Number(restaurant.delivery_fee) === 0 ? (
           <span className="absolute right-3 top-3 rounded-full bg-success px-3 py-1 text-xs font-semibold text-success-foreground">
             Ücretsiz teslimat
           </span>
@@ -78,6 +90,7 @@ export function RestaurantCard({ restaurant }: { restaurant: RestaurantSummary }
               : formatPrice(Number(restaurant.delivery_fee))}
           </span>
           <span>Min. {formatPrice(Number(restaurant.min_order))}</span>
+          {hours ? <span>{hours}</span> : null}
         </div>
 
         <LocationButton

@@ -30,6 +30,7 @@ import {
   setUserRole,
   deleteUser,
   createStaffUser,
+  updateOrderStatus,
 } from "@/lib/founder.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -341,31 +342,11 @@ function FounderDashboard() {
         </TabsContent>
 
         <TabsContent value="siparisler" className="mt-6">
-          <div className="overflow-hidden rounded-3xl border border-border bg-card">
-            {(data.data?.orders ?? []).length === 0 ? (
-              <p className="p-6 text-sm text-muted-foreground">Henüz sipariş yok.</p>
-            ) : (
-              (data.data?.orders ?? []).map((order) => (
-                <div
-                  key={order.id}
-                  className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 p-4 last:border-0"
-                >
-                  <div>
-                    <p className="font-medium">{order.recipient_name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDateTime(order.created_at)} · {order.city}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <span className="rounded-full bg-warm px-3 py-1 text-xs font-semibold text-warm-foreground">
-                      {ORDER_STATUS_LABELS[order.status] ?? order.status}
-                    </span>
-                    <span className="font-semibold">{formatPrice(Number(order.total))}</span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+          <OrderPanel
+            orders={data.data?.orders ?? []}
+            loading={data.isFetching}
+            onDone={() => void queryClient.invalidateQueries({ queryKey: ["admin-data"] })}
+          />
         </TabsContent>
 
         <TabsContent value="denetim" className="mt-6">
@@ -376,6 +357,114 @@ function FounderDashboard() {
   );
 }
 
+
+type OrderRow = {
+  id: string;
+  status: string;
+  payment_status?: string;
+  total: number | string;
+  recipient_name: string;
+  phone?: string;
+  street?: string;
+  district?: string;
+  city: string;
+  created_at: string;
+  restaurants?: { name: string } | null;
+};
+
+const ORDER_STATUS_OPTIONS = [
+  "pending",
+  "confirmed",
+  "preparing",
+  "on_the_way",
+  "delivered",
+  "cancelled",
+] as const;
+
+/** Gelen siparişlerin durumunu anlık olarak değiştirir. */
+function OrderPanel({
+  orders,
+  loading,
+  onDone,
+}: {
+  orders: OrderRow[];
+  loading: boolean;
+  onDone: () => void;
+}) {
+  const update = useServerFn(updateOrderStatus);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: (input: { id: string; status: (typeof ORDER_STATUS_OPTIONS)[number] }) =>
+      update({ data: input }),
+    onSuccess: () => {
+      toast.success("Sipariş durumu güncellendi");
+      setPendingId(null);
+      onDone();
+    },
+    onError: (error: Error) => {
+      setPendingId(null);
+      toast.error(error.message);
+    },
+  });
+
+  if (orders.length === 0) {
+    return (
+      <div className="rounded-3xl border border-border bg-card p-6 text-sm text-muted-foreground">
+        {loading ? "Yükleniyor…" : "Henüz sipariş yok."}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {orders.map((order) => (
+        <div key={order.id} className="rounded-3xl border border-border bg-card p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-medium">
+                {order.restaurants?.name ?? "İşletme"} · {order.recipient_name}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {formatDateTime(order.created_at)} · {order.street ? `${order.street}, ` : ""}
+                {order.district ? `${order.district}/` : ""}
+                {order.city}
+                {order.phone ? ` · ${order.phone}` : ""}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="rounded-full bg-warm px-3 py-1 text-xs font-semibold text-warm-foreground">
+                {ORDER_STATUS_LABELS[order.status] ?? order.status}
+              </span>
+              <span className="font-semibold">{formatPrice(Number(order.total))}</span>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {ORDER_STATUS_OPTIONS.map((status) => {
+              const active = order.status === status;
+              return (
+                <Button
+                  key={status}
+                  type="button"
+                  size="sm"
+                  variant={active ? "default" : "outline"}
+                  className="rounded-full"
+                  disabled={active || (mutation.isPending && pendingId === order.id)}
+                  onClick={() => {
+                    setPendingId(order.id);
+                    mutation.mutate({ id: order.id, status });
+                  }}
+                >
+                  {ORDER_STATUS_LABELS[status] ?? status}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 type BusinessRow = {
   id: string;
@@ -396,6 +485,9 @@ type BusinessRow = {
   longitude?: number | string | null;
   maps_url?: string | null;
   is_active: boolean;
+  opens_at?: string | null;
+  closes_at?: string | null;
+  is_open_manual?: boolean | null;
 };
 
 const emptyBusiness = {
@@ -416,6 +508,9 @@ const emptyBusiness = {
   longitude: "",
   maps_url: "",
   is_active: true,
+  opens_at: "",
+  closes_at: "",
+  is_open_manual: true,
 };
 
 function BusinessPanel({
@@ -463,6 +558,9 @@ function BusinessPanel({
               : null,
           maps_url: form.maps_url.trim() || null,
           is_active: form.is_active,
+          opens_at: /^\d{2}:\d{2}$/.test(form.opens_at) ? form.opens_at : null,
+          closes_at: /^\d{2}:\d{2}$/.test(form.closes_at) ? form.closes_at : null,
+          is_open_manual: form.is_open_manual,
         },
       }),
     onSuccess: () => {
@@ -625,6 +723,36 @@ function BusinessPanel({
             onCheckedChange={(checked) => setForm({ ...form, is_active: checked })}
           />
         </div>
+        <div className="space-y-3 rounded-2xl border border-border p-3">
+          <p className="text-xs font-medium text-muted-foreground">
+            Çalışma saatleri — boş bırakılırsa 24 saat açık kabul edilir
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Açılış</Label>
+              <Input
+                type="time"
+                value={form.opens_at}
+                onChange={(event) => setForm({ ...form, opens_at: event.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Kapanış</Label>
+              <Input
+                type="time"
+                value={form.closes_at}
+                onChange={(event) => setForm({ ...form, closes_at: event.target.value })}
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm">Şu an sipariş alıyor</span>
+            <Switch
+              checked={form.is_open_manual}
+              onCheckedChange={(checked) => setForm({ ...form, is_open_manual: checked })}
+            />
+          </div>
+        </div>
         <div className="flex gap-2">
           <Button type="submit" className="rounded-full" disabled={saveMutation.isPending}>
             <Plus className="size-4" /> {editingId ? "Kaydet" : "Ekle"}
@@ -697,6 +825,9 @@ function BusinessPanel({
                           : String(business.longitude),
                       maps_url: business.maps_url ?? "",
                       is_active: business.is_active,
+                      opens_at: (business.opens_at ?? "").slice(0, 5),
+                      closes_at: (business.closes_at ?? "").slice(0, 5),
+                      is_open_manual: business.is_open_manual !== false,
                     });
                   }}
                 >
