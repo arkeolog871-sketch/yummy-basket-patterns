@@ -383,14 +383,20 @@ export type Database = {
       }
       restaurants: {
         Row: {
+          address: string | null
           category: string
+          city: string | null
           cover_image_url: string | null
           created_at: string
           cuisines: string[]
           delivery_fee: number
           delivery_minutes: number
+          district: string | null
           id: string
           is_active: boolean
+          latitude: number | null
+          longitude: number | null
+          maps_url: string | null
           min_order: number
           name: string
           rating: number
@@ -401,14 +407,20 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          address?: string | null
           category: string
+          city?: string | null
           cover_image_url?: string | null
           created_at?: string
           cuisines?: string[]
           delivery_fee?: number
           delivery_minutes?: number
+          district?: string | null
           id?: string
           is_active?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          maps_url?: string | null
           min_order?: number
           name: string
           rating?: number
@@ -419,14 +431,20 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          address?: string | null
           category?: string
+          city?: string | null
           cover_image_url?: string | null
           created_at?: string
           cuisines?: string[]
           delivery_fee?: number
           delivery_minutes?: number
+          district?: string | null
           id?: string
           is_active?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          maps_url?: string | null
           min_order?: number
           name?: string
           rating?: number
