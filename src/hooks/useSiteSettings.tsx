@@ -17,6 +17,13 @@ export type SiteSettings = {
   layout_variant: string;
 };
 
+export type HeroContent = {
+  hero_badge: string;
+  hero_title: string;
+  hero_title_accent: string;
+  hero_subtitle: string;
+};
+
 export const DEFAULT_SETTINGS: SiteSettings = {
   id: "global",
   brand_name: "SofraKapımda",
@@ -31,8 +38,17 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   layout_variant: "classic",
 };
 
+export const DEFAULT_HERO: HeroContent = {
+  hero_badge: "işletme, dakikalar içinde kapınızda",
+  hero_title: "Mahalleniz hazır,",
+  hero_title_accent: "kapınıza geliyor",
+  hero_subtitle:
+    "Yemek, restoran, kafe, eğlence, market ve giyim: mahallenizdeki tüm işletmeler tek uygulamada.",
+};
+
 type SiteSettingsContextValue = {
   settings: SiteSettings;
+  hero: HeroContent;
   isFounder: boolean;
   founderExists: boolean;
   refresh: () => void;
@@ -40,6 +56,7 @@ type SiteSettingsContextValue = {
 
 const SiteSettingsContext = createContext<SiteSettingsContextValue>({
   settings: DEFAULT_SETTINGS,
+  hero: DEFAULT_HERO,
   isFounder: false,
   founderExists: true,
   refresh: () => {},
@@ -55,16 +72,16 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   const settingsQuery = useQuery({
     queryKey: ["site-settings"],
     enabled: hydrated,
-    queryFn: async (): Promise<SiteSettings> => {
+    queryFn: async (): Promise<SiteSettings & HeroContent> => {
       const { data, error } = await supabase
         .from("site_settings")
         .select(
-          "id, brand_name, primary_color, accent_color, secondary_color, background_color, logo_url, favicon_url, banner_url, theme_mode, layout_variant",
+          "id, brand_name, primary_color, accent_color, secondary_color, background_color, logo_url, favicon_url, banner_url, theme_mode, layout_variant, hero_badge, hero_title, hero_title_accent, hero_subtitle",
         )
         .eq("id", "global")
         .maybeSingle();
       if (error) throw new Error(error.message);
-      return data ?? DEFAULT_SETTINGS;
+      return data ?? { ...DEFAULT_SETTINGS, ...DEFAULT_HERO };
     },
   });
 
@@ -119,6 +136,13 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     <SiteSettingsContext.Provider
       value={{
         settings,
+        hero: {
+          hero_badge: settingsQuery.data?.hero_badge ?? DEFAULT_HERO.hero_badge,
+          hero_title: settingsQuery.data?.hero_title ?? DEFAULT_HERO.hero_title,
+          hero_title_accent:
+            settingsQuery.data?.hero_title_accent ?? DEFAULT_HERO.hero_title_accent,
+          hero_subtitle: settingsQuery.data?.hero_subtitle ?? DEFAULT_HERO.hero_subtitle,
+        },
         isFounder: rolesQuery.data?.isFounder ?? false,
         founderExists: rolesQuery.data?.founderExists ?? true,
         refresh: () => {
