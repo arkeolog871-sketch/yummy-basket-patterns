@@ -35,7 +35,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
                   siteUrl: SITE_URL,
                   recipient: data.email,
                   confirmationUrl: data.url,
-                  token: data.token ?? undefined,
+                  token: data.token ?? '',
                 }),
             },
             invite: {
@@ -53,7 +53,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
                 React.createElement(MagicLinkEmail, {
                   siteName: SITE_NAME,
                   confirmationUrl: data.url,
-                  token: data.token ?? undefined,
+                  token: data.token ?? '',
                 }),
             },
             recovery: {
@@ -62,7 +62,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
                 React.createElement(RecoveryEmail, {
                   siteName: SITE_NAME,
                   confirmationUrl: data.url,
-                  token: data.token ?? undefined,
+                  token: data.token ?? '',
                 }),
             },
             email_change: {
@@ -74,7 +74,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
                   email: data.email,
                   newEmail: data.new_email ?? '',
                   confirmationUrl: data.url,
-                  token: data.token ?? undefined,
+                  token: data.token ?? '',
                 }),
             },
             reauthentication: {
