@@ -383,6 +383,12 @@ type BusinessRow = {
   delivery_fee: number | string;
   min_order: number | string;
   cover_image_url: string | null;
+  address?: string | null;
+  district?: string | null;
+  city?: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  maps_url?: string | null;
   is_active: boolean;
 };
 
@@ -397,6 +403,12 @@ const emptyBusiness = {
   delivery_fee: 0,
   min_order: 0,
   cover_image_url: "",
+  address: "",
+  district: "",
+  city: "",
+  latitude: "",
+  longitude: "",
+  maps_url: "",
   is_active: true,
 };
 
@@ -432,6 +444,18 @@ function BusinessPanel({
           delivery_fee: Number(form.delivery_fee),
           min_order: Number(form.min_order),
           cover_image_url: form.cover_image_url || null,
+          address: form.address.trim() || null,
+          district: form.district.trim() || null,
+          city: form.city.trim() || null,
+          latitude:
+            form.latitude.trim() && Number.isFinite(Number(form.latitude))
+              ? Number(form.latitude)
+              : null,
+          longitude:
+            form.longitude.trim() && Number.isFinite(Number(form.longitude))
+              ? Number(form.longitude)
+              : null,
+          maps_url: form.maps_url.trim() || null,
           is_active: form.is_active,
         },
       }),
@@ -549,6 +573,45 @@ function BusinessPanel({
           value={form.cover_image_url}
           onChange={(event) => setForm({ ...form, cover_image_url: event.target.value })}
         />
+        <div className="space-y-2 rounded-2xl border border-border p-3">
+          <p className="text-xs font-medium text-muted-foreground">
+            Konum (isteğe bağlı) — girildiğinde kartlarda tıklanabilir yol tarifi görünür
+          </p>
+          <Input
+            placeholder="Açık adres (Mahalle, sokak, no)"
+            value={form.address}
+            onChange={(event) => setForm({ ...form, address: event.target.value })}
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              placeholder="İlçe"
+              value={form.district}
+              onChange={(event) => setForm({ ...form, district: event.target.value })}
+            />
+            <Input
+              placeholder="Şehir"
+              value={form.city}
+              onChange={(event) => setForm({ ...form, city: event.target.value })}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              placeholder="Enlem (38.1423)"
+              value={form.latitude}
+              onChange={(event) => setForm({ ...form, latitude: event.target.value })}
+            />
+            <Input
+              placeholder="Boylam (41.0021)"
+              value={form.longitude}
+              onChange={(event) => setForm({ ...form, longitude: event.target.value })}
+            />
+          </div>
+          <Input
+            placeholder="Google Maps bağlantısı (https://…)"
+            value={form.maps_url}
+            onChange={(event) => setForm({ ...form, maps_url: event.target.value })}
+          />
+        </div>
         <div className="flex items-center justify-between rounded-2xl border border-border p-3">
           <span className="text-sm">Yayında</span>
           <Switch
@@ -615,6 +678,18 @@ function BusinessPanel({
                       delivery_fee: Number(business.delivery_fee),
                       min_order: Number(business.min_order),
                       cover_image_url: business.cover_image_url ?? "",
+                      address: business.address ?? "",
+                      district: business.district ?? "",
+                      city: business.city ?? "",
+                      latitude:
+                        business.latitude === null || business.latitude === undefined
+                          ? ""
+                          : String(business.latitude),
+                      longitude:
+                        business.longitude === null || business.longitude === undefined
+                          ? ""
+                          : String(business.longitude),
+                      maps_url: business.maps_url ?? "",
                       is_active: business.is_active,
                     });
                   }}

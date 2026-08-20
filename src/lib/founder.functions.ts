@@ -37,6 +37,18 @@ const businessSchema = z.object({
   delivery_fee: z.number().min(0).max(10000),
   min_order: z.number().min(0).max(100000),
   cover_image_url: z.string().trim().max(500).nullable().default(null),
+  address: z.string().trim().max(240).nullable().default(null),
+  district: z.string().trim().max(80).nullable().default(null),
+  city: z.string().trim().max(80).nullable().default(null),
+  latitude: z.number().min(-90).max(90).nullable().default(null),
+  longitude: z.number().min(-180).max(180).nullable().default(null),
+  maps_url: z
+    .string()
+    .trim()
+    .max(500)
+    .refine((value) => value === "" || /^https?:\/\//i.test(value), "Geçerli bir bağlantı girin")
+    .nullable()
+    .default(null),
   is_active: z.boolean().default(true),
 });
 

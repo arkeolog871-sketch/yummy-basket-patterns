@@ -3,6 +3,7 @@ import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { Star, Clock, Bike, Plus, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { getRestaurantBySlug } from "@/lib/catalog.functions";
+import { LocationButton } from "@/components/business/LocationButton";
 import { useCart } from "@/hooks/useCart";
 import { formatPrice } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -136,6 +137,7 @@ function RestaurantDetail() {
           <span className="text-muted-foreground">
             Min. sepet {formatPrice(Number(restaurant.min_order))}
           </span>
+          <LocationButton business={restaurant} className="text-muted-foreground" />
         </div>
 
         <div className="grid gap-8 py-10 lg:grid-cols-[1fr_320px]">
