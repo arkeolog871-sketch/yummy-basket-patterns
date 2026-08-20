@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { slugify } from "@/lib/format";
 
 const ICON_OPTIONS = [
   "UtensilsCrossed",
@@ -122,7 +123,17 @@ export function CategoryPanel({ businesses }: { businesses: { sector: string | n
             className="mt-1.5"
             required
             value={form.label}
-            onChange={(event) => setForm({ ...form, label: event.target.value })}
+            onChange={(event) => {
+              const label = event.target.value;
+              setForm((current) => ({
+                ...current,
+                label,
+                slug:
+                  editingId || current.slug !== slugify(current.label)
+                    ? current.slug
+                    : slugify(label),
+              }));
+            }}
           />
         </div>
         <div>
@@ -133,7 +144,7 @@ export function CategoryPanel({ businesses }: { businesses: { sector: string | n
             required
             placeholder="ornek-kategori"
             value={form.slug}
-            onChange={(event) => setForm({ ...form, slug: event.target.value })}
+            onChange={(event) => setForm({ ...form, slug: slugify(event.target.value) })}
           />
         </div>
         <div>
