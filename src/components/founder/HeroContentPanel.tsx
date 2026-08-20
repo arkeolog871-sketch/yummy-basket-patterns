@@ -2,16 +2,17 @@ import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Save, RotateCcw } from "lucide-react";
+import { Save, RotateCcw, Smartphone, Monitor, Lock } from "lucide-react";
 import { useSiteSettings, DEFAULT_HERO, type HeroContent } from "@/hooks/useSiteSettings";
 import { updateHeroContent } from "@/lib/founder.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export function HeroContentPanel() {
-  const { hero, refresh } = useSiteSettings();
+  const { hero, refresh, isFounder } = useSiteSettings();
   const save = useServerFn(updateHeroContent);
   const [form, setForm] = useState<HeroContent>(hero);
+  const [device, setDevice] = useState<"mobile" | "desktop">("desktop");
 
   useEffect(() => setForm(hero), [hero]);
 
@@ -23,6 +24,19 @@ export function HeroContentPanel() {
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
+  if (!isFounder) {
+    return (
+      <div className="rounded-3xl border border-border bg-card p-6">
+        <h2 className="flex items-center gap-2 text-xl">
+          <Lock className="size-5 text-muted-foreground" /> Yetkiniz yok
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Ana sayfa tanıtım metinlerini yalnızca kurucu rolüne sahip hesaplar düzenleyebilir.
+        </p>
+      </div>
+    );
+  }
 
   function field(key: keyof HeroContent, label: string, hint: string) {
     return (
@@ -52,14 +66,54 @@ export function HeroContentPanel() {
         {field("hero_subtitle", "Açıklama", "Başlığın altındaki kısa tanıtım cümlesi.")}
       </div>
 
-      <div className="mt-6 rounded-2xl border border-border bg-gradient-hero p-5">
-        <span className="inline-flex items-center rounded-full bg-background/70 px-3 py-1 text-xs font-semibold text-muted-foreground">
-          8 {form.hero_badge}
-        </span>
-        <h3 className="mt-3 text-2xl leading-tight">
-          {form.hero_title} <span className="text-accent">{form.hero_title_accent}</span>
-        </h3>
-        <p className="mt-2 text-sm text-muted-foreground">{form.hero_subtitle}</p>
+      <div className="mt-6 flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold">Önizleme</p>
+        <div className="flex gap-1 rounded-full border border-border p-1">
+          <Button
+            type="button"
+            size="sm"
+            variant={device === "mobile" ? "default" : "ghost"}
+            className="rounded-full"
+            aria-pressed={device === "mobile"}
+            onClick={() => setDevice("mobile")}
+          >
+            <Smartphone className="size-4" /> Mobil
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={device === "desktop" ? "default" : "ghost"}
+            className="rounded-full"
+            aria-pressed={device === "desktop"}
+            onClick={() => setDevice("desktop")}
+          >
+            <Monitor className="size-4" /> Masaüstü
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-3 flex justify-center rounded-2xl border border-border bg-muted/40 p-4">
+        <div
+          className={`w-full overflow-hidden rounded-2xl border border-border bg-gradient-hero p-5 ${
+            device === "mobile" ? "max-w-[360px]" : "max-w-full"
+          }`}
+        >
+          <span className="inline-flex items-center rounded-full bg-background/70 px-3 py-1 text-xs font-semibold text-muted-foreground">
+            8 {form.hero_badge}
+          </span>
+          <h3
+            className={`mt-3 leading-tight ${device === "mobile" ? "text-2xl" : "text-4xl"}`}
+          >
+            {form.hero_title} <span className="text-accent">{form.hero_title_accent}</span>
+          </h3>
+          <p
+            className={`mt-2 text-muted-foreground ${
+              device === "mobile" ? "text-sm" : "max-w-md text-base"
+            }`}
+          >
+            {form.hero_subtitle}
+          </p>
+        </div>
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2">

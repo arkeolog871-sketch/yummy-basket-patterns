@@ -25,13 +25,26 @@ export const updateHeroContent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => heroSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { assertFounder } = await import("./founder.server");
+    const { isFounderUser } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId);
+    const { logAudit } = await import("./audit.server");
+    const actorEmail = (context.claims as { email?: string } | null)?.email ?? null;
+    if (!(await isFounderUser(context.supabase, context.userId))) {
+      await logAudit({
+        actorId: context.userId,
+        actorEmail,
+        action: "hero.update",
+        entity: "site_settings",
+        entityId: "global",
+        status: "denied",
+        detail: { reason: "Kurucu yetkisi yok" },
+      });
+      throw new Error("Bu işlem için kurucu yetkisi gerekiyor");
+    }
     return audited(
       {
         actorId: context.userId,
-        actorEmail: (context.claims as { email?: string } | null)?.email ?? null,
+        actorEmail,
         action: "hero.update",
         entity: "site_settings",
         entityId: "global",
