@@ -2,16 +2,17 @@ import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Save, RotateCcw } from "lucide-react";
+import { Save, RotateCcw, Smartphone, Monitor, Lock } from "lucide-react";
 import { useSiteSettings, DEFAULT_HERO, type HeroContent } from "@/hooks/useSiteSettings";
 import { updateHeroContent } from "@/lib/founder.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export function HeroContentPanel() {
-  const { hero, refresh } = useSiteSettings();
+  const { hero, refresh, isFounder } = useSiteSettings();
   const save = useServerFn(updateHeroContent);
   const [form, setForm] = useState<HeroContent>(hero);
+  const [device, setDevice] = useState<"mobile" | "desktop">("desktop");
 
   useEffect(() => setForm(hero), [hero]);
 
@@ -23,6 +24,19 @@ export function HeroContentPanel() {
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
+  if (!isFounder) {
+    return (
+      <div className="rounded-3xl border border-border bg-card p-6">
+        <h2 className="flex items-center gap-2 text-xl">
+          <Lock className="size-5 text-muted-foreground" /> Yetkiniz yok
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Ana sayfa tanıtım metinlerini yalnızca kurucu rolüne sahip hesaplar düzenleyebilir.
+        </p>
+      </div>
+    );
+  }
 
   function field(key: keyof HeroContent, label: string, hint: string) {
     return (
