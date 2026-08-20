@@ -1,24 +1,17 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { Star, Clock, Bike, Plus, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
-import { getRestaurantBySlug } from "@/lib/catalog.functions";
+import { restaurantDetailQuery } from "@/lib/catalog.queries";
 import { LocationButton } from "@/components/business/LocationButton";
 import { useCart } from "@/hooks/useCart";
 import { formatPrice } from "@/lib/format";
 import { isBusinessOpen, hoursLabel, closedReason } from "@/lib/hours";
 import { Button } from "@/components/ui/button";
 
-function detailQuery(slug: string) {
-  return queryOptions({
-    queryKey: ["restaurant", slug],
-    queryFn: () => getRestaurantBySlug({ data: { slug } }),
-  });
-}
-
 export const Route = createFileRoute("/restoran/$slug")({
   loader: async ({ context, params }) => {
-    const data = await context.queryClient.ensureQueryData(detailQuery(params.slug));
+    const data = await context.queryClient.ensureQueryData(restaurantDetailQuery(params.slug));
     if (!data) throw notFound();
     return { name: data.restaurant.name, tagline: data.restaurant.tagline };
   },
