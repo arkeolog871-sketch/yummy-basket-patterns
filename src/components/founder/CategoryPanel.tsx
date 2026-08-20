@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ComponentType } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -29,7 +29,7 @@ const ICON_OPTIONS = [
 function CategoryIcon({ name, className }: { name: string; className?: string }) {
   const registry = Icons as unknown as Record<
     string,
-    ((props: { className?: string }) => JSX.Element) | undefined
+    ComponentType<{ className?: string }> | undefined
   >;
   const Component = registry[name] ?? registry["Sparkles"]!;
   return <Component className={className} />;
