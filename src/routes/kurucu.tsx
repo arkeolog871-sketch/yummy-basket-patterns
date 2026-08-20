@@ -357,9 +357,116 @@ function FounderDashboard() {
 }
 
 
+type OrderRow = {
+  id: string;
+  status: string;
+  payment_status?: string;
+  total: number | string;
+  recipient_name: string;
+  phone?: string;
+  street?: string;
+  district?: string;
+  city: string;
+  created_at: string;
+  restaurants?: { name: string } | null;
+};
+
+const ORDER_STATUS_OPTIONS = [
+  "pending",
+  "confirmed",
+  "preparing",
+  "on_the_way",
+  "delivered",
+  "cancelled",
+] as const;
+
+/** Gelen siparişlerin durumunu anlık olarak değiştirir. */
+function OrderPanel({
+  orders,
+  loading,
+  onDone,
+}: {
+  orders: OrderRow[];
+  loading: boolean;
+  onDone: () => void;
+}) {
+  const update = useServerFn(updateOrderStatus);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: (input: { id: string; status: (typeof ORDER_STATUS_OPTIONS)[number] }) =>
+      update({ data: input }),
+    onSuccess: () => {
+      toast.success("Sipariş durumu güncellendi");
+      setPendingId(null);
+      onDone();
+    },
+    onError: (error: Error) => {
+      setPendingId(null);
+      toast.error(error.message);
+    },
+  });
+
+  if (orders.length === 0) {
+    return (
+      <div className="rounded-3xl border border-border bg-card p-6 text-sm text-muted-foreground">
+        {loading ? "Yükleniyor…" : "Henüz sipariş yok."}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {orders.map((order) => (
+        <div key={order.id} className="rounded-3xl border border-border bg-card p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-medium">
+                {order.restaurants?.name ?? "İşletme"} · {order.recipient_name}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {formatDateTime(order.created_at)} · {order.street ? `${order.street}, ` : ""}
+                {order.district ? `${order.district}/` : ""}
+                {order.city}
+                {order.phone ? ` · ${order.phone}` : ""}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="rounded-full bg-warm px-3 py-1 text-xs font-semibold text-warm-foreground">
+                {ORDER_STATUS_LABELS[order.status] ?? order.status}
+              </span>
+              <span className="font-semibold">{formatPrice(Number(order.total))}</span>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {ORDER_STATUS_OPTIONS.map((status) => {
+              const active = order.status === status;
+              return (
+                <Button
+                  key={status}
+                  type="button"
+                  size="sm"
+                  variant={active ? "default" : "outline"}
+                  className="rounded-full"
+                  disabled={active || (mutation.isPending && pendingId === order.id)}
+                  onClick={() => {
+                    setPendingId(order.id);
+                    mutation.mutate({ id: order.id, status });
+                  }}
+                >
+                  {ORDER_STATUS_LABELS[status] ?? status}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 type BusinessRow = {
   id: string;
-*** placeholder ***
   slug: string;
   name: string;
   tagline: string | null;
