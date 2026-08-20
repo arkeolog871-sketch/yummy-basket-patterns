@@ -349,7 +349,11 @@ function FounderDashboard() {
         </TabsContent>
 
         <TabsContent value="kullanicilar" className="mt-6">
-          <UserPanel users={users.data ?? []} onDone={invalidate} />
+          <UserPanel
+            users={users.data ?? []}
+            businesses={data.data?.businesses ?? []}
+            onDone={invalidate}
+          />
         </TabsContent>
 
         <TabsContent value="guvenlik" className="mt-6">
