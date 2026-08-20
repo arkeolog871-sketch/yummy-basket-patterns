@@ -29,6 +29,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { listAuditLogs } from "@/lib/audit.functions";
+import { AuditLogPanel } from "@/components/founder/AuditLogPanel";
 
 export const Route = createFileRoute("/kurucu")({
   head: () => ({
@@ -209,6 +211,7 @@ function FounderDashboard() {
           <TabsTrigger value="urunler">Ürünler</TabsTrigger>
           <TabsTrigger value="kullanicilar">Kullanıcılar</TabsTrigger>
           <TabsTrigger value="siparisler">Siparişler</TabsTrigger>
+          <TabsTrigger value="denetim">Denetim kaydı</TabsTrigger>
         </TabsList>
 
         <TabsContent value="gorunum" className="mt-6">
@@ -270,6 +273,10 @@ function FounderDashboard() {
               ))
             )}
           </div>
+        </TabsContent>
+
+        <TabsContent value="denetim" className="mt-6">
+          <AuditLogPanel />
         </TabsContent>
       </Tabs>
     </div>
