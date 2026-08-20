@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAccess } from "@/hooks/useAccess";
 import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,7 +35,9 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const { redirect } = Route.useSearch();
   const { user } = useAuth();
+  const access = useAccess();
   const navigate = useNavigate();
+  const [portal, setPortal] = useState<"customer" | "vendor">("customer");
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [method, setMethod] = useState<"password" | "code">("password");
   const [email, setEmail] = useState("");
@@ -43,8 +46,19 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (user) navigate({ to: redirect === "/odeme" ? "/odeme" : "/", replace: true });
-  }, [user, redirect, navigate]);
+    if (!user || access.loading) return;
+    if (access.isFounder) {
+      navigate({ to: "/kurucu", replace: true });
+      return;
+    }
+    if (access.isVendor) {
+      navigate({ to: "/vendor/dashboard", replace: true });
+      return;
+    }
+    navigate({ to: redirect === "/odeme" ? "/odeme" : "/", replace: true });
+  }, [user, access.loading, access.isFounder, access.isVendor, redirect, navigate]);
+
+  const vendorPortal = portal === "vendor";
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -87,12 +101,41 @@ function AuthPage() {
 
   return (
     <div className="mx-auto w-full max-w-md px-4 py-16">
-      <h1 className="text-3xl">{mode === "signin" ? "Giriş yap" : "Hesap oluştur"}</h1>
+      <div className="grid grid-cols-2 gap-1 rounded-full bg-muted p-1 text-sm">
+        {(
+          [
+            ["customer", "Müşteri girişi"],
+            ["vendor", "İşletme girişi"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => {
+              setPortal(value);
+              if (value === "vendor") setMode("signin");
+            }}
+            className={`rounded-full px-3 py-2 transition ${
+              portal === value
+                ? "bg-card font-medium shadow-card"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <h1 className="mt-6 text-3xl">
+        {vendorPortal ? "İşletme girişi" : mode === "signin" ? "Giriş yap" : "Hesap oluştur"}
+      </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Sipariş vermek ve adreslerinizi kaydetmek için hesabınızı kullanın.
+        {vendorPortal
+          ? "İşletme hesabınızla giriş yapın; doğrudan işletme panelinize yönlendirilirsiniz. İşletme hesapları kurucu tarafından tanımlanır."
+          : "Sipariş vermek ve adreslerinizi kaydetmek için hesabınızı kullanın."}
       </p>
 
-      {mode === "signin" ? (
+      {mode === "signin" && !vendorPortal ? (
         <div className="mt-6 grid grid-cols-2 gap-1 rounded-full bg-muted p-1 text-sm">
           {(
             [
@@ -190,13 +233,21 @@ function AuthPage() {
         Google ile devam et
       </Button>
 
-      <button
-        type="button"
-        onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-        className="mt-5 w-full text-sm text-muted-foreground underline-offset-4 hover:underline"
-      >
-        {mode === "signin" ? "Hesabınız yok mu? Kayıt olun" : "Zaten hesabınız var mı? Giriş yapın"}
-      </button>
+      {vendorPortal ? (
+        <p className="mt-5 text-center text-xs text-muted-foreground">
+          İşletme hesabınız yok mu? Kurucu ekiple iletişime geçerek işletmenizi tanımlatın.
+        </p>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+          className="mt-5 w-full text-sm text-muted-foreground underline-offset-4 hover:underline"
+        >
+          {mode === "signin"
+            ? "Hesabınız yok mu? Kayıt olun"
+            : "Zaten hesabınız var mı? Giriş yapın"}
+        </button>
+      )}
     </div>
   );
 }

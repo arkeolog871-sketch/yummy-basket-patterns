@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Crown, Plus, Trash2, Pencil, ShieldCheck, LogOut, ExternalLink, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAccess } from "@/hooks/useAccess";
+import { AccessDenied } from "@/components/auth/AccessDenied";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { readTwoFactorState, clearTwoFactorFlag } from "@/lib/two-factor";
 import { SecurityPanel } from "@/components/founder/SecurityPanel";
@@ -31,6 +33,7 @@ import {
   deleteUser,
   createStaffUser,
   updateOrderStatus,
+  setVendorAssignment,
 } from "@/lib/founder.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -198,6 +201,7 @@ function FounderShell({
 
 function FounderPage() {
   const { isFounder, founderExists, refresh } = useSiteSettings();
+  const access = useAccess();
   const claim = useServerFn(claimFounder);
 
   const claimMutation = useMutation({
@@ -208,6 +212,17 @@ function FounderPage() {
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
+  if (access.loading) {
+    return <div className="px-4 py-24 text-center text-sm text-muted-foreground">Yükleniyor…</div>;
+  }
+
+  // İşletme hesapları kurucu URL'ine elle girse bile 403 alır ve kendi paneline döner.
+  if (!isFounder && access.isVendor) {
+    return (
+      <AccessDenied message="Kurucu paneli işletme hesaplarına kapalıdır. İşletme panelinize yönlendiriliyorsunuz." />
+    );
+  }
 
   if (!isFounder) {
     return (
@@ -334,7 +349,11 @@ function FounderDashboard() {
         </TabsContent>
 
         <TabsContent value="kullanicilar" className="mt-6">
-          <UserPanel users={users.data ?? []} onDone={invalidate} />
+          <UserPanel
+            users={users.data ?? []}
+            businesses={data.data?.businesses ?? []}
+            onDone={invalidate}
+          />
         </TabsContent>
 
         <TabsContent value="guvenlik" className="mt-6">
@@ -1190,21 +1209,49 @@ function MenuItemPanel({
   );
 }
 
-type UserRow = { id: string; email: string; created_at: string; roles: string[] };
+type UserRow = {
+  id: string;
+  email: string;
+  created_at: string;
+  roles: string[];
+  vendorRestaurantId: string | null;
+};
 
-function UserPanel({ users, onDone }: { users: UserRow[]; onDone: () => void }) {
+function UserPanel({
+  users,
+  businesses,
+  onDone,
+}: {
+  users: UserRow[];
+  businesses: { id: string; name: string }[];
+  onDone: () => void;
+}) {
   const setRole = useServerFn(setUserRole);
   const removeUser = useServerFn(deleteUser);
   const createUser = useServerFn(createStaffUser);
+  const assignVendor = useServerFn(setVendorAssignment);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRoleValue] = useState<"founder" | "admin" | "user">("founder");
+  const [role, setRoleValue] = useState<"founder" | "admin" | "user" | "vendor">("founder");
 
   const roleMutation = useMutation({
-    mutationFn: (input: { userId: string; role: "admin" | "founder" | "user"; grant: boolean }) =>
-      setRole({ data: input }),
+    mutationFn: (input: {
+      userId: string;
+      role: "admin" | "founder" | "user" | "vendor";
+      grant: boolean;
+    }) => setRole({ data: input }),
     onSuccess: () => {
       toast.success("Yetkiler güncellendi");
+      onDone();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: (input: { userId: string; restaurantId: string | null }) =>
+      assignVendor({ data: input }),
+    onSuccess: () => {
+      toast.success("İşletme ataması güncellendi");
       onDone();
     },
     onError: (error: Error) => toast.error(error.message),
@@ -1272,15 +1319,24 @@ function UserPanel({ users, onDone }: { users: UserRow[]; onDone: () => void }) 
             <select
               id="staff-role"
               value={role}
-              onChange={(event) => setRoleValue(event.target.value as "founder" | "admin" | "user")}
+              onChange={(event) =>
+                setRoleValue(event.target.value as "founder" | "admin" | "user" | "vendor")
+              }
               className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm"
             >
               <option value="founder">Kurucu</option>
               <option value="admin">Yönetici</option>
+              <option value="vendor">İşletme</option>
               <option value="user">Kullanıcı</option>
             </select>
           </div>
         </div>
+        {role === "vendor" ? (
+          <p className="mt-3 text-xs text-muted-foreground">
+            İşletme hesabı oluşturduktan sonra aşağıdaki listeden hangi işletmeye bağlı olduğunu
+            seçin; atama yapılmadan işletme paneline erişemez.
+          </p>
+        ) : null}
         <Button type="submit" className="mt-4 rounded-full" disabled={createMutation.isPending}>
           <UserPlus className="size-4" />{" "}
           {createMutation.isPending ? "Oluşturuluyor…" : "Hesabı oluştur"}
@@ -1302,6 +1358,30 @@ function UserPanel({ users, onDone }: { users: UserRow[]; onDone: () => void }) 
                 {formatDateTime(user.created_at)} ·{" "}
                 {user.roles.length ? user.roles.join(", ") : "yetki yok"}
               </p>
+              <div className="mt-2 flex items-center gap-2">
+                <label className="text-xs text-muted-foreground" htmlFor={`vendor-${user.id}`}>
+                  İşletme:
+                </label>
+                <select
+                  id={`vendor-${user.id}`}
+                  value={user.vendorRestaurantId ?? ""}
+                  disabled={assignMutation.isPending}
+                  onChange={(event) =>
+                    assignMutation.mutate({
+                      userId: user.id,
+                      restaurantId: event.target.value || null,
+                    })
+                  }
+                  className="h-8 max-w-[14rem] rounded-lg border border-input bg-background px-2 text-xs"
+                >
+                  <option value="">Atanmadı</option>
+                  {businesses.map((business) => (
+                    <option key={business.id} value={business.id}>
+                      {business.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="flex flex-wrap gap-1">
               {(["admin", "founder"] as const).map((roleName) => {

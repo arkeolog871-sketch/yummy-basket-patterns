@@ -11,9 +11,11 @@ import {
   Search,
   ChevronDown,
   Crown,
+  Store,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAccess } from "@/hooks/useAccess";
 import { useCart } from "@/hooks/useCart";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useAppCategories, useServiceAreas, areaLabel } from "@/hooks/useTaxonomy";
@@ -34,6 +36,7 @@ export function Header() {
   const { user } = useAuth();
   const { itemCount } = useCart();
   const { settings, isFounder, founderExists } = useSiteSettings();
+  const access = useAccess();
   const { categories } = useAppCategories();
   const { areas } = useServiceAreas();
   const navigate = useNavigate();
@@ -164,7 +167,14 @@ export function Header() {
                     <MapPin className="size-4" /> Adreslerim
                   </Link>
                 </DropdownMenuItem>
-                {isFounder || !founderExists ? (
+                {access.isVendor ? (
+                  <DropdownMenuItem asChild>
+                    <Link to="/vendor/dashboard">
+                      <Store className="size-4" /> İşletme paneli
+                    </Link>
+                  </DropdownMenuItem>
+                ) : null}
+                {isFounder || (!founderExists && !access.isVendor) ? (
                   <DropdownMenuItem asChild>
                     <Link to="/kurucu">
                       <Crown className="size-4" /> Kurucu paneli

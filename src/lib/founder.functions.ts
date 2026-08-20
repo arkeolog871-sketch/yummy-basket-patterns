@@ -456,12 +456,76 @@ export const listUsers = createServerFn({ method: "GET" })
       .select("user_id, role");
     if (rolesError) throw new Error(rolesError.message);
 
+    const { data: assignments, error: assignError } = await supabaseAdmin
+      .from("vendor_assignments")
+      .select("user_id, restaurant_id");
+    if (assignError) throw new Error(assignError.message);
+
     return list.users.map((user) => ({
       id: user.id,
       email: user.email ?? "—",
       created_at: user.created_at,
       roles: (roles ?? []).filter((row) => row.user_id === user.id).map((row) => row.role),
+      vendorRestaurantId:
+        (assignments ?? []).find((row) => row.user_id === user.id)?.restaurant_id ?? null,
     }));
+  });
+
+/** Kurucu, bir kullanıcıyı tek bir işletmeye atar veya atamasını kaldırır. */
+export const setVendorAssignment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        userId: z.string().uuid(),
+        restaurantId: z.string().uuid().nullable(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { assertFounder } = await import("./founder.server");
+    const { audited } = await import("./audit.server");
+    await assertFounder(context.supabase, context.userId);
+
+    return audited(
+      {
+        actorId: context.userId,
+        actorEmail: (context.claims as { email?: string } | null)?.email ?? null,
+        action: data.restaurantId ? "vendor.assign" : "vendor.unassign",
+        entity: "vendor_assignments",
+        entityId: data.userId,
+        detail: { restaurant_id: data.restaurantId },
+      },
+      async () => {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        if (!data.restaurantId) {
+          const { error } = await supabaseAdmin
+            .from("vendor_assignments")
+            .delete()
+            .eq("user_id", data.userId);
+          if (error) throw new Error(error.message);
+          await supabaseAdmin
+            .from("user_roles")
+            .delete()
+            .eq("user_id", data.userId)
+            .eq("role", "vendor");
+          return { ok: true };
+        }
+
+        const { error } = await supabaseAdmin
+          .from("vendor_assignments")
+          .upsert(
+            { user_id: data.userId, restaurant_id: data.restaurantId },
+            { onConflict: "user_id" },
+          );
+        if (error) throw new Error(error.message);
+        const { error: roleError } = await supabaseAdmin
+          .from("user_roles")
+          .upsert({ user_id: data.userId, role: "vendor" }, { onConflict: "user_id,role" });
+        if (roleError) throw new Error(roleError.message);
+        return { ok: true };
+      },
+    );
   });
 
 export const setUserRole = createServerFn({ method: "POST" })
@@ -470,7 +534,7 @@ export const setUserRole = createServerFn({ method: "POST" })
     z
       .object({
         userId: z.string().uuid(),
-        role: z.enum(["admin", "user", "founder"]),
+        role: z.enum(["admin", "user", "founder", "vendor"]),
         grant: z.boolean(),
       })
       .parse(input),
@@ -517,7 +581,7 @@ export const createStaffUser = createServerFn({ method: "POST" })
       .object({
         email: z.string().trim().email().max(200),
         password: z.string().min(8).max(72),
-        role: z.enum(["admin", "founder", "user"]),
+        role: z.enum(["admin", "founder", "user", "vendor"]),
       })
       .parse(input),
   )

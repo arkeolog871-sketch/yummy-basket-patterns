@@ -19,8 +19,11 @@ import { Route as RestoranlarRouteImport } from './routes/restoranlar'
 import { Route as SepetRouteImport } from './routes/sepet'
 import { Route as SifreSifirlamaRouteImport } from './routes/sifre-sifirlama'
 import { Route as SiparislerimRouteImport } from './routes/siparislerim'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminSplatRouteImport } from './routes/admin.$'
 import { Route as RestoranSlugRouteImport } from './routes/restoran.$slug'
 import { Route as SiparisIdRouteImport } from './routes/siparis.$id'
+import { Route as VendorDashboardRouteImport } from './routes/vendor.dashboard'
 import { Route as ApiPublicBrandSplatRouteImport } from './routes/api/public/brand.$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -73,6 +76,16 @@ const SiparislerimRoute = SiparislerimRouteImport.update({
   path: '/siparislerim',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSplatRoute = AdminSplatRouteImport.update({
+  id: '/admin/$',
+  path: '/admin/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RestoranSlugRoute = RestoranSlugRouteImport.update({
   id: '/restoran/$slug',
   path: '/restoran/$slug',
@@ -81,6 +94,11 @@ const RestoranSlugRoute = RestoranSlugRouteImport.update({
 const SiparisIdRoute = SiparisIdRouteImport.update({
   id: '/siparis/$id',
   path: '/siparis/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VendorDashboardRoute = VendorDashboardRouteImport.update({
+  id: '/vendor/dashboard',
+  path: '/vendor/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicBrandSplatRoute = ApiPublicBrandSplatRouteImport.update({
@@ -100,8 +118,11 @@ export interface FileRoutesByFullPath {
   '/sepet': typeof SepetRoute
   '/sifre-sifirlama': typeof SifreSifirlamaRoute
   '/siparislerim': typeof SiparislerimRoute
+  '/admin/$': typeof AdminSplatRoute
   '/restoran/$slug': typeof RestoranSlugRoute
   '/siparis/$id': typeof SiparisIdRoute
+  '/vendor/dashboard': typeof VendorDashboardRoute
+  '/admin/': typeof AdminIndexRoute
   '/api/public/brand/$': typeof ApiPublicBrandSplatRoute
 }
 export interface FileRoutesByTo {
@@ -115,8 +136,11 @@ export interface FileRoutesByTo {
   '/sepet': typeof SepetRoute
   '/sifre-sifirlama': typeof SifreSifirlamaRoute
   '/siparislerim': typeof SiparislerimRoute
+  '/admin/$': typeof AdminSplatRoute
   '/restoran/$slug': typeof RestoranSlugRoute
   '/siparis/$id': typeof SiparisIdRoute
+  '/vendor/dashboard': typeof VendorDashboardRoute
+  '/admin': typeof AdminIndexRoute
   '/api/public/brand/$': typeof ApiPublicBrandSplatRoute
 }
 export interface FileRoutesById {
@@ -131,8 +155,11 @@ export interface FileRoutesById {
   '/sepet': typeof SepetRoute
   '/sifre-sifirlama': typeof SifreSifirlamaRoute
   '/siparislerim': typeof SiparislerimRoute
+  '/admin/$': typeof AdminSplatRoute
   '/restoran/$slug': typeof RestoranSlugRoute
   '/siparis/$id': typeof SiparisIdRoute
+  '/vendor/dashboard': typeof VendorDashboardRoute
+  '/admin/': typeof AdminIndexRoute
   '/api/public/brand/$': typeof ApiPublicBrandSplatRoute
 }
 export interface FileRouteTypes {
@@ -148,8 +175,11 @@ export interface FileRouteTypes {
     | '/sepet'
     | '/sifre-sifirlama'
     | '/siparislerim'
+    | '/admin/$'
     | '/restoran/$slug'
     | '/siparis/$id'
+    | '/vendor/dashboard'
+    | '/admin/'
     | '/api/public/brand/$'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -163,8 +193,11 @@ export interface FileRouteTypes {
     | '/sepet'
     | '/sifre-sifirlama'
     | '/siparislerim'
+    | '/admin/$'
     | '/restoran/$slug'
     | '/siparis/$id'
+    | '/vendor/dashboard'
+    | '/admin'
     | '/api/public/brand/$'
   id:
     | '__root__'
@@ -178,8 +211,11 @@ export interface FileRouteTypes {
     | '/sepet'
     | '/sifre-sifirlama'
     | '/siparislerim'
+    | '/admin/$'
     | '/restoran/$slug'
     | '/siparis/$id'
+    | '/vendor/dashboard'
+    | '/admin/'
     | '/api/public/brand/$'
   fileRoutesById: FileRoutesById
 }
@@ -194,8 +230,11 @@ export interface RootRouteChildren {
   SepetRoute: typeof SepetRoute
   SifreSifirlamaRoute: typeof SifreSifirlamaRoute
   SiparislerimRoute: typeof SiparislerimRoute
+  AdminSplatRoute: typeof AdminSplatRoute
   RestoranSlugRoute: typeof RestoranSlugRoute
   SiparisIdRoute: typeof SiparisIdRoute
+  VendorDashboardRoute: typeof VendorDashboardRoute
+  AdminIndexRoute: typeof AdminIndexRoute
   ApiPublicBrandSplatRoute: typeof ApiPublicBrandSplatRoute
 }
 
@@ -271,6 +310,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SiparislerimRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/$': {
+      id: '/admin/$'
+      path: '/admin/$'
+      fullPath: '/admin/$'
+      preLoaderRoute: typeof AdminSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/restoran/$slug': {
       id: '/restoran/$slug'
       path: '/restoran/$slug'
@@ -283,6 +336,13 @@ declare module '@tanstack/react-router' {
       path: '/siparis/$id'
       fullPath: '/siparis/$id'
       preLoaderRoute: typeof SiparisIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vendor/dashboard': {
+      id: '/vendor/dashboard'
+      path: '/vendor/dashboard'
+      fullPath: '/vendor/dashboard'
+      preLoaderRoute: typeof VendorDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/brand/$': {
@@ -306,8 +366,11 @@ const rootRouteChildren: RootRouteChildren = {
   SepetRoute: SepetRoute,
   SifreSifirlamaRoute: SifreSifirlamaRoute,
   SiparislerimRoute: SiparislerimRoute,
+  AdminSplatRoute: AdminSplatRoute,
   RestoranSlugRoute: RestoranSlugRoute,
   SiparisIdRoute: SiparisIdRoute,
+  VendorDashboardRoute: VendorDashboardRoute,
+  AdminIndexRoute: AdminIndexRoute,
   ApiPublicBrandSplatRoute: ApiPublicBrandSplatRoute,
 }
 export const routeTree = rootRouteImport
