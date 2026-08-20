@@ -8,6 +8,8 @@ const settingsSchema = z.object({
   brand_name: z.string().trim().min(2).max(40),
   primary_color: hexColor,
   accent_color: hexColor,
+  secondary_color: hexColor,
+  background_color: hexColor,
   theme_mode: z.enum(["light", "dark"]),
   layout_variant: z.enum(["classic", "compact", "spotlight"]),
 });

@@ -9,13 +9,17 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { readTwoFactorState, clearTwoFactorFlag } from "@/lib/two-factor";
 import { SecurityPanel } from "@/components/founder/SecurityPanel";
+import { AppearancePanel } from "@/components/founder/AppearancePanel";
+import { BrandingPanel } from "@/components/founder/BrandingPanel";
+import { CategoryPanel } from "@/components/founder/CategoryPanel";
+import { ServiceAreaPanel } from "@/components/founder/ServiceAreaPanel";
+import { useAppCategories } from "@/hooks/useTaxonomy";
 import { SECTORS } from "@/lib/sectors";
 import { formatPrice, formatDateTime, ORDER_STATUS_LABELS } from "@/lib/format";
 import {
   claimFounder,
   listAdminData,
   listUsers,
-  updateSiteSettings,
   saveBusiness,
   deleteBusiness,
   saveMenuCategory,
@@ -273,7 +277,9 @@ function FounderDashboard() {
       <Tabs defaultValue="gorunum" className="mt-8">
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
           <TabsTrigger value="gorunum">Görünüm</TabsTrigger>
+          <TabsTrigger value="gorseller">Görseller</TabsTrigger>
           <TabsTrigger value="sektorler">Kategoriler</TabsTrigger>
+          <TabsTrigger value="bolgeler">Bölgeler</TabsTrigger>
           <TabsTrigger value="isletmeler">İşletmeler</TabsTrigger>
           <TabsTrigger value="kategoriler">Menü kategorileri</TabsTrigger>
           <TabsTrigger value="urunler">Ürünler</TabsTrigger>
@@ -287,8 +293,16 @@ function FounderDashboard() {
           <AppearancePanel />
         </TabsContent>
 
+        <TabsContent value="gorseller" className="mt-6">
+          <BrandingPanel />
+        </TabsContent>
+
         <TabsContent value="sektorler" className="mt-6">
-          <SectorPanel businesses={data.data?.businesses ?? []} />
+          <CategoryPanel businesses={data.data?.businesses ?? []} />
+        </TabsContent>
+
+        <TabsContent value="bolgeler" className="mt-6">
+          <ServiceAreaPanel />
         </TabsContent>
 
         <TabsContent value="isletmeler" className="mt-6">
@@ -356,132 +370,6 @@ function FounderDashboard() {
   );
 }
 
-function AppearancePanel() {
-  const { settings, refresh } = useSiteSettings();
-  const save = useServerFn(updateSiteSettings);
-  const [form, setForm] = useState({
-    brand_name: settings.brand_name,
-    primary_color: settings.primary_color,
-    accent_color: settings.accent_color,
-    theme_mode: settings.theme_mode,
-    layout_variant: settings.layout_variant,
-  });
-
-  const mutation = useMutation({
-    mutationFn: () =>
-      save({
-        data: {
-          brand_name: form.brand_name,
-          primary_color: form.primary_color,
-          accent_color: form.accent_color,
-          theme_mode: form.theme_mode as "light" | "dark",
-          layout_variant: form.layout_variant as "classic" | "compact" | "spotlight",
-        },
-      }),
-    onSuccess: () => {
-      toast.success("Tema ayarları kaydedildi");
-      refresh();
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-
-  const layouts = [
-    { value: "classic", label: "Klasik", hint: "Sıcak sofra düzeni, 3 kolon" },
-    { value: "compact", label: "Yedek: Kompakt", hint: "Yoğun liste, daha fazla kart" },
-    { value: "spotlight", label: "Yedek: Vitrin", hint: "Büyük kartlar, tek odak" },
-  ];
-
-  return (
-    <div className="grid gap-6 rounded-3xl border border-border bg-card p-6 md:grid-cols-2">
-      <div className="space-y-4">
-        <div>
-          <Label htmlFor="brand">Marka adı</Label>
-          <Input
-            id="brand"
-            value={form.brand_name}
-            onChange={(event) => setForm({ ...form, brand_name: event.target.value })}
-            className="mt-1.5"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="primary">Ana renk</Label>
-            <div className="mt-1.5 flex items-center gap-2">
-              <input
-                id="primary"
-                type="color"
-                value={form.primary_color}
-                onChange={(event) => setForm({ ...form, primary_color: event.target.value })}
-                className="size-10 cursor-pointer rounded-xl border border-border bg-transparent"
-              />
-              <Input
-                value={form.primary_color}
-                onChange={(event) => setForm({ ...form, primary_color: event.target.value })}
-              />
-            </div>
-          </div>
-          <div>
-            <Label htmlFor="accentc">Vurgu rengi</Label>
-            <div className="mt-1.5 flex items-center gap-2">
-              <input
-                id="accentc"
-                type="color"
-                value={form.accent_color}
-                onChange={(event) => setForm({ ...form, accent_color: event.target.value })}
-                className="size-10 cursor-pointer rounded-xl border border-border bg-transparent"
-              />
-              <Input
-                value={form.accent_color}
-                onChange={(event) => setForm({ ...form, accent_color: event.target.value })}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between rounded-2xl border border-border p-4">
-          <div>
-            <p className="text-sm font-medium">Karanlık mod</p>
-            <p className="text-xs text-muted-foreground">Tüm kullanıcılar için varsayılan tema</p>
-          </div>
-          <Switch
-            checked={form.theme_mode === "dark"}
-            onCheckedChange={(checked) =>
-              setForm({ ...form, theme_mode: checked ? "dark" : "light" })
-            }
-          />
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        <p className="text-sm font-medium">Tasarım seçenekleri</p>
-        {layouts.map((layout) => (
-          <button
-            key={layout.value}
-            type="button"
-            onClick={() => setForm({ ...form, layout_variant: layout.value })}
-            className={`w-full rounded-2xl border p-4 text-left transition-colors ${
-              form.layout_variant === layout.value
-                ? "border-primary bg-warm text-warm-foreground"
-                : "border-border hover:bg-secondary"
-            }`}
-          >
-            <p className="text-sm font-semibold">{layout.label}</p>
-            <p className="text-xs text-muted-foreground">{layout.hint}</p>
-          </button>
-        ))}
-
-        <Button
-          className="mt-2 w-full rounded-full"
-          disabled={mutation.isPending}
-          onClick={() => mutation.mutate()}
-        >
-          Ayarları kaydet
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 type BusinessRow = {
   id: string;
@@ -519,6 +407,7 @@ function BusinessPanel({
 }) {
   const save = useServerFn(saveBusiness);
   const remove = useServerFn(deleteBusiness);
+  const { categories } = useAppCategories();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyBusiness);
 
@@ -590,7 +479,7 @@ function BusinessPanel({
           onChange={(event) => setForm({ ...form, tagline: event.target.value })}
         />
         <div className="flex flex-wrap gap-2">
-          {SECTORS.map((sector) => (
+          {categories.map((sector) => (
             <button
               key={sector.slug}
               type="button"
@@ -1212,41 +1101,6 @@ function UserPanel({ users, onDone }: { users: UserRow[]; onDone: () => void }) 
           </div>
         ))
       )}
-      </div>
-    </div>
-  );
-}
-function SectorPanel({ businesses }: { businesses: BusinessRow[] }) {
-  return (
-    <div className="space-y-4">
-      <div className="rounded-3xl border border-border bg-card p-6">
-        <h2 className="text-xl">Ana kategoriler</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Uygulama üst menüsünde bu 6 kategori yayınlanır. Bir işletmeyi kategoriye taşımak için
-          İşletmeler sekmesindeki kategori alanını değiştirin.
-        </p>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {SECTORS.map((sector) => {
-          const inSector = businesses.filter((business) => business.category === sector.label);
-          const active = inSector.filter((business) => business.is_active).length;
-          return (
-            <div key={sector.slug} className="rounded-3xl border border-border bg-card p-5">
-              <p className="font-display text-lg font-semibold">{sector.label}</p>
-              <p className="mt-1 text-xs text-muted-foreground">/{sector.slug}</p>
-              <p className="mt-4 text-sm">
-                <span className="font-semibold">{inSector.length}</span> işletme ·{" "}
-                <span className="text-muted-foreground">{active} yayında</span>
-              </p>
-              <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
-                {inSector.slice(0, 4).map((business) => (
-                  <li key={business.id}>• {business.name}</li>
-                ))}
-                {inSector.length === 0 ? <li>Bu kategoride kayıt yok.</li> : null}
-              </ul>
-            </div>
-          );
-        })}
       </div>
     </div>
   );

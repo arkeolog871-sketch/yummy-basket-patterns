@@ -2,17 +2,21 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Search, Clock, ShieldCheck, Sparkles } from "lucide-react";
 import { BusinessCard } from "@/components/business/BusinessCard";
-import { MOCK_BUSINESSES, SECTORS, isSectorSlug, type SectorSlug } from "@/lib/sectors";
+import { MOCK_BUSINESSES } from "@/lib/sectors";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useAppCategories } from "@/hooks/useTaxonomy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import heroImage from "@/assets/hero-sofra.jpg";
 
-type HomeSearch = { kategori?: SectorSlug | undefined; q?: string | undefined };
+type HomeSearch = { kategori?: string | undefined; q?: string | undefined };
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>): HomeSearch => ({
-    kategori: isSectorSlug(search["kategori"]) ? search["kategori"] : undefined,
+    kategori:
+      typeof search["kategori"] === "string" && /^[a-z0-9-]{2,40}$/.test(search["kategori"])
+        ? search["kategori"]
+        : undefined,
     q: typeof search["q"] === "string" && search["q"] ? search["q"] : undefined,
   }),
   head: () => ({
@@ -37,6 +41,7 @@ function Index() {
   const search = Route.useSearch();
   const navigate = useNavigate();
   const { settings } = useSiteSettings();
+  const { categories } = useAppCategories();
   const [term, setTerm] = useState(search.q ?? "");
   const activeSector = search.kategori;
 
@@ -113,8 +118,12 @@ function Index() {
 
           <div className="relative">
             <img
-              src={heroImage}
-              alt="Türk mutfağından kebap, lahmacun ve mezelerle dolu bir sofra"
+              src={settings.banner_url ?? heroImage}
+              alt={
+                settings.banner_url
+                  ? `${settings.brand_name} tanıtım afişi`
+                  : "Türk mutfağından kebap, lahmacun ve mezelerle dolu bir sofra"
+              }
               width={1024}
               height={768}
               className="aspect-[4/3] w-full rounded-4xl object-cover shadow-lifted"
@@ -128,7 +137,7 @@ function Index() {
           <div>
             <h2 className="text-2xl">
               {activeSector
-                ? SECTORS.find((sector) => sector.slug === activeSector)?.label
+                ? (categories.find((sector) => sector.slug === activeSector)?.label ?? activeSector)
                 : "Tüm işletmeler"}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -150,7 +159,7 @@ function Index() {
           >
             Tümü
           </button>
-          {SECTORS.map((sector) => {
+          {categories.map((sector) => {
             const active = activeSector === sector.slug;
             return (
               <button
