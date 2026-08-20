@@ -1064,8 +1064,6 @@ function UserPanel({ users, onDone }: { users: UserRow[]; onDone: () => void }) 
     </div>
   );
 }
-type BusinessRow = { id: string; name: string; category: string; is_active: boolean };
-
 function SectorPanel({ businesses }: { businesses: BusinessRow[] }) {
   return (
     <div className="space-y-4">
