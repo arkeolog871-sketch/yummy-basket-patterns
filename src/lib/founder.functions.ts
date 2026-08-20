@@ -230,7 +230,9 @@ export const listAdminData = createServerFn({ method: "GET" })
       context.supabase.from("menu_items").select("*").order("name"),
       context.supabase
         .from("orders")
-        .select("id, status, total, recipient_name, city, created_at")
+        .select(
+          "id, status, payment_status, total, recipient_name, phone, street, district, city, created_at, restaurants(name)",
+        )
         .order("created_at", { ascending: false })
         .limit(50),
     ]);
@@ -249,7 +251,7 @@ export const listAdminData = createServerFn({ method: "GET" })
 
 export const saveBusiness = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => businessSchema.parse(input))
+  .inputValidator((input: unknown) => businessWithHoursSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
