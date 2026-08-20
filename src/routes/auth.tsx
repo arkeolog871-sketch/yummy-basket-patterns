@@ -44,6 +44,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -66,12 +67,15 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "signup") {
+        if (phone.replace(/\D/g, "").length < 10) {
+          throw new Error("Telefon numarası en az 10 haneli olmalı.");
+        }
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/`,
-            data: { full_name: fullName },
+            data: { full_name: fullName, phone },
           },
         });
         if (error) throw error;
@@ -188,6 +192,25 @@ function AuthPage() {
               required
               className="rounded-xl"
             />
+          </div>
+        ) : null}
+        {mode === "signup" ? (
+          <div className="space-y-2">
+            <Label htmlFor="phone">Telefon numarası</Label>
+            <Input
+              id="phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="05xx xxx xx xx"
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              required
+              className="rounded-xl"
+            />
+            <p className="text-xs text-muted-foreground">
+              Kurye iletişimi ve giriş doğrulaması için zorunludur.
+            </p>
           </div>
         ) : null}
         <div className="space-y-2">

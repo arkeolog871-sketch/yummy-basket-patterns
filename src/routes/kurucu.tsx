@@ -1240,6 +1240,8 @@ function UserPanel({
   const assignVendor = useServerFn(setVendorAssignment);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [fullName, setFullName] = useState("");
   const [role, setRoleValue] = useState<"founder" | "admin" | "user" | "vendor">("founder");
 
   const roleMutation = useMutation({
@@ -1275,11 +1277,13 @@ function UserPanel({
   });
 
   const createMutation = useMutation({
-    mutationFn: () => createUser({ data: { email, password, role } }),
+    mutationFn: () => createUser({ data: { email, password, phone, fullName, role } }),
     onSuccess: () => {
       toast.success("Yetkili hesap oluşturuldu");
       setEmail("");
       setPassword("");
+      setPhone("");
+      setFullName("");
       onDone();
     },
     onError: (error: Error) => toast.error(error.message),
@@ -1296,7 +1300,8 @@ function UserPanel({
       >
         <h2 className="text-xl">Yetkili kullanıcı ekle</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Yeni hesap doğrudan oluşturulur, seçilen rol atanır ve işlem denetim kaydına yazılır.
+          E-posta ve telefon numarası zorunludur. Telefon numarası müşteri/işletme girişinde
+          kullanılan profile kaydedilir, seçilen rol atanır ve işlem denetim kaydına yazılır.
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <div className="space-y-2">
@@ -1307,6 +1312,29 @@ function UserPanel({
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
+              className="rounded-xl"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="staff-phone">Telefon numarası</Label>
+            <Input
+              id="staff-phone"
+              type="tel"
+              inputMode="tel"
+              placeholder="05xx xxx xx xx"
+              required
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              className="rounded-xl"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="staff-name">Ad soyad / işletme yetkilisi</Label>
+            <Input
+              id="staff-name"
+              required
+              value={fullName}
+              onChange={(event) => setFullName(event.target.value)}
               className="rounded-xl"
             />
           </div>
