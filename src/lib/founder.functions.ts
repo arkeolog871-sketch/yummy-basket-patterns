@@ -106,6 +106,14 @@ const timeField = z
   .nullable()
   .default(null);
 
+const businessHoursFields = {
+  opens_at: timeField,
+  closes_at: timeField,
+  is_open_manual: z.boolean().default(true),
+};
+
+const businessWithHoursSchema = businessSchema.extend(businessHoursFields);
+
 const menuCategorySchema = z.object({
   id: z.string().uuid().optional(),
   restaurant_id: z.string().uuid(),
