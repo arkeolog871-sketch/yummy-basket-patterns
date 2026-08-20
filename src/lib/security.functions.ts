@@ -7,7 +7,7 @@ export const getFounderSecurity = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { assertFounder } = await import("./founder.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
 
     const { data, error } = await context.supabase
       .from("founder_backup_codes")
@@ -29,7 +29,7 @@ export const regenerateBackupCodes = createServerFn({ method: "POST" })
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
     const { generateBackupCodes, hashBackupCode } = await import("./security.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
 
     const codes = generateBackupCodes(10);
 

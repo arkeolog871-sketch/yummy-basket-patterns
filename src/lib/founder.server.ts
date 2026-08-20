@@ -13,12 +13,54 @@ export async function isFounderUser(
   return data === true;
 }
 
+type JwtClaims = { aal?: string; amr?: Array<{ method?: string }> } | null | undefined;
+
+/** Kurucu hesabında doğrulanmış TOTP faktörü var mı? */
+async function hasVerifiedTotp(userId: string): Promise<boolean> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin.auth.admin.mfa.listFactors({ userId });
+  if (error) return false;
+  return (data?.factors ?? []).some(
+    (factor) => factor.factor_type === "totp" && factor.status === "verified",
+  );
+}
+
+/** Son 12 saat içinde yedek kod ile doğrulama yapıldı mı? */
+async function hasRecentBackupCodeUse(userId: string): Promise<boolean> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const since = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabaseAdmin
+    .from("founder_backup_codes")
+    .select("id")
+    .eq("user_id", userId)
+    .gte("used_at", since)
+    .limit(1);
+  if (error) return false;
+  return (data ?? []).length > 0;
+}
+
+/**
+ * Kurucu yetkisini ve (TOTP kayıtlıysa) ikinci adım doğrulamasını sunucu tarafında
+ * zorunlu kılar. İstemci arayüzü atlanarak istek gönderilse bile 2FA aşılamaz.
+ */
 export async function assertFounder(
   supabase: SupabaseClient<Database>,
   userId: string,
+  claims?: JwtClaims,
 ): Promise<void> {
   if (!(await isFounderUser(supabase, userId))) throw new Error("Forbidden");
+  if (claims === undefined) return;
+
+  const aal = claims?.aal ?? null;
+  const amrHasTotp = (claims?.amr ?? []).some((entry) => entry?.method === "totp");
+  if (aal === "aal2" || amrHasTotp) return;
+
+  if (!(await hasVerifiedTotp(userId))) return;
+  if (await hasRecentBackupCodeUse(userId)) return;
+
+  throw new Error("İki adımlı doğrulama gerekli");
 }
+
 
 type BusinessVendorInput = {
   restaurantId: string;

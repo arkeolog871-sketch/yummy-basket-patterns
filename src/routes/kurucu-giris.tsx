@@ -88,7 +88,7 @@ function FounderLoginPage() {
     const state = await readFounderState(userId);
     if (!state.isFounder && state.founderExists) {
       void logFounderLoginAttempt({
-        data: { email: loginEmail, status: "denied", reason: "Kurucu yetkisi yok", userId },
+        data: { email: loginEmail, status: "denied", reason: "Kurucu yetkisi yok" },
       }).catch(() => {});
       await supabase.auth.signOut();
       toast.error("Bu hesabın kurucu yetkisi yok.");
@@ -104,7 +104,7 @@ function FounderLoginPage() {
     }
 
     void logFounderLoginAttempt({
-      data: { email: loginEmail, status: "success", userId },
+      data: { email: loginEmail, status: "success" },
     }).catch(() => {});
     toast.success(state.isFounder ? "Kurucu paneline hoş geldiniz" : "Kurucu profili tanımlanabilir");
     navigate({ to: "/kurucu", replace: true });
@@ -153,7 +153,7 @@ function FounderLoginPage() {
           email: currentUser.email ?? email,
           status: "success",
           reason: useBackup ? "Yedek kod ile doğrulandı" : "2FA doğrulandı",
-          userId: currentUser.id,
+          
         },
       }).catch(() => {});
       toast.success("Doğrulama tamamlandı");

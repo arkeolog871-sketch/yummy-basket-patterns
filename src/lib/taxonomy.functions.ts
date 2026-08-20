@@ -30,7 +30,7 @@ export const saveCategory = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
     const { id, ...values } = data;
     return audited(
       {
@@ -57,7 +57,7 @@ export const deleteCategory = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
     return audited(
       {
         actorId: context.userId,
@@ -87,7 +87,7 @@ export const moveCategory = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { logAudit } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
 
     const { data: rows, error } = await context.supabase
       .from("app_categories")
@@ -132,7 +132,7 @@ export const saveServiceArea = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
     const { id, ...values } = data;
     return audited(
       {
@@ -159,7 +159,7 @@ export const deleteServiceArea = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
     return audited(
       {
         actorId: context.userId,

@@ -208,7 +208,7 @@ export const updateSiteSettings = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
     return audited(
       {
         actorId: context.userId,
@@ -233,7 +233,7 @@ export const listAdminData = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { assertFounder } = await import("./founder.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
     // Kurucu doğrulandıktan sonra iletişim alanlarını da okuyabilmek için yetkili istemci.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -268,7 +268,7 @@ export const saveBusiness = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertFounder, ensureBusinessVendorAccount } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
     const { id, ...values } = data;
     return audited(
       {
@@ -302,7 +302,7 @@ export const deleteBusiness = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
     return audited(
       {
         actorId: context.userId,
@@ -340,7 +340,7 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
     return audited(
       {
         actorId: context.userId,
@@ -367,7 +367,7 @@ export const saveMenuCategory = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
     const { id, ...values } = data;
     return audited(
       {
@@ -394,7 +394,7 @@ export const deleteMenuCategory = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
     return audited(
       {
         actorId: context.userId,
@@ -417,7 +417,7 @@ export const saveMenuItem = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
     const { id, ...values } = data;
     return audited(
       {
@@ -444,7 +444,7 @@ export const deleteMenuItem = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
     return audited(
       {
         actorId: context.userId,
@@ -465,7 +465,7 @@ export const listUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { assertFounder } = await import("./founder.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: list, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 200 });
@@ -505,7 +505,7 @@ export const setVendorAssignment = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
 
     return audited(
       {
@@ -562,7 +562,7 @@ export const setUserRole = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
 
     if (data.role === "founder" && !data.grant && data.userId === context.userId) {
       throw new Error("Kendi kurucu yetkinizi kaldıramazsınız");
@@ -616,7 +616,7 @@ export const createStaffUser = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
 
     return audited(
       {
@@ -686,7 +686,7 @@ export const deleteUser = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
     if (data.userId === context.userId) throw new Error("Kendi hesabınızı silemezsiniz");
 
     return audited(
