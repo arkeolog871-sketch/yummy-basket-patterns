@@ -27,7 +27,7 @@ export const uploadBrandAsset = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
 
     return audited(
       {
@@ -67,7 +67,7 @@ export const removeBrandAsset = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
 
     return audited(
       {

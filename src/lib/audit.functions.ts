@@ -36,7 +36,7 @@ export const listAuditLogs = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => listSchema.parse(input ?? {}))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
-    await assertFounder(context.supabase, context.userId);
+    await assertFounder(context.supabase, context.userId, context.claims as never);
 
     let query = context.supabase
       .from("audit_logs")
