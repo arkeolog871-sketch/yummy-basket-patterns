@@ -29,3 +29,18 @@ export const ORDER_STATUS_FLOW = [
   "on_the_way",
   "delivered",
 ] as const;
+
+/** Canlı takip çubuğu adımları: birden fazla durum aynı adıma düşebilir. */
+export const ORDER_TRACK_STEPS = [
+  { label: "Sipariş Alındı", statuses: ["pending", "confirmed"] },
+  { label: "Hazırlanıyor", statuses: ["preparing"] },
+  { label: "Yolda", statuses: ["on_the_way"] },
+  { label: "Teslim Edildi", statuses: ["delivered"] },
+] as const;
+
+export function orderStepIndex(status: string): number {
+  const index = ORDER_TRACK_STEPS.findIndex((step) =>
+    (step.statuses as readonly string[]).includes(status),
+  );
+  return index;
+}
