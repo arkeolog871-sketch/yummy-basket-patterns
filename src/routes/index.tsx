@@ -67,7 +67,7 @@ export const Route = createFileRoute("/")({
 function Index() {
   const search = Route.useSearch();
   const navigate = useNavigate();
-  const { settings } = useSiteSettings();
+  const { settings, hero } = useSiteSettings();
   const { categories } = useAppCategories();
   const { data: results } = useSuspenseQuery(homeQuery(search));
   const [term, setTerm] = useState(search.q ?? "");
@@ -92,14 +92,16 @@ function Index() {
         <div className="mx-auto w-full max-w-6xl px-4 py-14 lg:py-20">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1 text-xs font-semibold text-muted-foreground">
-              <Sparkles className="size-3.5" /> {results.length} işletme, dakikalar içinde kapınızda
+              <Sparkles className="size-3.5" /> {results.length} {hero.hero_badge}
             </span>
             <h1 className="mt-4 text-4xl leading-tight sm:text-5xl">
-              Mahalleniz hazır, <span className="text-accent">kapınıza geliyor</span>
+              {hero.hero_title}{" "}
+              {hero.hero_title_accent ? (
+                <span className="text-accent">{hero.hero_title_accent}</span>
+              ) : null}
             </h1>
             <p className="mt-4 max-w-md text-base text-muted-foreground">
-              Yemek, restoran, kafe, eğlence, market ve giyim: mahallenizdeki tüm işletmeler tek
-              uygulamada.
+              {hero.hero_subtitle}
             </p>
 
             <form

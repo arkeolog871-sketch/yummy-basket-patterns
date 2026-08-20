@@ -494,6 +494,10 @@ export type Database = {
           brand_name: string
           created_at: string
           favicon_url: string | null
+          hero_badge: string
+          hero_subtitle: string
+          hero_title: string
+          hero_title_accent: string
           id: string
           layout_variant: string
           logo_url: string | null
@@ -509,6 +513,10 @@ export type Database = {
           brand_name?: string
           created_at?: string
           favicon_url?: string | null
+          hero_badge?: string
+          hero_subtitle?: string
+          hero_title?: string
+          hero_title_accent?: string
           id?: string
           layout_variant?: string
           logo_url?: string | null
@@ -524,6 +532,10 @@ export type Database = {
           brand_name?: string
           created_at?: string
           favicon_url?: string | null
+          hero_badge?: string
+          hero_subtitle?: string
+          hero_title?: string
+          hero_title_accent?: string
           id?: string
           layout_variant?: string
           logo_url?: string | null
