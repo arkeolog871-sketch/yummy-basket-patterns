@@ -8,11 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-/** İşletme girişi: telefon numarası + tek kullanımlık kod. */
+/** İşletme girişi: telefon numarası veya kayıtlı e-posta + tek kullanımlık kod. */
 export function VendorPhoneLogin() {
   const requestCode = useServerFn(requestVendorLoginCode);
   const verifyCode = useServerFn(verifyVendorLoginCode);
-  const [phone, setPhone] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [code, setCode] = useState("");
   const [maskedEmail, setMaskedEmail] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -21,7 +21,7 @@ export function VendorPhoneLogin() {
     event.preventDefault();
     setBusy(true);
     try {
-      const result = await requestCode({ data: { phone } });
+      const result = await requestCode({ data: { identifier } });
       setMaskedEmail(result.maskedEmail);
       toast.success("Tek kullanımlık kod gönderildi.");
     } catch (error) {
@@ -46,7 +46,7 @@ export function VendorPhoneLogin() {
   }
 
   async function verifyVendorSession() {
-    const tokens = await verifyCode({ data: { phone, code } });
+    const tokens = await verifyCode({ data: { identifier, code } });
     const { error } = await supabase.auth.setSession({
       access_token: tokens.accessToken,
       refresh_token: tokens.refreshToken,
@@ -61,19 +61,22 @@ export function VendorPhoneLogin() {
       className="space-y-4"
     >
       <div className="space-y-2">
-        <Label htmlFor="vendor-phone">İşletme telefon numarası</Label>
+        <Label htmlFor="vendor-phone">İşletme telefonu veya e-postası</Label>
         <Input
           id="vendor-phone"
-          type="tel"
-          inputMode="tel"
-          autoComplete="tel"
-          placeholder="05xx xxx xx xx"
-          value={phone}
-          onChange={(event) => setPhone(event.target.value)}
+          type="text"
+          autoComplete="username"
+          placeholder="05xx xxx xx xx veya ornek@eposta.com"
+          value={identifier}
+          onChange={(event) => setIdentifier(event.target.value)}
           disabled={Boolean(maskedEmail)}
           required
           className="rounded-xl"
         />
+        <p className="text-xs text-muted-foreground">
+          Kayıt sırasında girilen e-posta, müşteri girişindeki hesabınızla aynıdır; ikisiyle de kod
+          alabilirsiniz.
+        </p>
       </div>
 
       {maskedEmail ? (
@@ -115,7 +118,7 @@ export function VendorPhoneLogin() {
               setCode("");
             }}
           >
-            Numarayı değiştir
+            Bilgiyi değiştir
           </button>
           <button
             type="button"

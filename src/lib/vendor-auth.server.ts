@@ -33,12 +33,22 @@ export function createServerPublicClient() {
   });
 }
 
-/** Telefon numarasına karşılık gelen işletme kullanıcısını bulur (yalnızca vendor atamaları). */
-export async function findVendorUserByPhone(
-  phone: string,
+/** Girdinin e-posta olup olmadığını anlar. */
+export function isEmailIdentifier(input: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.trim());
+}
+
+/**
+ * Telefon numarası veya e-posta adresine karşılık gelen işletme kullanıcısını bulur.
+ * E-posta, müşteri girişinde kullanılan hesabın aynısıdır.
+ */
+export async function findVendorUser(
+  identifier: string,
 ): Promise<{ userId: string; email: string } | null> {
-  const target = normalizePhone(phone);
-  if (target.length < 10) return null;
+  const raw = identifier.trim();
+  const byEmail = isEmailIdentifier(raw);
+  const target = byEmail ? raw.toLowerCase() : normalizePhone(raw);
+  if (!byEmail && target.length < 10) return null;
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -48,6 +58,15 @@ export async function findVendorUserByPhone(
   if (error) throw new Error(error.message);
   const vendorIds = (assignments ?? []).map((row) => row.user_id);
   if (vendorIds.length === 0) return null;
+
+  if (byEmail) {
+    for (const id of vendorIds) {
+      const { data: user } = await supabaseAdmin.auth.admin.getUserById(id);
+      const email = user.user?.email ?? null;
+      if (email && email.toLowerCase() === target) return { userId: id, email };
+    }
+    return null;
+  }
 
   const { data: profiles, error: profileError } = await supabaseAdmin
     .from("profiles")
