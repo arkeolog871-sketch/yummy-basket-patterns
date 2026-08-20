@@ -25,6 +25,13 @@ const businessSchema = z.object({
   name: z.string().trim().min(2).max(80),
   tagline: z.string().trim().max(160).nullable().default(null),
   category: z.string().trim().min(2).max(40),
+  sector: z
+    .string()
+    .trim()
+    .min(2)
+    .max(40)
+    .regex(/^[a-z0-9-]+$/, "Sadece küçük harf, rakam ve tire")
+    .default("yemek"),
   cuisines: z.array(z.string().trim().min(1).max(30)).max(8).default([]),
   delivery_minutes: z.number().int().min(0).max(600),
   delivery_fee: z.number().min(0).max(10000),
