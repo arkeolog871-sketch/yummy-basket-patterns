@@ -62,9 +62,75 @@ function FounderRoute() {
   async function handleSignOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
+    clearTwoFactorFlag();
     await supabase.auth.signOut();
     navigate({ to: "/kurucu-giris", replace: true });
   }
+
+  return (
+    <TwoFactorGate>
+      <FounderShell onSignOut={handleSignOut} loading={loading} email={user?.email ?? null} hasUser={Boolean(user)} />
+    </TwoFactorGate>
+  );
+}
+
+/** 2FA etkinse, ikinci adımı geçmemiş oturumlara paneli göstermez. */
+function TwoFactorGate({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const [blocked, setBlocked] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      setBlocked(false);
+      return;
+    }
+    let active = true;
+    void readTwoFactorState(user.id)
+      .then((state) => {
+        if (active) setBlocked(state.enrolled && !state.satisfied);
+      })
+      .catch(() => active && setBlocked(false));
+    return () => {
+      active = false;
+    };
+  }, [user, loading]);
+
+  if (blocked === null && user) {
+    return <div className="px-4 py-24 text-center text-sm text-muted-foreground">Doğrulanıyor…</div>;
+  }
+
+  if (blocked) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-24 text-center">
+        <span className="mx-auto flex size-14 items-center justify-center rounded-3xl bg-warm text-warm-foreground">
+          <ShieldCheck className="size-6" />
+        </span>
+        <h1 className="mt-5 text-3xl">İki adımlı doğrulama gerekli</h1>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Bu oturum ikinci adımı geçmedi. Kurucu girişinden doğrulama kodunuzu veya bir yedek kodu girin.
+        </p>
+        <Button asChild className="mt-6 rounded-full">
+          <Link to="/kurucu-giris">Doğrulamaya git</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+function FounderShell({
+  onSignOut,
+  loading,
+  email,
+  hasUser,
+}: {
+  onSignOut: () => Promise<void>;
+  loading: boolean;
+  email: string | null;
+  hasUser: boolean;
+}) {
 
   if (loading) {
     return (
@@ -72,7 +138,7 @@ function FounderRoute() {
     );
   }
 
-  if (!user) {
+  if (!hasUser) {
     return (
       <div className="mx-auto max-w-lg px-4 py-24 text-center">
         <span className="mx-auto flex size-14 items-center justify-center rounded-3xl bg-warm text-warm-foreground">
@@ -99,7 +165,7 @@ function FounderRoute() {
             </span>
             <div className="leading-tight">
               <p className="font-display text-sm font-semibold">Kurucu çalışma alanı</p>
-              <p className="text-xs text-muted-foreground">{user.email}</p>
+              <p className="text-xs text-muted-foreground">{email}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -112,7 +178,7 @@ function FounderRoute() {
               variant="outline"
               size="sm"
               className="rounded-full"
-              onClick={() => void handleSignOut()}
+              onClick={() => void onSignOut()}
             >
               <LogOut className="size-4" /> Çıkış
             </Button>
