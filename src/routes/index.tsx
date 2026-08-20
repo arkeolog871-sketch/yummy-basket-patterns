@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { Search, Clock, ShieldCheck, Sparkles } from "lucide-react";
-import { BusinessCard } from "@/components/business/BusinessCard";
-import { MOCK_BUSINESSES } from "@/lib/sectors";
+import { RestaurantCard } from "@/components/restaurant/RestaurantCard";
+import { listRestaurants } from "@/lib/catalog.functions";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,16 @@ import { Input } from "@/components/ui/input";
 import heroImage from "@/assets/hero-sofra.jpg";
 
 type HomeSearch = { kategori?: string | undefined; q?: string | undefined };
+
+function homeQuery(search: HomeSearch) {
+  return queryOptions({
+    queryKey: ["home-businesses", search.kategori ?? "", search.q ?? ""],
+    queryFn: () =>
+      listRestaurants({
+        data: { sector: search.kategori ?? undefined, search: search.q ?? undefined },
+      }),
+  });
+}
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>): HomeSearch => ({
@@ -19,6 +30,23 @@ export const Route = createFileRoute("/")({
         : undefined,
     q: typeof search["q"] === "string" && search["q"] ? search["q"] : undefined,
   }),
+  loaderDeps: ({ search }) => search,
+  loader: async ({ context, deps }) => {
+    await context.queryClient.ensureQueryData(homeQuery(deps));
+  },
+  errorComponent: () => (
+    <div className="mx-auto max-w-lg px-4 py-20 text-center">
+      <p className="font-semibold">İşletmeler şu anda yüklenemedi</p>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Lütfen sayfayı yenileyin veya birazdan tekrar deneyin.
+      </p>
+    </div>
+  ),
+  notFoundComponent: () => (
+    <div className="mx-auto max-w-lg px-4 py-20 text-center">
+      <p className="font-semibold">Sayfa bulunamadı</p>
+    </div>
+  ),
   head: () => ({
     meta: [
       { title: "SofraKapımda — Yemek, market, kafe ve daha fazlası" },
@@ -42,8 +70,11 @@ function Index() {
   const navigate = useNavigate();
   const { settings } = useSiteSettings();
   const { categories } = useAppCategories();
+  const { data: results } = useSuspenseQuery(homeQuery(search));
   const [term, setTerm] = useState(search.q ?? "");
   const activeSector = search.kategori;
+
+  useEffect(() => setTerm(search.q ?? ""), [search.q]);
 
   const gridClass =
     settings.layout_variant === "compact"
@@ -51,18 +82,6 @@ function Index() {
       : settings.layout_variant === "spotlight"
         ? "mt-7 grid gap-6 lg:grid-cols-2"
         : "mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3";
-
-  const results = useMemo(() => {
-    const q = (search.q ?? "").toLocaleLowerCase("tr");
-    return MOCK_BUSINESSES.filter((business) => {
-      if (activeSector && business.sector !== activeSector) return false;
-      if (!q) return true;
-      return [business.name, business.tagline, business.district, ...business.tags]
-        .join(" ")
-        .toLocaleLowerCase("tr")
-        .includes(q);
-    });
-  }, [activeSector, search.q]);
 
   function apply(next: HomeSearch) {
     navigate({ to: "/", search: next });
@@ -74,7 +93,7 @@ function Index() {
         <div className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-14 lg:grid-cols-2 lg:py-20">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1 text-xs font-semibold text-muted-foreground">
-              <Sparkles className="size-3.5" /> 8 restoran, 60+ tabak
+              <Sparkles className="size-3.5" /> {results.length} işletme, dakikalar içinde kapınızda
             </span>
             <h1 className="mt-4 text-4xl leading-tight sm:text-5xl">
               Mahalleniz hazır, <span className="text-accent">kapınıza geliyor</span>
@@ -199,7 +218,7 @@ function Index() {
         ) : (
           <div className={gridClass}>
             {results.map((business) => (
-              <BusinessCard key={business.id} business={business} />
+              <RestaurantCard key={business.id} restaurant={business} />
             ))}
           </div>
         )}
