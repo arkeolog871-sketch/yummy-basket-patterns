@@ -16,10 +16,11 @@ const listSchema = z.object({
 
 /** E-postayı maskeler; denetim kaydına ham istemci verisi yazılmaz. */
 function maskEmail(email: string): string {
-  const [local, domain] = email.toLowerCase().split("@");
+  const [local = "", domain = ""] = email.toLowerCase().split("@");
   const visible = local.slice(0, 2);
-  return `${visible}${"*".repeat(Math.max(local.length - 2, 1))}@${domain ?? ""}`;
+  return `${visible}${"*".repeat(Math.max(local.length - 2, 1))}@${domain}`;
 }
+
 
 /**
  * Kurucu giriş denemelerini kaydeder (giriş başarısız olabileceği için kimlik doğrulaması
