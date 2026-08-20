@@ -39,9 +39,21 @@ export function Header() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [city, setCity] = useState<string>("");
+  const [hydrated, setHydrated] = useState(false);
   const [term, setTerm] = useState("");
   const areaOptions = areas.map(areaLabel);
-  const activeCity = city || areaOptions[0] || "Bölge seçin";
+  const activeCity = (hydrated && city) || areaOptions[0] || "Bölge seçin";
+
+  useEffect(() => {
+    setHydrated(true);
+    const saved = window.localStorage.getItem("teslimat-bolgesi");
+    if (saved) setCity(saved);
+  }, []);
+
+  function selectCity(value: string) {
+    setCity(value);
+    window.localStorage.setItem("teslimat-bolgesi", value);
+  }
 
   async function handleSignOut() {
     await queryClient.cancelQueries();
@@ -83,13 +95,18 @@ export function Header() {
               Teslimat bölgesi
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuRadioGroup value={activeCity} onValueChange={setCity}>
+            <DropdownMenuRadioGroup value={activeCity} onValueChange={selectCity}>
               {areaOptions.map((option) => (
                 <DropdownMenuRadioItem key={option} value={option}>
                   {option}
                 </DropdownMenuRadioItem>
               ))}
             </DropdownMenuRadioGroup>
+            {areaOptions.length === 0 ? (
+              <p className="px-2 py-2 text-xs text-muted-foreground">
+                Henüz teslimat bölgesi tanımlanmadı. Kurucu panelinden ekleyebilirsiniz.
+              </p>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
 
