@@ -634,6 +634,36 @@ function BusinessPanel({
             onCheckedChange={(checked) => setForm({ ...form, is_active: checked })}
           />
         </div>
+        <div className="space-y-3 rounded-2xl border border-border p-3">
+          <p className="text-xs font-medium text-muted-foreground">
+            Çalışma saatleri — boş bırakılırsa 24 saat açık kabul edilir
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Açılış</Label>
+              <Input
+                type="time"
+                value={form.opens_at}
+                onChange={(event) => setForm({ ...form, opens_at: event.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Kapanış</Label>
+              <Input
+                type="time"
+                value={form.closes_at}
+                onChange={(event) => setForm({ ...form, closes_at: event.target.value })}
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm">Şu an sipariş alıyor</span>
+            <Switch
+              checked={form.is_open_manual}
+              onCheckedChange={(checked) => setForm({ ...form, is_open_manual: checked })}
+            />
+          </div>
+        </div>
         <div className="flex gap-2">
           <Button type="submit" className="rounded-full" disabled={saveMutation.isPending}>
             <Plus className="size-4" /> {editingId ? "Kaydet" : "Ekle"}
@@ -706,6 +736,9 @@ function BusinessPanel({
                           : String(business.longitude),
                       maps_url: business.maps_url ?? "",
                       is_active: business.is_active,
+                      opens_at: (business.opens_at ?? "").slice(0, 5),
+                      closes_at: (business.closes_at ?? "").slice(0, 5),
+                      is_open_manual: business.is_open_manual !== false,
                     });
                   }}
                 >
