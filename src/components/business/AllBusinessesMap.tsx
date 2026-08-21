@@ -125,7 +125,7 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
     const markers: GoogleMarker[] = [];
     let activeInfoWindow: GoogleInfoWindow | null = null;
 
-    loadMapsScript()
+    ensureMapsLibrary()
       .then(() => {
         const maps = getGoogleMaps();
         if (!containerRef.current || !maps) return;
