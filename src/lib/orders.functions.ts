@@ -23,6 +23,9 @@ export const createOrder = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
+    const { assertVerifiedEmail } = await import("./otp.server");
+    await assertVerifiedEmail(userId);
+
     const { data: restaurant, error: restaurantError } = await supabase
       .from("restaurants")
       .select("id, delivery_fee, min_order, is_active, opens_at, closes_at, is_open_manual")

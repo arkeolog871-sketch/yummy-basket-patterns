@@ -1,8 +1,8 @@
 import * as React from "react";
 
-import { Button, Preview } from "@react-email/components";
+import { Preview } from "@react-email/components";
 
-import { CodeBox, EmailShell, FallbackLink, Title, styles } from "./brand";
+import { CodeBox, EmailShell, Title, styles } from "./brand";
 
 interface MagicLinkEmailProps {
   siteName: string;
@@ -10,20 +10,16 @@ interface MagicLinkEmailProps {
   token?: string | undefined;
 }
 
-export const MagicLinkEmail = ({ siteName, confirmationUrl, token }: MagicLinkEmailProps) => (
+export const MagicLinkEmail = ({ siteName, token }: MagicLinkEmailProps) => (
   <>
     <Preview>{siteName} giriş kodunuz</Preview>
     <EmailShell siteName={siteName}>
       <Title>Giriş kodunuz</Title>
       <CodeBox token={token} />
       <p style={styles.text}>
-        Kodu giriş ekranına yazın veya aşağıdaki butonla tek tıkla giriş yapın. Kod 10 dakika
-        geçerlidir.
+        Bu 6 haneli kodu giriş ekranına yazın. Kod 10 dakika geçerlidir ve yalnızca bir kez
+        kullanılabilir. Kodu kimseyle paylaşmayın.
       </p>
-      <Button style={styles.button} href={confirmationUrl}>
-        Giriş yap
-      </Button>
-      <FallbackLink url={confirmationUrl} />
     </EmailShell>
   </>
 );
