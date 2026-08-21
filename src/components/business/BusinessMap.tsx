@@ -49,7 +49,7 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
       .catch((error) => {
         console.error(error);
         toast.error("Harita yüklenemedi.");
-        setStatus("error");
+        setStatus(isLovableDomain() ? "error" : "unsupported");
       });
 
     return () => {

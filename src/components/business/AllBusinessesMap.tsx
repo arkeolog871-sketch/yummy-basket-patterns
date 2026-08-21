@@ -120,7 +120,7 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
       .catch((error) => {
         console.error("AllBusinessesMap", error);
         (window as unknown as Record<string, unknown>).__mapError = String(error);
-        setStatus("error");
+        setStatus(isLovableDomain() ? "error" : "unsupported");
       });
 
     return () => {
