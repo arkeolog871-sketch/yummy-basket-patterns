@@ -2,33 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { MapPin, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { buildMapsUrl, type BusinessLocation } from "@/lib/maps";
-
-declare global {
-  interface Window {
-    google?: {
-      maps?: {
-        Map: new (container: HTMLElement, options: Record<string, unknown>) => GoogleMap;
-        Marker: new (options: Record<string, unknown>) => GoogleMarker;
-      };
-    };
-  }
-}
-
-interface GoogleMap {
-  setCenter(center: { lat: number; lng: number }): void;
-}
-
-interface GoogleMarker {
-  setMap(map: GoogleMap | null): void;
-}
-
-const cleanMapStyle = [
-  { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
-  { featureType: "transit", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
-  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#707070" }] },
-  { featureType: "landscape", elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
-];
+import { cleanMapStyle } from "@/lib/mapStyle";
+import type { GoogleMap, GoogleMarker, GoogleMapsLibrary } from "@/lib/google-maps-types";
 
 function isLovableDomain() {
   if (typeof window === "undefined") return false;
@@ -36,10 +11,14 @@ function isLovableDomain() {
   return host.endsWith(".lovable.app") || host.endsWith(".lovableproject.com");
 }
 
+function getGoogleMaps() {
+  return (window as unknown as { google?: { maps?: GoogleMapsLibrary } }).google?.maps;
+}
+
 function loadMapsScript(): Promise<void> {
   return new Promise((resolve, reject) => {
     if (typeof window === "undefined") return resolve();
-    if (window.google?.maps) return resolve();
+    if (getGoogleMaps()) return resolve();
 
     const key = import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY"];
     const channel = import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID"];
@@ -87,7 +66,7 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
 
     loadMapsScript()
       .then(() => {
-        const maps = window.google?.maps;
+        const maps = getGoogleMaps();
         if (!containerRef.current || !maps) return;
         map = new maps.Map(containerRef.current, {
           center: { lat, lng },

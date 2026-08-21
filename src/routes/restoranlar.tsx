@@ -1,6 +1,6 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, ClientOnly } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense, lazy } from "react";
 import { Search } from "lucide-react";
 import {
   restaurantsQuery,
@@ -10,6 +10,8 @@ import {
 import { RestaurantCard } from "@/components/restaurant/RestaurantCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+
+const AllBusinessesMap = lazy(() => import("@/components/business/AllBusinessesMap"));
 
 export const Route = createFileRoute("/restoranlar")({
   validateSearch: (search: Record<string, unknown>): RestoranSearch => ({
@@ -116,6 +118,14 @@ function RestaurantsPage() {
         })}
       </div>
 
+      <div className="mt-8">
+        <ClientOnly fallback={<MapSkeleton />}>
+          <Suspense fallback={<MapSkeleton />}>
+            <AllBusinessesMap businesses={restaurants} />
+          </Suspense>
+        </ClientOnly>
+      </div>
+
       {restaurants.length === 0 ? (
         <div className="mt-12 rounded-3xl border border-dashed border-border bg-card p-10 text-center">
           <p className="font-semibold">Aramanıza uygun restoran bulamadık</p>
@@ -133,6 +143,18 @@ function RestaurantsPage() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function MapSkeleton() {
+  return (
+    <div className="rounded-3xl border border-border/70 bg-card p-5 shadow-card">
+      <div className="flex items-center gap-2">
+        <div className="size-4 rounded-full bg-muted" />
+        <div className="h-4 w-32 rounded bg-muted" />
+      </div>
+      <div className="mt-3 h-[360px] animate-pulse rounded-2xl bg-muted" />
     </div>
   );
 }
