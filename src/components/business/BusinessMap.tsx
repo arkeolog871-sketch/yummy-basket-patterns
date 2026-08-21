@@ -3,45 +3,13 @@ import { MapPin, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { buildMapsUrl, type BusinessLocation } from "@/lib/maps";
 import { cleanMapStyle } from "@/lib/mapStyle";
+import { ensureMapsLibrary, getGoogleMaps } from "@/lib/google-maps-loader";
 import type { GoogleMap, GoogleMarker, GoogleMapsLibrary } from "@/lib/google-maps-types";
 
 function isLovableDomain() {
   if (typeof window === "undefined") return false;
   const host = window.location.hostname;
   return host.endsWith(".lovable.app") || host.endsWith(".lovableproject.com");
-}
-
-function getGoogleMaps() {
-  return (window as unknown as { google?: { maps?: GoogleMapsLibrary } }).google?.maps;
-}
-
-function loadMapsScript(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (typeof window === "undefined") return resolve();
-    if (getGoogleMaps()) return resolve();
-
-    const key = import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY"];
-    const channel = import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID"];
-    if (!key) return reject(new Error("Google Maps anahtarı yapılandırılmamış."));
-
-    const existing = document.querySelector('script[data-google-maps="true"]') as HTMLScriptElement | null;
-    if (existing) {
-      existing.addEventListener("load", () => resolve());
-      existing.addEventListener("error", () => reject(new Error("Google Maps yüklenemedi.")));
-      return;
-    }
-
-    const callbackName = "__initBusinessMap__";
-    (window as unknown as Record<string, unknown>)[callbackName] = () => resolve();
-
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&callback=${callbackName}&channel=${encodeURIComponent(channel ?? "")}`;
-    script.async = true;
-    script.defer = true;
-    script.setAttribute("data-google-maps", "true");
-    script.onerror = () => reject(new Error("Google Maps yüklenemedi."));
-    document.head.appendChild(script);
-  });
 }
 
 export function BusinessMap({ business }: { business: BusinessLocation }) {
@@ -64,7 +32,7 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
     let map: GoogleMap | null = null;
     let marker: GoogleMarker | null = null;
 
-    loadMapsScript()
+    ensureMapsLibrary()
       .then(() => {
         const maps = getGoogleMaps();
         if (!containerRef.current || !maps) return;
