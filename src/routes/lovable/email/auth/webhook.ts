@@ -13,7 +13,6 @@ const SITE_NAME = "SİLVAN CEBİMDE"
 // Projenin doğrulanmış gönderici alan adı (Cloud → Emails ile eşleşmeli).
 const SENDER_DOMAIN = "uygulamamcebimde.online"
 const ROOT_DOMAIN = "uygulamamcebimde.online"
-const FROM_DOMAIN = "uygulamamcebimde.online"
 const SITE_URL = `https://${ROOT_DOMAIN}`
 
 // The SDK handler owns verification, dispatch, and retry semantics; this file
