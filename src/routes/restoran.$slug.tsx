@@ -4,6 +4,7 @@ import { Star, Clock, Bike, Plus, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { restaurantDetailQuery } from "@/lib/catalog.queries";
 import { LocationButton } from "@/components/business/LocationButton";
+import { BusinessMap } from "@/components/business/BusinessMap";
 import { useCart } from "@/hooks/useCart";
 import { formatPrice } from "@/lib/format";
 import { isBusinessOpen, hoursLabel, closedReason } from "@/lib/hours";
