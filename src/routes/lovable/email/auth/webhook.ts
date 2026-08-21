@@ -11,7 +11,7 @@ import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
 // Configuration
 const SITE_NAME = "SİLVAN CEBİMDE"
 // Projenin doğrulanmış gönderici alan adı (Cloud → Emails ile eşleşmeli).
-const SENDER_DOMAIN = "uygulamamcebimde.online"
+const SENDER_DOMAIN = "notify.uygulamamcebimde.online"
 const ROOT_DOMAIN = "uygulamamcebimde.online"
 const SITE_URL = `https://${ROOT_DOMAIN}`
 
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
     handlers: {
       POST: async ({ request }) => {
         // Gönderici alan adı: önce apex, doğrulanmamışsa notify.* alt alan adı denenir.
-        const candidates = [SENDER_DOMAIN, `notify.${ROOT_DOMAIN}`]
+        const candidates = [SENDER_DOMAIN, ROOT_DOMAIN]
         const body = await request.arrayBuffer()
         let last: Response | null = null
         for (const domain of candidates) {
