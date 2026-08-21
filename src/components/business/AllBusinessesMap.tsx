@@ -87,7 +87,7 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
 
     loadMapsScript()
       .then(() => {
-        const maps = window.google?.maps;
+        const maps = (window as unknown as { google?: { maps?: GoogleMapsLibrary } }).google?.maps;
         if (!containerRef.current || !maps) return;
 
         map = new maps.Map(containerRef.current, {
