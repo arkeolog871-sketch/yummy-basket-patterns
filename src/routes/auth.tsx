@@ -46,6 +46,7 @@ function AuthPage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pendingVerification, setPendingVerification] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || access.loading) return;
@@ -79,7 +80,8 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        toast.success("Kayıt alındı. E-postanızı doğrulayın.");
+        setPendingVerification(email.trim());
+        toast.success("Kayıt alındı. E-postanıza gönderilen 6 haneli kodu girin.");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -166,6 +168,23 @@ function AuthPage() {
       {vendorPortal ? (
         <div className="mt-8 rounded-3xl border border-border/70 bg-card p-6 shadow-card">
           <VendorPhoneLogin />
+        </div>
+      ) : pendingVerification ? (
+        <div className="mt-6 space-y-4 rounded-3xl border border-border/70 bg-card p-6 shadow-card">
+          <p className="text-sm text-muted-foreground">
+            Hesabınız oluşturuldu ancak <strong>e-posta doğrulanmadı</strong>. {pendingVerification}
+            {" "}adresine gönderilen 6 haneli kodu girerek hesabınızı aktif edin.
+          </p>
+          <EmailCodeLogin
+            idPrefix="signup-otp"
+            allowSignUp={false}
+            initialEmail={pendingVerification}
+            startAtCode
+            onVerified={() => {
+              setPendingVerification(null);
+              toast.success("E-postanız doğrulandı, hoş geldiniz!");
+            }}
+          />
         </div>
       ) : mode === "signin" && method === "code" ? (
         <div className="mt-6 rounded-3xl border border-border/70 bg-card p-6 shadow-card">
