@@ -20,6 +20,8 @@ export async function assertVendor(
   supabase: SupabaseClient<Database>,
   userId: string,
 ): Promise<string> {
+  const { assertVerifiedEmail } = await import("./otp.server");
+  await assertVerifiedEmail(userId);
   const restaurantId = await getVendorRestaurantId(supabase, userId);
   if (!restaurantId) throw new Error("Forbidden: İşletme yetkisi bulunmuyor");
   return restaurantId;

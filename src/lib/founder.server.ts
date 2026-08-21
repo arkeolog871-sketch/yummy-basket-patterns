@@ -48,6 +48,8 @@ export async function assertFounder(
   userId: string,
   claims?: JwtClaims,
 ): Promise<void> {
+  const { assertVerifiedEmail } = await import("./otp.server");
+  await assertVerifiedEmail(userId);
   if (!(await isFounderUser(supabase, userId))) throw new Error("Forbidden");
   if (claims === undefined) return;
 
