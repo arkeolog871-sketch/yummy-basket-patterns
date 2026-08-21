@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
 import { cleanMapStyle } from "@/lib/mapStyle";
+import type { GoogleMap, GoogleMarker, GoogleInfoWindow, GoogleMapsLibrary } from "@/lib/google-maps-types";
 
 interface MappableBusiness {
   id: string;
