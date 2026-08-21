@@ -246,7 +246,15 @@ function RestaurantDetail() {
               </>
             )}
           </aside>
+
+          <div className="hidden lg:block">
+            <BusinessMap business={restaurant} />
+          </div>
         </div>
+      </div>
+
+      <div className="mx-auto w-full max-w-6xl px-4 pb-10 lg:hidden">
+        <BusinessMap business={restaurant} />
       </div>
     </div>
   );
