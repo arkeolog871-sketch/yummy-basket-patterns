@@ -128,6 +128,36 @@ export type Database = {
         }
         Relationships: []
       }
+      email_otp_guard: {
+        Row: {
+          email_hash: string
+          failed_attempts: number
+          last_sent_at: string | null
+          locked_until: string | null
+          sends_in_window: number
+          updated_at: string
+          window_started_at: string
+        }
+        Insert: {
+          email_hash: string
+          failed_attempts?: number
+          last_sent_at?: string | null
+          locked_until?: string | null
+          sends_in_window?: number
+          updated_at?: string
+          window_started_at?: string
+        }
+        Update: {
+          email_hash?: string
+          failed_attempts?: number
+          last_sent_at?: string | null
+          locked_until?: string | null
+          sends_in_window?: number
+          updated_at?: string
+          window_started_at?: string
+        }
+        Relationships: []
+      }
       founder_backup_codes: {
         Row: {
           code_hash: string
