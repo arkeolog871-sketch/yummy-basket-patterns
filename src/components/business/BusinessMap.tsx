@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { MapPin, ExternalLink } from "lucide-react";
+import { toast } from "sonner";
+import { buildMapsUrl, type BusinessLocation } from "@/lib/maps";
 
 declare global {
   interface Window {
@@ -18,9 +21,6 @@ interface GoogleMap {
 interface GoogleMarker {
   setMap(map: GoogleMap | null): void;
 }
-import { MapPin, ExternalLink } from "lucide-react";
-import { toast } from "sonner";
-import { buildMapsUrl, type BusinessLocation } from "@/lib/maps";
 
 function isLovableDomain() {
   if (typeof window === "undefined") return false;
@@ -33,8 +33,8 @@ function loadMapsScript(): Promise<void> {
     if (typeof window === "undefined") return resolve();
     if (window.google?.maps) return resolve();
 
-    const key = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
-    const channel = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID;
+    const key = import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY"];
+    const channel = import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID"];
     if (!key) return reject(new Error("Google Maps anahtarı yapılandırılmamış."));
 
     const existing = document.querySelector('script[data-google-maps="true"]') as HTMLScriptElement | null;
@@ -45,13 +45,13 @@ function loadMapsScript(): Promise<void> {
     }
 
     const callbackName = "__initBusinessMap__";
-    (window as Record<string, unknown>)[callbackName] = () => resolve();
+    (window as unknown as Record<string, unknown>)[callbackName] = () => resolve();
 
     const script = document.createElement("script");
     script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&callback=${callbackName}&channel=${encodeURIComponent(channel ?? "")}`;
     script.async = true;
     script.defer = true;
-    script.dataset.googleMaps = "true";
+    script.setAttribute("data-google-maps", "true");
     script.onerror = () => reject(new Error("Google Maps yüklenemedi."));
     document.head.appendChild(script);
   });
@@ -74,20 +74,21 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
       return;
     }
 
-    let map: google.maps.Map | null = null;
-    let marker: google.maps.Marker | null = null;
+    let map: GoogleMap | null = null;
+    let marker: GoogleMarker | null = null;
 
     loadMapsScript()
       .then(() => {
-        if (!containerRef.current || !window.google?.maps) return;
-        map = new google.maps.Map(containerRef.current, {
+        const maps = window.google?.maps;
+        if (!containerRef.current || !maps) return;
+        map = new maps.Map(containerRef.current, {
           center: { lat, lng },
           zoom: 16,
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: true,
         });
-        marker = new google.maps.Marker({
+        marker = new maps.Marker({
           position: { lat, lng },
           map,
           title: business.name,
@@ -138,9 +139,7 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
         <h3 className="flex items-center gap-2 text-base font-semibold">
           <MapPin className="size-4 text-primary" /> Konum
         </h3>
-        <p className="mt-2 text-sm text-muted-foreground">
-          İşletme konumu haritada gösterilemiyor.
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">İşletme konumu haritada gösterilemiyor.</p>
         {directionsUrl ? (
           <a
             href={directionsUrl}
