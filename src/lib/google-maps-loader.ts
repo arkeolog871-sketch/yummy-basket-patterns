@@ -20,12 +20,14 @@ function waitForMapConstructor(timeoutMs = 15000): Promise<void> {
   });
 }
 
-export async function ensureMapsLibrary(): Promise<void> {
+export async function ensureMapsLibrary(customKey?: string | null): Promise<void> {
   if (typeof window === "undefined") return;
 
   if (!mapsReady) {
     mapsReady = (async () => {
-      const key = import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY"];
+      const key =
+        (customKey && customKey.trim()) ||
+        import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY"];
       const channel = import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID"];
 
       const maps = getGoogleMaps();
