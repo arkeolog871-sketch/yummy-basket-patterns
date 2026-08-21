@@ -71,11 +71,12 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
     let map: GoogleMap | null = null;
     const markers: GoogleMarker[] = [];
     let activeInfoWindow: GoogleInfoWindow | null = null;
+    let cancelled = false;
 
     ensureMapsLibrary()
       .then(() => {
         const maps = getGoogleMaps();
-        if (!containerRef.current || !maps) return;
+        if (cancelled || !containerRef.current || !maps) return;
 
         map = new maps.Map(containerRef.current, {
           zoom: mappable.length > 1 ? 12 : 15,
@@ -100,7 +101,8 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
 
           marker.addListener("click", () => {
             activeInfoWindow?.close();
-            infoWindow.open({ map: map!, anchor: marker });
+            if (!map) return;
+            infoWindow.open({ map, anchor: marker });
             activeInfoWindow = infoWindow;
           });
 
@@ -111,18 +113,20 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
         if (mappable.length > 1) {
           map.fitBounds(bounds);
         } else {
-          const first = mappable[0]!;
+          const first = mappable[0];
+          if (!first) return;
           map.setCenter({ lat: first.lat, lng: first.lng });
         }
 
-        setStatus("ready");
+        if (!cancelled) setStatus("ready");
       })
       .catch((error) => {
         console.error("AllBusinessesMap", error);
-        setStatus(isLovableDomain() ? "error" : "unsupported");
+        if (!cancelled) setStatus(isLovableDomain() ? "error" : "unsupported");
       });
 
     return () => {
+      cancelled = true;
       activeInfoWindow?.close();
       for (const marker of markers) marker.setMap(null);
       map = null;
@@ -179,13 +183,14 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
       <p className="mt-1 text-sm text-muted-foreground">
         Harita üzerindeki pinlere tıklayarak işletme detaylarını inceleyebilirsiniz.
       </p>
-      <div
-        ref={containerRef}
-        className="mt-3 aspect-[16/9] w-full overflow-hidden rounded-2xl bg-muted"
-        aria-label="Tüm işletmeler haritası"
-      >
+      <div className="relative mt-3 aspect-[16/9] w-full overflow-hidden rounded-2xl bg-muted">
+        <div
+          ref={containerRef}
+          className="absolute inset-0"
+          aria-label="Tüm işletmeler haritası"
+        />
         {status === "loading" ? (
-          <div className="flex h-full items-center justify-center">
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-muted">
             <span className="text-sm text-muted-foreground">Harita yükleniyor…</span>
           </div>
         ) : null}
