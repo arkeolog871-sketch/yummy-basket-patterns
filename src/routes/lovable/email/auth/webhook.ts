@@ -21,11 +21,34 @@ const SITE_URL = `https://${ROOT_DOMAIN}`
 export const Route = createFileRoute("/lovable/email/auth/webhook")({
   server: {
     handlers: {
-      POST: ({ request }) => {
-        const handler = createAuthEmailHandler({
+      POST: async ({ request }) => {
+        // Gönderici alan adı: önce apex, doğrulanmamışsa notify.* alt alan adı denenir.
+        const candidates = [SENDER_DOMAIN, `notify.${ROOT_DOMAIN}`]
+        const body = await request.arrayBuffer()
+        let last: Response | null = null
+        for (const domain of candidates) {
+          const attempt = buildHandler(domain)
+          const response = await attempt(
+            new Request(request.url, { method: 'POST', headers: request.headers, body }),
+          )
+          if (response.ok) return response
+          last = response
+          console.error('[auth-email] gönderim başarısız', {
+            senderDomain: domain,
+            status: response.status,
+          })
+        }
+        return last ?? new Response('Failed to send email', { status: 500 })
+      },
+    },
+  },
+})
+
+function buildHandler(senderDomain: string) {
+  return createAuthEmailHandler({
           apiKey: process.env['LOVABLE_API_KEY']!,
-          from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
-          senderDomain: SENDER_DOMAIN,
+          from: `${SITE_NAME} <noreply@${senderDomain}>`,
+          senderDomain,
           sendUrl: process.env['LOVABLE_SEND_URL'],
           emails: {
             signup: {
