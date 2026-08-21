@@ -167,3 +167,28 @@ export async function assertVerifiedEmail(userId: string): Promise<void> {
     throw new Error("E-posta adresiniz doğrulanmadı. Lütfen size gönderilen 6 haneli kodu girin.");
   }
 }
+
+/**
+ * Kayıt: hesabı sunucu tarafında doğrulanmamış olarak oluşturur.
+ * E-posta gönderimi yapılmaz; kod tek bir akıştan (OTP) gönderilir.
+ */
+export async function createUnverifiedAccount(input: {
+  email: string;
+  password: string;
+  fullName: string;
+  phone: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { error } = await supabaseAdmin.auth.admin.createUser({
+    email: input.email,
+    password: input.password,
+    email_confirm: false,
+    user_metadata: { full_name: input.fullName, phone: input.phone },
+  });
+  if (!error) return { ok: true };
+  if (/already|registered|exists/i.test(error.message)) {
+    return { ok: false, error: "Bu e-posta ile bir hesap zaten var. Giriş yapmayı deneyin." };
+  }
+  console.error("[signup] hesap oluşturulamadı:", error.message);
+  return { ok: false, error: "Hesap oluşturulamadı. Lütfen tekrar deneyin." };
+}
