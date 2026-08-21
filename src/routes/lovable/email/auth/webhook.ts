@@ -10,9 +10,9 @@ import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
 
 // Configuration
 const SITE_NAME = "SİLVAN CEBİMDE"
-const SENDER_DOMAIN = "notify.uygulamamcebimde.online"
+// Projenin doğrulanmış gönderici alan adı (Cloud → Emails ile eşleşmeli).
+const SENDER_DOMAIN = "uygulamamcebimde.online"
 const ROOT_DOMAIN = "uygulamamcebimde.online"
-const FROM_DOMAIN = "notify.uygulamamcebimde.online"
 const SITE_URL = `https://${ROOT_DOMAIN}`
 
 // The SDK handler owns verification, dispatch, and retry semantics; this file
@@ -20,11 +20,34 @@ const SITE_URL = `https://${ROOT_DOMAIN}`
 export const Route = createFileRoute("/lovable/email/auth/webhook")({
   server: {
     handlers: {
-      POST: ({ request }) => {
-        const handler = createAuthEmailHandler({
+      POST: async ({ request }) => {
+        // Gönderici alan adı: önce apex, doğrulanmamışsa notify.* alt alan adı denenir.
+        const candidates = [SENDER_DOMAIN, `notify.${ROOT_DOMAIN}`]
+        const body = await request.arrayBuffer()
+        let last: Response | null = null
+        for (const domain of candidates) {
+          const attempt = buildHandler(domain)
+          const response = await attempt(
+            new Request(request.url, { method: 'POST', headers: request.headers, body }),
+          )
+          if (response.ok) return response
+          last = response
+          console.error('[auth-email] gönderim başarısız', {
+            senderDomain: domain,
+            status: response.status,
+          })
+        }
+        return last ?? new Response('Failed to send email', { status: 500 })
+      },
+    },
+  },
+})
+
+function buildHandler(senderDomain: string) {
+  return createAuthEmailHandler({
           apiKey: process.env['LOVABLE_API_KEY']!,
-          from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
-          senderDomain: SENDER_DOMAIN,
+          from: `${SITE_NAME} <noreply@${senderDomain}>`,
+          senderDomain,
           sendUrl: process.env['LOVABLE_SEND_URL'],
           emails: {
             signup: {
@@ -83,9 +106,5 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
                 React.createElement(ReauthenticationEmail, { token: data.token ?? '', siteName: SITE_NAME }),
             },
           },
-        })
-        return handler(request)
-      },
-    },
-  },
-})
+  })
+}

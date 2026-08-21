@@ -26,17 +26,33 @@ export const sendEmailVerificationCode = createServerFn({ method: "POST" })
     if (!reserved.ok) return { ok: false as const, error: reserved.error };
 
     const supabase = createServerAuthClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email: data.email,
-      options: { shouldCreateUser: data.allowSignUp ?? false },
-    });
+    let error: { message: string; status?: number | undefined } | null = null;
+    try {
+      const result = await supabase.auth.signInWithOtp({
+        email: data.email,
+        options: { shouldCreateUser: data.allowSignUp ?? false },
+      });
+      error = result.error
+        ? { message: result.error.message, status: result.error.status }
+        : null;
+    } catch (thrown) {
+      error = { message: thrown instanceof Error ? thrown.message : String(thrown) };
+    }
     if (error) {
+      // Gönderim gerçekten başarısız — ayrıntı sunucu loglarına yazılır.
+      console.error("[otp] doğrulama kodu gönderilemedi", {
+        status: error.status ?? null,
+        message: error.message,
+      });
+      const hookFailure = /hook/i.test(error.message);
       return {
         ok: false as const,
         error:
           error.status === 429
             ? "Çok sık kod istediniz. Lütfen kısa süre sonra tekrar deneyin."
-            : "Doğrulama kodu şu anda gönderilemedi. Lütfen birkaç saniye sonra tekrar deneyin.",
+            : hookFailure
+              ? "E-posta gönderim servisine ulaşılamadı, kod gönderilemedi. Lütfen tekrar deneyin."
+              : "Doğrulama kodu şu anda gönderilemedi. Lütfen birkaç saniye sonra tekrar deneyin.",
       };
     }
 
@@ -100,4 +116,32 @@ export const verifyEmailVerificationCode = createServerFn({ method: "POST" })
       refreshToken: verified.session.refresh_token,
       userId: verified.user?.id ?? "",
     };
+  });
+
+const registerSchema = z.object({
+  email: z.string().trim().email("Geçerli bir e-posta adresi girin").max(255),
+  password: z.string().min(6, "Şifre en az 6 karakter olmalı").max(72),
+  fullName: z.string().trim().min(2, "Ad soyad girin").max(120),
+  phone: z.string().trim().min(10, "Telefon numarası en az 10 haneli olmalı").max(20),
+});
+
+/**
+ * Kayıt: hesap doğrulanmamış olarak oluşturulur ve TEK doğrulama akışı olan
+ * 6 haneli kod gönderilir. E-posta gerçekten gönderilemezse ok:false döner.
+ */
+export const registerWithEmailCode = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => registerSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { createUnverifiedAccount } = await import("./otp.server");
+    const created = await createUnverifiedAccount(data);
+    if (!created.ok) return { ok: false as const, error: created.error };
+
+    const sent = await sendEmailVerificationCode({ data: { email: data.email } });
+    if (!sent.ok) {
+      return {
+        ok: false as const,
+        error: `Hesabınız oluşturuldu ancak kod gönderilemedi: ${sent.error}`,
+      };
+    }
+    return { ok: true as const, cooldownSeconds: sent.cooldownSeconds };
   });
