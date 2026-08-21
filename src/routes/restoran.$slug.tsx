@@ -4,6 +4,7 @@ import { Star, Clock, Bike, Plus, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { restaurantDetailQuery } from "@/lib/catalog.queries";
 import { LocationButton } from "@/components/business/LocationButton";
+import { BusinessMap } from "@/components/business/BusinessMap";
 import { useCart } from "@/hooks/useCart";
 import { formatPrice } from "@/lib/format";
 import { isBusinessOpen, hoursLabel, closedReason } from "@/lib/hours";
@@ -245,7 +246,15 @@ function RestaurantDetail() {
               </>
             )}
           </aside>
+
+          <div className="hidden lg:block">
+            <BusinessMap business={restaurant} />
+          </div>
         </div>
+      </div>
+
+      <div className="mx-auto w-full max-w-6xl px-4 pb-10 lg:hidden">
+        <BusinessMap business={restaurant} />
       </div>
     </div>
   );
