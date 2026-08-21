@@ -339,14 +339,16 @@ function VendorDashboard() {
           </TabsContent>
 
           <TabsContent value="urunler" className="mt-6">
-            {items.length === 0 ? (
-              <EmptyState
-                title="Henüz ürün eklenmemiş"
-                description="Menünüze ürün eklenmesi için kurucu ile iletişime geçin; ürünler eklendiğinde stok durumunu buradan yönetebilirsiniz."
-                icon={<Package className="size-5" />}
-              />
-            ) : (
-              <div className="overflow-hidden rounded-3xl border border-border bg-card">
+            <ProductPanel
+              items={items as never}
+              categories={dashboard.data?.categories ?? []}
+              onChanged={invalidate}
+            />
+            {items.length > 0 ? (
+              <div className="mt-6 overflow-hidden rounded-3xl border border-border bg-card">
+                <p className="border-b border-border/60 p-4 text-sm font-semibold">
+                  Hızlı stok durumu
+                </p>
                 {items.map((item) => (
                   <div
                     key={item.id}
@@ -360,9 +362,7 @@ function VendorDashboard() {
                     </div>
                     <label className="flex items-center gap-3 text-sm">
                       <span
-                        className={
-                          item.is_available ? "font-medium" : "text-muted-foreground"
-                        }
+                        className={item.is_available ? "font-medium" : "text-muted-foreground"}
                       >
                         {item.is_available ? "Stokta var" : "Stokta yok"}
                       </span>
@@ -378,8 +378,18 @@ function VendorDashboard() {
                   </div>
                 ))}
               </div>
-            )}
+            ) : null}
           </TabsContent>
+
+          <TabsContent value="gorseller" className="mt-6">
+            <MediaPanel
+              logoUrl={restaurant.logo_url ?? null}
+              coverUrl={restaurant.cover_image_url ?? null}
+              media={dashboard.data?.media ?? []}
+              onChanged={invalidate}
+            />
+          </TabsContent>
+
 
           <TabsContent value="guvenlik" className="mt-6">
             <PasswordPanel />
