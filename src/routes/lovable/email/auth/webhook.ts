@@ -22,7 +22,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
     handlers: {
       POST: async ({ request }) => {
         // Gönderici alan adı: önce apex, doğrulanmamışsa notify.* alt alan adı denenir.
-        const candidates = [SENDER_DOMAIN, `notify.${ROOT_DOMAIN}`]
+        const candidates = [SENDER_DOMAIN, ROOT_DOMAIN]
         const body = await request.arrayBuffer()
         let last: Response | null = null
         for (const domain of candidates) {
