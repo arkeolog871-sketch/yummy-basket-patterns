@@ -40,7 +40,23 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
       email: vendor.email,
       options: { shouldCreateUser: false },
     });
-    if (error) throw new Error(error.message);
+    if (error) {
+      await logAudit({
+        actorId: vendor.userId,
+        actorEmail: vendor.email,
+        action: "vendor.login.code_request",
+        entity: "vendor_assignments",
+        entityId: vendor.userId,
+        status: "denied",
+        detail: { reason: error.message },
+      });
+      return {
+        ok: false as const,
+        error:
+          "Kod e-postası şu anda gönderilemedi (e-posta servisi yanıt vermedi). Lütfen birkaç saniye sonra tekrar deneyin.",
+      };
+    }
+
 
     await logAudit({
       actorId: vendor.userId,
