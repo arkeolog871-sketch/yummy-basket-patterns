@@ -26,7 +26,7 @@ export type HeroContent = {
 
 export const DEFAULT_SETTINGS: SiteSettings = {
   id: "global",
-  brand_name: "SofraKapımda",
+  brand_name: "SİLVAN CEBİMDE",
   primary_color: "#ff8c42",
   accent_color: "#e63946",
   secondary_color: "#ffe9d6",

@@ -18,10 +18,10 @@ export const Route = createFileRoute("/restoran/$slug")({
   head: ({ loaderData }) => {
     if (!loaderData) {
       return {
-        meta: [{ title: "Restoran bulunamadı — SofraKapımda" }, { name: "robots", content: "noindex" }],
+        meta: [{ title: "Restoran bulunamadı — SİLVAN CEBİMDE" }, { name: "robots", content: "noindex" }],
       };
     }
-    const title = `${loaderData.name} — SofraKapımda`;
+    const title = `${loaderData.name} — SİLVAN CEBİMDE`;
     const description = loaderData.tagline ?? `${loaderData.name} menüsünden sipariş verin.`;
     return {
       meta: [

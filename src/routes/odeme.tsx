@@ -14,9 +14,9 @@ import { Textarea } from "@/components/ui/textarea";
 export const Route = createFileRoute("/odeme")({
   head: () => ({
     meta: [
-      { title: "Ödeme ve sipariş onayı — SofraKapımda" },
+      { title: "Ödeme ve sipariş onayı — SİLVAN CEBİMDE" },
       { name: "description", content: "Teslimat adresinizi seçin, sipariş notunuzu ekleyin ve siparişinizi onaylayın." },
-      { property: "og:title", content: "Ödeme ve sipariş onayı — SofraKapımda" },
+      { property: "og:title", content: "Ödeme ve sipariş onayı — SİLVAN CEBİMDE" },
       { property: "og:description", content: "Adresinizi seçin ve siparişinizi tamamlayın." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

@@ -46,13 +46,13 @@ import { AuditLogPanel } from "@/components/founder/AuditLogPanel";
 export const Route = createFileRoute("/kurucu")({
   head: () => ({
     meta: [
-      { title: "Kurucu Paneli — SofraKapımda" },
+      { title: "Kurucu Paneli — SİLVAN CEBİMDE" },
       {
         name: "description",
         content:
           "Kurucu profili: tema ve renk ayarları, işletme, kategori, ürün, kullanıcı ve sipariş yönetimi.",
       },
-      { property: "og:title", content: "Kurucu Paneli — SofraKapımda" },
+      { property: "og:title", content: "Kurucu Paneli — SİLVAN CEBİMDE" },
       {
         property: "og:description",
         content: "Tüm işletme, ürün, kullanıcı ve tasarım ayarlarını tek panelden yönetin.",

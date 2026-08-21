@@ -34,13 +34,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export const Route = createFileRoute("/vendor/dashboard")({
   head: () => ({
     meta: [
-      { title: "İşletme Paneli — SofraKapımda" },
+      { title: "İşletme Paneli — SİLVAN CEBİMDE" },
       {
         name: "description",
         content:
           "İşletme paneli: kendi siparişlerinizi takip edin, teslimat durumunu güncelleyin, stok ve mağaza durumunu yönetin.",
       },
-      { property: "og:title", content: "İşletme Paneli — SofraKapımda" },
+      { property: "og:title", content: "İşletme Paneli — SİLVAN CEBİMDE" },
       {
         property: "og:description",
         content: "Siparişleri, stok durumunu ve mağaza açık/kapalı durumunu tek ekrandan yönetin.",

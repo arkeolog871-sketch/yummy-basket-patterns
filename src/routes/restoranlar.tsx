@@ -26,12 +26,12 @@ export const Route = createFileRoute("/restoranlar")({
   },
   head: () => ({
     meta: [
-      { title: "Restoranlar — SofraKapımda" },
+      { title: "Restoranlar — SİLVAN CEBİMDE" },
       {
         name: "description",
         content: "Kategoriye göre filtreleyin, arama yapın ve mahallenizin en iyi mutfaklarını keşfedin.",
       },
-      { property: "og:title", content: "Restoranlar — SofraKapımda" },
+      { property: "og:title", content: "Restoranlar — SİLVAN CEBİMDE" },
       {
         property: "og:description",
         content: "Kategoriye göre filtreleyin ve mahallenizin en iyi mutfaklarını keşfedin.",
