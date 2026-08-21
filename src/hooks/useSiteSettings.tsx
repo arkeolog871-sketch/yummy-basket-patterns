@@ -80,7 +80,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from("site_settings")
         .select(
-          "id, brand_name, primary_color, accent_color, secondary_color, background_color, logo_url, favicon_url, banner_url, theme_mode, layout_variant, hero_badge, hero_title, hero_title_accent, hero_subtitle",
+          "id, brand_name, primary_color, accent_color, secondary_color, background_color, logo_url, favicon_url, banner_url, theme_mode, layout_variant, maps_api_key, maps_allowed_referrers, hero_badge, hero_title, hero_title_accent, hero_subtitle",
         )
         .eq("id", "global")
         .maybeSingle();
