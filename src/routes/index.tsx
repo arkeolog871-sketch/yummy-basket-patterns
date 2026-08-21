@@ -1,6 +1,6 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, ClientOnly } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense, lazy } from "react";
 import { Search, Clock, ShieldCheck, Sparkles } from "lucide-react";
 import { RestaurantCard } from "@/components/restaurant/RestaurantCard";
 import { homeQuery, type HomeSearch } from "@/lib/catalog.queries";
@@ -8,6 +8,8 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
+const AllBusinessesMap = lazy(() => import("@/components/business/AllBusinessesMap"));
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>): HomeSearch => ({
