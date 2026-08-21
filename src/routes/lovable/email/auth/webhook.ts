@@ -11,7 +11,7 @@ import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
 // Configuration
 const SITE_NAME = "SİLVAN CEBİMDE"
 // Projenin doğrulanmış gönderici alan adı (Cloud → Emails ile eşleşmeli).
-const SENDER_DOMAIN = "uygulamamcebimde.online"
+const SENDER_DOMAIN = "notify.uygulamamcebimde.online"
 const ROOT_DOMAIN = "uygulamamcebimde.online"
 const SITE_URL = `https://${ROOT_DOMAIN}`
 
