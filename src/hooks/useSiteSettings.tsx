@@ -38,6 +38,8 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   banner_url: null,
   theme_mode: "light",
   layout_variant: "classic",
+  maps_api_key: null,
+  maps_allowed_referrers: null,
 };
 
 export const DEFAULT_HERO: HeroContent = {
