@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
 import { cleanMapStyle } from "@/lib/mapStyle";
 import { ensureMapsLibrary, getGoogleMaps } from "@/lib/google-maps-loader";
-import type { GoogleMap, GoogleMarker, GoogleInfoWindow, GoogleMapsLibrary } from "@/lib/google-maps-types";
+import type { GoogleMap, GoogleMarker, GoogleInfoWindow } from "@/lib/google-maps-types";
 
 interface MappableBusiness {
   id: string;
@@ -119,7 +119,6 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
       })
       .catch((error) => {
         console.error("AllBusinessesMap", error);
-        (window as unknown as Record<string, unknown>).__mapError = String(error);
         setStatus(isLovableDomain() ? "error" : "unsupported");
       });
 

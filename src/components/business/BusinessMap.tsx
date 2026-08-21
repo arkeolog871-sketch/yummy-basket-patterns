@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { buildMapsUrl, type BusinessLocation } from "@/lib/maps";
 import { cleanMapStyle } from "@/lib/mapStyle";
 import { ensureMapsLibrary, getGoogleMaps } from "@/lib/google-maps-loader";
-import type { GoogleMap, GoogleMarker, GoogleMapsLibrary } from "@/lib/google-maps-types";
+import type { GoogleMap, GoogleMarker } from "@/lib/google-maps-types";
 
 function isLovableDomain() {
   if (typeof window === "undefined") return false;
