@@ -26,7 +26,7 @@ export const sendEmailVerificationCode = createServerFn({ method: "POST" })
     if (!reserved.ok) return { ok: false as const, error: reserved.error };
 
     const supabase = createServerAuthClient();
-    let error: { message: string; status?: number } | null = null;
+    let error: { message: string; status?: number | undefined } | null = null;
     try {
       const result = await supabase.auth.signInWithOtp({
         email: data.email,
