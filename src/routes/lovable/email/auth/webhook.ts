@@ -107,9 +107,5 @@ function buildHandler(senderDomain: string) {
                 React.createElement(ReauthenticationEmail, { token: data.token ?? '', siteName: SITE_NAME }),
             },
           },
-        })
-        return handler(request)
-      },
-    },
-  },
-})
+  })
+}
