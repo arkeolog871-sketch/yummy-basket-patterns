@@ -200,6 +200,26 @@ function Index() {
           </div>
         )}
       </section>
+
+      <section className="mx-auto w-full max-w-6xl px-4 pb-16">
+        <ClientOnly fallback={<MapSkeleton />}>
+          <Suspense fallback={<MapSkeleton />}>
+            <AllBusinessesMap businesses={results} />
+          </Suspense>
+        </ClientOnly>
+      </section>
+    </div>
+  );
+}
+
+function MapSkeleton() {
+  return (
+    <div className="rounded-3xl border border-border/70 bg-card p-5 shadow-card">
+      <div className="flex items-center gap-2">
+        <div className="size-4 rounded-full bg-muted" />
+        <div className="h-4 w-32 rounded bg-muted" />
+      </div>
+      <div className="mt-3 h-[360px] animate-pulse rounded-2xl bg-muted" />
     </div>
   );
 }
