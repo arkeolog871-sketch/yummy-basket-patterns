@@ -1,8 +1,8 @@
 import * as React from "react";
 
-import { Button, Preview } from "@react-email/components";
+import { Preview } from "@react-email/components";
 
-import { CodeBox, EmailShell, FallbackLink, Title, styles } from "./brand";
+import { CodeBox, EmailShell, Title, styles } from "./brand";
 
 interface SignupEmailProps {
   siteName: string;
@@ -12,14 +12,9 @@ interface SignupEmailProps {
   token?: string | undefined;
 }
 
-export const SignupEmail = ({
-  siteName,
-  recipient,
-  confirmationUrl,
-  token,
-}: SignupEmailProps) => (
+export const SignupEmail = ({ siteName, recipient, token }: SignupEmailProps) => (
   <>
-    <Preview>{siteName} hesabınızı doğrulayın</Preview>
+    <Preview>{siteName} doğrulama kodunuz</Preview>
     <EmailShell siteName={siteName}>
       <Title>Hesabınızı doğrulayın</Title>
       <p style={styles.text}>
@@ -27,13 +22,9 @@ export const SignupEmail = ({
       </p>
       <CodeBox token={token} />
       <p style={styles.text}>
-        Kodu uygulamaya girebilir ya da aşağıdaki butonla doğrudan doğrulayabilirsiniz. Kod 10
-        dakika geçerlidir.
+        Bu 6 haneli kodu uygulamadaki doğrulama ekranına girin. Kod 10 dakika geçerlidir ve yalnızca
+        bir kez kullanılabilir. Kodu kimseyle paylaşmayın.
       </p>
-      <Button style={styles.button} href={confirmationUrl}>
-        E-postamı doğrula
-      </Button>
-      <FallbackLink url={confirmationUrl} />
     </EmailShell>
   </>
 );
