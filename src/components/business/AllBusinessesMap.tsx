@@ -28,10 +28,14 @@ function isLovableDomain() {
   return host.endsWith(".lovable.app") || host.endsWith(".lovableproject.com");
 }
 
+function getGoogleMaps() {
+  return (window as unknown as { google?: { maps?: GoogleMapsLibrary } }).google?.maps;
+}
+
 function loadMapsScript(): Promise<void> {
   return new Promise((resolve, reject) => {
     if (typeof window === "undefined") return resolve();
-    if (window.google?.maps) return resolve();
+    if (getGoogleMaps()) return resolve();
 
     const key = import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY"];
     const channel = import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID"];
