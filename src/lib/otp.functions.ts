@@ -117,3 +117,31 @@ export const verifyEmailVerificationCode = createServerFn({ method: "POST" })
       userId: verified.user?.id ?? "",
     };
   });
+
+const registerSchema = z.object({
+  email: z.string().trim().email("Geçerli bir e-posta adresi girin").max(255),
+  password: z.string().min(6, "Şifre en az 6 karakter olmalı").max(72),
+  fullName: z.string().trim().min(2, "Ad soyad girin").max(120),
+  phone: z.string().trim().min(10, "Telefon numarası en az 10 haneli olmalı").max(20),
+});
+
+/**
+ * Kayıt: hesap doğrulanmamış olarak oluşturulur ve TEK doğrulama akışı olan
+ * 6 haneli kod gönderilir. E-posta gerçekten gönderilemezse ok:false döner.
+ */
+export const registerWithEmailCode = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => registerSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { createUnverifiedAccount } = await import("./otp.server");
+    const created = await createUnverifiedAccount(data);
+    if (!created.ok) return { ok: false as const, error: created.error };
+
+    const sent = await sendEmailVerificationCode({ data: { email: data.email } });
+    if (!sent.ok) {
+      return {
+        ok: false as const,
+        error: `Hesabınız oluşturuldu ancak kod gönderilemedi: ${sent.error}`,
+      };
+    }
+    return { ok: true as const, cooldownSeconds: sent.cooldownSeconds };
+  });
