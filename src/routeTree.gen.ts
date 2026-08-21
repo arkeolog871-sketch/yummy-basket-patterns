@@ -25,6 +25,7 @@ import { Route as RestoranSlugRouteImport } from './routes/restoran.$slug'
 import { Route as SiparisIdRouteImport } from './routes/siparis.$id'
 import { Route as VendorDashboardRouteImport } from './routes/vendor.dashboard'
 import { Route as ApiPublicBrandSplatRouteImport } from './routes/api/public/brand.$'
+import { Route as ApiPublicMediaSplatRouteImport } from './routes/api/public/media.$'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 
@@ -108,6 +109,11 @@ const ApiPublicBrandSplatRoute = ApiPublicBrandSplatRouteImport.update({
   path: '/api/public/brand/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicMediaSplatRoute = ApiPublicMediaSplatRouteImport.update({
+  id: '/api/public/media/$',
+  path: '/api/public/media/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
   id: '/lovable/email/auth/preview',
   path: '/lovable/email/auth/preview',
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/vendor/dashboard': typeof VendorDashboardRoute
   '/admin/': typeof AdminIndexRoute
   '/api/public/brand/$': typeof ApiPublicBrandSplatRoute
+  '/api/public/media/$': typeof ApiPublicMediaSplatRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
 }
@@ -156,6 +163,7 @@ export interface FileRoutesByTo {
   '/vendor/dashboard': typeof VendorDashboardRoute
   '/admin': typeof AdminIndexRoute
   '/api/public/brand/$': typeof ApiPublicBrandSplatRoute
+  '/api/public/media/$': typeof ApiPublicMediaSplatRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
 }
@@ -177,6 +185,7 @@ export interface FileRoutesById {
   '/vendor/dashboard': typeof VendorDashboardRoute
   '/admin/': typeof AdminIndexRoute
   '/api/public/brand/$': typeof ApiPublicBrandSplatRoute
+  '/api/public/media/$': typeof ApiPublicMediaSplatRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
 }
@@ -199,6 +208,7 @@ export interface FileRouteTypes {
     | '/vendor/dashboard'
     | '/admin/'
     | '/api/public/brand/$'
+    | '/api/public/media/$'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -219,6 +229,7 @@ export interface FileRouteTypes {
     | '/vendor/dashboard'
     | '/admin'
     | '/api/public/brand/$'
+    | '/api/public/media/$'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
   id:
@@ -239,6 +250,7 @@ export interface FileRouteTypes {
     | '/vendor/dashboard'
     | '/admin/'
     | '/api/public/brand/$'
+    | '/api/public/media/$'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
   fileRoutesById: FileRoutesById
@@ -260,6 +272,7 @@ export interface RootRouteChildren {
   VendorDashboardRoute: typeof VendorDashboardRoute
   AdminIndexRoute: typeof AdminIndexRoute
   ApiPublicBrandSplatRoute: typeof ApiPublicBrandSplatRoute
+  ApiPublicMediaSplatRoute: typeof ApiPublicMediaSplatRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
 }
@@ -378,6 +391,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBrandSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/media/$': {
+      id: '/api/public/media/$'
+      path: '/api/public/media/$'
+      fullPath: '/api/public/media/$'
+      preLoaderRoute: typeof ApiPublicMediaSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/auth/preview': {
       id: '/lovable/email/auth/preview'
       path: '/lovable/email/auth/preview'
@@ -412,6 +432,7 @@ const rootRouteChildren: RootRouteChildren = {
   VendorDashboardRoute: VendorDashboardRoute,
   AdminIndexRoute: AdminIndexRoute,
   ApiPublicBrandSplatRoute: ApiPublicBrandSplatRoute,
+  ApiPublicMediaSplatRoute: ApiPublicMediaSplatRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
 }

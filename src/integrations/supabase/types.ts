@@ -128,6 +128,44 @@ export type Database = {
         }
         Relationships: []
       }
+      business_media: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          position: number
+          restaurant_id: string
+          storage_path: string | null
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind?: string
+          position?: number
+          restaurant_id: string
+          storage_path?: string | null
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          position?: number
+          restaurant_id?: string
+          storage_path?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_media_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_otp_guard: {
         Row: {
           email_hash: string
@@ -226,6 +264,7 @@ export type Database = {
           name: string
           price: number
           restaurant_id: string
+          stock_quantity: number
           updated_at: string
         }
         Insert: {
@@ -239,6 +278,7 @@ export type Database = {
           name: string
           price: number
           restaurant_id: string
+          stock_quantity?: number
           updated_at?: string
         }
         Update: {
@@ -252,6 +292,7 @@ export type Database = {
           name?: string
           price?: number
           restaurant_id?: string
+          stock_quantity?: number
           updated_at?: string
         }
         Relationships: [
@@ -429,6 +470,7 @@ export type Database = {
           is_active: boolean
           is_open_manual: boolean
           latitude: number | null
+          logo_url: string | null
           longitude: number | null
           maps_url: string | null
           min_order: number
@@ -458,6 +500,7 @@ export type Database = {
           is_active?: boolean
           is_open_manual?: boolean
           latitude?: number | null
+          logo_url?: string | null
           longitude?: number | null
           maps_url?: string | null
           min_order?: number
@@ -487,6 +530,7 @@ export type Database = {
           is_active?: boolean
           is_open_manual?: boolean
           latitude?: number | null
+          logo_url?: string | null
           longitude?: number | null
           maps_url?: string | null
           min_order?: number

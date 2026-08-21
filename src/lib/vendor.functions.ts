@@ -36,17 +36,19 @@ export const getVendorDashboard = createServerFn({ method: "GET" })
     const restaurantId = await assertVendor(context.supabase, context.userId);
     const { supabase } = context;
 
-    const [restaurant, items, orders] = await Promise.all([
+    const [restaurant, items, orders, categories, media] = await Promise.all([
       supabase
         .from("restaurants")
         .select(
-          "id, name, slug, sector, category, delivery_fee, min_order, delivery_minutes, opens_at, closes_at, is_open_manual, is_active, city, district",
+          "id, name, slug, sector, category, delivery_fee, min_order, delivery_minutes, opens_at, closes_at, is_open_manual, is_active, city, district, logo_url, cover_image_url",
         )
         .eq("id", restaurantId)
         .maybeSingle(),
       supabase
         .from("menu_items")
-        .select("id, name, price, is_available, is_popular, category_id")
+        .select(
+          "id, name, description, price, is_available, is_popular, category_id, image_url, stock_quantity",
+        )
         .eq("restaurant_id", restaurantId)
         .order("name"),
       supabase
@@ -57,9 +59,20 @@ export const getVendorDashboard = createServerFn({ method: "GET" })
         .eq("restaurant_id", restaurantId)
         .order("created_at", { ascending: false })
         .limit(60),
+      supabase
+        .from("menu_categories")
+        .select("id, name, position")
+        .eq("restaurant_id", restaurantId)
+        .order("position"),
+      supabase
+        .from("business_media")
+        .select("id, url, kind, position, created_at")
+        .eq("restaurant_id", restaurantId)
+        .order("created_at", { ascending: false }),
     ]);
 
-    const firstError = restaurant.error ?? items.error ?? orders.error ?? null;
+    const firstError =
+      restaurant.error ?? items.error ?? orders.error ?? categories.error ?? media.error ?? null;
     if (firstError) throw new Error(firstError.message);
     if (!restaurant.data) throw new Error("Atanan işletme bulunamadı");
 
@@ -67,7 +80,10 @@ export const getVendorDashboard = createServerFn({ method: "GET" })
       restaurant: restaurant.data,
       items: items.data ?? [],
       orders: orders.data ?? [],
+      categories: categories.data ?? [],
+      media: media.data ?? [],
     };
+
   });
 
 /** Sipariş durumunu yalnızca siparişin sahibi işletme değiştirebilir. */
