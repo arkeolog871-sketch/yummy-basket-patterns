@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccess } from "@/hooks/useAccess";
+import { useServerFn } from "@tanstack/react-start";
+import { registerWithEmailCode } from "@/lib/otp.functions";
 import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { VendorPhoneLogin } from "@/components/auth/VendorPhoneLogin";
 import { Button } from "@/components/ui/button";
@@ -38,6 +40,7 @@ function AuthPage() {
   const { user } = useAuth();
   const access = useAccess();
   const navigate = useNavigate();
+  const register = useServerFn(registerWithEmailCode);
   const [portal, setPortal] = useState<"customer" | "vendor">("customer");
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [method, setMethod] = useState<"password" | "code">("password");
