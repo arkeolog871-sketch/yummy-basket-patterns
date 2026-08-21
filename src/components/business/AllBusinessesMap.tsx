@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
 import { cleanMapStyle } from "@/lib/mapStyle";
 import { ensureMapsLibrary, getGoogleMaps } from "@/lib/google-maps-loader";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 import type { GoogleMap, GoogleMarker, GoogleInfoWindow } from "@/lib/google-maps-types";
 
 interface MappableBusiness {
@@ -47,6 +48,8 @@ function isLovableDomain() {
 export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "unsupported" | "empty" | "error">("loading");
+  const { settings } = useSiteSettings();
+  const mapsApiKey = settings.maps_api_key ?? null;
 
   useEffect(() => {
     const mappable = businesses
@@ -73,7 +76,7 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
     let activeInfoWindow: GoogleInfoWindow | null = null;
     let cancelled = false;
 
-    ensureMapsLibrary()
+    ensureMapsLibrary(mapsApiKey)
       .then(() => {
         const maps = getGoogleMaps();
         if (cancelled || !containerRef.current || !maps) return;
@@ -122,7 +125,7 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
       })
       .catch((error) => {
         console.error("AllBusinessesMap", error);
-        if (!cancelled) setStatus(isLovableDomain() ? "error" : "unsupported");
+        if (!cancelled) setStatus(mapsApiKey || isLovableDomain() ? "error" : "unsupported");
       });
 
     return () => {
@@ -131,7 +134,7 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
       for (const marker of markers) marker.setMap(null);
       map = null;
     };
-  }, [businesses]);
+  }, [businesses, mapsApiKey]);
 
   if (status === "unsupported") {
     return (
