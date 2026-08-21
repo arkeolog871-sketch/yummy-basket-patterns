@@ -95,6 +95,7 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: true,
+          styles: cleanMapStyle,
         });
         marker = new maps.Marker({
           position: { lat, lng },
