@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/sepet")({
   head: () => ({
     meta: [
-      { title: "Sepetim — SofraKapımda" },
+      { title: "Sepetim — SİLVAN CEBİMDE" },
       { name: "description", content: "Sepetinizi düzenleyin ve siparişinizi tamamlayın." },
-      { property: "og:title", content: "Sepetim — SofraKapımda" },
+      { property: "og:title", content: "Sepetim — SİLVAN CEBİMDE" },
       { property: "og:description", content: "Sepetinizi düzenleyin ve siparişinizi tamamlayın." },
     ],
   }),

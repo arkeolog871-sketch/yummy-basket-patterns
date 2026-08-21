@@ -10,12 +10,12 @@ import { Label } from "@/components/ui/label";
 export const Route = createFileRoute("/sifre-sifirlama")({
   head: () => ({
     meta: [
-      { title: "Şifre Sıfırlama — SofraKapımda" },
+      { title: "Şifre Sıfırlama — SİLVAN CEBİMDE" },
       {
         name: "description",
-        content: "SofraKapımda hesabınız için yeni bir şifre belirleyin.",
+        content: "SİLVAN CEBİMDE hesabınız için yeni bir şifre belirleyin.",
       },
-      { property: "og:title", content: "Şifre Sıfırlama — SofraKapımda" },
+      { property: "og:title", content: "Şifre Sıfırlama — SİLVAN CEBİMDE" },
       { property: "og:description", content: "Yeni şifrenizi güvenle belirleyin." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

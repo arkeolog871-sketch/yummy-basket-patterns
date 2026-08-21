@@ -9,7 +9,7 @@ import { EmailChangeEmail } from '@/lib/email-templates/email-change'
 import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
 
 // Configuration
-const SITE_NAME = "SofraKapımda"
+const SITE_NAME = "SİLVAN CEBİMDE"
 const SENDER_DOMAIN = "notify.uygulamamcebimde.online"
 const ROOT_DOMAIN = "uygulamamcebimde.online"
 const FROM_DOMAIN = "notify.uygulamamcebimde.online"
@@ -28,7 +28,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
           sendUrl: process.env['LOVABLE_SEND_URL'],
           emails: {
             signup: {
-              subject: 'SofraKapımda hesabınızı doğrulayın',
+              subject: `${SITE_NAME} hesabınızı doğrulayın`,
               render: (data) =>
                 React.createElement(SignupEmail, {
                   siteName: SITE_NAME,
@@ -39,7 +39,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
                 }),
             },
             invite: {
-              subject: "SofraKapımda ekibine davet edildiniz",
+              subject: `${SITE_NAME} ekibine davet edildiniz`,
               render: (data) =>
                 React.createElement(InviteEmail, {
                   siteName: SITE_NAME,
@@ -48,7 +48,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
                 }),
             },
             magiclink: {
-              subject: 'SofraKapımda giriş kodunuz',
+              subject: `${SITE_NAME} giriş kodunuz`,
               render: (data) =>
                 React.createElement(MagicLinkEmail, {
                   siteName: SITE_NAME,
@@ -57,7 +57,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
                 }),
             },
             recovery: {
-              subject: 'SofraKapımda şifre sıfırlama',
+              subject: `${SITE_NAME} şifre sıfırlama`,
               render: (data) =>
                 React.createElement(RecoveryEmail, {
                   siteName: SITE_NAME,
@@ -78,7 +78,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
                 }),
             },
             reauthentication: {
-              subject: 'SofraKapımda doğrulama kodunuz',
+              subject: `${SITE_NAME} doğrulama kodunuz`,
               render: (data) =>
                 React.createElement(ReauthenticationEmail, { token: data.token ?? '', siteName: SITE_NAME }),
             },

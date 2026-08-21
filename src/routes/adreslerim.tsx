@@ -14,9 +14,9 @@ import { Textarea } from "@/components/ui/textarea";
 export const Route = createFileRoute("/adreslerim")({
   head: () => ({
     meta: [
-      { title: "Adreslerim — SofraKapımda" },
+      { title: "Adreslerim — SİLVAN CEBİMDE" },
       { name: "description", content: "Teslimat adreslerinizi ekleyin, düzenleyin ve varsayılan adresinizi seçin." },
-      { property: "og:title", content: "Adreslerim — SofraKapımda" },
+      { property: "og:title", content: "Adreslerim — SİLVAN CEBİMDE" },
       { property: "og:description", content: "Teslimat adreslerinizi yönetin." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

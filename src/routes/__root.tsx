@@ -85,12 +85,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "SofraKapımda — Yemek siparişi" },
+      { title: "SİLVAN CEBİMDE — Yemek siparişi" },
       {
         name: "description",
         content: "Mahallenin en iyi ustalarından sıcak yemekler, dakikalar içinde kapınızda.",
       },
-      { property: "og:title", content: "SofraKapımda — Yemek siparişi" },
+      { property: "og:title", content: "SİLVAN CEBİMDE — Yemek siparişi" },
       {
         property: "og:description",
         content: "Mahallenin en iyi ustalarından sıcak yemekler, dakikalar içinde kapınızda.",

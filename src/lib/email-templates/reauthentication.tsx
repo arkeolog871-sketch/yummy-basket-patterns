@@ -11,7 +11,7 @@ interface ReauthenticationEmailProps {
 
 export const ReauthenticationEmail = ({
   token,
-  siteName = "SofraKapımda",
+  siteName = "SİLVAN CEBİMDE",
 }: ReauthenticationEmailProps) => (
   <>
     <Preview>{siteName} doğrulama kodunuz</Preview>

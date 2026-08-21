@@ -16,12 +16,12 @@ import { Label } from "@/components/ui/label";
 export const Route = createFileRoute("/kurucu-giris")({
   head: () => ({
     meta: [
-      { title: "Kurucu Girişi — SofraKapımda" },
+      { title: "Kurucu Girişi — SİLVAN CEBİMDE" },
       {
         name: "description",
-        content: "SofraKapımda kurucu yönetim portalına iki adımlı doğrulamalı güvenli giriş.",
+        content: "SİLVAN CEBİMDE kurucu yönetim portalına iki adımlı doğrulamalı güvenli giriş.",
       },
-      { property: "og:title", content: "Kurucu Girişi — SofraKapımda" },
+      { property: "og:title", content: "Kurucu Girişi — SİLVAN CEBİMDE" },
       { property: "og:description", content: "Kurucu yönetim portalı girişi." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

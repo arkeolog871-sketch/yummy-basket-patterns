@@ -19,12 +19,12 @@ export const Route = createFileRoute("/auth")({
       : {},
   head: () => ({
     meta: [
-      { title: "Giriş yap veya kayıt ol — SofraKapımda" },
+      { title: "Giriş yap veya kayıt ol — SİLVAN CEBİMDE" },
       {
         name: "description",
-        content: "SofraKapımda hesabınıza giriş yapın veya saniyeler içinde yeni hesap oluşturun.",
+        content: "SİLVAN CEBİMDE hesabınıza giriş yapın veya saniyeler içinde yeni hesap oluşturun.",
       },
-      { property: "og:title", content: "Giriş yap veya kayıt ol — SofraKapımda" },
+      { property: "og:title", content: "Giriş yap veya kayıt ol — SİLVAN CEBİMDE" },
       { property: "og:description", content: "Hesabınıza giriş yapın ve siparişinizi tamamlayın." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

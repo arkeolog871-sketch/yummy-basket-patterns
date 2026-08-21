@@ -15,9 +15,9 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/siparislerim")({
   head: () => ({
     meta: [
-      { title: "Siparişlerim — SofraKapımda" },
-      { name: "description", content: "Geçmiş ve devam eden SofraKapımda siparişlerinizi görüntüleyin." },
-      { property: "og:title", content: "Siparişlerim — SofraKapımda" },
+      { title: "Siparişlerim — SİLVAN CEBİMDE" },
+      { name: "description", content: "Geçmiş ve devam eden SİLVAN CEBİMDE siparişlerinizi görüntüleyin." },
+      { property: "og:title", content: "Siparişlerim — SİLVAN CEBİMDE" },
       { property: "og:description", content: "Sipariş geçmişinizi ve durumlarını takip edin." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
