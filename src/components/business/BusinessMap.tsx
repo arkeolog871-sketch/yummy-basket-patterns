@@ -22,6 +22,14 @@ interface GoogleMarker {
   setMap(map: GoogleMap | null): void;
 }
 
+const cleanMapStyle = [
+  { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
+  { featureType: "transit", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#707070" }] },
+  { featureType: "landscape", elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
+];
+
 function isLovableDomain() {
   if (typeof window === "undefined") return false;
   const host = window.location.hostname;
@@ -87,6 +95,7 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: true,
+          styles: cleanMapStyle,
         });
         marker = new maps.Marker({
           position: { lat, lng },
