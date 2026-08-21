@@ -23,6 +23,7 @@ export interface GoogleMapsLibrary {
   Marker: new (options: Record<string, unknown>) => GoogleMarker;
   InfoWindow: new (options: Record<string, unknown>) => GoogleInfoWindow;
   LatLngBounds: new () => GoogleLatLngBounds;
+  importLibrary?: (name: string) => Promise<unknown>;
 }
 
 export interface GoogleMapsWindow {

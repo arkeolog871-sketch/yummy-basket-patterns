@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
 import { cleanMapStyle } from "@/lib/mapStyle";
-import type { GoogleMap, GoogleMarker, GoogleInfoWindow, GoogleMapsLibrary } from "@/lib/google-maps-types";
+import { ensureMapsLibrary, getGoogleMaps } from "@/lib/google-maps-loader";
+import type { GoogleMap, GoogleMarker, GoogleInfoWindow } from "@/lib/google-maps-types";
 
 interface MappableBusiness {
   id: string;
@@ -10,6 +11,7 @@ interface MappableBusiness {
   address?: string | null;
   latitude?: number | string | null;
   longitude?: number | string | null;
+  maps_url?: string | null;
 }
 
 interface AllBusinessesMapProps {
@@ -22,66 +24,47 @@ function toNumber(value: number | string | null | undefined) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function coordsFromMapsUrl(url: string | null | undefined) {
+  if (!url) return null;
+  const match =
+    url.match(/[?&]q=(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/) ??
+    url.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/) ??
+    url.match(/[?&](?:ll|center)=(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/) ??
+    url.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+  if (!match) return null;
+  const lat = Number(match[1]);
+  const lng = Number(match[2]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng };
+}
+
 function isLovableDomain() {
   if (typeof window === "undefined") return false;
   const host = window.location.hostname;
   return host.endsWith(".lovable.app") || host.endsWith(".lovableproject.com");
 }
 
-function getGoogleMaps() {
-  return (window as unknown as { google?: { maps?: GoogleMapsLibrary } }).google?.maps;
-}
-
-function loadMapsScript(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (typeof window === "undefined") return resolve();
-    if (getGoogleMaps()) return resolve();
-
-    const key = import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY"];
-    const channel = import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID"];
-    if (!key) return reject(new Error("Google Maps anahtarı yapılandırılmamış."));
-
-    const existing = document.querySelector('script[data-google-maps="true"]') as HTMLScriptElement | null;
-    if (existing) {
-      existing.addEventListener("load", () => resolve());
-      existing.addEventListener("error", () => reject(new Error("Google Maps yüklenemedi.")));
-      return;
-    }
-
-    const callbackName = "__initAllBusinessesMap__";
-    (window as unknown as Record<string, unknown>)[callbackName] = () => resolve();
-
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&callback=${callbackName}&channel=${encodeURIComponent(channel ?? "")}`;
-    script.async = true;
-    script.defer = true;
-    script.setAttribute("data-google-maps", "true");
-    script.onerror = () => reject(new Error("Google Maps yüklenemedi."));
-    document.head.appendChild(script);
-  });
-}
-
 export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [status, setStatus] = useState<"loading" | "ready" | "unsupported" | "error">("loading");
+  const [status, setStatus] = useState<"loading" | "ready" | "unsupported" | "empty" | "error">("loading");
 
   useEffect(() => {
-    if (!isLovableDomain()) {
-      setStatus("unsupported");
-      return;
-    }
-
     const mappable = businesses
       .map((b) => {
-        const lat = toNumber(b.latitude);
-        const lng = toNumber(b.longitude);
-        if (lat === null || lng === null) return null;
+        let lat = toNumber(b.latitude);
+        let lng = toNumber(b.longitude);
+        if (lat === null || lng === null) {
+          const parsed = coordsFromMapsUrl(b.maps_url);
+          if (!parsed) return null;
+          lat = parsed.lat;
+          lng = parsed.lng;
+        }
         return { ...b, lat, lng };
       })
       .filter((b): b is MappableBusiness & { lat: number; lng: number } => b !== null);
 
     if (mappable.length === 0) {
-      setStatus("error");
+      setStatus("empty");
       return;
     }
 
@@ -89,7 +72,7 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
     const markers: GoogleMarker[] = [];
     let activeInfoWindow: GoogleInfoWindow | null = null;
 
-    loadMapsScript()
+    ensureMapsLibrary()
       .then(() => {
         const maps = getGoogleMaps();
         if (!containerRef.current || !maps) return;
@@ -135,8 +118,8 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
         setStatus("ready");
       })
       .catch((error) => {
-        console.error(error);
-        setStatus("error");
+        console.error("AllBusinessesMap", error);
+        setStatus(isLovableDomain() ? "error" : "unsupported");
       });
 
     return () => {
@@ -156,6 +139,20 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
           Google Maps yalnızca <code className="rounded bg-muted px-1 py-0.5">*.lovable.app</code>{" "}
           adreslerinde görüntülenir. Kendi alan adınızda harita için ayrı bir Google Maps API anahtarı
           gerekir.
+        </p>
+      </div>
+    );
+  }
+
+  if (status === "empty") {
+    return (
+      <div className="rounded-3xl border border-border/70 bg-card p-5 shadow-card">
+        <h3 className="flex items-center gap-2 text-base font-semibold">
+          <MapPin className="size-4 text-primary" /> İşletmelerimiz
+        </h3>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Henüz konum bilgisi girilmiş işletme yok. Kurucu panelinden işletmelere enlem/boylam veya
+          Google Maps bağlantısı ekleyin; harita otomatik görünecek.
         </p>
       </div>
     );
