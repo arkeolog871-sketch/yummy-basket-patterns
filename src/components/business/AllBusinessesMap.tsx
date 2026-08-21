@@ -49,11 +49,6 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
   const [status, setStatus] = useState<"loading" | "ready" | "unsupported" | "empty" | "error">("loading");
 
   useEffect(() => {
-    if (!isLovableDomain()) {
-      setStatus("unsupported");
-      return;
-    }
-
     const mappable = businesses
       .map((b) => {
         let lat = toNumber(b.latitude);

@@ -17,11 +17,6 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
   const [status, setStatus] = useState<"loading" | "ready" | "unsupported" | "error">("loading");
 
   useEffect(() => {
-    if (!isLovableDomain()) {
-      setStatus("unsupported");
-      return;
-    }
-
     const lat = typeof business.latitude === "string" ? Number(business.latitude) : business.latitude;
     const lng = typeof business.longitude === "string" ? Number(business.longitude) : business.longitude;
     if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) {
