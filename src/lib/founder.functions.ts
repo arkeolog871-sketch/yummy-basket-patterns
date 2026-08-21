@@ -61,6 +61,53 @@ export const updateHeroContent = createServerFn({ method: "POST" })
     );
   });
 
+const mapsSchema = z.object({
+  maps_api_key: z.string().trim().max(200),
+  maps_allowed_referrers: z.string().trim().max(2000),
+});
+
+export const updateMapsSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => mapsSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { isFounderUser } = await import("./founder.server");
+    const { audited, logAudit } = await import("./audit.server");
+    const actorEmail = (context.claims as { email?: string } | null)?.email ?? null;
+    if (!(await isFounderUser(context.supabase, context.userId))) {
+      await logAudit({
+        actorId: context.userId,
+        actorEmail,
+        action: "maps.update",
+        entity: "site_settings",
+        entityId: "global",
+        status: "denied",
+        detail: { reason: "Kurucu yetkisi yok" },
+      });
+      throw new Error("Bu işlem için kurucu yetkisi gerekiyor");
+    }
+    return audited(
+      {
+        actorId: context.userId,
+        actorEmail,
+        action: "maps.update",
+        entity: "site_settings",
+        entityId: "global",
+        detail: { hasKey: data.maps_api_key.length > 0 },
+      },
+      async () => {
+        const { error } = await context.supabase
+          .from("site_settings")
+          .update({
+            maps_api_key: data.maps_api_key || null,
+            maps_allowed_referrers: data.maps_allowed_referrers || null,
+          })
+          .eq("id", "global");
+        if (error) throw new Error(error.message);
+        return { ok: true };
+      },
+    );
+  });
+
 const businessSchema = z.object({
   id: z.string().uuid().optional(),
   slug: z
