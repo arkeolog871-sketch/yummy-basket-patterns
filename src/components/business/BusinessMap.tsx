@@ -3,6 +3,7 @@ import { MapPin, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { buildMapsUrl, type BusinessLocation } from "@/lib/maps";
 import { cleanMapStyle } from "@/lib/mapStyle";
+import type { GoogleMap, GoogleMarker } from "@/lib/google-maps-types";
 
 function isLovableDomain() {
   if (typeof window === "undefined") return false;
