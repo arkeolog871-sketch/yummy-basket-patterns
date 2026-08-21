@@ -246,7 +246,11 @@ function VendorDashboard() {
             <TabsTrigger value="urunler">
               <Package className="size-4" /> Ürünler ve stok
             </TabsTrigger>
+            <TabsTrigger value="gorseller">
+              <ImageIcon className="size-4" /> Görseller
+            </TabsTrigger>
             <TabsTrigger value="guvenlik">
+
               <KeyRound className="size-4" /> Şifre
             </TabsTrigger>
           </TabsList>
