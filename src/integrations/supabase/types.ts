@@ -590,6 +590,8 @@ export type Database = {
           id: string
           layout_variant: string
           logo_url: string | null
+          maps_allowed_referrers: string | null
+          maps_api_key: string | null
           primary_color: string
           secondary_color: string
           theme_mode: string
@@ -609,6 +611,8 @@ export type Database = {
           id?: string
           layout_variant?: string
           logo_url?: string | null
+          maps_allowed_referrers?: string | null
+          maps_api_key?: string | null
           primary_color?: string
           secondary_color?: string
           theme_mode?: string
@@ -628,6 +632,8 @@ export type Database = {
           id?: string
           layout_variant?: string
           logo_url?: string | null
+          maps_allowed_referrers?: string | null
+          maps_api_key?: string | null
           primary_color?: string
           secondary_color?: string
           theme_mode?: string
