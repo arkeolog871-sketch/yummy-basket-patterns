@@ -2,33 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { MapPin, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { buildMapsUrl, type BusinessLocation } from "@/lib/maps";
-
-declare global {
-  interface Window {
-    google?: {
-      maps?: {
-        Map: new (container: HTMLElement, options: Record<string, unknown>) => GoogleMap;
-        Marker: new (options: Record<string, unknown>) => GoogleMarker;
-      };
-    };
-  }
-}
-
-interface GoogleMap {
-  setCenter(center: { lat: number; lng: number }): void;
-}
-
-interface GoogleMarker {
-  setMap(map: GoogleMap | null): void;
-}
-
-const cleanMapStyle = [
-  { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
-  { featureType: "transit", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
-  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#707070" }] },
-  { featureType: "landscape", elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
-];
+import { cleanMapStyle } from "@/lib/mapStyle";
 
 function isLovableDomain() {
   if (typeof window === "undefined") return false;
