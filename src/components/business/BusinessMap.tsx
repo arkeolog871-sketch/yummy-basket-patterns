@@ -1,4 +1,23 @@
 import { useEffect, useRef, useState } from "react";
+
+declare global {
+  interface Window {
+    google?: {
+      maps?: {
+        Map: new (container: HTMLElement, options: Record<string, unknown>) => GoogleMap;
+        Marker: new (options: Record<string, unknown>) => GoogleMarker;
+      };
+    };
+  }
+}
+
+interface GoogleMap {
+  setCenter(center: { lat: number; lng: number }): void;
+}
+
+interface GoogleMarker {
+  setMap(map: GoogleMap | null): void;
+}
 import { MapPin, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { buildMapsUrl, type BusinessLocation } from "@/lib/maps";
