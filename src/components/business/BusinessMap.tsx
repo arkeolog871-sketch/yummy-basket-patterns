@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { buildMapsUrl, type BusinessLocation } from "@/lib/maps";
 import { cleanMapStyle } from "@/lib/mapStyle";
 import { ensureMapsLibrary, getGoogleMaps } from "@/lib/google-maps-loader";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 import type { GoogleMap, GoogleMarker } from "@/lib/google-maps-types";
 
 function isLovableDomain() {
@@ -15,6 +16,8 @@ function isLovableDomain() {
 export function BusinessMap({ business }: { business: BusinessLocation }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "unsupported" | "error">("loading");
+  const { settings } = useSiteSettings();
+  const mapsApiKey = settings.maps_api_key ?? null;
 
   useEffect(() => {
     const lat = typeof business.latitude === "string" ? Number(business.latitude) : business.latitude;
@@ -27,7 +30,7 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
     let map: GoogleMap | null = null;
     let marker: GoogleMarker | null = null;
 
-    ensureMapsLibrary()
+    ensureMapsLibrary(mapsApiKey)
       .then(() => {
         const maps = getGoogleMaps();
         if (!containerRef.current || !maps) return;
@@ -49,14 +52,14 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
       .catch((error) => {
         console.error(error);
         toast.error("Harita yüklenemedi.");
-        setStatus(isLovableDomain() ? "error" : "unsupported");
+        setStatus(mapsApiKey || isLovableDomain() ? "error" : "unsupported");
       });
 
     return () => {
       marker?.setMap(null);
       map = null;
     };
-  }, [business.latitude, business.longitude, business.name]);
+  }, [business.latitude, business.longitude, business.name, mapsApiKey]);
 
   const directionsUrl = buildMapsUrl(business);
 
