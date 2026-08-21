@@ -26,17 +26,33 @@ export const sendEmailVerificationCode = createServerFn({ method: "POST" })
     if (!reserved.ok) return { ok: false as const, error: reserved.error };
 
     const supabase = createServerAuthClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email: data.email,
-      options: { shouldCreateUser: data.allowSignUp ?? false },
-    });
+    let error: { message: string; status?: number } | null = null;
+    try {
+      const result = await supabase.auth.signInWithOtp({
+        email: data.email,
+        options: { shouldCreateUser: data.allowSignUp ?? false },
+      });
+      error = result.error
+        ? { message: result.error.message, status: result.error.status }
+        : null;
+    } catch (thrown) {
+      error = { message: thrown instanceof Error ? thrown.message : String(thrown) };
+    }
     if (error) {
+      // Gönderim gerçekten başarısız — ayrıntı sunucu loglarına yazılır.
+      console.error("[otp] doğrulama kodu gönderilemedi", {
+        status: error.status ?? null,
+        message: error.message,
+      });
+      const hookFailure = /hook/i.test(error.message);
       return {
         ok: false as const,
         error:
           error.status === 429
             ? "Çok sık kod istediniz. Lütfen kısa süre sonra tekrar deneyin."
-            : "Doğrulama kodu şu anda gönderilemedi. Lütfen birkaç saniye sonra tekrar deneyin.",
+            : hookFailure
+              ? "E-posta gönderim servisine ulaşılamadı, kod gönderilemedi. Lütfen tekrar deneyin."
+              : "Doğrulama kodu şu anda gönderilemedi. Lütfen birkaç saniye sonra tekrar deneyin.",
       };
     }
 
