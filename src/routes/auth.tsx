@@ -71,15 +71,11 @@ function AuthPage() {
         if (phone.replace(/\D/g, "").length < 10) {
           throw new Error("Telefon numarası en az 10 haneli olmalı.");
         }
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: { full_name: fullName, phone },
-          },
+        // Tek doğrulama akışı: hesap doğrulanmamış oluşturulur, 6 haneli kod gönderilir.
+        const result = await register({
+          data: { email: email.trim(), password, fullName: fullName.trim(), phone: phone.trim() },
         });
-        if (error) throw error;
+        if (!result.ok) throw new Error(result.error);
         setPendingVerification(email.trim());
         toast.success("Kayıt alındı. E-postanıza gönderilen 6 haneli kodu girin.");
       } else {
