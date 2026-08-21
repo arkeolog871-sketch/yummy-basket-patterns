@@ -110,8 +110,15 @@ export async function assertCanVerify(
       error: "Çok fazla hatalı deneme yaptınız. Mevcut kod geçersiz — yeni kod isteyin.",
     };
   }
+  if (row.last_sent_at) {
+    const ageMinutes = (Date.now() - new Date(row.last_sent_at).getTime()) / 60000;
+    if (ageMinutes > CODE_TTL_MINUTES) {
+      return { ok: false, error: "Doğrulama kodunun süresi doldu. Yeni kod gönderin." };
+    }
+  }
   return { ok: true };
 }
+
 
 /** Hatalı denemeyi sayar; sınır aşılırsa mevcut kodu geçersiz kılar. */
 export async function registerFailedAttempt(email: string): Promise<number> {
