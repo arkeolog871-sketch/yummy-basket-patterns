@@ -15,6 +15,8 @@ export type SiteSettings = {
   banner_url: string | null;
   theme_mode: string;
   layout_variant: string;
+  maps_api_key?: string | null;
+  maps_allowed_referrers?: string | null;
 };
 
 export type HeroContent = {
