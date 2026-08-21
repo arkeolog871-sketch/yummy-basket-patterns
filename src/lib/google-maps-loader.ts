@@ -30,16 +30,16 @@ export async function ensureMapsLibrary(): Promise<void> {
         await new Promise<void>((resolve, reject) => {
           if (getGoogleMaps()?.importLibrary) return resolve();
           el.addEventListener("load", () => resolve(), { once: true });
-          el.addEventListener("error", () => reject(new Error("Google Maps yüklenemedi.")), { once: true });
+          el.addEventListener("error", () => reject(new Error("Google Maps yüklenemedi. [script-error]")), { once: true });
           window.setTimeout(
-            () => (getGoogleMaps()?.importLibrary ? resolve() : reject(new Error("Google Maps yüklenemedi."))),
+            () => (getGoogleMaps()?.importLibrary ? resolve() : reject(new Error("Google Maps yüklenemedi. [timeout]"))),
             12000,
           );
         });
       }
 
       const maps = getGoogleMaps();
-      if (!maps?.importLibrary) throw new Error("Google Maps yüklenemedi.");
+      if (!maps?.importLibrary) throw new Error("Google Maps yüklenemedi. [no-importLibrary]");
       await maps.importLibrary("maps");
       await maps.importLibrary("marker");
     })();
