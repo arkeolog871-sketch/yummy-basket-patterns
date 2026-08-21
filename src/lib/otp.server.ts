@@ -8,6 +8,8 @@ export const RESEND_COOLDOWN_SECONDS = 60;
 export const MAX_SENDS_PER_HOUR = 5;
 /** Bu sayıda hatalı denemeden sonra mevcut kod geçersiz sayılır. */
 export const MAX_FAILED_ATTEMPTS = 5;
+/** Kodun geçerlilik süresi (dakika). */
+export const CODE_TTL_MINUTES = 10;
 
 /** E-posta adresi düz metin saklanmaz; yalnızca tek yönlü özeti tutulur. */
 export function hashEmail(email: string): string {
