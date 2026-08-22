@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
 import { cleanMapStyle } from "@/lib/mapStyle";
 import { ensureMapsLibrary, getGoogleMaps } from "@/lib/google-maps-loader";
-import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useMapsKey } from "@/hooks/useMapsKey";
 import type { GoogleMap, GoogleMarker, GoogleInfoWindow } from "@/lib/google-maps-types";
 
 interface MappableBusiness {
@@ -48,8 +48,7 @@ function isLovableDomain() {
 export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "unsupported" | "empty" | "error">("loading");
-  const { settings } = useSiteSettings();
-  const mapsApiKey = settings.maps_api_key ?? null;
+  const { mapsApiKey } = useMapsKey();
 
   useEffect(() => {
     const mappable = businesses

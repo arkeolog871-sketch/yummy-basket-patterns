@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { Save, Lock, Map, Copy, ExternalLink } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { updateMapsSettings } from "@/lib/founder.functions";
+import { getMapsKeyStatus } from "@/lib/maps.functions";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,24 +24,36 @@ function suggestedReferrers(host: string) {
 }
 
 export function MapsPanel() {
-  const { settings, refresh, isFounder } = useSiteSettings();
+  const { refresh, isFounder } = useSiteSettings();
   const save = useServerFn(updateMapsSettings);
-  const [apiKey, setApiKey] = useState(settings.maps_api_key ?? "");
-  const [referrers, setReferrers] = useState(settings.maps_allowed_referrers ?? "");
+  const checkKey = useServerFn(getMapsKeyStatus);
+  const [apiKey, setApiKey] = useState("");
+  const [referrers, setReferrers] = useState("");
   const [host, setHost] = useState("");
 
-  useEffect(() => {
-    setApiKey(settings.maps_api_key ?? "");
-    setReferrers(settings.maps_allowed_referrers ?? "");
-  }, [settings.maps_api_key, settings.maps_allowed_referrers]);
+
 
   useEffect(() => setHost(currentHost()), []);
 
+  const keyStatus = useQuery({
+    queryKey: ["maps-key-status"],
+    queryFn: () => checkKey(),
+  });
+
+  useEffect(() => {
+    if (keyStatus.data?.referrers !== undefined) setReferrers(keyStatus.data.referrers);
+  }, [keyStatus.data?.referrers]);
+
   const mutation = useMutation({
-    mutationFn: (values: { maps_api_key: string; maps_allowed_referrers: string }) =>
+    mutationFn: (values: {
+      maps_api_key: string;
+      maps_allowed_referrers: string;
+      clear_key?: boolean;
+    }) =>
       save({ data: values }),
     onSuccess: () => {
       toast.success("Harita ayarları kaydedildi. Sayfayı yenileyin.");
+      keyStatus.refetch();
       refresh();
     },
     onError: (error: Error) => toast.error(error.message),
@@ -78,7 +92,7 @@ export function MapsPanel() {
           <Input
             value={apiKey}
             onChange={(event) => setApiKey(event.target.value)}
-            placeholder="AIza..."
+            placeholder={keyStatus.data?.hasKey ? "Kayıtlı anahtar var (••••) — değiştirmek için yenisini yazın" : "AIza..."}
             spellCheck={false}
             autoComplete="off"
             className="mt-1.5 rounded-xl font-mono"
@@ -155,7 +169,11 @@ export function MapsPanel() {
           disabled={mutation.isPending}
           onClick={() => {
             setApiKey("");
-            mutation.mutate({ maps_api_key: "", maps_allowed_referrers: referrers.trim() });
+            mutation.mutate({
+              maps_api_key: "",
+              maps_allowed_referrers: referrers.trim(),
+              clear_key: true,
+            });
           }}
         >
           Anahtarı temizle
