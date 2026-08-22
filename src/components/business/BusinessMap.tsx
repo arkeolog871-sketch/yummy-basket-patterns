@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { buildMapsUrl, type BusinessLocation } from "@/lib/maps";
 import { cleanMapStyle } from "@/lib/mapStyle";
 import { ensureMapsLibrary, getGoogleMaps } from "@/lib/google-maps-loader";
-import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useMapsKey } from "@/hooks/useMapsKey";
 import type { GoogleMap, GoogleMarker } from "@/lib/google-maps-types";
 
 function isLovableDomain() {
@@ -16,8 +16,7 @@ function isLovableDomain() {
 export function BusinessMap({ business }: { business: BusinessLocation }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "unsupported" | "error">("loading");
-  const { settings } = useSiteSettings();
-  const mapsApiKey = settings.maps_api_key ?? null;
+  const { mapsApiKey } = useMapsKey();
 
   useEffect(() => {
     const lat = typeof business.latitude === "string" ? Number(business.latitude) : business.latitude;
