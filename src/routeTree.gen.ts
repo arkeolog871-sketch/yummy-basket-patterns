@@ -22,7 +22,6 @@ import { Route as OdemeRouteImport } from './routes/odeme'
 import { Route as RestoranlarRouteImport } from './routes/restoranlar'
 import { Route as SepetRouteImport } from './routes/sepet'
 import { Route as SifreSifirlamaRouteImport } from './routes/sifre-sifirlama'
-import { Route as SilvanCebimdeIphoneDotmobileconfigRouteImport } from './routes/silvan-cebimde-iphone[.]mobileconfig'
 import { Route as SiparislerimRouteImport } from './routes/siparislerim'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminSplatRouteImport } from './routes/admin.$'
@@ -99,12 +98,6 @@ const SifreSifirlamaRoute = SifreSifirlamaRouteImport.update({
   path: '/sifre-sifirlama',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SilvanCebimdeIphoneDotmobileconfigRoute =
-  SilvanCebimdeIphoneDotmobileconfigRouteImport.update({
-    id: '/silvan-cebimde-iphone.mobileconfig',
-    path: '/silvan-cebimde-iphone.mobileconfig',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const SiparislerimRoute = SiparislerimRouteImport.update({
   id: '/siparislerim',
   path: '/siparislerim',
@@ -170,7 +163,6 @@ export interface FileRoutesByFullPath {
   '/restoranlar': typeof RestoranlarRoute
   '/sepet': typeof SepetRoute
   '/sifre-sifirlama': typeof SifreSifirlamaRoute
-  '/silvan-cebimde-iphone.mobileconfig': typeof SilvanCebimdeIphoneDotmobileconfigRoute
   '/siparislerim': typeof SiparislerimRoute
   '/admin/$': typeof AdminSplatRoute
   '/restoran/$slug': typeof RestoranSlugRoute
@@ -196,7 +188,6 @@ export interface FileRoutesByTo {
   '/restoranlar': typeof RestoranlarRoute
   '/sepet': typeof SepetRoute
   '/sifre-sifirlama': typeof SifreSifirlamaRoute
-  '/silvan-cebimde-iphone.mobileconfig': typeof SilvanCebimdeIphoneDotmobileconfigRoute
   '/siparislerim': typeof SiparislerimRoute
   '/admin/$': typeof AdminSplatRoute
   '/restoran/$slug': typeof RestoranSlugRoute
@@ -223,7 +214,6 @@ export interface FileRoutesById {
   '/restoranlar': typeof RestoranlarRoute
   '/sepet': typeof SepetRoute
   '/sifre-sifirlama': typeof SifreSifirlamaRoute
-  '/silvan-cebimde-iphone.mobileconfig': typeof SilvanCebimdeIphoneDotmobileconfigRoute
   '/siparislerim': typeof SiparislerimRoute
   '/admin/$': typeof AdminSplatRoute
   '/restoran/$slug': typeof RestoranSlugRoute
@@ -251,7 +241,6 @@ export interface FileRouteTypes {
     | '/restoranlar'
     | '/sepet'
     | '/sifre-sifirlama'
-    | '/silvan-cebimde-iphone.mobileconfig'
     | '/siparislerim'
     | '/admin/$'
     | '/restoran/$slug'
@@ -277,7 +266,6 @@ export interface FileRouteTypes {
     | '/restoranlar'
     | '/sepet'
     | '/sifre-sifirlama'
-    | '/silvan-cebimde-iphone.mobileconfig'
     | '/siparislerim'
     | '/admin/$'
     | '/restoran/$slug'
@@ -303,7 +291,6 @@ export interface FileRouteTypes {
     | '/restoranlar'
     | '/sepet'
     | '/sifre-sifirlama'
-    | '/silvan-cebimde-iphone.mobileconfig'
     | '/siparislerim'
     | '/admin/$'
     | '/restoran/$slug'
@@ -330,7 +317,6 @@ export interface RootRouteChildren {
   RestoranlarRoute: typeof RestoranlarRoute
   SepetRoute: typeof SepetRoute
   SifreSifirlamaRoute: typeof SifreSifirlamaRoute
-  SilvanCebimdeIphoneDotmobileconfigRoute: typeof SilvanCebimdeIphoneDotmobileconfigRoute
   SiparislerimRoute: typeof SiparislerimRoute
   AdminSplatRoute: typeof AdminSplatRoute
   RestoranSlugRoute: typeof RestoranSlugRoute
@@ -436,13 +422,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SifreSifirlamaRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/silvan-cebimde-iphone.mobileconfig': {
-      id: '/silvan-cebimde-iphone.mobileconfig'
-      path: '/silvan-cebimde-iphone.mobileconfig'
-      fullPath: '/silvan-cebimde-iphone.mobileconfig'
-      preLoaderRoute: typeof SilvanCebimdeIphoneDotmobileconfigRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/siparislerim': {
       id: '/siparislerim'
       path: '/siparislerim'
@@ -530,8 +509,6 @@ const rootRouteChildren: RootRouteChildren = {
   RestoranlarRoute: RestoranlarRoute,
   SepetRoute: SepetRoute,
   SifreSifirlamaRoute: SifreSifirlamaRoute,
-  SilvanCebimdeIphoneDotmobileconfigRoute:
-    SilvanCebimdeIphoneDotmobileconfigRoute,
   SiparislerimRoute: SiparislerimRoute,
   AdminSplatRoute: AdminSplatRoute,
   RestoranSlugRoute: RestoranSlugRoute,
