@@ -1,17 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Download, PlusSquare, Share2 } from "lucide-react";
+import { Check, Copy, PlusSquare, Share2, Smartphone } from "lucide-react";
 
-import { IPHONE_PROFILE_HREF } from "@/lib/app-downloads";
+import {
+  detectIosInstallKind,
+  IOS_A2HS_FLAG,
+  safariInstallUrl,
+  type IosInstallKind,
+} from "@/lib/iphone-install";
 
 export const Route = createFileRoute("/iphone")({
   head: () => ({
     meta: [
-      { title: "SİLVAN CEBİMDE — iPhone uygulamasını indir" },
+      { title: "SİLVAN CEBİMDE — iPhone’a kur" },
       {
         name: "description",
         content:
-          "SİLVAN CEBİMDE iPhone uygulamasını indirin. App Store gerekmez; ana ekranınıza ekleyip tam ekran kullanın.",
+          "SİLVAN CEBİMDE’yi iPhone Safari’den ana ekrana ekleyin. App Store gerekmez; indirme dosyası yoktur.",
       },
       { name: "theme-color", content: "#141416" },
     ],
@@ -20,75 +25,111 @@ export const Route = createFileRoute("/iphone")({
 });
 
 function IphonePage() {
-  const [clock, setClock] = useState("12:00");
+  const [kind, setKind] = useState<IosInstallKind>("unknown");
+  const [copied, setCopied] = useState(false);
+  const installUrl = safariInstallUrl();
 
   useEffect(() => {
-    const tick = () =>
-      setClock(
-        new Intl.DateTimeFormat("tr-TR", {
-          hour: "2-digit",
-          minute: "2-digit",
-          hourCycle: "h23",
-        }).format(new Date()),
-      );
-    tick();
-    const timer = window.setInterval(tick, 15000);
-    return () => window.clearInterval(timer);
+    const next = detectIosInstallKind();
+    setKind(next);
+    if (next === "safari") {
+      sessionStorage.setItem(IOS_A2HS_FLAG, "1");
+      window.location.replace("/");
+    }
   }, []);
 
+  async function copySafariLink() {
+    try {
+      await navigator.clipboard.writeText(installUrl);
+      setCopied(true);
+    } catch {
+      window.prompt("Bu adresi Safari’ye yapıştırın", installUrl);
+    }
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#141416] px-4 py-8">
-      <div className="w-full max-w-[393px]">
-        <div className="mb-4 text-center text-[#f4ece4]">
-          <p className="text-[15px] font-semibold uppercase tracking-[0.08em]">SİLVAN CEBİMDE</p>
-          <p className="mt-1.5 text-[13px] text-[#cbb8a8]">iPhone uygulaması</p>
-          <a
-            href={IPHONE_PROFILE_HREF}
-            className="mt-3 inline-flex items-center rounded-full bg-[#ff8c42] px-4 py-2 text-[13px] font-semibold text-white"
-          >
-            <Download className="mr-1.5 size-3.5" />
-            iPhone uygulamasını kur
-          </a>
-          <p className="mt-3 text-[11px] leading-5 text-[#cbb8a8]">
-            iPhone APK yüklemez. Bu bağlantı uygulamayı ana ekranınıza ekler.
+    <div className="flex min-h-screen items-center justify-center bg-[#141416] px-4 py-10">
+      <div className="w-full max-w-md text-center text-[#f4ece4]">
+        <span className="mx-auto flex size-14 items-center justify-center rounded-[22px] bg-[#ff8c42] text-white shadow-[0_12px_40px_rgba(255,140,66,0.35)]">
+          <Smartphone className="size-7" />
+        </span>
+        <p className="mt-5 text-[13px] font-semibold uppercase tracking-[0.12em] text-[#ff8c42]">
+          iPhone
+        </p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Ana ekrana ekle</h1>
+        <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-[#cbb8a8]">
+          iPhone APK veya profil dosyası yüklemez. Uygulama, Safari’den ana ekrana eklenerek
+          kurulur.
+        </p>
+
+        {kind === "unknown" || kind === "safari" ? (
+          <p className="mt-8 text-sm text-[#cbb8a8]">Safari kurulum adımları açılıyor…</p>
+        ) : null}
+
+        {kind === "installed" ? (
+          <p className="mt-8 rounded-2xl border border-[#30d158]/40 bg-[#30d158]/10 px-4 py-3 text-sm text-[#7dffa1]">
+            Uygulama zaten kurulu. Ana ekrandaki simgeden açabilirsiniz.
           </p>
-        </div>
-        <div
-          className="h-[852px] max-h-[calc(100svh-8rem)] rounded-[54px] bg-gradient-to-br from-[#2a2a2e] to-[#070708] p-[11px]"
-          style={{ boxShadow: "0 0 0 2px #3a3a40, 0 24px 80px rgba(0,0,0,0.55)" }}
-        >
-          <div className="relative flex h-full flex-col overflow-hidden rounded-[44px] bg-[#fff8f0]">
-            <span className="absolute left-1/2 top-3 z-10 h-[34px] w-[118px] -translate-x-1/2 rounded-full bg-[#050506]" />
-            <div className="relative z-[2] flex h-11 items-center justify-between px-7 pt-3 text-[12px] font-semibold text-[#17120e]">
-              <span className="tabular-nums">{clock}</span>
-              <span className="flex items-center gap-1.5 opacity-80" aria-hidden>
-                <span className="h-2.5 w-3.5 rounded-[1px] bg-current" />
-                <span className="h-2.5 w-3 rounded-b-full border-2 border-t-0 border-current" />
-                <span className="relative h-2.5 w-5 rounded-[2px] border border-current">
-                  <span className="absolute inset-0.5 w-[70%] rounded-[1px] bg-[#30d158]" />
-                </span>
-              </span>
-            </div>
-            <iframe
-              title="SİLVAN CEBİMDE"
-              src="/"
-              className="min-h-0 w-full flex-1 border-0 bg-[#fff8f0]"
-              allow="geolocation; clipboard-read; clipboard-write"
-            />
-            <div className="grid h-[18px] place-items-center bg-[#fff8f0]">
-              <span className="h-1 w-[128px] rounded-full bg-[#17120e]/80" />
-            </div>
+        ) : null}
+
+        {kind === "ios-other" ? (
+          <div className="mt-8 space-y-4">
+            <p className="text-sm leading-6 text-[#cbb8a8]">
+              Ana ekrana ekleme yalnızca Safari’de çalışır. Bu tarayıcı veya uygulama içi pencereden
+              kurulamaz.
+            </p>
+            <button
+              type="button"
+              onClick={() => void copySafariLink()}
+              className="inline-flex w-full items-center justify-center rounded-full bg-[#ff8c42] px-5 py-3 text-sm font-semibold text-white"
+            >
+              {copied ? <Check className="mr-2 size-4" /> : <Copy className="mr-2 size-4" />}
+              {copied ? "Kopyalandı — Safari’de açın" : "Safari bağlantısını kopyala"}
+            </button>
+            <p className="text-[12px] leading-5 text-[#cbb8a8]">
+              Safari’yi açıp yapıştırın. Paylaş → Ana Ekrana Ekle adımları orada çıkar.
+            </p>
           </div>
-        </div>
-        <ol className="mt-5 space-y-2 text-left text-[12px] leading-5 text-[#cbb8a8]">
-          <li>1. Yukarıdaki düğmeye dokunun; profil indirilir.</li>
-          <li>2. Ayarlar → İndirilen Profil → Yükle.</li>
-          <li className="flex items-start gap-1.5">
-            <span>3.</span>
-            <span className="flex-1">
-              Safari ile de kurabilirsiniz: <Share2 className="inline size-3.5 align-text-bottom" />{" "}
-              Paylaş → <PlusSquare className="inline size-3.5 align-text-bottom" /> Ana Ekrana Ekle.
-            </span>
+        ) : null}
+
+        {kind === "android" ? (
+          <p className="mt-8 text-sm leading-6 text-[#cbb8a8]">
+            Bu sayfa iPhone içindir. Android için{" "}
+            <a
+              href="/indir"
+              className="font-semibold text-[#ff8c42] underline-offset-4 hover:underline"
+            >
+              APK indirme sayfasını
+            </a>{" "}
+            kullanın.
+          </p>
+        ) : null}
+
+        {kind === "desktop" ? (
+          <div className="mt-8 space-y-3">
+            <p className="text-sm leading-6 text-[#cbb8a8]">
+              iPhone’unuzda Safari ile bu adresi açın:
+            </p>
+            <button
+              type="button"
+              onClick={() => void copySafariLink()}
+              className="inline-flex w-full items-center justify-center rounded-full bg-[#ff8c42] px-5 py-3 text-sm font-semibold text-white"
+            >
+              {copied ? <Check className="mr-2 size-4" /> : <Copy className="mr-2 size-4" />}
+              {copied ? "Kopyalandı" : "iPhone bağlantısını kopyala"}
+            </button>
+            <p className="break-all text-[12px] text-[#cbb8a8]">{installUrl}</p>
+          </div>
+        ) : null}
+
+        <ol className="mt-10 space-y-3 text-left text-sm leading-6 text-[#cbb8a8]">
+          <li className="flex gap-3">
+            <Share2 className="mt-0.5 size-4 shrink-0 text-[#ff8c42]" />
+            Safari alt çubuğundaki Paylaş simgesine dokunun.
+          </li>
+          <li className="flex gap-3">
+            <PlusSquare className="mt-0.5 size-4 shrink-0 text-[#ff8c42]" />
+            Ana Ekrana Ekle’yi seçin ve Ekle’ye dokunun.
           </li>
         </ol>
       </div>
