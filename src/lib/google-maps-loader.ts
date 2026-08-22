@@ -75,6 +75,12 @@ function waitForMapConstructor(timeoutMs = 15000): Promise<void> {
   });
 }
 
+function canUseLovableConnectorKey() {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname;
+  return host.endsWith(".lovable.app") || host.endsWith(".lovableproject.com");
+}
+
 export async function ensureMapsLibrary(customKey?: string | null): Promise<void> {
   if (typeof window === "undefined") return;
 
@@ -82,7 +88,9 @@ export async function ensureMapsLibrary(customKey?: string | null): Promise<void
     mapsReady = (async () => {
       const key =
         (customKey && customKey.trim()) ||
-        import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY"];
+        (canUseLovableConnectorKey()
+          ? import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY"]
+          : undefined);
       const channel = import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID"];
 
       const maps = getGoogleMaps();
