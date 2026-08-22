@@ -40,7 +40,7 @@ export function Footer() {
             </li>
             <li>
               <Link to="/iphone" className="transition-colors hover:text-foreground">
-                iPhone uygulamasını indir
+                iPhone’a kur
               </Link>
             </li>
           </ul>
