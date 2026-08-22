@@ -74,6 +74,11 @@ export const redeemBackupCode = createServerFn({ method: "POST" })
     const { hashBackupCode } = await import("./security.server");
     const actorEmail = (context.claims as { email?: string } | null)?.email ?? null;
 
+    const { assertCanVerify, registerFailedAttempt, clearGuard } = await import("./otp.server");
+    const guardEmail = `backup:${context.userId}@guard.local`;
+    const allowed = await assertCanVerify(guardEmail);
+    if (!allowed.ok) throw new Error(allowed.error);
+
     const isFounder = await isFounderUser(context.supabase, context.userId);
     if (!isFounder) throw new Error("Forbidden");
 
@@ -89,6 +94,7 @@ export const redeemBackupCode = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     if (!match) {
+      await registerFailedAttempt(guardEmail);
       await logAudit({
         actorId: context.userId,
         actorEmail,
@@ -106,6 +112,7 @@ export const redeemBackupCode = createServerFn({ method: "POST" })
       .eq("id", match.id);
     if (updateError) throw new Error(updateError.message);
 
+    await clearGuard(guardEmail);
     await logAudit({
       actorId: context.userId,
       actorEmail,

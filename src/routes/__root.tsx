@@ -19,6 +19,7 @@ import { SiteSettingsProvider } from "@/hooks/useSiteSettings";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Toaster } from "@/components/ui/sonner";
+import { AppRealtimeBridge } from "@/hooks/useAppRealtime";
 
 function NotFoundComponent() {
   return (
@@ -189,6 +190,7 @@ function RootComponent() {
             ) : (
               <AppChrome />
             )}
+            <AppRealtimeBridge />
             <Toaster />
           </CartProvider>
         </SiteSettingsProvider>

@@ -8,7 +8,7 @@ export type BusinessLocation = {
   maps_url?: string | null;
 };
 
-function toNumber(value: number | string | null | undefined) {
+export function toCoord(value: number | string | null | undefined) {
   if (value === null || value === undefined || value === "") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
@@ -25,8 +25,8 @@ export function locationLabel(business: BusinessLocation) {
 }
 
 function destinationQuery(business: BusinessLocation) {
-  const lat = toNumber(business.latitude);
-  const lng = toNumber(business.longitude);
+  const lat = toCoord(business.latitude);
+  const lng = toCoord(business.longitude);
   if (lat !== null && lng !== null) return `${lat},${lng}`;
   const parts = [business.name, business.address, business.district, business.city]
     .filter((part): part is string => typeof part === "string" && part.trim().length > 0)
@@ -46,8 +46,8 @@ export function buildMapsUrl(business: BusinessLocation) {
   const destination = destinationQuery(business);
   if (!destination) return null;
 
-  const lat = toNumber(business.latitude);
-  const lng = toNumber(business.longitude);
+  const lat = toCoord(business.latitude);
+  const lng = toCoord(business.longitude);
   if (lat !== null && lng !== null) {
     return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
   }
@@ -91,4 +91,27 @@ export function openDirections(business: BusinessLocation) {
 
   window.open(webUrl, "_blank", "noopener,noreferrer");
   return true;
+}
+
+/** Google Maps / OSM bağlantısından enlem-boylam çıkarır. */
+export function coordsFromMapsUrl(url: string | null | undefined) {
+  if (!url) return null;
+  const match =
+    url.match(/[?&]q=(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/) ??
+    url.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/) ??
+    url.match(/[?&](?:ll|center)=(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/) ??
+    url.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+  if (!match) return null;
+  const lat = Number(match[1]);
+  const lng = Number(match[2]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng };
+}
+
+/** İşletme kaydından harita noktası. Koordinat yoksa maps_url içinden okunur. */
+export function resolveBusinessCoords(business: BusinessLocation) {
+  const lat = toCoord(business.latitude);
+  const lng = toCoord(business.longitude);
+  if (lat !== null && lng !== null) return { lat, lng };
+  return coordsFromMapsUrl(business.maps_url);
 }

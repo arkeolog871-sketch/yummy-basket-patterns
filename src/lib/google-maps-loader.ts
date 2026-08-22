@@ -61,6 +61,7 @@ export function watchMapContainerForAuthError(container: HTMLElement, onError: (
 }
 
 let mapsReady: Promise<void> | null = null;
+let loadedMapsKey: string | null = null;
 
 function waitForMapConstructor(timeoutMs = 15000): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -81,18 +82,28 @@ function canUseLovableConnectorKey() {
   return host.endsWith(".lovable.app") || host.endsWith(".lovableproject.com");
 }
 
+function resolveMapsKey(customKey?: string | null) {
+  const trimmed = customKey?.trim();
+  if (trimmed) return trimmed;
+  if (canUseLovableConnectorKey()) {
+    return import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY"] as string | undefined;
+  }
+  return undefined;
+}
+
 export async function ensureMapsLibrary(customKey?: string | null): Promise<void> {
   if (typeof window === "undefined") return;
 
-  if (!mapsReady) {
-    mapsReady = (async () => {
-      const key =
-        (customKey && customKey.trim()) ||
-        (canUseLovableConnectorKey()
-          ? import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY"]
-          : undefined);
-      const channel = import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID"];
+  const key = resolveMapsKey(customKey) ?? "";
+  if (mapsReady && loadedMapsKey !== key) {
+    mapsReady = null;
+    mapsAuthFailed = false;
+  }
 
+  if (!mapsReady) {
+    loadedMapsKey = key;
+    mapsReady = (async () => {
+      const channel = import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID"];
       const maps = getGoogleMaps();
       if (!maps || typeof maps.Map !== "function") {
         if (!key) throw new Error("Google Maps anahtarı yapılandırılmamış.");

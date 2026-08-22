@@ -100,7 +100,7 @@ function TwoFactorGate({ children }: { children: React.ReactNode }) {
       .then((state) => {
         if (active) setBlocked(state.enrolled && !state.satisfied);
       })
-      .catch(() => active && setBlocked(false));
+      .catch(() => active && setBlocked(true));
     return () => {
       active = false;
     };
@@ -292,6 +292,12 @@ function FounderDashboard() {
         </div>
       </div>
 
+      {data.isError ? (
+        <p className="mt-4 text-sm text-muted-foreground">
+          Yönetim verileri yüklenemedi. Sayfayı yenileyip tekrar deneyin.
+        </p>
+      ) : null}
+
       <Tabs defaultValue="gorunum" className="mt-8">
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
           <TabsTrigger value="gorunum">Görünüm</TabsTrigger>
@@ -355,6 +361,9 @@ function FounderDashboard() {
         </TabsContent>
 
         <TabsContent value="kullanicilar" className="mt-6">
+          {users.isError ? (
+            <p className="mb-3 text-sm text-muted-foreground">Kullanıcı listesi yüklenemedi.</p>
+          ) : null}
           <UserPanel
             users={users.data ?? []}
             businesses={data.data?.businesses ?? []}
@@ -370,6 +379,7 @@ function FounderDashboard() {
           <OrderPanel
             orders={data.data?.orders ?? []}
             loading={data.isFetching}
+            error={data.isError}
             onDone={() => void queryClient.invalidateQueries({ queryKey: ["admin-data"] })}
           />
         </TabsContent>
@@ -410,10 +420,12 @@ const ORDER_STATUS_OPTIONS = [
 function OrderPanel({
   orders,
   loading,
+  error,
   onDone,
 }: {
   orders: OrderRow[];
   loading: boolean;
+  error?: boolean;
   onDone: () => void;
 }) {
   const update = useServerFn(updateOrderStatus);
@@ -432,6 +444,14 @@ function OrderPanel({
       toast.error(error.message);
     },
   });
+
+  if (error) {
+    return (
+      <div className="rounded-3xl border border-border bg-card p-6 text-sm text-muted-foreground">
+        Siparişler yüklenemedi. Sayfayı yenileyip tekrar deneyin.
+      </div>
+    );
+  }
 
   if (orders.length === 0) {
     return (

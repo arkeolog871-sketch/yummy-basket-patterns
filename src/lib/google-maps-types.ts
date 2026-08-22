@@ -5,6 +5,7 @@ export interface GoogleMap {
 
 export interface GoogleMarker {
   setMap(map: GoogleMap | null): void;
+  setPosition(position: { lat: number; lng: number }): void;
   addListener(event: string, handler: () => void): void;
 }
 
