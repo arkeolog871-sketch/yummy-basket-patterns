@@ -8,7 +8,7 @@ import {
   watchMapContainerForAuthError,
 } from "@/lib/google-maps-loader";
 import { cleanMapStyle } from "@/lib/mapStyle";
-import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useMapsKey } from "@/hooks/useMapsKey";
 import type { GoogleInfoWindow, GoogleMap, GoogleMarker } from "@/lib/google-maps-types";
 
 export type LiveMapMarker = {
@@ -107,8 +107,7 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
   const hostRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
-  const { settings } = useSiteSettings();
-  const mapsApiKey = settings.maps_api_key ?? null;
+  const { mapsApiKey } = useMapsKey();
   const markerKey = markers.map((m) => `${m.lat},${m.lng},${m.title}`).join("|");
 
   useEffect(() => {

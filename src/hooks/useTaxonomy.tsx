@@ -35,6 +35,8 @@ export function useAppCategories(options?: { includeHidden?: boolean }) {
   const includeHidden = options?.includeHidden ?? false;
   const query = useQuery({
     queryKey: ["app-categories"],
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<AppCategory[]> => {
       const { data, error } = await supabase
         .from("app_categories")
@@ -57,6 +59,8 @@ export function useServiceAreas(options?: { includeHidden?: boolean }) {
   const includeHidden = options?.includeHidden ?? false;
   const query = useQuery({
     queryKey: ["service-areas"],
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<ServiceArea[]> => {
       const { data, error } = await supabase
         .from("service_areas")

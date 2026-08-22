@@ -15,8 +15,6 @@ export type SiteSettings = {
   banner_url: string | null;
   theme_mode: string;
   layout_variant: string;
-  maps_api_key?: string | null;
-  maps_allowed_referrers?: string | null;
 };
 
 export type HeroContent = {
@@ -38,8 +36,6 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   banner_url: null,
   theme_mode: "light",
   layout_variant: "classic",
-  maps_api_key: null,
-  maps_allowed_referrers: null,
 };
 
 export const DEFAULT_HERO: HeroContent = {
@@ -76,11 +72,13 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   const settingsQuery = useQuery({
     queryKey: ["site-settings"],
     enabled: hydrated,
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<SiteSettings & HeroContent> => {
       const { data, error } = await supabase
         .from("site_settings")
         .select(
-          "id, brand_name, primary_color, accent_color, secondary_color, background_color, logo_url, favicon_url, banner_url, theme_mode, layout_variant, maps_api_key, maps_allowed_referrers, hero_badge, hero_title, hero_title_accent, hero_subtitle",
+          "id, brand_name, primary_color, accent_color, secondary_color, background_color, logo_url, favicon_url, banner_url, theme_mode, layout_variant, hero_badge, hero_title, hero_title_accent, hero_subtitle",
         )
         .eq("id", "global")
         .maybeSingle();
@@ -92,6 +90,8 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   const rolesQuery = useQuery({
     queryKey: ["my-roles", user?.id ?? "anon"],
     enabled: hydrated && Boolean(user),
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const [own, founders] = await Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", user!.id),

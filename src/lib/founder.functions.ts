@@ -64,8 +64,9 @@ export const updateHeroContent = createServerFn({ method: "POST" })
   });
 
 const mapsSchema = z.object({
-  maps_api_key: z.string().trim().max(200),
+  maps_api_key: z.string().trim().max(200).default(""),
   maps_allowed_referrers: z.string().trim().max(2000),
+  clear_key: z.boolean().default(false),
 });
 
 export const updateMapsSettings = createServerFn({ method: "POST" })
@@ -82,7 +83,7 @@ export const updateMapsSettings = createServerFn({ method: "POST" })
         actorId: context.userId,
         actorEmail,
         action: "maps.update",
-        entity: "site_settings",
+        entity: "maps_config",
         entityId: "global",
         status: "denied",
         detail: { reason: error instanceof Error ? error.message : "Kurucu yetkisi yok" },
@@ -94,19 +95,17 @@ export const updateMapsSettings = createServerFn({ method: "POST" })
         actorId: context.userId,
         actorEmail,
         action: "maps.update",
-        entity: "site_settings",
+        entity: "maps_config",
         entityId: "global",
         detail: { hasKey: data.maps_api_key.length > 0 },
       },
       async () => {
-        const { error } = await context.supabase
-          .from("site_settings")
-          .update({
-            maps_api_key: data.maps_api_key || null,
-            maps_allowed_referrers: data.maps_allowed_referrers || null,
-          })
-          .eq("id", "global");
-        if (error) throw new Error(error.message);
+        const { writeMapsConfig } = await import("./maps.server");
+        await writeMapsConfig({
+          key: data.maps_api_key || null,
+          clearKey: data.clear_key,
+          referrers: data.maps_allowed_referrers || null,
+        });
         return { ok: true };
       },
     );

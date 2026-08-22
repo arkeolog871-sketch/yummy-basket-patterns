@@ -14,7 +14,8 @@ export function useAccess() {
     queryKey: ["access-context", user?.id ?? "anon"],
     enabled: Boolean(user),
     queryFn: () => fetchAccess(),
-    staleTime: 5_000,
+    staleTime: 0,
+    refetchInterval: 8_000,
     refetchOnWindowFocus: true,
   });
 
