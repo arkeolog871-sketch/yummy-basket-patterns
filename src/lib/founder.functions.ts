@@ -99,14 +99,23 @@ export const updateMapsSettings = createServerFn({ method: "POST" })
         detail: { hasKey: data.maps_api_key.length > 0 },
       },
       async () => {
-        const { error } = await context.supabase
+        const mapsUpdate = {
+          maps_api_key: data.maps_api_key || null,
+          maps_allowed_referrers: data.maps_allowed_referrers || null,
+        };
+        const first = await context.supabase
           .from("site_settings")
-          .update({
-            maps_api_key: data.maps_api_key || null,
-            maps_allowed_referrers: data.maps_allowed_referrers || null,
-          })
+          .update(mapsUpdate)
           .eq("id", "global");
-        if (error) throw new Error(error.message);
+        if (first.error && /maps_allowed_referrers/.test(first.error.message)) {
+          const retry = await context.supabase
+            .from("site_settings")
+            .update({ maps_api_key: mapsUpdate.maps_api_key })
+            .eq("id", "global");
+          if (retry.error) throw new Error(retry.error.message);
+          return { ok: true };
+        }
+        if (first.error) throw new Error(first.error.message);
         return { ok: true };
       },
     );
