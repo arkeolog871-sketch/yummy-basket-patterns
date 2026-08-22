@@ -8,7 +8,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -84,12 +84,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "SİLVAN CEBİMDE — Yemek siparişi" },
       {
         name: "description",
         content: "Mahallenin en iyi ustalarından sıcak yemekler, dakikalar içinde kapınızda.",
       },
+      { name: "theme-color", content: "#ff8c42" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "SİLVAN CEBİMDE" },
       { property: "og:title", content: "SİLVAN CEBİMDE — Yemek siparişi" },
       {
         property: "og:description",
@@ -104,6 +108,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/icons/icon-192.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "preconnect", href: "https://maps.googleapis.com" },
@@ -133,12 +139,30 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function AppChrome() {
+  const [framed, setFramed] = useState(false);
+
+  useEffect(() => {
+    setFramed(window.self !== window.top);
+  }, []);
+
+  return (
+    <div className="flex min-h-screen flex-col" data-app-frame={framed ? "true" : undefined}>
+      <Header />
+      <main className="flex-1">
+        <Outlet />
+      </main>
+      {framed ? null : <Footer />}
+    </div>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const standaloneChrome =
-    pathname.startsWith("/kurucu") || pathname === "/sifre-sifirlama";
+    pathname.startsWith("/kurucu") || pathname === "/sifre-sifirlama" || pathname === "/android";
 
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event) => {
@@ -160,13 +184,7 @@ function RootComponent() {
                 <Outlet />
               </div>
             ) : (
-              <div className="flex min-h-screen flex-col">
-                <Header />
-                <main className="flex-1">
-                  <Outlet />
-                </main>
-                <Footer />
-              </div>
+              <AppChrome />
             )}
             <Toaster />
           </CartProvider>

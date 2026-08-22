@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdreslerimRouteImport } from './routes/adreslerim'
+import { Route as AndroidRouteImport } from './routes/android'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as KurucuRouteImport } from './routes/kurucu'
 import { Route as KurucuGirisRouteImport } from './routes/kurucu-giris'
@@ -37,6 +38,11 @@ const IndexRoute = IndexRouteImport.update({
 const AdreslerimRoute = AdreslerimRouteImport.update({
   id: '/adreslerim',
   path: '/adreslerim',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AndroidRoute = AndroidRouteImport.update({
+  id: '/android',
+  path: '/android',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -128,6 +134,7 @@ const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/adreslerim': typeof AdreslerimRoute
+  '/android': typeof AndroidRoute
   '/auth': typeof AuthRoute
   '/kurucu': typeof KurucuRoute
   '/kurucu-giris': typeof KurucuGirisRoute
@@ -149,6 +156,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/adreslerim': typeof AdreslerimRoute
+  '/android': typeof AndroidRoute
   '/auth': typeof AuthRoute
   '/kurucu': typeof KurucuRoute
   '/kurucu-giris': typeof KurucuGirisRoute
@@ -171,6 +179,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/adreslerim': typeof AdreslerimRoute
+  '/android': typeof AndroidRoute
   '/auth': typeof AuthRoute
   '/kurucu': typeof KurucuRoute
   '/kurucu-giris': typeof KurucuGirisRoute
@@ -194,6 +203,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/adreslerim'
+    | '/android'
     | '/auth'
     | '/kurucu'
     | '/kurucu-giris'
@@ -215,6 +225,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/adreslerim'
+    | '/android'
     | '/auth'
     | '/kurucu'
     | '/kurucu-giris'
@@ -236,6 +247,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/adreslerim'
+    | '/android'
     | '/auth'
     | '/kurucu'
     | '/kurucu-giris'
@@ -258,6 +270,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdreslerimRoute: typeof AdreslerimRoute
+  AndroidRoute: typeof AndroidRoute
   AuthRoute: typeof AuthRoute
   KurucuRoute: typeof KurucuRoute
   KurucuGirisRoute: typeof KurucuGirisRoute
@@ -291,6 +304,13 @@ declare module '@tanstack/react-router' {
       path: '/adreslerim'
       fullPath: '/adreslerim'
       preLoaderRoute: typeof AdreslerimRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/android': {
+      id: '/android'
+      path: '/android'
+      fullPath: '/android'
+      preLoaderRoute: typeof AndroidRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -418,6 +438,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdreslerimRoute: AdreslerimRoute,
+  AndroidRoute: AndroidRoute,
   AuthRoute: AuthRoute,
   KurucuRoute: KurucuRoute,
   KurucuGirisRoute: KurucuGirisRoute,

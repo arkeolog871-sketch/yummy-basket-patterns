@@ -46,7 +46,7 @@ function OrderDetailPage() {
   if (isError || !order) {
     return (
       <div className="mx-auto max-w-lg px-4 py-24 text-center">
-        <h1 className="text-3xl">Sipariş bulunamadı</h1>
+        <h1 className="text-3xl">{isError ? "Sipariş yüklenemedi" : "Sipariş bulunamadı"}</h1>
         <Button asChild className="mt-6 rounded-full">
           <Link to="/siparislerim">Siparişlerime dön</Link>
         </Button>
