@@ -166,7 +166,8 @@ function RootComponent() {
   const standaloneChrome =
     pathname.startsWith("/kurucu") ||
     pathname === "/sifre-sifirlama" ||
-    pathname === "/android";
+    pathname === "/android" ||
+    pathname === "/iphone";
 
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event) => {

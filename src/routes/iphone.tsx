@@ -1,0 +1,97 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { Download, PlusSquare, Share2 } from "lucide-react";
+
+import { IPHONE_PROFILE_HREF } from "@/lib/app-downloads";
+
+export const Route = createFileRoute("/iphone")({
+  head: () => ({
+    meta: [
+      { title: "SİLVAN CEBİMDE — iPhone uygulamasını indir" },
+      {
+        name: "description",
+        content:
+          "SİLVAN CEBİMDE iPhone uygulamasını indirin. App Store gerekmez; ana ekranınıza ekleyip tam ekran kullanın.",
+      },
+      { name: "theme-color", content: "#141416" },
+    ],
+  }),
+  component: IphonePage,
+});
+
+function IphonePage() {
+  const [clock, setClock] = useState("12:00");
+
+  useEffect(() => {
+    const tick = () =>
+      setClock(
+        new Intl.DateTimeFormat("tr-TR", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hourCycle: "h23",
+        }).format(new Date()),
+      );
+    tick();
+    const timer = window.setInterval(tick, 15000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#141416] px-4 py-8">
+      <div className="w-full max-w-[393px]">
+        <div className="mb-4 text-center text-[#f4ece4]">
+          <p className="text-[15px] font-semibold uppercase tracking-[0.08em]">SİLVAN CEBİMDE</p>
+          <p className="mt-1.5 text-[13px] text-[#cbb8a8]">iPhone uygulaması</p>
+          <a
+            href={IPHONE_PROFILE_HREF}
+            className="mt-3 inline-flex items-center rounded-full bg-[#ff8c42] px-4 py-2 text-[13px] font-semibold text-white"
+          >
+            <Download className="mr-1.5 size-3.5" />
+            iPhone uygulamasını kur
+          </a>
+          <p className="mt-3 text-[11px] leading-5 text-[#cbb8a8]">
+            iPhone APK yüklemez. Bu bağlantı uygulamayı ana ekranınıza ekler.
+          </p>
+        </div>
+        <div
+          className="h-[852px] max-h-[calc(100svh-8rem)] rounded-[54px] bg-gradient-to-br from-[#2a2a2e] to-[#070708] p-[11px]"
+          style={{ boxShadow: "0 0 0 2px #3a3a40, 0 24px 80px rgba(0,0,0,0.55)" }}
+        >
+          <div className="relative flex h-full flex-col overflow-hidden rounded-[44px] bg-[#fff8f0]">
+            <span className="absolute left-1/2 top-3 z-10 h-[34px] w-[118px] -translate-x-1/2 rounded-full bg-[#050506]" />
+            <div className="relative z-[2] flex h-11 items-center justify-between px-7 pt-3 text-[12px] font-semibold text-[#17120e]">
+              <span className="tabular-nums">{clock}</span>
+              <span className="flex items-center gap-1.5 opacity-80" aria-hidden>
+                <span className="h-2.5 w-3.5 rounded-[1px] bg-current" />
+                <span className="h-2.5 w-3 rounded-b-full border-2 border-t-0 border-current" />
+                <span className="relative h-2.5 w-5 rounded-[2px] border border-current">
+                  <span className="absolute inset-0.5 w-[70%] rounded-[1px] bg-[#30d158]" />
+                </span>
+              </span>
+            </div>
+            <iframe
+              title="SİLVAN CEBİMDE"
+              src="/"
+              className="min-h-0 w-full flex-1 border-0 bg-[#fff8f0]"
+              allow="geolocation; clipboard-read; clipboard-write"
+            />
+            <div className="grid h-[18px] place-items-center bg-[#fff8f0]">
+              <span className="h-1 w-[128px] rounded-full bg-[#17120e]/80" />
+            </div>
+          </div>
+        </div>
+        <ol className="mt-5 space-y-2 text-left text-[12px] leading-5 text-[#cbb8a8]">
+          <li>1. Yukarıdaki düğmeye dokunun; profil indirilir.</li>
+          <li>2. Ayarlar → İndirilen Profil → Yükle.</li>
+          <li className="flex items-start gap-1.5">
+            <span>3.</span>
+            <span className="flex-1">
+              Safari ile de kurabilirsiniz: <Share2 className="inline size-3.5 align-text-bottom" />{" "}
+              Paylaş → <PlusSquare className="inline size-3.5 align-text-bottom" /> Ana Ekrana Ekle.
+            </span>
+          </li>
+        </ol>
+      </div>
+    </div>
+  );
+}

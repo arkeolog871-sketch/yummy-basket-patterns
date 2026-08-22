@@ -38,6 +38,11 @@ export function Footer() {
                 Android uygulamasını indir
               </Link>
             </li>
+            <li>
+              <Link to="/iphone" className="transition-colors hover:text-foreground">
+                iPhone uygulamasını indir
+              </Link>
+            </li>
           </ul>
         </div>
         <div className="text-sm text-muted-foreground">
