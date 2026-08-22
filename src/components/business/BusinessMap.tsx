@@ -3,7 +3,13 @@ import { MapPin, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { buildMapsUrl, type BusinessLocation } from "@/lib/maps";
 import { cleanMapStyle } from "@/lib/mapStyle";
-import { ensureMapsLibrary, getGoogleMaps } from "@/lib/google-maps-loader";
+import {
+  didMapsAuthFail,
+  ensureMapsLibrary,
+  getGoogleMaps,
+  subscribeMapsAuthFailure,
+  watchMapContainerForAuthError,
+} from "@/lib/google-maps-loader";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import type { GoogleMap, GoogleMarker } from "@/lib/google-maps-types";
 
@@ -30,11 +36,28 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
     let map: GoogleMap | null = null;
     let marker: GoogleMarker | null = null;
     let cancelled = false;
+    let stopWatching: (() => void) | undefined;
+
+    const fail = () => {
+      if (cancelled) return;
+      setStatus(mapsApiKey || isLovableDomain() ? "error" : "unsupported");
+    };
+
+    if (didMapsAuthFail()) {
+      fail();
+      return;
+    }
+
+    const unsubscribeAuth = subscribeMapsAuthFailure(fail);
 
     ensureMapsLibrary(mapsApiKey)
       .then(() => {
         const maps = getGoogleMaps();
         if (cancelled || !containerRef.current || !maps) return;
+        if (didMapsAuthFail()) {
+          fail();
+          return;
+        }
         map = new maps.Map(containerRef.current, {
           center: { lat, lng },
           zoom: 16,
@@ -48,17 +71,22 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
           map,
           title: business.name,
         });
-        if (!cancelled) setStatus("ready");
+        if (!cancelled && !didMapsAuthFail()) setStatus("ready");
+        if (containerRef.current) {
+          stopWatching = watchMapContainerForAuthError(containerRef.current, fail);
+        }
       })
       .catch((error) => {
         console.error(error);
         if (cancelled) return;
         toast.error("Harita yüklenemedi.");
-        setStatus(mapsApiKey || isLovableDomain() ? "error" : "unsupported");
+        fail();
       });
 
     return () => {
       cancelled = true;
+      unsubscribeAuth();
+      stopWatching?.();
       marker?.setMap(null);
       map = null;
       const node = containerRef.current;

@@ -5,6 +5,61 @@ export function getGoogleMaps(): GoogleMapsLibrary | undefined {
   return (window as unknown as { google?: { maps?: GoogleMapsLibrary } }).google?.maps;
 }
 
+type AuthFailureListener = () => void;
+const authFailureListeners = new Set<AuthFailureListener>();
+let mapsAuthFailed = false;
+
+/** Google, geçersiz/izinli olmayan anahtarda `window.gm_authFailure` çağırır. */
+export function subscribeMapsAuthFailure(listener: AuthFailureListener): () => void {
+  if (mapsAuthFailed) queueMicrotask(listener);
+  authFailureListeners.add(listener);
+  return () => {
+    authFailureListeners.delete(listener);
+  };
+}
+
+export function didMapsAuthFail() {
+  return mapsAuthFailed;
+}
+
+function notifyMapsAuthFailure() {
+  mapsAuthFailed = true;
+  for (const listener of authFailureListeners) listener();
+}
+
+if (typeof window !== "undefined") {
+  const host = window as unknown as { gm_authFailure?: () => void };
+  const previous = host.gm_authFailure;
+  host.gm_authFailure = () => {
+    previous?.();
+    notifyMapsAuthFailure();
+  };
+}
+
+/** Google'ın İngilizce "Oops!" katmanını yakalayıp kendi yedek ekranımıza geçmek için. */
+export function watchMapContainerForAuthError(container: HTMLElement, onError: () => void): () => void {
+  const looksLikeAuthError = () =>
+    Boolean(container.querySelector(".gm-err-container, .gm-err-message, .gm-err-title"));
+
+  if (looksLikeAuthError()) {
+    onError();
+    return () => {};
+  }
+
+  const observer = new MutationObserver(() => {
+    if (looksLikeAuthError()) onError();
+  });
+  observer.observe(container, { childList: true, subtree: true });
+  const timeout = window.setTimeout(() => {
+    if (looksLikeAuthError()) onError();
+  }, 2500);
+
+  return () => {
+    observer.disconnect();
+    window.clearTimeout(timeout);
+  };
+}
+
 let mapsReady: Promise<void> | null = null;
 
 function waitForMapConstructor(timeoutMs = 15000): Promise<void> {
