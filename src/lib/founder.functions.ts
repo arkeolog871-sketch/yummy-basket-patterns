@@ -62,8 +62,9 @@ export const updateHeroContent = createServerFn({ method: "POST" })
   });
 
 const mapsSchema = z.object({
-  maps_api_key: z.string().trim().max(200),
+  maps_api_key: z.string().trim().max(200).default(""),
   maps_allowed_referrers: z.string().trim().max(2000),
+  clear_key: z.boolean().default(false),
 });
 
 export const updateMapsSettings = createServerFn({ method: "POST" })
@@ -98,7 +99,11 @@ export const updateMapsSettings = createServerFn({ method: "POST" })
         const { error } = await context.supabase
           .from("site_settings")
           .update({
-            maps_api_key: data.maps_api_key || null,
+            ...(data.clear_key
+              ? { maps_api_key: null }
+              : data.maps_api_key
+                ? { maps_api_key: data.maps_api_key }
+                : {}),
             maps_allowed_referrers: data.maps_allowed_referrers || null,
           })
           .eq("id", "global");

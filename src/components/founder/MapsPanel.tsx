@@ -43,7 +43,11 @@ export function MapsPanel() {
   });
 
   const mutation = useMutation({
-    mutationFn: (values: { maps_api_key: string; maps_allowed_referrers: string }) =>
+    mutationFn: (values: {
+      maps_api_key: string;
+      maps_allowed_referrers: string;
+      clear_key?: boolean;
+    }) =>
       save({ data: values }),
     onSuccess: () => {
       toast.success("Harita ayarları kaydedildi. Sayfayı yenileyin.");
@@ -163,7 +167,11 @@ export function MapsPanel() {
           disabled={mutation.isPending}
           onClick={() => {
             setApiKey("");
-            mutation.mutate({ maps_api_key: "", maps_allowed_referrers: referrers.trim() });
+            mutation.mutate({
+              maps_api_key: "",
+              maps_allowed_referrers: referrers.trim(),
+              clear_key: true,
+            });
           }}
         >
           Anahtarı temizle
