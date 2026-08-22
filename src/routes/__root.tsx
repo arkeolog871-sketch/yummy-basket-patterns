@@ -162,7 +162,9 @@ function RootComponent() {
   const router = useRouter();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const standaloneChrome =
-    pathname.startsWith("/kurucu") || pathname === "/sifre-sifirlama" || pathname === "/android";
+    pathname.startsWith("/kurucu") ||
+    pathname === "/sifre-sifirlama" ||
+    pathname === "/android";
 
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event) => {

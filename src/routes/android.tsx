@@ -39,6 +39,13 @@ function AndroidPreview() {
         <div className="mb-4 text-center text-[#f4ece4]">
           <p className="text-[15px] font-semibold uppercase tracking-[0.08em]">SİLVAN CEBİMDE</p>
           <p className="mt-1.5 text-[13px] text-[#cbb8a8]">Android mobil uygulama önizlemesi</p>
+          <a
+            href="/silvan-cebimde.apk"
+            download="silvan-cebimde.apk"
+            className="mt-3 inline-flex rounded-full bg-[#ff8c42] px-4 py-2 text-[13px] font-semibold text-white"
+          >
+            APK indir
+          </a>
         </div>
         <div
           className="h-[852px] max-h-[calc(100svh-6rem)] rounded-[48px] bg-gradient-to-br from-[#2a2a2e] to-[#070708] p-2.5 shadow-[0_24px_80px_rgba(0,0,0,0.55)]"

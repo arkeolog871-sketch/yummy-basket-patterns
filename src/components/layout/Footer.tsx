@@ -33,6 +33,11 @@ export function Footer() {
                 Siparişlerim
               </Link>
             </li>
+            <li>
+              <Link to="/indir" className="transition-colors hover:text-foreground">
+                Android uygulamasını indir
+              </Link>
+            </li>
           </ul>
         </div>
         <div className="text-sm text-muted-foreground">
