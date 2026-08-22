@@ -35,7 +35,7 @@ export function Footer() {
             </li>
             <li>
               <Link to="/indir" className="transition-colors hover:text-foreground">
-                Uygulamayı indir
+                Android uygulamasını indir
               </Link>
             </li>
             <li>

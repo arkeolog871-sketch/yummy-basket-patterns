@@ -4,7 +4,6 @@ import { Smartphone, Share2, PlusSquare, MoreVertical, Download } from "lucide-r
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ANDROID_APK_FILENAME, ANDROID_APK_HREF, IPHONE_PROFILE_HREF } from "@/lib/app-downloads";
 
 export const Route = createFileRoute("/mobil")({
   head: () => ({
@@ -55,55 +54,35 @@ function MobilePage() {
           <Smartphone className="size-6" />
         </span>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Telefonuna kur</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            Telefonuna kur
+          </h1>
           <p className="text-sm text-muted-foreground">
             SİLVAN CEBİMDE'yi ana ekranına ekle, tam ekran uygulama gibi kullan.
           </p>
         </div>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <Card className="border-primary/30">
-          <CardHeader>
-            <CardTitle className="text-base">Android APK indir</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Telefonuna gerçek uygulama dosyasını kur. Play Store gerekmez.
-            </p>
-            <Button className="w-full" asChild>
-              <a href={ANDROID_APK_HREF} download={ANDROID_APK_FILENAME}>
-                <Download className="mr-2 size-4" />
-                APK dosyasını indir
-              </a>
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              İndirdikten sonra dosyaya dokunup yükle. Android “bilinmeyen uygulamalar” izni isterse
-              izin ver.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-primary/30">
-          <CardHeader>
-            <CardTitle className="text-base">iPhone uygulamasını kur</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              iPhone APK yüklemez. Bu bağlantı uygulamayı ana ekranınıza ekler.
-            </p>
-            <Button className="w-full" asChild>
-              <a href={IPHONE_PROFILE_HREF}>
-                <Download className="mr-2 size-4" />
-                iPhone uygulamasını kur
-              </a>
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              Safari’de açın, profili indirin, ardından Ayarlar → İndirilen Profil → Yükle.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="mt-6 border-primary/30">
+        <CardHeader>
+          <CardTitle className="text-base">Android APK indir</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Telefonuna gerçek uygulama dosyasını kur. Play Store gerekmez.
+          </p>
+          <Button className="w-full" asChild>
+            <a href="/silvan-cebimde.apk" download="silvan-cebimde.apk">
+              <Download className="mr-2 size-4" />
+              APK dosyasını indir
+            </a>
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            İndirdikten sonra dosyaya dokunup yükle. Android “bilinmeyen uygulamalar”
+            izni isterse izin ver.
+          </p>
+        </CardContent>
+      </Card>
 
       <Card className="mt-6">
         <CardHeader>
@@ -171,8 +150,8 @@ function MobilePage() {
       </div>
 
       <p className="mt-6 text-xs text-muted-foreground">
-        Not: Kurulum canlı (yayınlanmış) adres üzerinde çalışır; düzenleyici önizlemesinde tarayıcı
-        kurulum menüsü görünmeyebilir.
+        Not: Kurulum canlı (yayınlanmış) adres üzerinde çalışır; düzenleyici önizlemesinde
+        tarayıcı kurulum menüsü görünmeyebilir.
       </p>
     </main>
   );
