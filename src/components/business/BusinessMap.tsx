@@ -29,11 +29,12 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
 
     let map: GoogleMap | null = null;
     let marker: GoogleMarker | null = null;
+    let cancelled = false;
 
     ensureMapsLibrary(mapsApiKey)
       .then(() => {
         const maps = getGoogleMaps();
-        if (!containerRef.current || !maps) return;
+        if (cancelled || !containerRef.current || !maps) return;
         map = new maps.Map(containerRef.current, {
           center: { lat, lng },
           zoom: 16,
@@ -47,17 +48,21 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
           map,
           title: business.name,
         });
-        setStatus("ready");
+        if (!cancelled) setStatus("ready");
       })
       .catch((error) => {
         console.error(error);
+        if (cancelled) return;
         toast.error("Harita yüklenemedi.");
         setStatus(mapsApiKey || isLovableDomain() ? "error" : "unsupported");
       });
 
     return () => {
+      cancelled = true;
       marker?.setMap(null);
       map = null;
+      const node = containerRef.current;
+      if (node) node.replaceChildren();
     };
   }, [business.latitude, business.longitude, business.name, mapsApiKey]);
 
@@ -113,13 +118,14 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
       <h3 className="flex items-center gap-2 text-base font-semibold">
         <MapPin className="size-4 text-primary" /> Konum
       </h3>
-      <div
-        ref={containerRef}
-        className="mt-3 aspect-video w-full overflow-hidden rounded-2xl bg-muted"
-        aria-label={`${business.name} konum haritası`}
-      >
+      <div className="relative mt-3 aspect-video w-full overflow-hidden rounded-2xl bg-muted">
+        <div
+          ref={containerRef}
+          className="absolute inset-0"
+          aria-label={`${business.name} konum haritası`}
+        />
         {status === "loading" ? (
-          <div className="flex h-full items-center justify-center">
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-muted">
             <span className="text-sm text-muted-foreground">Harita yükleniyor…</span>
           </div>
         ) : null}

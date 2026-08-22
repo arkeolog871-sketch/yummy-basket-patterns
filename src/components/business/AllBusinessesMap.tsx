@@ -133,6 +133,8 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
       activeInfoWindow?.close();
       for (const marker of markers) marker.setMap(null);
       map = null;
+      const node = containerRef.current;
+      if (node) node.replaceChildren();
     };
   }, [businesses, mapsApiKey]);
 

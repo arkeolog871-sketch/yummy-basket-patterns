@@ -23,11 +23,12 @@ export function slugify(value: string): string {
 }
 
 export function formatPrice(value: number): string {
+  const amount = Number.isFinite(value) ? value : 0;
   return new Intl.NumberFormat("tr-TR", {
     style: "currency",
     currency: "TRY",
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(amount);
 }
 
 export function formatDateTime(iso: string): string {
