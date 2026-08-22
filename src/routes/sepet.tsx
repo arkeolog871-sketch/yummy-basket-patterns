@@ -120,15 +120,21 @@ function CartPage() {
           </p>
         ) : null}
 
-        <Button asChild disabled={missing > 0} className="mt-5 w-full rounded-full" size="lg">
-          {user ? (
-            <Link to="/odeme">Ödemeye geç</Link>
-          ) : (
-            <Link to="/auth" search={{ redirect: "/odeme" }}>
-              Giriş yap ve devam et
-            </Link>
-          )}
-        </Button>
+        {missing > 0 ? (
+          <Button disabled className="mt-5 w-full rounded-full" size="lg">
+            {user ? "Ödemeye geç" : "Giriş yap ve devam et"}
+          </Button>
+        ) : (
+          <Button asChild className="mt-5 w-full rounded-full" size="lg">
+            {user ? (
+              <Link to="/odeme">Ödemeye geç</Link>
+            ) : (
+              <Link to="/auth" search={{ redirect: "/odeme" }}>
+                Giriş yap ve devam et
+              </Link>
+            )}
+          </Button>
+        )}
       </div>
     </div>
   );

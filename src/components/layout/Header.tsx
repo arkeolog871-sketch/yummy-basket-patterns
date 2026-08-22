@@ -204,8 +204,9 @@ export function Header() {
             key={sector.slug}
             to="/"
             search={{ kategori: sector.slug }}
+            activeOptions={{ exact: true, includeSearch: true }}
             className="shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-warm hover:text-warm-foreground"
-            activeProps={{ className: "shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium" }}
+            activeProps={{ className: "shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium text-foreground" }}
           >
             {sector.label}
           </Link>

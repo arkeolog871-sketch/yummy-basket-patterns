@@ -47,7 +47,7 @@ function AddressesPage() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState(emptyForm);
 
-  const { data: addresses = [], isLoading } = useQuery({
+  const { data: addresses = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["addresses"],
     queryFn: () => fetchAddresses(),
   });
@@ -80,8 +80,8 @@ function AddressesPage() {
       toast.success("Adres silindi.");
       void queryClient.invalidateQueries({ queryKey: ["addresses"] });
     },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Adres silinemedi."),
   });
-
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-10">
       <h1 className="text-3xl">Adreslerim</h1>
@@ -90,6 +90,13 @@ function AddressesPage() {
         <div className="space-y-3">
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Yükleniyor…</p>
+          ) : isError ? (
+            <div className="rounded-3xl border border-dashed border-border bg-card p-8 text-center">
+              <p className="text-sm font-semibold">Adresler yüklenemedi</p>
+              <Button className="mt-4 rounded-full" onClick={() => void refetch()}>
+                Tekrar dene
+              </Button>
+            </div>
           ) : addresses.length === 0 ? (
             <p className="rounded-3xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
               Henüz kayıtlı adresiniz yok.

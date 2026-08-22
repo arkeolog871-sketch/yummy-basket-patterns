@@ -26,6 +26,14 @@ export const Route = createFileRoute("/restoranlar")({
       context.queryClient.ensureQueryData(categoriesQuery),
     ]);
   },
+  errorComponent: () => (
+    <div className="mx-auto max-w-lg px-4 py-20 text-center">
+      <p className="font-semibold">Restoranlar şu anda yüklenemedi</p>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Lütfen sayfayı yenileyin veya birazdan tekrar deneyin.
+      </p>
+    </div>
+  ),
   head: () => ({
     meta: [
       { title: "Restoranlar — SİLVAN CEBİMDE" },

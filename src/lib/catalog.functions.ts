@@ -7,6 +7,18 @@ const listSchema = z.object({
   sector: z.string().trim().max(40).optional(),
 });
 
+/** PostgREST `or`/`ilike` için güvenli desen — virgül veya joker karakter aramayı bozmasın. */
+function ilikePattern(raw: string): string | null {
+  const escaped = raw
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/[%_]/g, "")
+    .replace(/[,()]/g, " ")
+    .trim();
+  if (!escaped) return null;
+  return `"%${escaped}%"`;
+}
+
 export const listRestaurants = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => listSchema.parse(input ?? {}))
   .handler(async ({ data }) => {
@@ -24,8 +36,10 @@ export const listRestaurants = createServerFn({ method: "GET" })
     if (data.category) query = query.eq("category", data.category);
     if (data.sector) query = query.eq("sector", data.sector);
     if (data.search) {
-      const term = `%${data.search}%`;
-      query = query.or(`name.ilike.${term},tagline.ilike.${term},category.ilike.${term}`);
+      const pattern = ilikePattern(data.search);
+      if (pattern) {
+        query = query.or(`name.ilike.${pattern},tagline.ilike.${pattern},category.ilike.${pattern}`);
+      }
     }
 
     const { data: rows, error } = await query;

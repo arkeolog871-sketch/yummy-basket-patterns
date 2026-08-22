@@ -29,9 +29,11 @@ export function localNowMinutes(now: Date = new Date()): number {
     timeZone: "Europe/Istanbul",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
+    hourCycle: "h23",
   }).format(now);
-  return timeToMinutes(parts) ?? 0;
+  const minutes = timeToMinutes(parts);
+  if (minutes === null) return 0;
+  return minutes >= 24 * 60 ? minutes % (24 * 60) : minutes;
 }
 
 /** Saat aralığı gece yarısını aşabilir (örn. 18:00 - 02:00). */

@@ -35,6 +35,14 @@ export const Route = createFileRoute("/restoran/$slug")({
   },
   component: RestaurantDetail,
   notFoundComponent: RestaurantNotFound,
+  errorComponent: () => (
+    <div className="mx-auto max-w-lg px-4 py-20 text-center">
+      <p className="font-semibold">Restoran şu anda yüklenemedi</p>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Lütfen sayfayı yenileyin veya birazdan tekrar deneyin.
+      </p>
+    </div>
+  ),
 });
 
 function RestaurantNotFound() {
@@ -66,6 +74,10 @@ function RestaurantDetail() {
     items: items.filter((item) => item.category_id === category.id),
   }));
   const uncategorised = items.filter((item) => !item.category_id);
+  const menuGroups = [
+    ...grouped,
+    { id: "other", name: "Diğer", position: 999, items: uncategorised },
+  ].filter((group) => group.items.length > 0);
 
   const cartRestaurant = {
     id: restaurant.id,
@@ -161,9 +173,15 @@ function RestaurantDetail() {
 
         <div className="grid gap-8 py-10 lg:grid-cols-[1fr_320px]">
           <div className="space-y-10">
-            {[...grouped, { id: "other", name: "Diğer", position: 999, items: uncategorised }]
-              .filter((group) => group.items.length > 0)
-              .map((group) => (
+            {menuGroups.length === 0 ? (
+              <div className="rounded-3xl border border-dashed border-border bg-card p-10 text-center">
+                <p className="font-semibold">Bu işletmede şu an menü yok</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Ürünler eklendiğinde burada görünecek.
+                </p>
+              </div>
+            ) : (
+              menuGroups.map((group) => (
                 <section key={group.id}>
                   <h2 className="text-xl">{group.name}</h2>
                   <div className="mt-4 space-y-3">
@@ -201,7 +219,8 @@ function RestaurantDetail() {
                     ))}
                   </div>
                 </section>
-              ))}
+              ))
+            )}
           </div>
 
           <aside className="h-fit rounded-3xl border border-border/70 bg-card p-5 shadow-card lg:sticky lg:top-24">

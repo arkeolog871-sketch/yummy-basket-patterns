@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
 import { cleanMapStyle } from "@/lib/mapStyle";
-import { ensureMapsLibrary, getGoogleMaps } from "@/lib/google-maps-loader";
+import {
+  didMapsAuthFail,
+  ensureMapsLibrary,
+  getGoogleMaps,
+  subscribeMapsAuthFailure,
+  watchMapContainerForAuthError,
+} from "@/lib/google-maps-loader";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import type { GoogleMap, GoogleMarker, GoogleInfoWindow } from "@/lib/google-maps-types";
 
@@ -75,11 +81,28 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
     const markers: GoogleMarker[] = [];
     let activeInfoWindow: GoogleInfoWindow | null = null;
     let cancelled = false;
+    let stopWatching: (() => void) | undefined;
+
+    const fail = () => {
+      if (cancelled) return;
+      setStatus(mapsApiKey || isLovableDomain() ? "error" : "unsupported");
+    };
+
+    if (didMapsAuthFail()) {
+      fail();
+      return;
+    }
+
+    const unsubscribeAuth = subscribeMapsAuthFailure(fail);
 
     ensureMapsLibrary(mapsApiKey)
       .then(() => {
         const maps = getGoogleMaps();
         if (cancelled || !containerRef.current || !maps) return;
+        if (didMapsAuthFail()) {
+          fail();
+          return;
+        }
 
         map = new maps.Map(containerRef.current, {
           zoom: mappable.length > 1 ? 12 : 15,
@@ -121,18 +144,25 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
           map.setCenter({ lat: first.lat, lng: first.lng });
         }
 
-        if (!cancelled) setStatus("ready");
+        if (!cancelled && !didMapsAuthFail()) setStatus("ready");
+        if (containerRef.current) {
+          stopWatching = watchMapContainerForAuthError(containerRef.current, fail);
+        }
       })
       .catch((error) => {
         console.error("AllBusinessesMap", error);
-        if (!cancelled) setStatus(mapsApiKey || isLovableDomain() ? "error" : "unsupported");
+        fail();
       });
 
     return () => {
       cancelled = true;
+      unsubscribeAuth();
+      stopWatching?.();
       activeInfoWindow?.close();
       for (const marker of markers) marker.setMap(null);
       map = null;
+      const node = containerRef.current;
+      if (node) node.replaceChildren();
     };
   }, [businesses, mapsApiKey]);
 
