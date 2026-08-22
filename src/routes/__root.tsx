@@ -53,9 +53,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Sayfa yüklenemedi
-        </h1>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">Sayfa yüklenemedi</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Bir şeyler ters gitti. Sayfayı yenileyebilir veya ana sayfaya dönebilirsiniz.
         </p>
@@ -166,7 +164,8 @@ function RootComponent() {
   const standaloneChrome =
     pathname.startsWith("/kurucu") ||
     pathname === "/sifre-sifirlama" ||
-    pathname === "/android";
+    pathname === "/android" ||
+    pathname === "/iphone";
 
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event) => {

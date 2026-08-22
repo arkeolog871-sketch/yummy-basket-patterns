@@ -14,6 +14,7 @@ import { Route as AdreslerimRouteImport } from './routes/adreslerim'
 import { Route as AndroidRouteImport } from './routes/android'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndirRouteImport } from './routes/indir'
+import { Route as IphoneRouteImport } from './routes/iphone'
 import { Route as KurucuRouteImport } from './routes/kurucu'
 import { Route as KurucuGirisRouteImport } from './routes/kurucu-giris'
 import { Route as MobilRouteImport } from './routes/mobil'
@@ -21,6 +22,7 @@ import { Route as OdemeRouteImport } from './routes/odeme'
 import { Route as RestoranlarRouteImport } from './routes/restoranlar'
 import { Route as SepetRouteImport } from './routes/sepet'
 import { Route as SifreSifirlamaRouteImport } from './routes/sifre-sifirlama'
+import { Route as SilvanCebimdeIphoneDotmobileconfigRouteImport } from './routes/silvan-cebimde-iphone[.]mobileconfig'
 import { Route as SiparislerimRouteImport } from './routes/siparislerim'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminSplatRouteImport } from './routes/admin.$'
@@ -55,6 +57,11 @@ const AuthRoute = AuthRouteImport.update({
 const IndirRoute = IndirRouteImport.update({
   id: '/indir',
   path: '/indir',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IphoneRoute = IphoneRouteImport.update({
+  id: '/iphone',
+  path: '/iphone',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KurucuRoute = KurucuRouteImport.update({
@@ -92,6 +99,12 @@ const SifreSifirlamaRoute = SifreSifirlamaRouteImport.update({
   path: '/sifre-sifirlama',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SilvanCebimdeIphoneDotmobileconfigRoute =
+  SilvanCebimdeIphoneDotmobileconfigRouteImport.update({
+    id: '/silvan-cebimde-iphone.mobileconfig',
+    path: '/silvan-cebimde-iphone.mobileconfig',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const SiparislerimRoute = SiparislerimRouteImport.update({
   id: '/siparislerim',
   path: '/siparislerim',
@@ -149,6 +162,7 @@ export interface FileRoutesByFullPath {
   '/android': typeof AndroidRoute
   '/auth': typeof AuthRoute
   '/indir': typeof IndirRoute
+  '/iphone': typeof IphoneRoute
   '/kurucu': typeof KurucuRoute
   '/kurucu-giris': typeof KurucuGirisRoute
   '/mobil': typeof MobilRoute
@@ -156,6 +170,7 @@ export interface FileRoutesByFullPath {
   '/restoranlar': typeof RestoranlarRoute
   '/sepet': typeof SepetRoute
   '/sifre-sifirlama': typeof SifreSifirlamaRoute
+  '/silvan-cebimde-iphone.mobileconfig': typeof SilvanCebimdeIphoneDotmobileconfigRoute
   '/siparislerim': typeof SiparislerimRoute
   '/admin/$': typeof AdminSplatRoute
   '/restoran/$slug': typeof RestoranSlugRoute
@@ -173,6 +188,7 @@ export interface FileRoutesByTo {
   '/android': typeof AndroidRoute
   '/auth': typeof AuthRoute
   '/indir': typeof IndirRoute
+  '/iphone': typeof IphoneRoute
   '/kurucu': typeof KurucuRoute
   '/kurucu-giris': typeof KurucuGirisRoute
   '/mobil': typeof MobilRoute
@@ -180,6 +196,7 @@ export interface FileRoutesByTo {
   '/restoranlar': typeof RestoranlarRoute
   '/sepet': typeof SepetRoute
   '/sifre-sifirlama': typeof SifreSifirlamaRoute
+  '/silvan-cebimde-iphone.mobileconfig': typeof SilvanCebimdeIphoneDotmobileconfigRoute
   '/siparislerim': typeof SiparislerimRoute
   '/admin/$': typeof AdminSplatRoute
   '/restoran/$slug': typeof RestoranSlugRoute
@@ -198,6 +215,7 @@ export interface FileRoutesById {
   '/android': typeof AndroidRoute
   '/auth': typeof AuthRoute
   '/indir': typeof IndirRoute
+  '/iphone': typeof IphoneRoute
   '/kurucu': typeof KurucuRoute
   '/kurucu-giris': typeof KurucuGirisRoute
   '/mobil': typeof MobilRoute
@@ -205,6 +223,7 @@ export interface FileRoutesById {
   '/restoranlar': typeof RestoranlarRoute
   '/sepet': typeof SepetRoute
   '/sifre-sifirlama': typeof SifreSifirlamaRoute
+  '/silvan-cebimde-iphone.mobileconfig': typeof SilvanCebimdeIphoneDotmobileconfigRoute
   '/siparislerim': typeof SiparislerimRoute
   '/admin/$': typeof AdminSplatRoute
   '/restoran/$slug': typeof RestoranSlugRoute
@@ -224,6 +243,7 @@ export interface FileRouteTypes {
     | '/android'
     | '/auth'
     | '/indir'
+    | '/iphone'
     | '/kurucu'
     | '/kurucu-giris'
     | '/mobil'
@@ -231,6 +251,7 @@ export interface FileRouteTypes {
     | '/restoranlar'
     | '/sepet'
     | '/sifre-sifirlama'
+    | '/silvan-cebimde-iphone.mobileconfig'
     | '/siparislerim'
     | '/admin/$'
     | '/restoran/$slug'
@@ -248,6 +269,7 @@ export interface FileRouteTypes {
     | '/android'
     | '/auth'
     | '/indir'
+    | '/iphone'
     | '/kurucu'
     | '/kurucu-giris'
     | '/mobil'
@@ -255,6 +277,7 @@ export interface FileRouteTypes {
     | '/restoranlar'
     | '/sepet'
     | '/sifre-sifirlama'
+    | '/silvan-cebimde-iphone.mobileconfig'
     | '/siparislerim'
     | '/admin/$'
     | '/restoran/$slug'
@@ -272,6 +295,7 @@ export interface FileRouteTypes {
     | '/android'
     | '/auth'
     | '/indir'
+    | '/iphone'
     | '/kurucu'
     | '/kurucu-giris'
     | '/mobil'
@@ -279,6 +303,7 @@ export interface FileRouteTypes {
     | '/restoranlar'
     | '/sepet'
     | '/sifre-sifirlama'
+    | '/silvan-cebimde-iphone.mobileconfig'
     | '/siparislerim'
     | '/admin/$'
     | '/restoran/$slug'
@@ -297,6 +322,7 @@ export interface RootRouteChildren {
   AndroidRoute: typeof AndroidRoute
   AuthRoute: typeof AuthRoute
   IndirRoute: typeof IndirRoute
+  IphoneRoute: typeof IphoneRoute
   KurucuRoute: typeof KurucuRoute
   KurucuGirisRoute: typeof KurucuGirisRoute
   MobilRoute: typeof MobilRoute
@@ -304,6 +330,7 @@ export interface RootRouteChildren {
   RestoranlarRoute: typeof RestoranlarRoute
   SepetRoute: typeof SepetRoute
   SifreSifirlamaRoute: typeof SifreSifirlamaRoute
+  SilvanCebimdeIphoneDotmobileconfigRoute: typeof SilvanCebimdeIphoneDotmobileconfigRoute
   SiparislerimRoute: typeof SiparislerimRoute
   AdminSplatRoute: typeof AdminSplatRoute
   RestoranSlugRoute: typeof RestoranSlugRoute
@@ -353,6 +380,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndirRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/iphone': {
+      id: '/iphone'
+      path: '/iphone'
+      fullPath: '/iphone'
+      preLoaderRoute: typeof IphoneRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/kurucu': {
       id: '/kurucu'
       path: '/kurucu'
@@ -400,6 +434,13 @@ declare module '@tanstack/react-router' {
       path: '/sifre-sifirlama'
       fullPath: '/sifre-sifirlama'
       preLoaderRoute: typeof SifreSifirlamaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/silvan-cebimde-iphone.mobileconfig': {
+      id: '/silvan-cebimde-iphone.mobileconfig'
+      path: '/silvan-cebimde-iphone.mobileconfig'
+      fullPath: '/silvan-cebimde-iphone.mobileconfig'
+      preLoaderRoute: typeof SilvanCebimdeIphoneDotmobileconfigRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/siparislerim': {
@@ -481,6 +522,7 @@ const rootRouteChildren: RootRouteChildren = {
   AndroidRoute: AndroidRoute,
   AuthRoute: AuthRoute,
   IndirRoute: IndirRoute,
+  IphoneRoute: IphoneRoute,
   KurucuRoute: KurucuRoute,
   KurucuGirisRoute: KurucuGirisRoute,
   MobilRoute: MobilRoute,
@@ -488,6 +530,8 @@ const rootRouteChildren: RootRouteChildren = {
   RestoranlarRoute: RestoranlarRoute,
   SepetRoute: SepetRoute,
   SifreSifirlamaRoute: SifreSifirlamaRoute,
+  SilvanCebimdeIphoneDotmobileconfigRoute:
+    SilvanCebimdeIphoneDotmobileconfigRoute,
   SiparislerimRoute: SiparislerimRoute,
   AdminSplatRoute: AdminSplatRoute,
   RestoranSlugRoute: RestoranSlugRoute,
