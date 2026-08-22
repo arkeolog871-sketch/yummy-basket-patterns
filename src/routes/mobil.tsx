@@ -63,9 +63,30 @@ function MobilePage() {
         </div>
       </div>
 
+      <Card className="mt-6 border-primary/30">
+        <CardHeader>
+          <CardTitle className="text-base">Android APK indir</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Telefonuna gerçek uygulama dosyasını kur. Play Store gerekmez.
+          </p>
+          <Button className="w-full" asChild>
+            <a href="/silvan-cebimde.apk" download="silvan-cebimde.apk">
+              <Download className="mr-2 size-4" />
+              APK dosyasını indir
+            </a>
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            İndirdikten sonra dosyaya dokunup yükle. Android “bilinmeyen uygulamalar”
+            izni isterse izin ver.
+          </p>
+        </CardContent>
+      </Card>
+
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle className="text-base">Tek dokunuşla kurulum</CardTitle>
+          <CardTitle className="text-base">Tarayıcıdan ana ekrana ekle</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {installed ? (
