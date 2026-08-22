@@ -37,7 +37,7 @@ function CheckoutPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [note, setNote] = useState("");
 
-  const { data: addresses = [], isLoading } = useQuery({
+  const { data: addresses = [], isLoading, isError } = useQuery({
     queryKey: ["addresses"],
     queryFn: () => fetchAddresses(),
   });
@@ -98,6 +98,8 @@ function CheckoutPage() {
         <p className="font-semibold">Teslimat adresi</p>
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Yükleniyor…</p>
+        ) : isError ? (
+          <p className="text-sm text-muted-foreground">Adresler yüklenemedi. Sayfayı yenileyip tekrar deneyin.</p>
         ) : addresses.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-border bg-card p-8 text-center">
             <p className="text-sm text-muted-foreground">Önce bir teslimat adresi ekleyin.</p>

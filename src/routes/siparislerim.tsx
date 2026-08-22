@@ -32,7 +32,7 @@ export const Route = createFileRoute("/siparislerim")({
 
 function OrdersPage() {
   const fetchOrders = useServerFn(listMyOrders);
-  const { data: orders = [], isLoading } = useQuery({
+  const { data: orders = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["orders"],
     queryFn: () => fetchOrders(),
     refetchInterval: 15000,
@@ -44,6 +44,16 @@ function OrdersPage() {
 
       {isLoading ? (
         <p className="mt-6 text-sm text-muted-foreground">Yükleniyor…</p>
+      ) : isError ? (
+        <div className="mt-10 rounded-3xl border border-dashed border-border bg-card p-10 text-center">
+          <p className="font-semibold">Siparişler yüklenemedi</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Lütfen tekrar deneyin.
+          </p>
+          <Button className="mt-5 rounded-full" onClick={() => void refetch()}>
+            Tekrar dene
+          </Button>
+        </div>
       ) : orders.length === 0 ? (
         <div className="mt-10 rounded-3xl border border-dashed border-border bg-card p-10 text-center">
           <p className="font-semibold">Henüz siparişiniz yok</p>

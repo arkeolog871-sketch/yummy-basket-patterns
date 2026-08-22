@@ -33,7 +33,7 @@ export const Route = createFileRoute("/siparis/$id")({
 function OrderDetailPage() {
   const { id } = Route.useParams();
   const fetchOrder = useServerFn(getMyOrder);
-  const { data: order, isLoading } = useQuery({
+  const { data: order, isLoading, isError } = useQuery({
     queryKey: ["order", id],
     queryFn: () => fetchOrder({ data: { id } }),
     refetchInterval: 10000,
@@ -43,7 +43,7 @@ function OrderDetailPage() {
     return <p className="mx-auto max-w-2xl px-4 py-16 text-sm text-muted-foreground">Yükleniyor…</p>;
   }
 
-  if (!order) {
+  if (isError || !order) {
     return (
       <div className="mx-auto max-w-lg px-4 py-24 text-center">
         <h1 className="text-3xl">Sipariş bulunamadı</h1>
