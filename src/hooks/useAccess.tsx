@@ -14,7 +14,8 @@ export function useAccess() {
     queryKey: ["access-context", user?.id ?? "anon"],
     enabled: Boolean(user),
     queryFn: () => fetchAccess(),
-    staleTime: 30_000,
+    staleTime: 5_000,
+    refetchOnWindowFocus: true,
   });
 
   const role: AccessRole = !user ? "guest" : (query.data?.role ?? "customer");

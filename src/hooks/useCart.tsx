@@ -76,16 +76,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
           const lines = sameRestaurant ? [...prev.lines] : [];
           const existing = lines.findIndex((item) => item.menuItemId === line.menuItemId);
           if (existing >= 0) {
-            lines[existing] = { ...lines[existing]!, quantity: lines[existing]!.quantity + quantity };
+            lines[existing] = {
+              ...lines[existing]!,
+              quantity: Math.min(20, lines[existing]!.quantity + quantity),
+            };
           } else {
-            lines.push({ ...line, quantity });
+            lines.push({ ...line, quantity: Math.min(20, Math.max(1, quantity)) });
           }
           return { restaurant, lines };
         }),
       setQuantity: (menuItemId, quantity) =>
         setState((prev) => {
           const lines = prev.lines
-            .map((line) => (line.menuItemId === menuItemId ? { ...line, quantity } : line))
+            .map((line) =>
+              line.menuItemId === menuItemId
+                ? { ...line, quantity: Math.min(20, Math.max(0, quantity)) }
+                : line,
+            )
             .filter((line) => line.quantity > 0);
           return lines.length === 0 ? EMPTY : { ...prev, lines };
         }),

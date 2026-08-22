@@ -34,11 +34,8 @@ function ResetPasswordPage() {
 
   // Kurtarma bağlantısı bir oturum açar; sadece o durumda şifre değiştirilebilir.
   useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY" || session) setReady(true);
-    });
-    void supabase.auth.getSession().then(({ data: current }) => {
-      if (current.session) setReady(true);
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") setReady(true);
     });
     return () => data.subscription.unsubscribe();
   }, []);
@@ -55,7 +52,7 @@ function ResetPasswordPage() {
       if (error) throw error;
       toast.success("Şifreniz güncellendi. Şimdi giriş yapabilirsiniz.");
       await supabase.auth.signOut();
-      navigate({ to: "/kurucu-giris", replace: true });
+      navigate({ to: "/auth", replace: true });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Şifre güncellenemedi.");
     } finally {

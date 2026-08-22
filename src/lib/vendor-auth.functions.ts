@@ -18,8 +18,14 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
       "./vendor-auth.server"
     );
     const { logAudit } = await import("./audit.server");
+    const { reserveSend, hashEmail } = await import("./otp.server");
 
     const vendor = await findVendorUser(data.identifier);
+    const rate = await reserveSend(vendor?.email ?? `${hashEmail(data.identifier)}@guard.local`);
+    if (!rate.ok) {
+      return { ok: false as const, error: rate.error };
+    }
+
     if (!vendor) {
       await logAudit({
         actorId: null,
@@ -29,10 +35,7 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
         status: "denied",
         detail: { reason: "Telefon/e-postaya bağlı işletme hesabı yok" },
       });
-      return {
-        ok: false as const,
-        error: "Bu bilgiye bağlı aktif bir işletme hesabı yok. Kurucu panelinden işletmenin iletişim bilgilerini kaydedin.",
-      };
+      return { ok: true as const, maskedEmail: "kayıtlı e-posta" };
     }
 
     const supabase = createServerPublicClient();
@@ -81,7 +84,7 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
     const { logAudit } = await import("./audit.server");
 
     const token = data.code.replace(/\D/g, "");
-    if (token.length < 4) {
+    if (token.length !== 6) {
       return {
         ok: false as const,
         error: "Lütfen e-postanıza gelen 6 haneli kodu eksiksiz girin.",
@@ -92,8 +95,14 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
     if (!vendor) {
       return {
         ok: false as const,
-        error: "Bu bilgiye bağlı aktif bir işletme hesabı yok. Kurucu panelinden işletmenin iletişim bilgilerini kaydedin.",
+        error: "Kod geçersiz veya süresi dolmuş.",
       };
+    }
+
+    const { assertCanVerify, registerFailedAttempt, clearGuard } = await import("./otp.server");
+    const allowed = await assertCanVerify(vendor.email);
+    if (!allowed.ok) {
+      return { ok: false as const, error: allowed.error };
     }
 
     const supabase = createServerPublicClient();
@@ -105,6 +114,7 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
 
 
     if (error || !verified.session) {
+      await registerFailedAttempt(vendor.email);
       await logAudit({
         actorId: vendor.userId,
         actorEmail: vendor.email,
@@ -116,6 +126,8 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
       });
       throw new Error("Kod geçersiz veya süresi dolmuş.");
     }
+
+    await clearGuard(vendor.email);
 
     await logAudit({
       actorId: vendor.userId,

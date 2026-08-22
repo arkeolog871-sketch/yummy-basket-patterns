@@ -25,11 +25,13 @@ export const updateHeroContent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => heroSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { isFounderUser } = await import("./founder.server");
+    const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
     const { logAudit } = await import("./audit.server");
     const actorEmail = (context.claims as { email?: string } | null)?.email ?? null;
-    if (!(await isFounderUser(context.supabase, context.userId))) {
+    try {
+      await assertFounder(context.supabase, context.userId, context.claims as never);
+    } catch (error) {
       await logAudit({
         actorId: context.userId,
         actorEmail,
@@ -37,9 +39,9 @@ export const updateHeroContent = createServerFn({ method: "POST" })
         entity: "site_settings",
         entityId: "global",
         status: "denied",
-        detail: { reason: "Kurucu yetkisi yok" },
+        detail: { reason: error instanceof Error ? error.message : "Kurucu yetkisi yok" },
       });
-      throw new Error("Bu işlem için kurucu yetkisi gerekiyor");
+      throw error instanceof Error ? error : new Error("Bu işlem için kurucu yetkisi gerekiyor");
     }
     return audited(
       {
@@ -70,10 +72,12 @@ export const updateMapsSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => mapsSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { isFounderUser } = await import("./founder.server");
+    const { assertFounder } = await import("./founder.server");
     const { audited, logAudit } = await import("./audit.server");
     const actorEmail = (context.claims as { email?: string } | null)?.email ?? null;
-    if (!(await isFounderUser(context.supabase, context.userId))) {
+    try {
+      await assertFounder(context.supabase, context.userId, context.claims as never);
+    } catch (error) {
       await logAudit({
         actorId: context.userId,
         actorEmail,
@@ -81,9 +85,9 @@ export const updateMapsSettings = createServerFn({ method: "POST" })
         entity: "site_settings",
         entityId: "global",
         status: "denied",
-        detail: { reason: "Kurucu yetkisi yok" },
+        detail: { reason: error instanceof Error ? error.message : "Kurucu yetkisi yok" },
       });
-      throw new Error("Bu işlem için kurucu yetkisi gerekiyor");
+      throw error instanceof Error ? error : new Error("Bu işlem için kurucu yetkisi gerekiyor");
     }
     return audited(
       {
@@ -215,6 +219,8 @@ export const getFounderStatus = createServerFn({ method: "GET" })
 export const claimFounder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const { assertVerifiedEmail } = await import("./otp.server");
+    await assertVerifiedEmail(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { logAudit } = await import("./audit.server");
     const actorEmail = (context.claims as { email?: string } | null)?.email ?? null;

@@ -1,15 +1,6 @@
-import { useEffect, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
-import { cleanMapStyle } from "@/lib/mapStyle";
-import {
-  didMapsAuthFail,
-  ensureMapsLibrary,
-  getGoogleMaps,
-  subscribeMapsAuthFailure,
-  watchMapContainerForAuthError,
-} from "@/lib/google-maps-loader";
-import { useSiteSettings } from "@/hooks/useSiteSettings";
-import type { GoogleMap, GoogleMarker, GoogleInfoWindow } from "@/lib/google-maps-types";
+import { resolveBusinessCoords } from "@/lib/maps";
+import { LiveMapCanvas, type LiveMapMarker } from "@/components/business/LiveMapCanvas";
 
 interface MappableBusiness {
   id: string;
@@ -25,163 +16,22 @@ interface AllBusinessesMapProps {
   businesses: MappableBusiness[];
 }
 
-function toNumber(value: number | string | null | undefined) {
-  if (value === null || value === undefined || value === "") return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function coordsFromMapsUrl(url: string | null | undefined) {
-  if (!url) return null;
-  const match =
-    url.match(/[?&]q=(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/) ??
-    url.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/) ??
-    url.match(/[?&](?:ll|center)=(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/) ??
-    url.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
-  if (!match) return null;
-  const lat = Number(match[1]);
-  const lng = Number(match[2]);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  return { lat, lng };
-}
-
-function isLovableDomain() {
-  if (typeof window === "undefined") return false;
-  const host = window.location.hostname;
-  return host.endsWith(".lovable.app") || host.endsWith(".lovableproject.com");
-}
-
 export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [status, setStatus] = useState<"loading" | "ready" | "unsupported" | "empty" | "error">("loading");
-  const { settings } = useSiteSettings();
-  const mapsApiKey = settings.maps_api_key ?? null;
+  const markers: LiveMapMarker[] = businesses.flatMap((business) => {
+    const point = resolveBusinessCoords(business);
+    if (!point) return [];
+    return [
+      {
+        lat: point.lat,
+        lng: point.lng,
+        title: business.name,
+            address: business.address ?? null,
+        href: `/restoran/${encodeURIComponent(business.slug)}`,
+      },
+    ];
+  });
 
-  useEffect(() => {
-    const mappable = businesses
-      .map((b) => {
-        let lat = toNumber(b.latitude);
-        let lng = toNumber(b.longitude);
-        if (lat === null || lng === null) {
-          const parsed = coordsFromMapsUrl(b.maps_url);
-          if (!parsed) return null;
-          lat = parsed.lat;
-          lng = parsed.lng;
-        }
-        return { ...b, lat, lng };
-      })
-      .filter((b): b is MappableBusiness & { lat: number; lng: number } => b !== null);
-
-    if (mappable.length === 0) {
-      setStatus("empty");
-      return;
-    }
-
-    let map: GoogleMap | null = null;
-    const markers: GoogleMarker[] = [];
-    let activeInfoWindow: GoogleInfoWindow | null = null;
-    let cancelled = false;
-    let stopWatching: (() => void) | undefined;
-
-    const fail = () => {
-      if (cancelled) return;
-      setStatus(mapsApiKey || isLovableDomain() ? "error" : "unsupported");
-    };
-
-    if (didMapsAuthFail()) {
-      fail();
-      return;
-    }
-
-    const unsubscribeAuth = subscribeMapsAuthFailure(fail);
-
-    ensureMapsLibrary(mapsApiKey)
-      .then(() => {
-        const maps = getGoogleMaps();
-        if (cancelled || !containerRef.current || !maps) return;
-        if (didMapsAuthFail()) {
-          fail();
-          return;
-        }
-
-        map = new maps.Map(containerRef.current, {
-          zoom: mappable.length > 1 ? 12 : 15,
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: true,
-          styles: cleanMapStyle,
-        });
-
-        const bounds = new maps.LatLngBounds();
-
-        for (const business of mappable) {
-          const marker = new maps.Marker({
-            position: { lat: business.lat, lng: business.lng },
-            map,
-            title: business.name,
-          });
-
-          const infoWindow = new maps.InfoWindow({
-            content: renderInfoContent(business),
-          });
-
-          marker.addListener("click", () => {
-            activeInfoWindow?.close();
-            if (!map) return;
-            infoWindow.open({ map, anchor: marker });
-            activeInfoWindow = infoWindow;
-          });
-
-          markers.push(marker);
-          bounds.extend({ lat: business.lat, lng: business.lng });
-        }
-
-        if (mappable.length > 1) {
-          map.fitBounds(bounds);
-        } else {
-          const first = mappable[0];
-          if (!first) return;
-          map.setCenter({ lat: first.lat, lng: first.lng });
-        }
-
-        if (!cancelled && !didMapsAuthFail()) setStatus("ready");
-        if (containerRef.current) {
-          stopWatching = watchMapContainerForAuthError(containerRef.current, fail);
-        }
-      })
-      .catch((error) => {
-        console.error("AllBusinessesMap", error);
-        fail();
-      });
-
-    return () => {
-      cancelled = true;
-      unsubscribeAuth();
-      stopWatching?.();
-      activeInfoWindow?.close();
-      for (const marker of markers) marker.setMap(null);
-      map = null;
-      const node = containerRef.current;
-      if (node) node.replaceChildren();
-    };
-  }, [businesses, mapsApiKey]);
-
-  if (status === "unsupported") {
-    return (
-      <div className="rounded-3xl border border-border/70 bg-card p-5 shadow-card">
-        <h3 className="flex items-center gap-2 text-base font-semibold">
-          <MapPin className="size-4 text-primary" /> İşletmelerimiz
-        </h3>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Google Maps yalnızca <code className="rounded bg-muted px-1 py-0.5">*.lovable.app</code>{" "}
-          adreslerinde görüntülenir. Kendi alan adınızda harita için ayrı bir Google Maps API anahtarı
-          gerekir.
-        </p>
-      </div>
-    );
-  }
-
-  if (status === "empty") {
+  if (markers.length === 0) {
     return (
       <div className="rounded-3xl border border-border/70 bg-card p-5 shadow-card">
         <h3 className="flex items-center gap-2 text-base font-semibold">
@@ -195,65 +45,18 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
     );
   }
 
-  if (status === "error") {
-    return (
-      <div className="rounded-3xl border border-border/70 bg-card p-5 shadow-card">
-        <h3 className="flex items-center gap-2 text-base font-semibold">
-          <MapPin className="size-4 text-primary" /> İşletmelerimiz
-        </h3>
-        <p className="mt-2 text-sm text-muted-foreground">
-          İşletme konumları haritada gösterilemiyor.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="rounded-3xl border border-border/70 bg-card p-5 shadow-card">
       <h3 className="flex items-center gap-2 text-base font-semibold">
         <MapPin className="size-4 text-primary" /> Tüm İşletmelerimiz
       </h3>
       <p className="mt-1 text-sm text-muted-foreground">
-        Harita üzerindeki pinlere tıklayarak işletme detaylarını inceleyebilirsiniz.
+        Harita üzerindeki pinlere tıklayarak işletme detaylarını inceleyebilirsiniz. Mavi nokta anlık
+        konumunuzdur.
       </p>
-      <div className="relative mt-3 aspect-[16/9] w-full overflow-hidden rounded-2xl bg-muted">
-        <div
-          ref={containerRef}
-          className="absolute inset-0"
-          aria-label="Tüm işletmeler haritası"
-        />
-        {status === "loading" ? (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-muted">
-            <span className="text-sm text-muted-foreground">Harita yükleniyor…</span>
-          </div>
-        ) : null}
-      </div>
+      <LiveMapCanvas label="Tüm işletmeler haritası" markers={markers} />
     </div>
   );
-}
-
-function renderInfoContent(business: MappableBusiness & { lat: number; lng: number }) {
-  const address = business.address
-    ? `<p class="text-xs text-muted-foreground mt-1">${escapeHtml(business.address)}</p>`
-    : "";
-  return `
-    <div class="min-w-[180px] p-1">
-      <h4 class="font-semibold text-sm">${escapeHtml(business.name)}</h4>
-      ${address}
-      <a href="/restoran/${encodeURIComponent(business.slug)}" class="mt-2 inline-block text-xs font-medium text-primary hover:underline">
-        Menüye git →
-      </a>
-    </div>
-  `;
-}
-
-function escapeHtml(text: string) {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
 }
 
 export default AllBusinessesMap;

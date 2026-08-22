@@ -48,8 +48,24 @@ export const saveAddress = createServerFn({ method: "POST" })
     }
 
     if (data.id) {
-      const { error } = await supabase.from("addresses").update(payload).eq("id", data.id);
+      const { data: updated, error } = await supabase
+        .from("addresses")
+        .update({
+          label: payload.label,
+          recipient_name: payload.recipient_name,
+          phone: payload.phone,
+          city: payload.city,
+          district: payload.district,
+          street: payload.street,
+          directions: payload.directions,
+          is_default: payload.is_default,
+        })
+        .eq("id", data.id)
+        .eq("user_id", userId)
+        .select("id")
+        .maybeSingle();
       if (error) throw new Error(error.message);
+      if (!updated) throw new Error("Adres bulunamadı.");
       return { id: data.id };
     }
 
@@ -66,7 +82,14 @@ export const deleteAddress = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.from("addresses").delete().eq("id", data.id);
+    const { data: deleted, error } = await context.supabase
+      .from("addresses")
+      .delete()
+      .eq("id", data.id)
+      .eq("user_id", context.userId)
+      .select("id")
+      .maybeSingle();
     if (error) throw new Error(error.message);
+    if (!deleted) throw new Error("Adres bulunamadı.");
     return { ok: true };
   });

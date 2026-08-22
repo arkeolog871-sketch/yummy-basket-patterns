@@ -40,23 +40,35 @@ export const createOrder = createServerFn({ method: "POST" })
     const ids = data.items.map((item) => item.menu_item_id);
     const { data: menuItems, error: itemsError } = await supabase
       .from("menu_items")
-      .select("id, name, price, restaurant_id, is_available")
+      .select("id, name, price, restaurant_id, is_available, stock_quantity")
       .in("id", ids);
     if (itemsError) throw new Error(itemsError.message);
 
+    const merged = new Map<string, number>();
+    for (const line of data.items) {
+      merged.set(line.menu_item_id, (merged.get(line.menu_item_id) ?? 0) + line.quantity);
+    }
+    for (const quantity of merged.values()) {
+      if (quantity > 20) throw new Error("Bir üründen en fazla 20 adet sipariş edilebilir.");
+    }
+
     const byId = new Map((menuItems ?? []).map((item) => [item.id, item]));
     let subtotal = 0;
-    const orderItems = data.items.map((line) => {
-      const item = byId.get(line.menu_item_id);
+    const orderItems = [...merged.entries()].map(([menuItemId, quantity]) => {
+      const item = byId.get(menuItemId);
       if (!item || !item.is_available || item.restaurant_id !== restaurant.id) {
         throw new Error("Sepetteki ürünlerden biri artık geçerli değil.");
       }
-      subtotal += Number(item.price) * line.quantity;
+      const stock = item.stock_quantity == null ? null : Number(item.stock_quantity);
+      if (stock !== null && Number.isFinite(stock) && stock < quantity) {
+        throw new Error(`${item.name} için yeterli stok yok.`);
+      }
+      subtotal += Number(item.price) * quantity;
       return {
         menu_item_id: item.id,
         name: item.name,
         unit_price: Number(item.price),
-        quantity: line.quantity,
+        quantity,
       };
     });
 
@@ -91,7 +103,10 @@ export const createOrder = createServerFn({ method: "POST" })
     const { error: linesError } = await supabase
       .from("order_items")
       .insert(orderItems.map((line) => ({ ...line, order_id: order.id })));
-    if (linesError) throw new Error(linesError.message);
+    if (linesError) {
+      await supabase.from("orders").delete().eq("id", order.id).eq("user_id", userId);
+      throw new Error(linesError.message);
+    }
 
     return { id: order.id, total };
   });
@@ -115,6 +130,7 @@ export const getMyOrder = createServerFn({ method: "GET" })
       .from("orders")
       .select("*, restaurants(name, slug, delivery_minutes), order_items(id, name, quantity, unit_price)")
       .eq("id", data.id)
+      .eq("user_id", context.userId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     return order;
