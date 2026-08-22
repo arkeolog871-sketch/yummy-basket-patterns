@@ -1,0 +1,6 @@
+/assets/*
+  cache-control: public, max-age=31536000, immutable
+
+/silvan-cebimde-iphone.mobileconfig
+  Content-Type: application/x-apple-aspen-config
+  Content-Disposition: inline; filename=silvan-cebimde-iphone.mobileconfig
