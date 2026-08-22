@@ -96,18 +96,12 @@ export const updateMapsSettings = createServerFn({ method: "POST" })
         detail: { hasKey: data.maps_api_key.length > 0 },
       },
       async () => {
-        const { error } = await context.supabase
-          .from("site_settings")
-          .update({
-            ...(data.clear_key
-              ? { maps_api_key: null }
-              : data.maps_api_key
-                ? { maps_api_key: data.maps_api_key }
-                : {}),
-            maps_allowed_referrers: data.maps_allowed_referrers || null,
-          })
-          .eq("id", "global");
-        if (error) throw new Error(error.message);
+        const { writeMapsConfig } = await import("./maps.server");
+        await writeMapsConfig({
+          key: data.maps_api_key || null,
+          clearKey: data.clear_key,
+          referrers: data.maps_allowed_referrers || null,
+        });
         return { ok: true };
       },
     );

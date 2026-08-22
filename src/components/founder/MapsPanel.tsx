@@ -24,16 +24,14 @@ function suggestedReferrers(host: string) {
 }
 
 export function MapsPanel() {
-  const { settings, refresh, isFounder } = useSiteSettings();
+  const { refresh, isFounder } = useSiteSettings();
   const save = useServerFn(updateMapsSettings);
   const checkKey = useServerFn(getMapsKeyStatus);
   const [apiKey, setApiKey] = useState("");
-  const [referrers, setReferrers] = useState(settings.maps_allowed_referrers ?? "");
+  const [referrers, setReferrers] = useState("");
   const [host, setHost] = useState("");
 
-  useEffect(() => {
-    setReferrers(settings.maps_allowed_referrers ?? "");
-  }, [settings.maps_allowed_referrers]);
+
 
   useEffect(() => setHost(currentHost()), []);
 
@@ -41,6 +39,10 @@ export function MapsPanel() {
     queryKey: ["maps-key-status"],
     queryFn: () => checkKey(),
   });
+
+  useEffect(() => {
+    if (keyStatus.data?.referrers !== undefined) setReferrers(keyStatus.data.referrers);
+  }, [keyStatus.data?.referrers]);
 
   const mutation = useMutation({
     mutationFn: (values: {
