@@ -1,6 +1,7 @@
 export interface GoogleMap {
   setCenter(center: { lat: number; lng: number }): void;
   fitBounds(bounds: GoogleLatLngBounds): void;
+  addListener(event: string, handler: () => void): void;
 }
 
 export interface GoogleMarker {
