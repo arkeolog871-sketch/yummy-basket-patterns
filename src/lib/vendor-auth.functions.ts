@@ -10,66 +10,84 @@ const identifierSchema = z.object({
     .max(120, "Girdi çok uzun"),
 });
 
+const GENERIC_SEND_ERROR =
+  "Kod e-postası şu anda gönderilemedi. Lütfen birkaç saniye sonra tekrar deneyin.";
+const GENERIC_VERIFY_ERROR = "Kod geçersiz veya süresi dolmuş.";
+const GENERIC_RATE_ERROR = "Çok fazla deneme yaptınız. Lütfen kısa süre sonra tekrar deneyin.";
+
 /** İşletme telefonu veya e-postasına karşılık gelen hesaba tek kullanımlık kod gönderir. */
 export const requestVendorLoginCode = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => identifierSchema.parse(input))
   .handler(async ({ data }) => {
-    const { findVendorUser, createServerPublicClient, maskEmail } = await import(
-      "./vendor-auth.server"
-    );
-    const { logAudit } = await import("./audit.server");
-    const { reserveSend, hashEmail } = await import("./otp.server");
+    try {
+      const { findVendorUser, maskEmail } = await import("./vendor-auth.server");
+      const { logAudit, tooManyRecentVendorAttempts } = await import("./audit.server");
+      const { reserveSend, hashEmail, createServerAuthClient } = await import("./otp.server");
 
-    const vendor = await findVendorUser(data.identifier);
-    const rate = await reserveSend(vendor?.email ?? `${hashEmail(data.identifier)}@guard.local`);
-    if (!rate.ok) {
-      return { ok: false as const, error: rate.error };
-    }
+      if (await tooManyRecentVendorAttempts()) {
+        return { ok: false as const, error: GENERIC_RATE_ERROR };
+      }
 
-    if (!vendor) {
-      await logAudit({
-        actorId: null,
-        actorEmail: null,
-        action: "vendor.login.code_request",
-        entity: "vendor_assignments",
-        status: "denied",
-        detail: { reason: "Telefon/e-postaya bağlı işletme hesabı yok" },
-      });
-      return { ok: true as const, maskedEmail: "kayıtlı e-posta" };
-    }
+      const vendor = await findVendorUser(data.identifier);
+      const rate = await reserveSend(vendor?.email ?? `${hashEmail(data.identifier)}@guard.local`);
+      if (!rate.ok) {
+        return { ok: false as const, error: rate.error };
+      }
 
-    const supabase = createServerPublicClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email: vendor.email,
-      options: { shouldCreateUser: false },
-    });
-    if (error) {
+      if (!vendor) {
+        await logAudit({
+          actorId: null,
+          actorEmail: null,
+          action: "vendor.login.code_request",
+          entity: "vendor_assignments",
+          status: "denied",
+          detail: { reason: "Telefon/e-postaya bağlı işletme hesabı yok" },
+        });
+        return { ok: true as const, maskedEmail: "kayıtlı e-posta" };
+      }
+
+      const supabase = createServerAuthClient();
+      let error: { message: string } | null = null;
+      try {
+        const result = await supabase.auth.signInWithOtp({
+          email: vendor.email,
+          options: { shouldCreateUser: false },
+        });
+        error = result.error ? { message: result.error.message } : null;
+      } catch (thrown) {
+        error = { message: thrown instanceof Error ? thrown.message : String(thrown) };
+      }
+      if (error) {
+        console.error("[vendor-login] kod gönderilemedi", { message: error.message });
+        await logAudit({
+          actorId: vendor.userId,
+          actorEmail: vendor.email,
+          action: "vendor.login.code_request",
+          entity: "vendor_assignments",
+          entityId: vendor.userId,
+          status: "denied",
+          detail: { reason: error.message },
+        });
+        return {
+          ok: false as const,
+          error:
+            "Kod e-postası şu anda gönderilemedi (e-posta servisi yanıt vermedi). Lütfen birkaç saniye sonra tekrar deneyin.",
+        };
+      }
+
       await logAudit({
         actorId: vendor.userId,
         actorEmail: vendor.email,
         action: "vendor.login.code_request",
         entity: "vendor_assignments",
         entityId: vendor.userId,
-        status: "denied",
-        detail: { reason: error.message },
       });
-      return {
-        ok: false as const,
-        error:
-          "Kod e-postası şu anda gönderilemedi (e-posta servisi yanıt vermedi). Lütfen birkaç saniye sonra tekrar deneyin.",
-      };
+
+      return { ok: true as const, maskedEmail: maskEmail(vendor.email) };
+    } catch (error) {
+      console.error("[vendor-login] kod isteği başarısız", error);
+      return { ok: false as const, error: GENERIC_SEND_ERROR };
     }
-
-
-    await logAudit({
-      actorId: vendor.userId,
-      actorEmail: vendor.email,
-      action: "vendor.login.code_request",
-      entity: "vendor_assignments",
-      entityId: vendor.userId,
-    });
-
-    return { ok: true as const, maskedEmail: maskEmail(vendor.email) };
   });
 
 /** Kodu doğrular ve tarayıcıda oturum kurmak için jetonları döner. */
@@ -78,70 +96,83 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
     identifierSchema.extend({ code: z.string().trim().max(20) }).parse(input),
   )
   .handler(async ({ data }) => {
-    const { findVendorUser, createServerPublicClient } = await import(
-      "./vendor-auth.server"
-    );
-    const { logAudit } = await import("./audit.server");
+    try {
+      const { findVendorUser } = await import("./vendor-auth.server");
+      const { logAudit, tooManyRecentVendorAttempts } = await import("./audit.server");
+      const { assertCanVerify, registerFailedAttempt, clearGuard, createServerAuthClient } =
+        await import("./otp.server");
 
-    const token = data.code.replace(/\D/g, "");
-    if (token.length !== 6) {
-      return {
-        ok: false as const,
-        error: "Lütfen e-postanıza gelen 6 haneli kodu eksiksiz girin.",
-      };
-    }
+      if (await tooManyRecentVendorAttempts()) {
+        return { ok: false as const, error: GENERIC_RATE_ERROR };
+      }
 
-    const vendor = await findVendorUser(data.identifier);
-    if (!vendor) {
-      return {
-        ok: false as const,
-        error: "Kod geçersiz veya süresi dolmuş.",
-      };
-    }
+      const token = data.code.replace(/\D/g, "");
+      if (token.length !== 6) {
+        return {
+          ok: false as const,
+          error: "Lütfen e-postanıza gelen 6 haneli kodu eksiksiz girin.",
+        };
+      }
 
-    const { assertCanVerify, registerFailedAttempt, clearGuard } = await import("./otp.server");
-    const allowed = await assertCanVerify(vendor.email);
-    if (!allowed.ok) {
-      return { ok: false as const, error: allowed.error };
-    }
+      const vendor = await findVendorUser(data.identifier);
+      if (!vendor) {
+        return { ok: false as const, error: GENERIC_VERIFY_ERROR };
+      }
 
-    const supabase = createServerPublicClient();
-    const { data: verified, error } = await supabase.auth.verifyOtp({
-      email: vendor.email,
-      token,
-      type: "email",
-    });
+      const allowed = await assertCanVerify(vendor.email);
+      if (!allowed.ok) {
+        return { ok: false as const, error: allowed.error };
+      }
 
+      const supabase = createServerAuthClient();
+      let verified: { session: { access_token: string; refresh_token: string } | null } | null =
+        null;
+      let error: { message: string } | null = null;
+      try {
+        const result = await supabase.auth.verifyOtp({
+          email: vendor.email,
+          token,
+          type: "email",
+        });
+        verified = result.data;
+        error = result.error ? { message: result.error.message } : null;
+      } catch (thrown) {
+        error = { message: thrown instanceof Error ? thrown.message : String(thrown) };
+      }
 
-    if (error || !verified.session) {
-      await registerFailedAttempt(vendor.email);
+      if (error || !verified?.session) {
+        await registerFailedAttempt(vendor.email);
+        await logAudit({
+          actorId: vendor.userId,
+          actorEmail: vendor.email,
+          action: "vendor.login.code_verify",
+          entity: "vendor_assignments",
+          entityId: vendor.userId,
+          status: "denied",
+          detail: { reason: error?.message ?? "Oturum oluşturulamadı" },
+        });
+        return { ok: false as const, error: GENERIC_VERIFY_ERROR };
+      }
+
+      await clearGuard(vendor.email);
+
       await logAudit({
         actorId: vendor.userId,
         actorEmail: vendor.email,
         action: "vendor.login.code_verify",
         entity: "vendor_assignments",
         entityId: vendor.userId,
-        status: "denied",
-        detail: { reason: error?.message ?? "Oturum oluşturulamadı" },
       });
-      throw new Error("Kod geçersiz veya süresi dolmuş.");
+
+      return {
+        ok: true as const,
+        accessToken: verified.session.access_token,
+        refreshToken: verified.session.refresh_token,
+      };
+    } catch (error) {
+      console.error("[vendor-login] kod doğrulama başarısız", error);
+      return { ok: false as const, error: GENERIC_VERIFY_ERROR };
     }
-
-    await clearGuard(vendor.email);
-
-    await logAudit({
-      actorId: vendor.userId,
-      actorEmail: vendor.email,
-      action: "vendor.login.code_verify",
-      entity: "vendor_assignments",
-      entityId: vendor.userId,
-    });
-
-    return {
-      ok: true as const,
-      accessToken: verified.session.access_token,
-      refreshToken: verified.session.refresh_token,
-    };
   });
 
 /** İşletme kendi şifresini mevcut şifresini doğrulayarak değiştirir. */
