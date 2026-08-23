@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { runServerFn } from "./public-error";
 
 const vendorStatusSchema = z.enum([
   "confirmed",
@@ -13,25 +14,28 @@ const vendorStatusSchema = z.enum([
 /** Oturumun rolünü ve (varsa) atandığı işletmeyi döner; yönlendirme kararları buna dayanır. */
 export const getMyAccessContext = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { isFounderUser } = await import("./founder.server");
-    const { getVendorRestaurantId } = await import("./vendor.server");
-    const [isFounder, restaurantId] = await Promise.all([
-      isFounderUser(context.supabase, context.userId),
-      getVendorRestaurantId(context.supabase, context.userId),
-    ]);
-    return {
-      isFounder,
-      isVendor: Boolean(restaurantId),
-      restaurantId,
-      role: isFounder ? "founder" : restaurantId ? "vendor" : "customer",
-    } as const;
-  });
+  .handler(async ({ context }) =>
+    runServerFn(async () => {
+      const { isFounderUser } = await import("./founder.server");
+      const { getVendorRestaurantId } = await import("./vendor.server");
+      const [isFounder, restaurantId] = await Promise.all([
+        isFounderUser(context.supabase, context.userId),
+        getVendorRestaurantId(context.supabase, context.userId),
+      ]);
+      return {
+        isFounder,
+        isVendor: Boolean(restaurantId),
+        restaurantId,
+        role: isFounder ? "founder" : restaurantId ? "vendor" : "customer",
+      } as const;
+    }),
+  );
 
 /** İşletme paneli verisi: yalnızca atanan işletmenin kendi kaydı, ürünleri ve siparişleri. */
 export const getVendorDashboard = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .handler(async ({ context }) =>
+    runServerFn(async () => {
     const { assertVendor } = await import("./vendor.server");
     const restaurantId = await assertVendor(context.supabase, context.userId);
     const { supabase } = context;
@@ -83,8 +87,8 @@ export const getVendorDashboard = createServerFn({ method: "GET" })
       categories: categories.data ?? [],
       media: media.data ?? [],
     };
-
-  });
+    }),
+  );
 
 /** Sipariş durumunu yalnızca siparişin sahibi işletme değiştirebilir. */
 export const setVendorOrderStatus = createServerFn({ method: "POST" })
@@ -92,7 +96,8 @@ export const setVendorOrderStatus = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z.object({ id: z.string().uuid(), status: vendorStatusSchema }).parse(input),
   )
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data, context }) =>
+    runServerFn(async () => {
     const { assertVendor } = await import("./vendor.server");
     const { audited } = await import("./audit.server");
     const restaurantId = await assertVendor(context.supabase, context.userId);
@@ -119,13 +124,15 @@ export const setVendorOrderStatus = createServerFn({ method: "POST" })
         return { ok: true };
       },
     );
-  });
+    }),
+  );
 
 /** Mağazayı anlık açık/kapalı yapar. */
 export const setVendorStoreOpen = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ isOpen: z.boolean() }).parse(input))
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data, context }) =>
+    runServerFn(async () => {
     const { assertVendor } = await import("./vendor.server");
     const { audited } = await import("./audit.server");
     const restaurantId = await assertVendor(context.supabase, context.userId);
@@ -148,7 +155,8 @@ export const setVendorStoreOpen = createServerFn({ method: "POST" })
         return { ok: true };
       },
     );
-  });
+    }),
+  );
 
 /** Ürünün stok durumunu (Stokta var / yok) değiştirir. */
 export const setVendorItemAvailability = createServerFn({ method: "POST" })
@@ -156,7 +164,8 @@ export const setVendorItemAvailability = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z.object({ id: z.string().uuid(), isAvailable: z.boolean() }).parse(input),
   )
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data, context }) =>
+    runServerFn(async () => {
     const { assertVendor } = await import("./vendor.server");
     const { audited } = await import("./audit.server");
     const restaurantId = await assertVendor(context.supabase, context.userId);
@@ -183,4 +192,5 @@ export const setVendorItemAvailability = createServerFn({ method: "POST" })
         return { ok: true };
       },
     );
-  });
+    }),
+  );

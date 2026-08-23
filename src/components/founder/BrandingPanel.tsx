@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { toPublicErrorMessage } from "@/lib/public-error";
 import { ImageUp, Trash2 } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { uploadBrandAsset, removeBrandAsset } from "@/lib/branding.functions";
@@ -48,7 +49,7 @@ export function BrandingPanel() {
       toast.success("Görsel yüklendi");
       refresh();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
     onSettled: () => setBusy(null),
   });
 
@@ -58,7 +59,7 @@ export function BrandingPanel() {
       toast.success("Görsel kaldırıldı");
       refresh();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   function currentUrl(kind: Kind) {

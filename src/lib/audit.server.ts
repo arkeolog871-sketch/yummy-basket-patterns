@@ -67,6 +67,18 @@ export async function audited<T>(entry: AuditEntry, run: () => Promise<T>): Prom
  * aynı IP son 10 dakikada 10'dan fazla kayıt yazamaz.
  */
 export async function tooManyRecentLoginLogs(limit = 10): Promise<boolean> {
+  return tooManyRecentAuditActions(["founder.login"], limit);
+}
+
+/** İşletme girişinde aynı IP için kaba kuvvet taramasını keser; normal kullanımın çok üzerindedir. */
+export async function tooManyRecentVendorAttempts(limit = 40): Promise<boolean> {
+  return tooManyRecentAuditActions(
+    ["vendor.login.code_request", "vendor.login.code_verify"],
+    limit,
+  );
+}
+
+async function tooManyRecentAuditActions(actions: string[], limit: number): Promise<boolean> {
   try {
     const meta = requestMeta() as { ip?: string | null };
     const ip = meta.ip ?? null;
@@ -76,7 +88,7 @@ export async function tooManyRecentLoginLogs(limit = 10): Promise<boolean> {
     const { count, error } = await supabaseAdmin
       .from("audit_logs")
       .select("id", { count: "exact", head: true })
-      .eq("action", "founder.login")
+      .in("action", actions)
       .gte("created_at", since)
       .eq("detail->>ip", ip);
     if (error) return false;

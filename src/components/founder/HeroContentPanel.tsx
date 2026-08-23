@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { toPublicErrorMessage } from "@/lib/public-error";
 import { Save, RotateCcw, Smartphone, Monitor, Lock } from "lucide-react";
 import { useSiteSettings, DEFAULT_HERO, type HeroContent } from "@/hooks/useSiteSettings";
 import { updateHeroContent } from "@/lib/founder.functions";
@@ -22,7 +23,7 @@ export function HeroContentPanel() {
       toast.success("Ana sayfa metinleri güncellendi");
       refresh();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   if (!isFounder) {

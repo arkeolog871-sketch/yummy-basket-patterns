@@ -17,9 +17,13 @@ export function maskEmail(email: string): string {
 
 /** Sunucu tarafı publishable (anon) istemcisi; oturum saklamaz. */
 export function createServerPublicClient() {
-  const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
-  return createClient<Database>(process.env["SUPABASE_URL"]!, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
+  const url = process.env["SUPABASE_URL"];
+  const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
+  if (!url || !key) {
+    throw new Error("Supabase sunucu ayarları eksik.");
+  }
+  return createClient<Database>(url, key, {
+    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
     global: {
       fetch: (input, init) => {
         const headers = new Headers(init?.headers);
@@ -61,8 +65,9 @@ export async function findVendorUser(
 
   if (byEmail) {
     for (const id of vendorIds) {
-      const { data: user } = await supabaseAdmin.auth.admin.getUserById(id);
-      const email = user.user?.email ?? null;
+      const { data: user, error: userError } = await supabaseAdmin.auth.admin.getUserById(id);
+      if (userError || !user?.user) continue;
+      const email = user.user.email ?? null;
       if (email && email.toLowerCase() === target) return { userId: id, email };
     }
     return findByBusinessContact(supabaseAdmin, assignments ?? [], target, true);
@@ -80,8 +85,8 @@ export async function findVendorUser(
   if (!match) return findByBusinessContact(supabaseAdmin, assignments ?? [], target, false);
 
   const { data: user, error: userError } = await supabaseAdmin.auth.admin.getUserById(match.id);
-  if (userError) throw new Error(userError.message);
-  const email = user.user?.email ?? null;
+  if (userError || !user?.user) return null;
+  const email = user.user.email ?? null;
   if (!email) return null;
 
   return { userId: match.id, email };
@@ -121,8 +126,8 @@ async function findByBusinessContact(
   const { data: user, error: userError } = await supabaseAdmin.auth.admin.getUserById(
     assignment.user_id,
   );
-  if (userError) throw new Error(userError.message);
-  const email = user.user?.email ?? null;
+  if (userError || !user?.user) return null;
+  const email = user.user.email ?? null;
   if (!email) return null;
 
   return { userId: assignment.user_id, email };

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { toPublicErrorMessage } from "@/lib/public-error";
 import { Palette } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { updateSiteSettings } from "@/lib/founder.functions";
@@ -115,7 +116,7 @@ export function AppearancePanel() {
       toast.success("Tema ayarları kaydedildi");
       refresh();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   function applyPreset(preset: Preset) {
