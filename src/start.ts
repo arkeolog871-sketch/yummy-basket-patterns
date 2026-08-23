@@ -2,6 +2,8 @@ import { createStart, createCsrfMiddleware, createMiddleware } from "@tanstack/r
 
 import { renderErrorPage } from "./lib/error-page";
 import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
+import { publicServerFnErrors } from "./lib/public-error.middleware";
+import { isServerFnRequest, serverFnErrorResponse } from "./lib/public-error";
 
 const errorMiddleware = createMiddleware().server(async ({ next, request }) => {
   if (new URL(request.url).pathname.startsWith("/lovable/")) {
@@ -10,6 +12,10 @@ const errorMiddleware = createMiddleware().server(async ({ next, request }) => {
   try {
     return await next();
   } catch (error) {
+    if (isServerFnRequest(request)) {
+      console.error(error);
+      return serverFnErrorResponse(error);
+    }
     if (error != null && typeof error === "object" && "statusCode" in error) {
       throw error;
     }
@@ -30,6 +36,6 @@ const csrfMiddleware = createCsrfMiddleware({
 });
 
 export const startInstance = createStart(() => ({
-  functionMiddleware: [attachSupabaseAuth],
+  functionMiddleware: [attachSupabaseAuth, publicServerFnErrors],
   requestMiddleware: [errorMiddleware, csrfMiddleware],
 }));

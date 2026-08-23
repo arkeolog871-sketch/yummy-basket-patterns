@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { toPublicErrorMessage } from "@/lib/public-error";
 import { Crown, Plus, Trash2, Pencil, ShieldCheck, LogOut, ExternalLink, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -211,7 +212,7 @@ function FounderPage() {
       toast.success("Kurucu profili sizin adınıza tanımlandı");
       refresh();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   if (access.loading) {
@@ -441,7 +442,7 @@ function OrderPanel({
     },
     onError: (error: Error) => {
       setPendingId(null);
-      toast.error(error.message);
+      toast.error(toPublicErrorMessage(error));
     },
   });
 
@@ -624,7 +625,7 @@ function BusinessPanel({
       setForm(emptyBusiness);
       onDone();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   const deleteMutation = useMutation({
@@ -633,7 +634,7 @@ function BusinessPanel({
       toast.success("İşletme silindi");
       onDone();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   return (
@@ -967,7 +968,7 @@ function MenuCategoryPanel({
       setForm({ restaurant_id: form.restaurant_id, name: "", position: 0 });
       onDone();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   const deleteMutation = useMutation({
@@ -976,7 +977,7 @@ function MenuCategoryPanel({
       toast.success("Kategori silindi");
       onDone();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   return (
@@ -1114,7 +1115,7 @@ function MenuItemPanel({
       setForm({ ...emptyItem, restaurant_id: form.restaurant_id });
       onDone();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   const deleteMutation = useMutation({
@@ -1123,7 +1124,7 @@ function MenuItemPanel({
       toast.success("Ürün silindi");
       onDone();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   return (
@@ -1315,7 +1316,7 @@ function UserPanel({
       toast.success("Yetkiler güncellendi");
       onDone();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   const assignMutation = useMutation({
@@ -1325,7 +1326,7 @@ function UserPanel({
       toast.success("İşletme ataması güncellendi");
       onDone();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   const deleteMutation = useMutation({
@@ -1334,7 +1335,7 @@ function UserPanel({
       toast.success("Kullanıcı silindi");
       onDone();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   const createMutation = useMutation({
@@ -1353,7 +1354,7 @@ function UserPanel({
       setFullName("");
       onDone();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   return (

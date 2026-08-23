@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { toPublicErrorMessage } from "@/lib/public-error";
 import { useState } from "react";
 import {
   Store,
@@ -124,7 +125,7 @@ function VendorDashboard() {
       toast.success("Sipariş durumu güncellendi");
       invalidate();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   const storeMutation = useMutation({
@@ -133,7 +134,7 @@ function VendorDashboard() {
       toast.success("Mağaza durumu güncellendi");
       invalidate();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   const itemMutation = useMutation({
@@ -142,7 +143,7 @@ function VendorDashboard() {
       toast.success("Stok durumu güncellendi");
       invalidate();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   async function handleSignOut() {
@@ -430,7 +431,7 @@ function PasswordPanel() {
       setNewPassword("");
       setRepeatPassword("");
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   return (

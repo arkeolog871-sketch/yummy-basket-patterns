@@ -8,6 +8,7 @@ import { createOrder } from "@/lib/orders.functions";
 import { useCart } from "@/hooks/useCart";
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import { formatPrice } from "@/lib/format";
+import { toPublicErrorMessage } from "@/lib/public-error";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -50,7 +51,7 @@ function CheckoutPage() {
     mutationFn: async () => {
       const address = addresses.find((item) => item.id === selectedId);
       if (!address || !cart.restaurant) throw new Error("Adres veya sepet eksik.");
-      return submitOrder({
+      const result = await submitOrder({
         data: {
           restaurant_id: cart.restaurant.id,
           items: cart.lines.map((line) => ({
@@ -66,14 +67,15 @@ function CheckoutPage() {
           note: note || null,
         },
       });
+      if (!result.ok) throw new Error(result.error);
+      return result;
     },
     onSuccess: (result) => {
       cart.clear();
       toast.success("Siparişiniz alındı!");
       navigate({ to: "/siparis/$id", params: { id: result.id } });
     },
-    onError: (error) =>
-      toast.error(error instanceof Error ? error.message : "Sipariş oluşturulamadı."),
+    onError: (error) => toast.error(toPublicErrorMessage(error, "Sipariş oluşturulamadı.")),
   });
 
   if (cart.lines.length === 0 || !cart.restaurant) {

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { toPublicErrorMessage } from "@/lib/public-error";
 import { MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { useServiceAreas, type ServiceArea } from "@/hooks/useTaxonomy";
 import { saveServiceArea, deleteServiceArea } from "@/lib/taxonomy.functions";
@@ -41,7 +42,7 @@ export function ServiceAreaPanel() {
       setForm(emptyForm);
       refresh();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   const deleteMutation = useMutation({
@@ -50,7 +51,7 @@ export function ServiceAreaPanel() {
       toast.success("Bölge kaldırıldı");
       refresh();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   function startEdit(area: ServiceArea) {

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { KeyRound, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { toPublicErrorMessage } from "@/lib/public-error";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,12 +33,30 @@ function ResetPasswordPage() {
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Kurtarma bağlantısı bir oturum açar; sadece o durumda şifre değiştirilebilir.
+  // Kurtarma bağlantısı veya zaten açık oturum: her iki durumda da formu göster.
   useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") setReady(true);
+    let cancelled = false;
+
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return;
+      if (event === "PASSWORD_RECOVERY") {
+        setReady(true);
+        return;
+      }
+      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") && session) {
+        setReady(true);
+      }
     });
-    return () => data.subscription.unsubscribe();
+
+    void supabase.auth.getSession().then(({ data: sessionData }) => {
+      if (cancelled) return;
+      if (sessionData.session) setReady(true);
+    });
+
+    return () => {
+      cancelled = true;
+      data.subscription.unsubscribe();
+    };
   }, []);
 
   async function handleSubmit(event: React.FormEvent) {
@@ -54,7 +73,7 @@ function ResetPasswordPage() {
       await supabase.auth.signOut();
       navigate({ to: "/auth", replace: true });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Şifre güncellenemedi.");
+      toast.error(toPublicErrorMessage(error, "Şifre güncellenemedi."));
     } finally {
       setBusy(false);
     }
@@ -110,8 +129,9 @@ function ResetPasswordPage() {
           </form>
         ) : (
           <div className="mt-8 rounded-3xl border border-border/70 bg-card p-6 text-sm text-muted-foreground shadow-card">
-            Bu sayfayı e-postanızdaki sıfırlama bağlantısı üzerinden açmanız gerekiyor. Bağlantı
-            süresi dolduysa giriş ekranından yeni bir bağlantı isteyin.
+            Oturumunuz henüz yüklenmedi veya sıfırlama bağlantısı doğrulanamadı. E-postanızdaki
+            bağlantıyı kullanın; zaten giriş yaptıysanız sayfayı yenileyin. Bağlantı süresi
+            dolduysa giriş ekranından yeni bir bağlantı isteyin.
           </div>
         )}
 

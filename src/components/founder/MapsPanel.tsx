@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { toPublicErrorMessage } from "@/lib/public-error";
 import { Save, Lock, Map, Copy, ExternalLink } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { updateMapsSettings } from "@/lib/founder.functions";
@@ -42,7 +43,7 @@ export function MapsPanel() {
       toast.success("Harita ayarları kaydedildi. Sayfayı yenileyin.");
       refresh();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   if (!isFounder) {

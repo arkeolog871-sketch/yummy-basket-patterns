@@ -2,6 +2,7 @@ import { useState, type ComponentType } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { toPublicErrorMessage } from "@/lib/public-error";
 import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from "lucide-react";
 import * as Icons from "lucide-react";
 import { useAppCategories, type AppCategory } from "@/hooks/useTaxonomy";
@@ -75,7 +76,7 @@ export function CategoryPanel({ businesses }: { businesses: { sector: string | n
       setForm(emptyForm);
       refresh();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   const deleteMutation = useMutation({
@@ -84,13 +85,13 @@ export function CategoryPanel({ businesses }: { businesses: { sector: string | n
       toast.success("Kategori silindi");
       refresh();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   const moveMutation = useMutation({
     mutationFn: (input: { id: string; direction: "up" | "down" }) => move({ data: input }),
     onSuccess: refresh,
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   function startEdit(category: AppCategory) {

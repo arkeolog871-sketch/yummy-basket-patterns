@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { toPublicErrorMessage } from "@/lib/public-error";
 import { ImageIcon, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/vendor/EmptyState";
@@ -48,7 +49,7 @@ export function MediaPanel({
       toast.success(variables.kind === "logo" ? "Logo güncellendi" : "Kapak görseli güncellendi");
       onChanged();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
     onSettled: () => setBusyKind(null),
   });
 
@@ -58,7 +59,7 @@ export function MediaPanel({
       toast.success("Görsel kaldırıldı");
       onChanged();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   const galleryMutation = useMutation({
@@ -78,7 +79,7 @@ export function MediaPanel({
       toast.success("Görseller galeriye eklendi");
       onChanged();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
     onSettled: () => setBusyKind(null),
   });
 
@@ -88,7 +89,7 @@ export function MediaPanel({
       toast.success("Görsel silindi");
       onChanged();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   function handleBrandFiles(kind: "logo" | "cover", files: File[]) {

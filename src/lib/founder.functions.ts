@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { runServerFn } from "./public-error";
 
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Geçerli bir renk kodu girin");
 
@@ -293,7 +294,8 @@ export const updateSiteSettings = createServerFn({ method: "POST" })
 
 export const listAdminData = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .handler(async ({ context }) =>
+    runServerFn(async () => {
     const { assertFounder } = await import("./founder.server");
     await assertFounder(context.supabase, context.userId, context.claims as never);
     // Kurucu doğrulandıktan sonra iletişim alanlarını da okuyabilmek için yetkili istemci.
@@ -322,12 +324,14 @@ export const listAdminData = createServerFn({ method: "GET" })
       items: items.data ?? [],
       orders: orders.data ?? [],
     };
-  });
+    }),
+  );
 
 export const saveBusiness = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => businessWithHoursSchema.parse(input))
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data, context }) =>
+    runServerFn(async () => {
     const { assertFounder, ensureBusinessVendorAccount } = await import("./founder.server");
     const { audited } = await import("./audit.server");
     await assertFounder(context.supabase, context.userId, context.claims as never);
@@ -356,7 +360,8 @@ export const saveBusiness = createServerFn({ method: "POST" })
         return { ok: true, vendorLinked: true };
       },
     );
-  });
+    }),
+  );
 
 export const deleteBusiness = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -399,7 +404,8 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data, context }) =>
+    runServerFn(async () => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
     await assertFounder(context.supabase, context.userId, context.claims as never);
@@ -421,7 +427,8 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
         return { ok: true };
       },
     );
-  });
+    }),
+  );
 
 export const saveMenuCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

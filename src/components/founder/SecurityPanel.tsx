@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { toPublicErrorMessage } from "@/lib/public-error";
 import { KeyRound, ShieldCheck, ShieldOff, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getFounderSecurity, regenerateBackupCodes } from "@/lib/security.functions";
@@ -93,7 +94,7 @@ export function SecurityPanel() {
       toast.success("Yeni yedek kodlar oluşturuldu. Güvenli bir yere kaydedin.");
       void security.refetch();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   return (

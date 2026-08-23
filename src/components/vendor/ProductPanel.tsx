@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { toPublicErrorMessage } from "@/lib/public-error";
 import { Loader2, Pencil, Plus, Trash2, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -163,7 +164,7 @@ export function ProductPanel({
       setPicked(null);
       onChanged();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   const deleteMutation = useMutation({
@@ -173,7 +174,7 @@ export function ProductPanel({
       setDeleteTarget(null);
       onChanged();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   const categoryMutation = useMutation({
@@ -183,7 +184,7 @@ export function ProductPanel({
       setNewCategory("");
       onChanged();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   async function handlePick(files: File[]) {
