@@ -23,10 +23,6 @@ import { Toaster } from "@/components/ui/sonner";
 import { AppRealtimeBridge } from "@/hooks/useAppRealtime";
 
 function NotFoundComponent() {
-  useEffect(() => {
-    document.title = "Sayfa bulunamadı — SİLVAN CEBİMDE";
-  }, []);
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">

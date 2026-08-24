@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SplatRouteImport } from './routes/$'
 import { Route as AdreslerimRouteImport } from './routes/adreslerim'
 import { Route as AndroidRouteImport } from './routes/android'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -36,6 +37,11 @@ import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/em
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SplatRoute = SplatRouteImport.update({
+  id: '/$',
+  path: '/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdreslerimRoute = AdreslerimRouteImport.update({
@@ -151,6 +157,7 @@ const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/adreslerim': typeof AdreslerimRoute
   '/android': typeof AndroidRoute
   '/auth': typeof AuthRoute
@@ -176,6 +183,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/adreslerim': typeof AdreslerimRoute
   '/android': typeof AndroidRoute
   '/auth': typeof AuthRoute
@@ -202,6 +210,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/adreslerim': typeof AdreslerimRoute
   '/android': typeof AndroidRoute
   '/auth': typeof AuthRoute
@@ -229,6 +238,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/$'
     | '/adreslerim'
     | '/android'
     | '/auth'
@@ -254,6 +264,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/$'
     | '/adreslerim'
     | '/android'
     | '/auth'
@@ -279,6 +290,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/$'
     | '/adreslerim'
     | '/android'
     | '/auth'
@@ -305,6 +317,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SplatRoute: typeof SplatRoute
   AdreslerimRoute: typeof AdreslerimRoute
   AndroidRoute: typeof AndroidRoute
   AuthRoute: typeof AuthRoute
@@ -336,6 +349,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$': {
+      id: '/$'
+      path: '/$'
+      fullPath: '/$'
+      preLoaderRoute: typeof SplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/adreslerim': {
@@ -497,6 +517,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SplatRoute: SplatRoute,
   AdreslerimRoute: AdreslerimRoute,
   AndroidRoute: AndroidRoute,
   AuthRoute: AuthRoute,
