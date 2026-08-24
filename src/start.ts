@@ -4,6 +4,7 @@ import { renderErrorPage } from "./lib/error-page";
 import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
 import { publicServerFnErrors } from "./lib/public-error.middleware";
 import { isServerFnRequest, serverFnErrorResponse } from "./lib/public-error";
+import { allowServerFnRequest, rateLimitResponse } from "./lib/rate-limit.server";
 
 const errorMiddleware = createMiddleware().server(async ({ next, request }) => {
   if (new URL(request.url).pathname.startsWith("/lovable/")) {
@@ -27,7 +28,6 @@ const errorMiddleware = createMiddleware().server(async ({ next, request }) => {
   }
 });
 
-
 // Start installs this automatically when src/start.ts is absent; defining the
 // file opts out, so re-add it explicitly to keep server functions protected
 // from cross-site requests.
@@ -35,7 +35,14 @@ const csrfMiddleware = createCsrfMiddleware({
   filter: (ctx) => ctx.handlerType === "serverFn",
 });
 
+const rateLimitMiddleware = createMiddleware().server(async ({ next, request }) => {
+  if (isServerFnRequest(request) && !allowServerFnRequest(request)) {
+    return rateLimitResponse();
+  }
+  return next();
+});
+
 export const startInstance = createStart(() => ({
   functionMiddleware: [attachSupabaseAuth, publicServerFnErrors],
-  requestMiddleware: [errorMiddleware, csrfMiddleware],
+  requestMiddleware: [errorMiddleware, csrfMiddleware, rateLimitMiddleware],
 }));

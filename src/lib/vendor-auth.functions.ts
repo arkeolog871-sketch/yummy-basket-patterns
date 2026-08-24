@@ -20,6 +20,8 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => identifierSchema.parse(input))
   .handler(async ({ data }) => {
     try {
+      const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
+      enforceSensitiveRateLimit("vendor-code-send", 8, 10 * 60 * 1000);
       const { findVendorUser, maskEmail } = await import("./vendor-auth.server");
       const { logAudit, tooManyRecentVendorAttempts } = await import("./audit.server");
       const { reserveSend, hashEmail, createServerAuthClient } = await import("./otp.server");
@@ -97,6 +99,8 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
+      const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
+      enforceSensitiveRateLimit("vendor-code-verify", 12, 10 * 60 * 1000);
       const { findVendorUser } = await import("./vendor-auth.server");
       const { logAudit, tooManyRecentVendorAttempts } = await import("./audit.server");
       const { assertCanVerify, registerFailedAttempt, clearGuard, createServerAuthClient } =

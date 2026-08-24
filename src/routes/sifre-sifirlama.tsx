@@ -43,7 +43,10 @@ function ResetPasswordPage() {
         setReady(true);
         return;
       }
-      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") && session) {
+      if (
+        (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") &&
+        session
+      ) {
         setReady(true);
       }
     });
@@ -130,13 +133,16 @@ function ResetPasswordPage() {
         ) : (
           <div className="mt-8 rounded-3xl border border-border/70 bg-card p-6 text-sm text-muted-foreground shadow-card">
             Oturumunuz henüz yüklenmedi veya sıfırlama bağlantısı doğrulanamadı. E-postanızdaki
-            bağlantıyı kullanın; zaten giriş yaptıysanız sayfayı yenileyin. Bağlantı süresi
-            dolduysa giriş ekranından yeni bir bağlantı isteyin.
+            bağlantıyı kullanın; zaten giriş yaptıysanız sayfayı yenileyin. Bağlantı süresi dolduysa
+            giriş ekranından yeni bir bağlantı isteyin.
           </div>
         )}
 
         <div className="mt-5 flex justify-center gap-4 text-sm">
-          <Link to="/kurucu-giris" className="text-muted-foreground underline-offset-4 hover:underline">
+          <Link
+            to="/kurucu-giris"
+            className="text-muted-foreground underline-offset-4 hover:underline"
+          >
             Kurucu girişi
           </Link>
           <Link to="/" className="text-muted-foreground underline-offset-4 hover:underline">

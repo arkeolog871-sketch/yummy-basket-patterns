@@ -26,6 +26,8 @@ export const createOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => createOrderSchema.parse(input))
   .handler(async ({ data, context }) => {
+    const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
+    enforceSensitiveRateLimit("order-create", 20, 60 * 1000);
     try {
       const placed = await placeOrder(data, context);
       return { ok: true as const, ...placed };
@@ -134,7 +136,9 @@ export const listMyOrders = createServerFn({ method: "GET" })
     runServerFn(async () => {
       const { data, error } = await context.supabase
         .from("orders")
-        .select("id, created_at, status, payment_status, total, restaurants(name, slug, cover_image_url)")
+        .select(
+          "id, created_at, status, payment_status, total, restaurants(name, slug, cover_image_url)",
+        )
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
       return data ?? [];
@@ -148,7 +152,9 @@ export const getMyOrder = createServerFn({ method: "GET" })
     runServerFn(async () => {
       const { data: order, error } = await context.supabase
         .from("orders")
-        .select("*, restaurants(name, slug, delivery_minutes), order_items(id, name, quantity, unit_price)")
+        .select(
+          "*, restaurants(name, slug, delivery_minutes), order_items(id, name, quantity, unit_price)",
+        )
         .eq("id", data.id)
         .eq("user_id", context.userId)
         .maybeSingle();

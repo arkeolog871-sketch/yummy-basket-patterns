@@ -6,6 +6,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 export const getFounderSecurity = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
+    enforceSensitiveRateLimit("backup-code-regenerate", 3, 60 * 60 * 1000);
     const { assertFounder } = await import("./founder.server");
     await assertFounder(context.supabase, context.userId, context.claims as never);
 
@@ -69,6 +71,8 @@ export const redeemBackupCode = createServerFn({ method: "POST" })
     z.object({ code: z.string().trim().min(6).max(20) }).parse(input),
   )
   .handler(async ({ data, context }) => {
+    const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
+    enforceSensitiveRateLimit("backup-code-verify", 8, 15 * 60 * 1000);
     const { isFounderUser } = await import("./founder.server");
     const { logAudit } = await import("./audit.server");
     const { hashBackupCode } = await import("./security.server");
