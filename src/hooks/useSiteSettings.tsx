@@ -79,11 +79,13 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     queryFn: async (): Promise<SiteSettings & HeroContent> => {
       const { data, error } = await supabase
         .from("site_settings")
-        .select("*")
+        .select(
+          "id, brand_name, primary_color, accent_color, secondary_color, background_color, logo_url, favicon_url, banner_url, theme_mode, layout_variant, hero_badge, hero_title, hero_title_accent, hero_subtitle",
+        )
         .eq("id", "global")
         .maybeSingle();
       if (error) throw new Error(error.message);
-      return { ...DEFAULT_SETTINGS, ...DEFAULT_HERO, ...(data ?? {}) };
+      return { ...DEFAULT_SETTINGS, ...DEFAULT_HERO, ...((data ?? {}) as Record<string, unknown>) } as SiteSettings & HeroContent;
     },
   });
 
@@ -93,7 +95,10 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     queryFn: async () => {
       const [own, founders] = await Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", user!.id),
-        supabase.from("user_roles").select("id", { count: "exact", head: true }).eq("role", "founder"),
+        supabase
+          .from("user_roles")
+          .select("id", { count: "exact", head: true })
+          .eq("role", "founder"),
       ]);
       if (own.error) throw new Error(own.error.message);
       return {

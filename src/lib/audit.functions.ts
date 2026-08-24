@@ -21,7 +21,6 @@ function maskEmail(email: string): string {
   return `${visible}${"*".repeat(Math.max(local.length - 2, 1))}@${domain}`;
 }
 
-
 /**
  * Kurucu giriş denemelerini kaydeder (giriş başarısız olabileceği için kimlik doğrulaması
  * gerekmez). Yazılan alanlar sabittir, e-posta maskelenir ve aynı istemci için hız sınırı
@@ -30,6 +29,8 @@ function maskEmail(email: string): string {
 export const logFounderLoginAttempt = createServerFn({ method: "POST" })
   .validator((input: unknown) => loginAttemptSchema.parse(input))
   .handler(async ({ data }) => {
+    const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
+    enforceSensitiveRateLimit("founder-login-log", 20, 10 * 60 * 1000);
     const { logAudit, tooManyRecentLoginLogs } = await import("./audit.server");
     if (await tooManyRecentLoginLogs()) return { ok: false };
 
@@ -43,7 +44,6 @@ export const logFounderLoginAttempt = createServerFn({ method: "POST" })
     });
     return { ok: true };
   });
-
 
 export const listAuditLogs = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

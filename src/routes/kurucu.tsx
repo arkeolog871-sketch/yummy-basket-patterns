@@ -4,7 +4,16 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { toPublicErrorMessage } from "@/lib/public-error";
-import { Crown, Plus, Trash2, Pencil, ShieldCheck, LogOut, ExternalLink, UserPlus } from "lucide-react";
+import {
+  Crown,
+  Plus,
+  Trash2,
+  Pencil,
+  ShieldCheck,
+  LogOut,
+  ExternalLink,
+  UserPlus,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccess } from "@/hooks/useAccess";
@@ -22,7 +31,6 @@ import { useAppCategories } from "@/hooks/useTaxonomy";
 import { SECTORS } from "@/lib/sectors";
 import { formatPrice, formatDateTime, ORDER_STATUS_LABELS, slugify } from "@/lib/format";
 import {
-  claimFounder,
   listAdminData,
   listUsers,
   saveBusiness,
@@ -80,7 +88,12 @@ function FounderRoute() {
 
   return (
     <TwoFactorGate>
-      <FounderShell onSignOut={handleSignOut} loading={loading} email={user?.email ?? null} hasUser={Boolean(user)} />
+      <FounderShell
+        onSignOut={handleSignOut}
+        loading={loading}
+        email={user?.email ?? null}
+        hasUser={Boolean(user)}
+      />
     </TwoFactorGate>
   );
 }
@@ -108,7 +121,9 @@ function TwoFactorGate({ children }: { children: React.ReactNode }) {
   }, [user, loading]);
 
   if (blocked === null && user) {
-    return <div className="px-4 py-24 text-center text-sm text-muted-foreground">Doğrulanıyor…</div>;
+    return (
+      <div className="px-4 py-24 text-center text-sm text-muted-foreground">Doğrulanıyor…</div>
+    );
   }
 
   if (blocked) {
@@ -119,7 +134,8 @@ function TwoFactorGate({ children }: { children: React.ReactNode }) {
         </span>
         <h1 className="mt-5 text-3xl">İki adımlı doğrulama gerekli</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Bu oturum ikinci adımı geçmedi. Kurucu girişinden doğrulama kodunuzu veya bir yedek kodu girin.
+          Bu oturum ikinci adımı geçmedi. Kurucu girişinden doğrulama kodunuzu veya bir yedek kodu
+          girin.
         </p>
         <Button asChild className="mt-6 rounded-full">
           <Link to="/kurucu-giris">Doğrulamaya git</Link>
@@ -142,11 +158,8 @@ function FounderShell({
   email: string | null;
   hasUser: boolean;
 }) {
-
   if (loading) {
-    return (
-      <div className="px-4 py-24 text-center text-sm text-muted-foreground">Yükleniyor…</div>
-    );
+    return <div className="px-4 py-24 text-center text-sm text-muted-foreground">Yükleniyor…</div>;
   }
 
   if (!hasUser) {
@@ -202,18 +215,8 @@ function FounderShell({
 }
 
 function FounderPage() {
-  const { isFounder, founderExists, refresh } = useSiteSettings();
+  const { isFounder, founderExists } = useSiteSettings();
   const access = useAccess();
-  const claim = useServerFn(claimFounder);
-
-  const claimMutation = useMutation({
-    mutationFn: () => claim(),
-    onSuccess: () => {
-      toast.success("Kurucu profili sizin adınıza tanımlandı");
-      refresh();
-    },
-    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
-  });
 
   if (access.loading) {
     return <div className="px-4 py-24 text-center text-sm text-muted-foreground">Yükleniyor…</div>;
@@ -238,19 +241,10 @@ function FounderPage() {
             Bu panel yalnızca kurucu hesabına açıktır. Yetki almak için kurucu ile iletişime geçin.
           </p>
         ) : (
-          <>
-            <p className="mt-3 text-sm text-muted-foreground">
-              Henüz kurucu tanımlı değil. Bu hesabı kurucu olarak tanımlayarak tüm yönetim
-              yetkilerini alabilirsiniz.
-            </p>
-            <Button
-              className="mt-6 rounded-full"
-              disabled={claimMutation.isPending}
-              onClick={() => claimMutation.mutate()}
-            >
-              <ShieldCheck className="size-4" /> Kurucu profilini üstlen
-            </Button>
-          </>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Henüz kurucu hesabı tanımlı değil. Kurucu hesabı yalnızca deployment yöneticisi
+            tarafından yetkilendirilebilir.
+          </p>
         )}
         <div className="mt-4">
           <Button asChild variant="ghost" className="rounded-full">
@@ -314,7 +308,9 @@ function FounderDashboard() {
           <TabsTrigger value="guvenlik">Güvenlik</TabsTrigger>
           <TabsTrigger value="siparisler">Siparişler</TabsTrigger>
           <TabsTrigger value="denetim">Denetim kaydı</TabsTrigger>
+          <TabsTrigger value="hatalar">Sistem hataları</TabsTrigger>
         </TabsList>
+
 
         <TabsContent value="gorunum" className="mt-6">
           <AppearancePanel />
@@ -388,11 +384,26 @@ function FounderDashboard() {
         <TabsContent value="denetim" className="mt-6">
           <AuditLogPanel />
         </TabsContent>
+
+        <TabsContent value="hatalar" className="mt-6">
+          <div className="rounded-2xl border bg-card p-5">
+            <h2 className="text-xl">Sistem hataları</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Uygulamada oluşan çalışma zamanı hataları ayrı bir sayfada listelenir.
+            </p>
+            <Button asChild className="mt-4 rounded-full">
+              <Link to="/sistem-hatalari">
+                Sistem hataları sayfasını aç
+                <ExternalLink className="ml-2 size-4" />
+              </Link>
+            </Button>
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
+
   );
 }
-
 
 type OrderRow = {
   id: string;
@@ -563,13 +574,7 @@ const emptyBusiness = {
   is_open_manual: true,
 };
 
-function BusinessPanel({
-  businesses,
-  onDone,
-}: {
-  businesses: BusinessRow[];
-  onDone: () => void;
-}) {
+function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDone: () => void }) {
   const save = useServerFn(saveBusiness);
   const remove = useServerFn(deleteBusiness);
   const { categories } = useAppCategories();
@@ -617,9 +622,7 @@ function BusinessPanel({
       }),
     onSuccess: () => {
       toast.success(
-        editingId
-          ? "İşletme ve giriş hesabı güncellendi"
-          : "İşletme ve giriş hesabı oluşturuldu",
+        editingId ? "İşletme ve giriş hesabı güncellendi" : "İşletme ve giriş hesabı oluşturuldu",
       );
       setEditingId(null);
       setForm(emptyBusiness);
@@ -685,20 +688,20 @@ function BusinessPanel({
             </p>
           ) : null}
           <div className="flex flex-wrap gap-2">
-          {categories.map((sector) => (
-            <button
-              key={sector.slug}
-              type="button"
-              onClick={() => setForm({ ...form, sector: sector.slug })}
-              className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
-                activeSector === sector.slug
-                  ? "border-transparent bg-primary text-primary-foreground"
-                  : "border-border"
-              }`}
-            >
-              {sector.label}
-            </button>
-          ))}
+            {categories.map((sector) => (
+              <button
+                key={sector.slug}
+                type="button"
+                onClick={() => setForm({ ...form, sector: sector.slug })}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
+                  activeSector === sector.slug
+                    ? "border-transparent bg-primary text-primary-foreground"
+                    : "border-border"
+                }`}
+              >
+                {sector.label}
+              </button>
+            ))}
           </div>
         </div>
         <Input
@@ -1369,8 +1372,8 @@ function UserPanel({
         <h2 className="text-xl">Yetkili kullanıcı ekle</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           E-posta ve telefon numarası zorunludur. E-posta doğrulama açıkken hesaba müşteri
-          girişindeki ile aynı tek kullanımlık kod gönderilir ve hesap kod doğrulanana kadar
-          onaysız kalır. Telefon numarası profile kaydedilir ve işlem denetim kaydına yazılır.
+          girişindeki ile aynı tek kullanımlık kod gönderilir ve hesap kod doğrulanana kadar onaysız
+          kalır. Telefon numarası profile kaydedilir ve işlem denetim kaydına yazılır.
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <div className="space-y-2">
@@ -1461,76 +1464,76 @@ function UserPanel({
       </form>
 
       <div className="overflow-hidden rounded-3xl border border-border bg-card">
-      {users.length === 0 ? (
-        <p className="p-6 text-sm text-muted-foreground">Kullanıcı bulunamadı.</p>
-      ) : (
-        users.map((user) => (
-          <div
-            key={user.id}
-            className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 p-4 last:border-0"
-          >
-            <div className="min-w-0">
-              <p className="truncate font-medium">{user.email}</p>
-              <p className="text-xs text-muted-foreground">
-                {formatDateTime(user.created_at)} ·{" "}
-                {user.roles.length ? user.roles.join(", ") : "yetki yok"}
-              </p>
-              <div className="mt-2 flex items-center gap-2">
-                <label className="text-xs text-muted-foreground" htmlFor={`vendor-${user.id}`}>
-                  İşletme:
-                </label>
-                <select
-                  id={`vendor-${user.id}`}
-                  value={user.vendorRestaurantId ?? ""}
-                  disabled={assignMutation.isPending}
-                  onChange={(event) =>
-                    assignMutation.mutate({
-                      userId: user.id,
-                      restaurantId: event.target.value || null,
-                    })
-                  }
-                  className="h-8 max-w-[14rem] rounded-lg border border-input bg-background px-2 text-xs"
+        {users.length === 0 ? (
+          <p className="p-6 text-sm text-muted-foreground">Kullanıcı bulunamadı.</p>
+        ) : (
+          users.map((user) => (
+            <div
+              key={user.id}
+              className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 p-4 last:border-0"
+            >
+              <div className="min-w-0">
+                <p className="truncate font-medium">{user.email}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatDateTime(user.created_at)} ·{" "}
+                  {user.roles.length ? user.roles.join(", ") : "yetki yok"}
+                </p>
+                <div className="mt-2 flex items-center gap-2">
+                  <label className="text-xs text-muted-foreground" htmlFor={`vendor-${user.id}`}>
+                    İşletme:
+                  </label>
+                  <select
+                    id={`vendor-${user.id}`}
+                    value={user.vendorRestaurantId ?? ""}
+                    disabled={assignMutation.isPending}
+                    onChange={(event) =>
+                      assignMutation.mutate({
+                        userId: user.id,
+                        restaurantId: event.target.value || null,
+                      })
+                    }
+                    className="h-8 max-w-[14rem] rounded-lg border border-input bg-background px-2 text-xs"
+                  >
+                    <option value="">Atanmadı</option>
+                    {businesses.map((business) => (
+                      <option key={business.id} value={business.id}>
+                        {business.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {(["admin", "founder"] as const).map((roleName) => {
+                  const has = user.roles.includes(roleName);
+                  return (
+                    <Button
+                      key={roleName}
+                      size="sm"
+                      variant={has ? "secondary" : "outline"}
+                      className="rounded-full"
+                      disabled={roleMutation.isPending}
+                      onClick={() =>
+                        roleMutation.mutate({ userId: user.id, role: roleName, grant: !has })
+                      }
+                    >
+                      {has ? `${roleName} kaldır` : `${roleName} ver`}
+                    </Button>
+                  );
+                })}
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="rounded-full"
+                  aria-label="Kullanıcıyı sil"
+                  onClick={() => deleteMutation.mutate(user.id)}
                 >
-                  <option value="">Atanmadı</option>
-                  {businesses.map((business) => (
-                    <option key={business.id} value={business.id}>
-                      {business.name}
-                    </option>
-                  ))}
-                </select>
+                  <Trash2 className="size-4" />
+                </Button>
               </div>
             </div>
-            <div className="flex flex-wrap gap-1">
-              {(["admin", "founder"] as const).map((roleName) => {
-                const has = user.roles.includes(roleName);
-                return (
-                  <Button
-                    key={roleName}
-                    size="sm"
-                    variant={has ? "secondary" : "outline"}
-                    className="rounded-full"
-                    disabled={roleMutation.isPending}
-                    onClick={() =>
-                      roleMutation.mutate({ userId: user.id, role: roleName, grant: !has })
-                    }
-                  >
-                    {has ? `${roleName} kaldır` : `${roleName} ver`}
-                  </Button>
-                );
-              })}
-              <Button
-                size="icon"
-                variant="outline"
-                className="rounded-full"
-                aria-label="Kullanıcıyı sil"
-                onClick={() => deleteMutation.mutate(user.id)}
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </div>
-          </div>
-        ))
-      )}
+          ))
+        )}
       </div>
     </div>
   );

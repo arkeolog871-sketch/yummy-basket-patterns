@@ -3,17 +3,22 @@ package online.uygulamamcebimde.app;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
+import android.webkit.SslErrorHandler;
+import android.net.http.SslError;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
     private static final String APP_URL = "https://uygulamamcebimde.online/";
+    private static final String APP_HOST = "uygulamamcebimde.online";
     private WebView webView;
 
     @Override
@@ -36,29 +41,56 @@ public class MainActivity extends Activity {
 
         CookieManager cookies = CookieManager.getInstance();
         cookies.setAcceptCookie(true);
-        cookies.setAcceptThirdPartyCookies(webView, true);
+        cookies.setAcceptThirdPartyCookies(webView, false);
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
         settings.setGeolocationEnabled(true);
+        settings.setAllowFileAccess(false);
+        settings.setAllowContentAccess(false);
+        settings.setAllowFileAccessFromFileURLs(false);
+        settings.setAllowUniversalAccessFromFileURLs(false);
+        settings.setSupportMultipleWindows(false);
+        settings.setJavaScriptCanOpenWindowsAutomatically(false);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
         settings.setSupportZoom(false);
         settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
-        settings.setMediaPlaybackRequiresUserGesture(false);
-        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
+        settings.setMediaPlaybackRequiresUserGesture(true);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            settings.setSafeBrowsingEnabled(true);
+        }
 
-        webView.setWebViewClient(new WebViewClient());
+        WebView.setWebContentsDebuggingEnabled(false);
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                return openAllowedUrlOrExternal(url);
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, android.webkit.WebResourceRequest request) {
+                return openAllowedUrlOrExternal(request.getUrl().toString());
+            }
+
+            @Override
+            public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                handler.cancel();
+            }
+        });
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onGeolocationPermissionsShowPrompt(
                     String origin,
                     GeolocationPermissions.Callback callback
             ) {
-                callback.invoke(origin, true, false);
+                Uri uri = Uri.parse(origin);
+                boolean allowed = "https".equals(uri.getScheme()) && APP_HOST.equals(uri.getHost());
+                callback.invoke(origin, allowed, false);
             }
         });
 
@@ -82,5 +114,21 @@ public class MainActivity extends Activity {
         } else {
             super.onBackPressed();
         }
+    }
+
+    private boolean openAllowedUrlOrExternal(String rawUrl) {
+        Uri uri = Uri.parse(rawUrl);
+        if ("about".equals(uri.getScheme())) {
+            return false;
+        }
+        if ("https".equals(uri.getScheme()) && APP_HOST.equals(uri.getHost())) {
+            return false;
+        }
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, uri));
+        } catch (Exception ignored) {
+            // Do not load unknown schemes or hosts inside the WebView.
+        }
+        return true;
     }
 }

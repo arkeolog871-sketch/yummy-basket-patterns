@@ -9,7 +9,9 @@ import {
 } from "@/lib/google-maps-loader";
 import { beginMapRuntime, swallowMapTeardown } from "@/lib/map-errors";
 import { cleanMapStyle } from "@/lib/mapStyle";
-import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getMapsBrowserConfig } from "@/lib/maps.functions";
 import type { GoogleInfoWindow, GoogleMap, GoogleMarker } from "@/lib/google-maps-types";
 
 export type LiveMapMarker = {
@@ -105,12 +107,19 @@ function whenSized(el: HTMLElement, run: () => void): () => void {
 }
 
 export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveMapCanvasProps) {
+  const fetchMapsConfig = useServerFn(getMapsBrowserConfig);
   const hostRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
-  const { settings } = useSiteSettings();
-  const mapsApiKey = settings.maps_api_key ?? null;
-  const markerKey = markers.map((m) => `${m.lat},${m.lng},${m.title}`).join("|");
+  const mapsConfig = useQuery({
+    queryKey: ["maps-browser-config"],
+    queryFn: () => fetchMapsConfig(),
+    staleTime: 10 * 60 * 1000,
+  });
+  const mapsApiKey = mapsConfig.data?.apiKey ?? null;
+  const markerKey = JSON.stringify(
+    markers.map(({ lat, lng, title, href, address }) => ({ lat, lng, title, href, address })),
+  );
 
   useEffect(() => {
     if (markers.length === 0) return;
@@ -159,6 +168,13 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
       osmStarted = true;
       stopWatching?.();
       stopWatching = undefined;
+      stopUser?.();
+      stopUser = undefined;
+      info?.close();
+      googleUser?.setMap(null);
+      for (const pin of googleMarkers) pin.setMap(null);
+      googleMarkers.length = 0;
+      googleMap = null;
       try {
         const L = await ensureLeaflet();
         if (cancelled || !hostRef.current) {

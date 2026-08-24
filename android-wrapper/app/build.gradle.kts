@@ -14,22 +14,43 @@ android {
         versionName = "1.1"
     }
 
-    signingConfigs {
-        create("release") {
-            storeFile = file("silvan-cebimde.keystore")
-            storePassword = "silvancebimde2026"
-            keyAlias = "silvan"
-            keyPassword = "silvancebimde2026"
+    val signingStore = providers.gradleProperty("android.keystorePath")
+        .orElse(providers.environmentVariable("ANDROID_KEYSTORE_PATH"))
+        .orNull
+    val signingStorePassword = providers.gradleProperty("android.keystorePassword")
+        .orElse(providers.environmentVariable("ANDROID_KEYSTORE_PASSWORD"))
+        .orNull
+    val signingKeyAlias = providers.gradleProperty("android.keyAlias")
+        .orElse(providers.environmentVariable("ANDROID_KEY_ALIAS"))
+        .orNull
+    val signingKeyPassword = providers.gradleProperty("android.keyPassword")
+        .orElse(providers.environmentVariable("ANDROID_KEY_PASSWORD"))
+        .orNull
+    val hasReleaseSigning = listOf(
+        signingStore,
+        signingStorePassword,
+        signingKeyAlias,
+        signingKeyPassword,
+    ).all { !it.isNullOrBlank() }
+
+    if (hasReleaseSigning) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(signingStore!!)
+                storePassword = signingStorePassword
+                keyAlias = signingKeyAlias
+                keyPassword = signingKeyPassword
+            }
         }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            if (hasReleaseSigning) signingConfig = signingConfigs.getByName("release")
         }
         debug {
-            signingConfig = signingConfigs.getByName("release")
+            // Never use the production signing key for debug builds.
         }
     }
 
