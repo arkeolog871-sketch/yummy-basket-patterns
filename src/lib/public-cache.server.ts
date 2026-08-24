@@ -96,7 +96,14 @@ export function isCacheablePublicGet(request: Request): boolean {
 
   if (url.searchParams.has("_serverFn")) return false;
   if (PRIVATE_PATH.test(url.pathname)) return false;
+  if (url.pathname.startsWith("/assets/")) return false;
+  if (/\.[a-z0-9]{2,8}$/i.test(url.pathname) && !url.pathname.endsWith(".html")) return false;
   return true;
+}
+
+export function invalidatePublicCaches() {
+  catalogCache.clear();
+  htmlCache.clear();
 }
 
 export function publicHtmlCacheKey(request: Request): string {
@@ -155,13 +162,58 @@ async function withSsrSlot<T>(work: () => Promise<T>): Promise<T> {
   }
 }
 
+type WaitUntilCtx = { waitUntil?: (promise: Promise<unknown>) => void };
+
+function edgeCacheRequest(request: Request) {
+  const url = new URL(request.url);
+  return new Request(`https://public-html-cache.local${url.pathname}${url.search}`, { method: "GET" });
+}
+
+function edgeCacheStore(): Cache | undefined {
+  const cachesApi = (globalThis as unknown as { caches?: { default?: Cache } }).caches;
+  return cachesApi?.default;
+}
+
+async function matchEdgeHtml(request: Request): Promise<CachedHtml | undefined> {
+  const cache = edgeCacheStore();
+  if (!cache) return undefined;
+  try {
+    const hit = await cache.match(edgeCacheRequest(request));
+    if (!hit || hit.status >= 500) return undefined;
+    return snapshotResponse(hit);
+  } catch {
+    return undefined;
+  }
+}
+
+function putEdgeHtml(request: Request, snapshot: CachedHtml, ctx?: WaitUntilCtx) {
+  const cache = edgeCacheStore();
+  if (!cache || !canStoreHtml(snapshot)) return;
+  const headers = new Headers(snapshot.headers);
+  headers.set("Cache-Control", `public, s-maxage=${Math.ceil(HTML_TTL_MS / 1000)}`);
+  const stored = new Response(snapshot.body.slice(), {
+    status: snapshot.status,
+    statusText: snapshot.statusText,
+    headers,
+  });
+  const write = cache.put(edgeCacheRequest(request), stored).catch(() => undefined);
+  ctx?.waitUntil?.(write);
+}
+
 export async function serveCachedPublicHtml(
   request: Request,
   render: () => Promise<Response>,
+  ctx?: WaitUntilCtx,
 ): Promise<Response> {
   const key = publicHtmlCacheKey(request);
   const hit = lruGet(htmlCache, key);
   if (hit) return replayCachedHtml(hit);
+
+  const edge = await matchEdgeHtml(request);
+  if (edge) {
+    lruSet(htmlCache, key, edge, HTML_TTL_MS, MAX_HTML_ENTRIES);
+    return replayCachedHtml(edge);
+  }
 
   const pending = htmlInflight.get(key);
   if (pending) return replayCachedHtml(await pending);
@@ -172,6 +224,7 @@ export async function serveCachedPublicHtml(
       const snapshot = await snapshotResponse(response);
       if (canStoreHtml(snapshot)) {
         lruSet(htmlCache, key, snapshot, HTML_TTL_MS, MAX_HTML_ENTRIES);
+        putEdgeHtml(request, snapshot, ctx);
       }
       return snapshot;
     } finally {

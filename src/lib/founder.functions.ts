@@ -113,8 +113,14 @@ export const updateMapsSettings = createServerFn({ method: "POST" })
             .from("site_settings")
             .update({ maps_api_key: mapsUpdate.maps_api_key })
             .eq("id", "global");
+          if (retry.error && /maps_api_key/.test(retry.error.message)) {
+            throw new Error("Harita sütunları henüz veritabanında yok. Lütfen şema güncellemesini uygulayın.");
+          }
           if (retry.error) throw new Error(retry.error.message);
           return { ok: true };
+        }
+        if (first.error && /maps_api_key/.test(first.error.message)) {
+          throw new Error("Harita sütunları henüz veritabanında yok. Lütfen şema güncellemesini uygulayın.");
         }
         if (first.error) throw new Error(first.error.message);
         return { ok: true };
@@ -206,17 +212,13 @@ const menuItemSchema = z.object({
 });
 
 export const getSiteSettings = createServerFn({ method: "GET" }).handler(async () => {
-  const { createPublicClient } = await import("./catalog.server");
-  const supabase = createPublicClient();
-  const { data, error } = await supabase
-    .from("site_settings")
-    .select(
-      "id, brand_name, primary_color, accent_color, secondary_color, background_color, logo_url, favicon_url, banner_url, theme_mode, layout_variant, hero_badge, hero_title, hero_title_accent, hero_subtitle, maps_api_key, maps_allowed_referrers",
-    )
-    .eq("id", "global")
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  return data;
+  const { cachedPublicQuery } = await import("./public-cache.server");
+  return cachedPublicQuery("getSiteSettings", async () => {
+    const { createPublicClient } = await import("./catalog.server");
+    const { loadSiteSettingsRow } = await import("./site-settings-load");
+    const supabase = createPublicClient();
+    return loadSiteSettingsRow(supabase);
+  });
 });
 
 export const getFounderStatus = createServerFn({ method: "GET" })

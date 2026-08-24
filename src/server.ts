@@ -97,7 +97,11 @@ export default {
     if (isBlockedProbe(request)) return blockedProbeResponse();
     try {
       if (isCacheablePublicGet(request)) {
-        return await serveCachedPublicHtml(request, () => renderRequest(request, env, ctx));
+        return await serveCachedPublicHtml(
+          request,
+          () => renderRequest(request, env, ctx),
+          ctx as { waitUntil?: (promise: Promise<unknown>) => void },
+        );
       }
       return await renderRequest(request, env, ctx);
     } catch (error) {

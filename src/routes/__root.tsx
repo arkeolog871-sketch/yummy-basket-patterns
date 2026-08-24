@@ -21,6 +21,7 @@ import { Footer } from "@/components/layout/Footer";
 import { IosHomeScreenGuide } from "@/components/iphone/IosHomeScreenGuide";
 import { Toaster } from "@/components/ui/sonner";
 import { AppRealtimeBridge } from "@/hooks/useAppRealtime";
+import { appCategoriesQuery, serviceAreasQuery, siteSettingsQuery } from "@/lib/catalog.queries";
 
 function NotFoundComponent() {
   return (
@@ -81,6 +82,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  loader: async ({ context }) => {
+    await Promise.allSettled([
+      context.queryClient.ensureQueryData(siteSettingsQuery),
+      context.queryClient.ensureQueryData(appCategoriesQuery),
+      context.queryClient.ensureQueryData(serviceAreasQuery),
+    ]);
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },

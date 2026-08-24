@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "security:test": "node scripts/security-smoke.mjs",
-    "loadtest:10k": "node scripts/loadtest-10k.mjs"
+    "loadtest:10k": "node scripts/loadtest-10k.mjs",
+    "sim:full": "node scripts/sim-full.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

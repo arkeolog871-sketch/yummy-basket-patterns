@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { SECTORS } from "@/lib/sectors";
+import { appCategoriesQuery, serviceAreasQuery } from "@/lib/catalog.queries";
+import { listAppCategories, listServiceAreas } from "@/lib/taxonomy.functions";
 
 export type AppCategory = {
   id: string;
@@ -28,20 +29,17 @@ const FALLBACK_CATEGORIES: AppCategory[] = SECTORS.map((sector, index) => ({
   is_active: true,
 }));
 
-// Teslimat bölgeleri yalnızca kurucu panelinden yönetilir; sabit yedek liste yoktur.
-
 /** Kurucu panelinden yönetilen dinamik kategoriler (herkese açık okuma). */
 export function useAppCategories(options?: { includeHidden?: boolean }) {
   const includeHidden = options?.includeHidden ?? false;
   const query = useQuery({
-    queryKey: ["app-categories"],
+    ...appCategoriesQuery,
     queryFn: async (): Promise<AppCategory[]> => {
-      const { data, error } = await supabase
-        .from("app_categories")
-        .select("id, slug, label, icon, position, is_active")
-        .order("position");
-      if (error) throw new Error(error.message);
-      return data ?? [];
+      try {
+        return await listAppCategories();
+      } catch {
+        return FALLBACK_CATEGORIES;
+      }
     },
   });
 
@@ -56,14 +54,13 @@ export function useAppCategories(options?: { includeHidden?: boolean }) {
 export function useServiceAreas(options?: { includeHidden?: boolean }) {
   const includeHidden = options?.includeHidden ?? false;
   const query = useQuery({
-    queryKey: ["service-areas"],
+    ...serviceAreasQuery,
     queryFn: async (): Promise<ServiceArea[]> => {
-      const { data, error } = await supabase
-        .from("service_areas")
-        .select("id, city, district, position, is_active")
-        .order("position");
-      if (error) throw new Error(error.message);
-      return data ?? [];
+      try {
+        return await listServiceAreas();
+      } catch {
+        return [];
+      }
     },
   });
 
