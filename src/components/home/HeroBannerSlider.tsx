@@ -43,11 +43,28 @@ function SlideVisual({ banner, priority, active }: { banner: PublicBanner; prior
 export function HeroBannerSlider({
   banners,
   className,
+  simulation = false,
+  onActivate,
 }: {
   banners: PublicBanner[];
   className?: string;
+  /** Preview only: no tracking, no tel/navigation. */
+  simulation?: boolean;
+  onActivate?: (banner: PublicBanner) => void;
 }) {
   const navigate = useNavigate();
+
+  const trigger = useCallback(
+    (banner: PublicBanner) => {
+      if (simulation) {
+        onActivate?.(banner);
+        return;
+      }
+      onActivate?.(banner);
+      activateBanner(banner, navigate);
+    },
+    [simulation, onActivate, navigate],
+  );
   const count = banners.length;
   const [emblaRef, emblaApi] = useEmblaCarousel({
     loop: count > 1,
@@ -86,13 +103,13 @@ export function HeroBannerSlider({
 
   const current = banners[index];
   useEffect(() => {
-    if (!current?.id || seen.current.has(current.id)) return;
+    if (simulation || !current?.id || seen.current.has(current.id)) return;
     const timer = window.setTimeout(() => {
       seen.current.add(current.id);
       trackBanner(current.id, "impression");
     }, BANNER_IMPRESSION_MS);
     return () => window.clearTimeout(timer);
-  }, [current?.id]);
+  }, [current?.id, simulation]);
 
   const hold = useCallback((down: boolean) => {
     holding.current = down;
@@ -109,7 +126,8 @@ export function HeroBannerSlider({
       )}
       role="region"
       aria-roledescription="carousel"
-      aria-label="Kayan reklam panosu"
+      aria-label={simulation ? "Kayan reklam panosu simülasyonu" : "Kayan reklam panosu"}
+      data-ad-simulation={simulation ? "true" : undefined}
       tabIndex={0}
       onPointerDown={() => hold(true)}
       onPointerUp={() => hold(false)}
@@ -125,7 +143,7 @@ export function HeroBannerSlider({
         }
         if (event.key === "Enter" && current) {
           event.preventDefault();
-          activateBanner(current, navigate);
+          trigger(current);
         }
       }}
     >
@@ -142,7 +160,7 @@ export function HeroBannerSlider({
               <button
                 type="button"
                 className="relative block w-full overflow-hidden rounded-2xl text-left"
-                onClick={() => activateBanner(banner, navigate)}
+                onClick={() => trigger(banner)}
               >
                 <div className="relative aspect-video max-h-[240px] w-full bg-muted sm:aspect-[3/1] sm:max-h-[280px]">
                   <SlideVisual banner={banner} priority={i === 0} active={i === index} />
@@ -152,6 +170,12 @@ export function HeroBannerSlider({
           ))}
         </div>
       </div>
+
+      {simulation ? (
+        <span className="pointer-events-none absolute left-3 top-3 z-10 rounded-full bg-background/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-foreground shadow-sm">
+          Simülasyon
+        </span>
+      ) : null}
 
       {count > 1 ? (
         <>

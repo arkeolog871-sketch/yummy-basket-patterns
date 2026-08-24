@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { Link } from "@tanstack/react-router";
 import { Copy, ImageUp, Megaphone, Pencil, Plus, Trash2 } from "lucide-react";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -25,6 +26,7 @@ import {
 } from "@/lib/advertisements";
 import { HeroBannerSlider } from "@/components/home/HeroBannerSlider";
 import { AdMedia } from "@/components/home/AdMedia";
+import { simulationBanners } from "@/lib/ad-simulation";
 import { adImageTooLargeMessage, adImageTypeRejectedMessage, AD_MEDIA_ACCEPT, isAdMediaFile, MAX_AD_IMAGE_MB, MAX_AD_MEDIA_BYTES } from "@/lib/upload-limits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,9 +82,11 @@ export function AdsPanel() {
   const deleteFn = useServerFn(deleteAdvertisement);
   const uploadFn = useServerFn(uploadAdvertisementImage);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const localPreviewRef = useRef("");
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(emptyAdvertisementDraft());
   const [uploading, setUploading] = useState(false);
+  const [localPreview, setLocalPreview] = useState("");
 
   const query = useQuery({
     queryKey: ["founder-advertisements"],
@@ -139,6 +143,12 @@ export function AdsPanel() {
     onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
+  function clearLocalPreview() {
+    if (localPreviewRef.current) URL.revokeObjectURL(localPreviewRef.current);
+    localPreviewRef.current = "";
+    setLocalPreview("");
+  }
+
   async function onUpload(file: File) {
     if (!isAdMediaFile(file)) {
       toast.error(adImageTypeRejectedMessage());
@@ -148,6 +158,10 @@ export function AdsPanel() {
       toast.error(adImageTooLargeMessage());
       return;
     }
+    clearLocalPreview();
+    const blobUrl = URL.createObjectURL(file);
+    localPreviewRef.current = blobUrl;
+    setLocalPreview(blobUrl);
     setUploading(true);
     try {
       const form = new FormData();
@@ -155,6 +169,7 @@ export function AdsPanel() {
       const result = (await uploadFn({ data: form })) as { url?: string };
       if (!result.url) throw new Error("Görsel adresi alınamadı");
       setDraft((prev) => ({ ...prev, image_url: result.url as string }));
+      clearLocalPreview();
       toast.success("Dosya yüklendi");
     } catch (error) {
       toast.error(toPublicErrorMessage(error));
@@ -243,6 +258,7 @@ export function AdsPanel() {
             className="rounded-full"
             disabled={items.length >= MAX_ADVERTISEMENTS}
             onClick={() => {
+              clearLocalPreview();
               setDraft(emptyAdvertisementDraft());
               setOpen(true);
             }}
@@ -258,9 +274,18 @@ export function AdsPanel() {
             <HeroBannerSlider banners={livePreview} />
           </div>
         ) : (
-          <p className="mt-5 rounded-2xl border border-dashed border-border p-4 text-sm text-muted-foreground">
-            Şu an yayında slayt yok. Tarih aralığı içinde ve aktif olanlar ana sayfada görünür.
-          </p>
+          <div className="mt-5 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Şu an yayında slayt yok. Aşağıdaki kayan pano örnek JPEG + MP4 ile görüntüleme simülasyonudur.
+            </p>
+            <HeroBannerSlider banners={simulationBanners()} simulation />
+            <Link
+              to="/reklam-simulasyon"
+              className="inline-flex text-sm font-medium text-accent hover:underline"
+            >
+              Yükleme simülasyonunu aç
+            </Link>
+          </div>
         )}
       </div>
 
@@ -345,6 +370,7 @@ export function AdsPanel() {
                           size="icon"
                           variant="ghost"
                           onClick={() => {
+                            clearLocalPreview();
                             setDraft(toDraft(ad));
                             setOpen(true);
                           }}
@@ -372,7 +398,13 @@ export function AdsPanel() {
         </Table>
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) clearLocalPreview();
+        }}
+      >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{draft.id ? "Reklamı düzenle" : "Yeni reklam"}</DialogTitle>
@@ -380,6 +412,7 @@ export function AdsPanel() {
           <AdForm
             draft={draft}
             setDraft={setDraft}
+            previewSrc={localPreview || draft.image_url}
             uploading={uploading}
             fileRef={fileRef}
             onUpload={onUpload}
@@ -395,6 +428,7 @@ export function AdsPanel() {
 function AdForm({
   draft,
   setDraft,
+  previewSrc,
   uploading,
   fileRef,
   onUpload,
@@ -403,6 +437,7 @@ function AdForm({
 }: {
   draft: Draft;
   setDraft: (next: Draft) => void;
+  previewSrc: string;
   uploading: boolean;
   fileRef: React.RefObject<HTMLInputElement | null>;
   onUpload: (file: File) => void;
@@ -455,7 +490,7 @@ function AdForm({
         <Label>Görsel veya video (PNG, JPEG, MP4, MOV, WEBM… en fazla {MAX_AD_IMAGE_MB} MB, 16:9 veya 3:1)</Label>
         <div className="mt-1.5 flex items-center gap-3">
           <div className="h-16 w-28 overflow-hidden rounded-xl border bg-muted">
-            {draft.image_url ? <AdMedia src={draft.image_url} className="size-full object-cover" /> : null}
+            {previewSrc ? <AdMedia src={previewSrc} className="size-full object-cover" active /> : null}
           </div>
           <input
             ref={fileRef}
