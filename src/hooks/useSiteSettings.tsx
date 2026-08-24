@@ -80,12 +80,12 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from("site_settings")
         .select(
-          "id, brand_name, primary_color, accent_color, secondary_color, background_color, logo_url, favicon_url, banner_url, theme_mode, layout_variant, hero_badge, hero_title, hero_title_accent, hero_subtitle, maps_api_key, maps_allowed_referrers",
+          "id, brand_name, primary_color, accent_color, secondary_color, background_color, logo_url, favicon_url, banner_url, theme_mode, layout_variant, hero_badge, hero_title, hero_title_accent, hero_subtitle",
         )
         .eq("id", "global")
         .maybeSingle();
       if (error) throw new Error(error.message);
-      return { ...DEFAULT_SETTINGS, ...DEFAULT_HERO, ...(data ?? {}) };
+      return { ...DEFAULT_SETTINGS, ...DEFAULT_HERO, ...((data ?? {}) as Record<string, unknown>) } as SiteSettings & HeroContent;
     },
   });
 

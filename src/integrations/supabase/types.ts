@@ -92,6 +92,51 @@ export type Database = {
         }
         Relationships: []
       }
+      app_errors: {
+        Row: {
+          created_at: string
+          id: string
+          ip: string | null
+          last_seen_at: string
+          message: string
+          occurrences: number
+          path: string | null
+          resolved: boolean
+          source: string
+          stack: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip?: string | null
+          last_seen_at?: string
+          message: string
+          occurrences?: number
+          path?: string | null
+          resolved?: boolean
+          source?: string
+          stack?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip?: string | null
+          last_seen_at?: string
+          message?: string
+          occurrences?: number
+          path?: string | null
+          resolved?: boolean
+          source?: string
+          stack?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string

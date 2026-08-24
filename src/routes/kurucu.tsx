@@ -308,7 +308,9 @@ function FounderDashboard() {
           <TabsTrigger value="guvenlik">Güvenlik</TabsTrigger>
           <TabsTrigger value="siparisler">Siparişler</TabsTrigger>
           <TabsTrigger value="denetim">Denetim kaydı</TabsTrigger>
+          <TabsTrigger value="hatalar">Sistem hataları</TabsTrigger>
         </TabsList>
+
 
         <TabsContent value="gorunum" className="mt-6">
           <AppearancePanel />
@@ -382,8 +384,24 @@ function FounderDashboard() {
         <TabsContent value="denetim" className="mt-6">
           <AuditLogPanel />
         </TabsContent>
+
+        <TabsContent value="hatalar" className="mt-6">
+          <div className="rounded-2xl border bg-card p-5">
+            <h2 className="text-xl">Sistem hataları</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Uygulamada oluşan çalışma zamanı hataları ayrı bir sayfada listelenir.
+            </p>
+            <Button asChild className="mt-4 rounded-full">
+              <Link to="/sistem-hatalari">
+                Sistem hataları sayfasını aç
+                <ExternalLink className="ml-2 size-4" />
+              </Link>
+            </Button>
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
+
   );
 }
 
