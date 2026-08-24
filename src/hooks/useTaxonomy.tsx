@@ -28,7 +28,16 @@ const FALLBACK_CATEGORIES: AppCategory[] = SECTORS.map((sector, index) => ({
   is_active: true,
 }));
 
-// Teslimat bölgeleri yalnızca kurucu panelinden yönetilir; sabit yedek liste yoktur.
+/** SSR ve istemci ilk boyası aynı metni görsün; veri gelince yerini alır. */
+const FALLBACK_AREAS: ServiceArea[] = [
+  {
+    id: "silvan",
+    city: "DİYARBAKIR",
+    district: "SİLVAN",
+    position: 1,
+    is_active: true,
+  },
+];
 
 /** Kurucu panelinden yönetilen dinamik kategoriler (herkese açık okuma). */
 export function useAppCategories(options?: { includeHidden?: boolean }) {
@@ -36,18 +45,30 @@ export function useAppCategories(options?: { includeHidden?: boolean }) {
   const query = useQuery({
     queryKey: ["app-categories"],
     queryFn: async (): Promise<AppCategory[]> => {
-      const { data, error } = await supabase
-        .from("app_categories")
-        .select("id, slug, label, icon, position, is_active")
-        .order("position");
-      if (error) throw new Error(error.message);
-      return data ?? [];
+      try {
+        const { data, error } = await supabase
+          .from("app_categories")
+          .select("id, slug, label, icon, position, is_active")
+          .order("position");
+        if (error) {
+          console.error("[app-categories]", error.message);
+          return [];
+        }
+        return data ?? [];
+      } catch (error) {
+        console.error("[app-categories]", error);
+        return [];
+      }
     },
+    retry: false,
   });
 
-  const rows = query.data && query.data.length > 0 ? query.data : FALLBACK_CATEGORIES;
+  const loaded = query.data ?? [];
+  const rows = includeHidden
+    ? loaded
+    : (loaded.length > 0 ? loaded : FALLBACK_CATEGORIES).filter((row) => row.is_active);
   return {
-    categories: includeHidden ? rows : rows.filter((row) => row.is_active),
+    categories: rows,
     isLoading: query.isLoading,
   };
 }
@@ -58,18 +79,30 @@ export function useServiceAreas(options?: { includeHidden?: boolean }) {
   const query = useQuery({
     queryKey: ["service-areas"],
     queryFn: async (): Promise<ServiceArea[]> => {
-      const { data, error } = await supabase
-        .from("service_areas")
-        .select("id, city, district, position, is_active")
-        .order("position");
-      if (error) throw new Error(error.message);
-      return data ?? [];
+      try {
+        const { data, error } = await supabase
+          .from("service_areas")
+          .select("id, city, district, position, is_active")
+          .order("position");
+        if (error) {
+          console.error("[service-areas]", error.message);
+          return [];
+        }
+        return data ?? [];
+      } catch (error) {
+        console.error("[service-areas]", error);
+        return [];
+      }
     },
+    retry: false,
   });
 
-  const rows = query.data ?? [];
+  const loaded = query.data ?? [];
+  const rows = includeHidden
+    ? loaded
+    : (loaded.length > 0 ? loaded : FALLBACK_AREAS).filter((row) => row.is_active);
   return {
-    areas: includeHidden ? rows : rows.filter((row) => row.is_active),
+    areas: rows,
     isLoading: query.isLoading,
   };
 }

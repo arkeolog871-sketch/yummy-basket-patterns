@@ -48,7 +48,9 @@ export function Footer() {
         <div className="text-sm text-muted-foreground">
           <p className="font-semibold text-foreground">Teslimat saatleri</p>
           <p className="mt-3">Her gün 10:00 – 23:30</p>
-          <p className="mt-1">{areaText}</p>
+          <p className="mt-1" suppressHydrationWarning>
+            {areaText}
+          </p>
         </div>
       </div>
       <div className="border-t border-border/70 py-4 text-center text-xs text-muted-foreground">

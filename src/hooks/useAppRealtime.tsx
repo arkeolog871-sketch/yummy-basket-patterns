@@ -30,44 +30,49 @@ export function AppRealtimeBridge() {
   const { user } = useAuth();
 
   useEffect(() => {
-    const channel = supabase
-      .channel("app-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "restaurants" }, () => {
-        invalidateAll(queryClient, CATALOG_KEYS);
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "menu_items" }, () => {
-        invalidateAll(queryClient, CATALOG_KEYS);
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "menu_categories" }, () => {
-        invalidateAll(queryClient, CATALOG_KEYS);
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "site_settings" }, () => {
-        void queryClient.invalidateQueries({ queryKey: ["site-settings"] });
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "user_roles" }, () => {
-        invalidateAll(queryClient, MEMBERSHIP_KEYS);
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "vendor_assignments" }, () => {
-        invalidateAll(queryClient, MEMBERSHIP_KEYS);
-        invalidateAll(queryClient, CATALOG_KEYS);
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
-        invalidateAll(queryClient, ORDER_KEYS);
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, () => {
-        invalidateAll(queryClient, ORDER_KEYS);
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "addresses" }, () => {
-        void queryClient.invalidateQueries({ queryKey: ["addresses"] });
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => {
-        invalidateAll(queryClient, MEMBERSHIP_KEYS);
-      })
-      .subscribe();
+    try {
+      const channel = supabase
+        .channel("app-live")
+        .on("postgres_changes", { event: "*", schema: "public", table: "restaurants" }, () => {
+          invalidateAll(queryClient, CATALOG_KEYS);
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "menu_items" }, () => {
+          invalidateAll(queryClient, CATALOG_KEYS);
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "menu_categories" }, () => {
+          invalidateAll(queryClient, CATALOG_KEYS);
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "site_settings" }, () => {
+          void queryClient.invalidateQueries({ queryKey: ["site-settings"] });
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "user_roles" }, () => {
+          invalidateAll(queryClient, MEMBERSHIP_KEYS);
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "vendor_assignments" }, () => {
+          invalidateAll(queryClient, MEMBERSHIP_KEYS);
+          invalidateAll(queryClient, CATALOG_KEYS);
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
+          invalidateAll(queryClient, ORDER_KEYS);
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, () => {
+          invalidateAll(queryClient, ORDER_KEYS);
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "addresses" }, () => {
+          void queryClient.invalidateQueries({ queryKey: ["addresses"] });
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => {
+          invalidateAll(queryClient, MEMBERSHIP_KEYS);
+        })
+        .subscribe();
 
-    return () => {
-      void supabase.removeChannel(channel);
-    };
+      return () => {
+        void supabase.removeChannel(channel);
+      };
+    } catch (error) {
+      console.error("[realtime]", error);
+      return undefined;
+    }
   }, [queryClient, user?.id]);
 
   return null;

@@ -113,8 +113,15 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
   const mapsConfig = useQuery({
     queryKey: ["maps-browser-config"],
-    queryFn: () => fetchMapsConfig(),
+    queryFn: async () => {
+      try {
+        return await fetchMapsConfig();
+      } catch {
+        return { apiKey: null as string | null };
+      }
+    },
     staleTime: 10 * 60 * 1000,
+    retry: false,
   });
   const mapsApiKey = mapsConfig.data?.apiKey ?? null;
   const markerKey = JSON.stringify(

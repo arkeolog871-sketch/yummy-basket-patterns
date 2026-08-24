@@ -22,6 +22,8 @@ import { IosHomeScreenGuide } from "@/components/iphone/IosHomeScreenGuide";
 import { Toaster } from "@/components/ui/sonner";
 import { AppRealtimeBridge } from "@/hooks/useAppRealtime";
 import { ErrorCollector } from "@/components/system/ErrorCollector";
+import { AppErrorBoundary } from "@/components/system/AppErrorBoundary";
+import { publicEnvInlineScript } from "@/lib/public-env";
 
 function NotFoundComponent() {
   return (
@@ -131,6 +133,10 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="tr">
       <head>
+        <script
+          dangerouslySetInnerHTML={{ __html: publicEnvInlineScript() }}
+          suppressHydrationWarning
+        />
         <HeadContent />
       </head>
       <body>
@@ -171,33 +177,42 @@ function RootComponent() {
     pathname === "/iphone";
 
   useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
-      router.invalidate();
-      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
-    });
-    return () => data.subscription.unsubscribe();
+    try {
+      const { data } = supabase.auth.onAuthStateChange((event) => {
+        if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+        router.invalidate();
+        if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+      });
+      return () => data.subscription.unsubscribe();
+    } catch (error) {
+      console.error("[auth-bridge]", error);
+      return undefined;
+    }
   }, [router, queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <SiteSettingsProvider>
-          <CartProvider>
-            {standaloneChrome ? (
-              <div className="min-h-screen">
-                {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-                <Outlet />
-              </div>
-            ) : (
-              <AppChrome />
-            )}
-            <AppRealtimeBridge />
-            <ErrorCollector />
-            <Toaster />
-          </CartProvider>
-        </SiteSettingsProvider>
-      </AuthProvider>
+      <AppErrorBoundary>
+        <AuthProvider>
+          <SiteSettingsProvider>
+            <CartProvider>
+              <AppErrorBoundary>
+                {standaloneChrome ? (
+                  <div className="min-h-screen">
+                    {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+                    <Outlet />
+                  </div>
+                ) : (
+                  <AppChrome />
+                )}
+              </AppErrorBoundary>
+              <AppRealtimeBridge />
+              <ErrorCollector />
+              <Toaster />
+            </CartProvider>
+          </SiteSettingsProvider>
+        </AuthProvider>
+      </AppErrorBoundary>
     </QueryClientProvider>
   );
 }

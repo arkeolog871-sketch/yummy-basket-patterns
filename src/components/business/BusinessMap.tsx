@@ -30,7 +30,7 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
           <MapPin className="size-4 text-primary" /> Konum
         </h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          İşletme konumu haritada gösterilemiyor.
+          Bu işletme için kayıtlı koordinat yok. Harita yerine yol tarifi bağlantısı kullanılabilir.
         </p>
         {directionsUrl ? (
           <a

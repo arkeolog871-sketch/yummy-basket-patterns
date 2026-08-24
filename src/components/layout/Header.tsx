@@ -89,7 +89,9 @@ export function Header() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="rounded-full px-3 text-sm">
               <MapPin className="size-4 text-accent" />
-              <span className="max-w-[9rem] truncate">{activeCity}</span>
+              <span className="max-w-[9rem] truncate" suppressHydrationWarning>
+                {activeCity}
+              </span>
               <ChevronDown className="size-3.5 opacity-60" />
             </Button>
           </DropdownMenuTrigger>
