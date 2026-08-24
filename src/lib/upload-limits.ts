@@ -19,6 +19,38 @@ export const AD_MEDIA_ACCEPT =
   "image/*,video/mp4,video/webm,video/quicktime,.mp4,.mov,.webm";
 export const AD_IMAGE_ACCEPT = AD_MEDIA_ACCEPT;
 
+export const BANNERS_BUCKET = "banners";
+
+const AD_EXT_BY_MIME: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "image/avif": "avif",
+  "image/bmp": "bmp",
+  "image/svg+xml": "svg",
+  "image/x-icon": "ico",
+  "image/vnd.microsoft.icon": "ico",
+  "video/mp4": "mp4",
+  "video/webm": "webm",
+  "video/quicktime": "mov",
+  "video/x-quicktime": "mov",
+  "video/x-m4v": "mp4",
+};
+
+const AD_ALLOWED_EXT = new Set(["png", "jpg", "jpeg", "webp", "gif", "avif", "bmp", "svg", "ico", "mp4", "mov", "webm"]);
+
+/** Gallery file → storage object extension. */
+export function extensionForAdMediaFile(file: File): string | null {
+  const base = file.name.split(/[/\\]/).pop() ?? "";
+  const dot = base.lastIndexOf(".");
+  const ext = dot >= 0 ? base.slice(dot + 1).toLowerCase() : "";
+  if (AD_ALLOWED_EXT.has(ext)) return ext === "jpeg" ? "jpg" : ext;
+  const fromMime = AD_EXT_BY_MIME[file.type.trim().toLowerCase()];
+  return fromMime ?? null;
+}
+
 export function adImageTooLargeMessage(): string {
   return `Dosya ${MAX_AD_IMAGE_MB} MB sınırını aşıyor`;
 }
@@ -41,7 +73,7 @@ export function isAdVideoUrl(url: string): boolean {
   }
 }
 
-/** Client-side gate. Empty MIME is allowed (sniffed on the server). */
+/** Client-side gate. Empty MIME is allowed; extension is required before upload. */
 export function isAdMediaFile(file: File): boolean {
   if (!file.type) return true;
   if (file.type.startsWith("image/")) return true;

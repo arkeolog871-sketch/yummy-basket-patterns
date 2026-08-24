@@ -2,16 +2,15 @@ import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Link } from "@tanstack/react-router";
 import { Copy, ImageUp, Megaphone, Pencil, Plus, Trash2 } from "lucide-react";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { supabase } from "@/integrations/supabase/client";
 import {
   deleteAdvertisement,
   listAdvertisements,
   saveAdvertisement,
   setAdvertisementActive,
-  uploadAdvertisementImage,
 } from "@/lib/advertisements.functions";
 import {
   emptyAdvertisementDraft,
@@ -26,8 +25,17 @@ import {
 } from "@/lib/advertisements";
 import { HeroBannerSlider } from "@/components/home/HeroBannerSlider";
 import { AdMedia } from "@/components/home/AdMedia";
-import { simulationBanners } from "@/lib/ad-simulation";
-import { adImageTooLargeMessage, adImageTypeRejectedMessage, AD_MEDIA_ACCEPT, isAdMediaFile, MAX_AD_IMAGE_MB, MAX_AD_MEDIA_BYTES } from "@/lib/upload-limits";
+import {
+  adImageTooLargeMessage,
+  adImageTypeRejectedMessage,
+  AD_MEDIA_ACCEPT,
+  BANNERS_BUCKET,
+  contentTypeForBrandPath,
+  extensionForAdMediaFile,
+  isAdMediaFile,
+  MAX_AD_IMAGE_MB,
+  MAX_AD_MEDIA_BYTES,
+} from "@/lib/upload-limits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,7 +88,6 @@ export function AdsPanel() {
   const saveFn = useServerFn(saveAdvertisement);
   const toggleFn = useServerFn(setAdvertisementActive);
   const deleteFn = useServerFn(deleteAdvertisement);
-  const uploadFn = useServerFn(uploadAdvertisementImage);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const localPreviewRef = useRef("");
   const [open, setOpen] = useState(false);
@@ -158,19 +165,31 @@ export function AdsPanel() {
       toast.error(adImageTooLargeMessage());
       return;
     }
+    const extension = extensionForAdMediaFile(file);
+    if (!extension) {
+      toast.error(adImageTypeRejectedMessage());
+      return;
+    }
     clearLocalPreview();
     const blobUrl = URL.createObjectURL(file);
     localPreviewRef.current = blobUrl;
     setLocalPreview(blobUrl);
     setUploading(true);
     try {
-      const form = new FormData();
-      form.append("file", file);
-      const result = (await uploadFn({ data: form })) as { url?: string };
-      if (!result.url) throw new Error("Görsel adresi alınamadı");
-      setDraft((prev) => ({ ...prev, image_url: result.url as string }));
+      const path = `ads/${crypto.randomUUID()}.${extension}`;
+      const contentType = file.type || contentTypeForBrandPath(path);
+      const { error } = await supabase.storage.from(BANNERS_BUCKET).upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType,
+      });
+      if (error) throw new Error(error.message);
+      const published = supabase.storage.from(BANNERS_BUCKET).getPublicUrl(path);
+      const url = published.data.publicUrl;
+      if (!url) throw new Error("Görsel adresi alınamadı");
+      setDraft((prev) => ({ ...prev, image_url: url }));
       clearLocalPreview();
-      toast.success("Dosya yüklendi");
+      toast.success("Dosya banners kovasına yüklendi");
     } catch (error) {
       toast.error(toPublicErrorMessage(error));
     } finally {
@@ -249,7 +268,8 @@ export function AdsPanel() {
               <h2 className="text-xl">Kayan reklam / banner</h2>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Mobil `GET /api/v1/banners` yalnızca yayındaki slaytları döner. Metrikler `POST .../track` ile artar.
+              Galeriden seçilen görsel veya video `banners` kovasına yüklenir; Kaydet ile `advertisements`
+              tablosuna yazılır. Mobil `GET /api/v1/banners` yalnızca yayındaki slaytları döner.
               En fazla {MAX_ADVERTISEMENTS} kayıt önerilir.
             </p>
           </div>
@@ -274,18 +294,9 @@ export function AdsPanel() {
             <HeroBannerSlider banners={livePreview} />
           </div>
         ) : (
-          <div className="mt-5 space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Şu an yayında slayt yok. Aşağıdaki kayan pano örnek JPEG + MP4 ile görüntüleme simülasyonudur.
-            </p>
-            <HeroBannerSlider banners={simulationBanners()} simulation />
-            <Link
-              to="/reklam-simulasyon"
-              className="inline-flex text-sm font-medium text-accent hover:underline"
-            >
-              Yükleme simülasyonunu aç
-            </Link>
-          </div>
+          <p className="mt-5 rounded-2xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+            Şu an yayında slayt yok. Tarih aralığı içinde ve aktif olanlar ana sayfada görünür.
+          </p>
         )}
       </div>
 
@@ -505,7 +516,7 @@ function AdForm({
           />
           <Button type="button" variant="outline" className="rounded-full" disabled={uploading} onClick={() => fileRef.current?.click()}>
             <ImageUp className="size-4" />
-            {uploading ? "Yükleniyor…" : "Dosya yükle"}
+            {uploading ? "Yükleniyor…" : "Galeriden seç"}
           </Button>
         </div>
         <Input
