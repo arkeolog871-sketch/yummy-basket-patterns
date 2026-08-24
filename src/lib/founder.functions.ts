@@ -2,7 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { runServerFn } from "./public-error";
-import { isMissingColumnError, parseTypography } from "./typography";
+import {
+  isMissingColumnError,
+  parseTypography,
+  SITE_SETTINGS_BASE_COLUMNS,
+  SITE_SETTINGS_COLUMNS_WITH_TYPOGRAPHY,
+} from "./typography";
 import type { Json } from "@/integrations/supabase/types";
 
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Geçerli bir renk kodu girin");
@@ -151,9 +156,29 @@ const menuItemSchema = z.object({
 
 export const getSiteSettings = createServerFn({ method: "GET" }).handler(async () => {
   const { createPublicClient } = await import("./catalog.server");
-  const { fetchSiteSettingsRow } = await import("./site-settings-query");
-  const row = await fetchSiteSettingsRow(createPublicClient() as never);
-  return (row ?? null) as Json | null;
+  const supabase = createPublicClient();
+  const withTypography = await supabase
+    .from("site_settings")
+    .select(SITE_SETTINGS_COLUMNS_WITH_TYPOGRAPHY)
+    .eq("id", "global")
+    .maybeSingle();
+  if (withTypography.error && isMissingColumnError(withTypography.error, "typography")) {
+    const fallback = await supabase
+      .from("site_settings")
+      .select(SITE_SETTINGS_BASE_COLUMNS)
+      .eq("id", "global")
+      .maybeSingle();
+    if (fallback.error) {
+      console.error("[getSiteSettings]", fallback.error.message);
+      return null;
+    }
+    return fallback.data;
+  }
+  if (withTypography.error) {
+    console.error("[getSiteSettings]", withTypography.error.message);
+    return null;
+  }
+  return withTypography.data;
 });
 
 export const getFounderStatus = createServerFn({ method: "GET" })
