@@ -9,6 +9,7 @@ import {
   type PublicBanner,
 } from "@/lib/advertisements";
 import { cn } from "@/lib/utils";
+import { AdMedia } from "@/components/home/AdMedia";
 
 function activateBanner(banner: PublicBanner, navigate: ReturnType<typeof useNavigate>) {
   trackBanner(banner.id, "click");
@@ -25,17 +26,10 @@ function activateBanner(banner: PublicBanner, navigate: ReturnType<typeof useNav
   void navigate({ to: value as never });
 }
 
-function SlideVisual({ banner, priority }: { banner: PublicBanner; priority: boolean }) {
+function SlideVisual({ banner, priority, active }: { banner: PublicBanner; priority: boolean; active: boolean }) {
   return (
     <>
-      <img
-        src={banner.image_url}
-        alt={banner.title || "Reklam görseli"}
-        className="size-full object-cover"
-        loading={priority ? "eager" : "lazy"}
-        decoding="async"
-        draggable={false}
-      />
+      <AdMedia src={banner.image_url} alt={banner.title || "Reklam"} priority={priority} active={active} />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
       {banner.title ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4 sm:p-5">
@@ -151,7 +145,7 @@ export function HeroBannerSlider({
                 onClick={() => activateBanner(banner, navigate)}
               >
                 <div className="relative aspect-video max-h-[240px] w-full bg-muted sm:aspect-[3/1] sm:max-h-[280px]">
-                  <SlideVisual banner={banner} priority={i === 0} />
+                  <SlideVisual banner={banner} priority={i === 0} active={i === index} />
                 </div>
               </button>
             </div>

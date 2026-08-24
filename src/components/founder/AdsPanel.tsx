@@ -23,8 +23,9 @@ import {
   type AdActionType,
   type Advertisement,
 } from "@/lib/advertisements";
-import { adImageTooLargeMessage, adImageTypeRejectedMessage, AD_IMAGE_ACCEPT, isAdImageFile, MAX_AD_IMAGE_BYTES, MAX_AD_IMAGE_MB } from "@/lib/upload-limits";
 import { HeroBannerSlider } from "@/components/home/HeroBannerSlider";
+import { AdMedia } from "@/components/home/AdMedia";
+import { adImageTooLargeMessage, adImageTypeRejectedMessage, AD_MEDIA_ACCEPT, isAdMediaFile, MAX_AD_IMAGE_MB, MAX_AD_MEDIA_BYTES } from "@/lib/upload-limits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -139,11 +140,11 @@ export function AdsPanel() {
   });
 
   async function onUpload(file: File) {
-    if (!isAdImageFile(file)) {
+    if (!isAdMediaFile(file)) {
       toast.error(adImageTypeRejectedMessage());
       return;
     }
-    if (file.size > MAX_AD_IMAGE_BYTES) {
+    if (file.size > MAX_AD_MEDIA_BYTES) {
       toast.error(adImageTooLargeMessage());
       return;
     }
@@ -154,7 +155,7 @@ export function AdsPanel() {
       const result = (await uploadFn({ data: form })) as { url?: string };
       if (!result.url) throw new Error("Görsel adresi alınamadı");
       setDraft((prev) => ({ ...prev, image_url: result.url as string }));
-      toast.success("Görsel yüklendi");
+      toast.success("Dosya yüklendi");
     } catch (error) {
       toast.error(toPublicErrorMessage(error));
     } finally {
@@ -295,7 +296,7 @@ export function AdsPanel() {
                       <div className="flex items-center gap-3">
                         <div className="h-12 w-20 overflow-hidden rounded-lg border bg-muted">
                           {ad.image_url ? (
-                            <img src={ad.image_url} alt="" className="size-full object-cover" />
+                            <AdMedia src={ad.image_url} className="size-full object-cover" />
                           ) : null}
                         </div>
                         <div>
@@ -451,15 +452,15 @@ function AdForm({
         </div>
       </div>
       <div>
-        <Label>Görsel (PNG, JPEG, WebP, GIF, AVIF, SVG… en fazla {MAX_AD_IMAGE_MB} MB, 16:9 veya 3:1)</Label>
+        <Label>Görsel veya video (PNG, JPEG, MP4, MOV, WEBM… en fazla {MAX_AD_IMAGE_MB} MB, 16:9 veya 3:1)</Label>
         <div className="mt-1.5 flex items-center gap-3">
           <div className="h-16 w-28 overflow-hidden rounded-xl border bg-muted">
-            {draft.image_url ? <img src={draft.image_url} alt="" className="size-full object-cover" /> : null}
+            {draft.image_url ? <AdMedia src={draft.image_url} className="size-full object-cover" /> : null}
           </div>
           <input
             ref={fileRef}
             type="file"
-            accept={AD_IMAGE_ACCEPT}
+            accept={AD_MEDIA_ACCEPT}
             className="hidden"
             onChange={(event) => {
               const file = event.target.files?.[0];
@@ -469,12 +470,12 @@ function AdForm({
           />
           <Button type="button" variant="outline" className="rounded-full" disabled={uploading} onClick={() => fileRef.current?.click()}>
             <ImageUp className="size-4" />
-            {uploading ? "Yükleniyor…" : "Görsel yükle"}
+            {uploading ? "Yükleniyor…" : "Dosya yükle"}
           </Button>
         </div>
         <Input
           className="mt-2"
-          placeholder="veya görsel URL"
+          placeholder="veya görsel / video URL"
           value={draft.image_url}
           onChange={(event) => patch({ image_url: event.target.value })}
         />

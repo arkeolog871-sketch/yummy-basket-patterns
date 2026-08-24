@@ -11,6 +11,9 @@ const EXTENSIONS: Record<string, string> = {
   "image/svg+xml": "svg",
   "image/x-icon": "ico",
   "image/vnd.microsoft.icon": "ico",
+  "video/mp4": "mp4",
+  "video/webm": "webm",
+  "video/quicktime": "mov",
 };
 
 export type SniffedImage = {
@@ -96,6 +99,25 @@ function isHeif(bytes: Uint8Array): boolean {
   return ["heic", "heix", "heif", "heis", "mif1", "msf1"].includes(ftypBrand(bytes));
 }
 
+const IMAGE_FTYP = new Set(["avif", "avis", "heic", "heix", "heif", "heis", "mif1", "msf1"]);
+
+function isWebm(bytes: Uint8Array): boolean {
+  if (bytes.length < 4 || bytes[0] !== 0x1a || bytes[1] !== 0x45 || bytes[2] !== 0xdf || bytes[3] !== 0xa3) {
+    return false;
+  }
+  const head = ascii(bytes, 0, Math.min(bytes.length, 80)).toLowerCase();
+  if (head.includes("matroska") && !head.includes("webm")) return false;
+  return true;
+}
+
+function sniffVideo(bytes: Uint8Array): SniffedImage | null {
+  if (isWebm(bytes)) return { contentType: "video/webm", extension: "webm" };
+  const brand = ftypBrand(bytes);
+  if (!brand || IMAGE_FTYP.has(brand)) return null;
+  if (brand === "qt  ") return { contentType: "video/quicktime", extension: "mov" };
+  return { contentType: "video/mp4", extension: "mp4" };
+}
+
 function sniffRasterImage(bytes: Uint8Array): SniffedImage | null {
   if (isPng(bytes)) return { contentType: "image/png", extension: "png" };
   if (isJpeg(bytes)) return { contentType: "image/jpeg", extension: "jpg" };
@@ -130,19 +152,21 @@ function looksLikeSvg(bytes: Uint8Array): boolean {
   return /<svg[\s>]/i.test(head) || /<\?xml[\s\S]{0,200}<svg[\s>]/i.test(head);
 }
 
-/** Detects PNG, JPEG, WebP, GIF, AVIF, BMP, ICO, SVG from file bytes. */
-export function prepareAdImageBytes(
+/** Detects images plus MP4 / MOV / WEBM from file bytes. Stores HTML5 MIME types. */
+export function prepareAdMediaBytes(
   bytes: Uint8Array,
   maxBytes: number,
 ): { bytes: Uint8Array; contentType: string; extension: string } {
   if (bytes.length === 0 || bytes.length > maxBytes) {
-    throw new Error("Görsel boyutu izin verilen sınırı aşıyor.");
+    throw new Error("Dosya boyutu izin verilen sınırı aşıyor.");
   }
   if (isHeif(bytes)) {
-    throw new Error("HEIC/HEIF tarayıcıda açılamaz. PNG, JPEG, WebP, GIF veya AVIF kullanın.");
+    throw new Error("HEIC/HEIF tarayıcıda açılamaz. PNG, JPEG, WebP, GIF, AVIF, MP4, MOV veya WEBM kullanın.");
   }
   const raster = sniffRasterImage(bytes);
   if (raster) return { bytes, contentType: raster.contentType, extension: raster.extension };
+  const video = sniffVideo(bytes);
+  if (video) return { bytes, contentType: video.contentType, extension: video.extension };
   if (looksLikeSvg(bytes)) {
     return {
       bytes: sanitizeSvgBytes(bytes, maxBytes),
@@ -150,7 +174,14 @@ export function prepareAdImageBytes(
       extension: "svg",
     };
   }
-  throw new Error("Desteklenmeyen görsel formatı");
+  throw new Error("Desteklenmeyen dosya formatı");
+}
+
+export function prepareAdImageBytes(
+  bytes: Uint8Array,
+  maxBytes: number,
+): { bytes: Uint8Array; contentType: string; extension: string } {
+  return prepareAdMediaBytes(bytes, maxBytes);
 }
 
 function assertImageMagic(bytes: Uint8Array, contentType: string): void {
