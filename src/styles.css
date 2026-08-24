@@ -19,8 +19,8 @@
   --radius-3xl: calc(var(--radius) + 18px);
   --radius-4xl: calc(var(--radius) + 26px);
 
-  --font-display: "Fraunces", "Georgia", serif;
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-heading, "Fraunces", "Georgia", serif);
+  --font-sans: var(--font-main, "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -133,6 +133,32 @@
   --app-font-family: var(--font-sans);
   --app-heading-family: var(--font-display);
   --app-custom-text-color: var(--foreground);
+
+  --font-main: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Fraunces", "Georgia", serif;
+  --text-primary: var(--foreground);
+  --text-muted: var(--muted-foreground);
+  --text-heading: var(--foreground);
+  --text-accent: var(--accent);
+  --text-accent-hover: var(--primary);
+  --body-size: 1rem;
+  --h1-size: 2.25rem;
+  --h2-size: 1.75rem;
+  --h3-size: 1.35rem;
+  --h4-size: 1.125rem;
+  --letter-spacing: 0px;
+  --heading-letter-spacing: -0.015em;
+  --line-height: 1.6;
+  --heading-line-height: 1.25;
+  --font-weight: 400;
+  --heading-font-weight: 600;
+  --text-transform: none;
+  --heading-transform: none;
+  --font-style: normal;
+  --heading-style: normal;
+  --text-decoration: none;
+  --heading-decoration: none;
+  --text-shadow: none;
 }
 
 .dark {
@@ -180,8 +206,15 @@
 
   body {
     background-color: var(--color-background);
-    color: var(--app-text-color, var(--color-foreground));
-    font-family: var(--app-font-family, var(--font-sans));
+    color: var(--app-text-color, var(--text-primary, var(--color-foreground)));
+    font-family: var(--app-font-family, var(--font-main, var(--font-sans)));
+    font-size: var(--body-size, 1rem);
+    line-height: var(--line-height, 1.6);
+    letter-spacing: var(--letter-spacing, 0);
+    font-weight: var(--font-weight, 400);
+    font-style: var(--font-style, normal);
+    text-transform: var(--text-transform, none);
+    text-decoration: var(--text-decoration, none);
     -webkit-font-smoothing: antialiased;
   }
 
@@ -190,7 +223,7 @@
   li,
   small,
   label {
-    color: var(--app-text-color, inherit);
+    color: var(--app-text-color, var(--text-primary, inherit));
     font-family: inherit;
   }
 
@@ -200,10 +233,55 @@
   h4,
   h5,
   h6 {
-    font-family: var(--app-heading-family, var(--font-display));
-    font-weight: 600;
-    letter-spacing: -0.015em;
-    color: var(--app-text-color, var(--color-foreground));
+    font-family: var(--app-heading-family, var(--font-heading, var(--font-display)));
+    font-weight: var(--heading-font-weight, 600);
+    letter-spacing: var(--heading-letter-spacing, -0.015em);
+    line-height: var(--heading-line-height, 1.25);
+    color: var(--app-text-color, var(--text-heading, var(--color-foreground)));
+    font-style: var(--heading-style, normal);
+    text-transform: var(--heading-transform, none);
+    text-decoration: var(--heading-decoration, none);
+    text-shadow: var(--text-shadow, none);
+  }
+
+  h1 {
+    font-size: var(--h1-size, 2.25rem);
+  }
+
+  h2 {
+    font-size: var(--h2-size, 1.75rem);
+  }
+
+  h3 {
+    font-size: var(--h3-size, 1.35rem);
+  }
+
+  h4 {
+    font-size: var(--h4-size, 1.125rem);
+  }
+
+  header {
+    font-family: var(--app-font-family, var(--font-main, var(--font-sans)));
+  }
+
+  button,
+  [role="button"] {
+    font-family: var(--app-font-family, var(--font-main, var(--font-sans)));
+    letter-spacing: var(--letter-spacing, 0);
+  }
+
+  a.content-link,
+  .prose a,
+  article a,
+  .typography-live-preview a {
+    color: var(--text-accent);
+  }
+
+  a.content-link:hover,
+  .prose a:hover,
+  article a:hover,
+  .typography-live-preview a:hover {
+    color: var(--text-accent-hover);
   }
 
   html[data-app-contrast="high"] {
@@ -246,4 +324,100 @@
 /* Leaflet default marker path: keep absolute so CSS never 404s against this origin. */
 .leaflet-default-icon-path {
   background-image: url("https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png");
+}
+
+.typography-live-preview {
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  font-size: var(--body-size);
+  line-height: var(--line-height);
+  letter-spacing: var(--letter-spacing);
+  font-weight: var(--font-weight);
+  font-style: var(--font-style);
+  text-transform: var(--text-transform);
+  text-decoration: var(--text-decoration);
+}
+
+.typography-live-preview h1,
+.typography-live-preview h2,
+.typography-live-preview h3,
+.typography-live-preview h4 {
+  margin: 0 0 0.4em;
+  font-family: var(--font-heading);
+  color: var(--text-heading);
+  font-weight: var(--heading-font-weight);
+  letter-spacing: var(--heading-letter-spacing);
+  line-height: var(--heading-line-height);
+  font-style: var(--heading-style);
+  text-transform: var(--heading-transform);
+  text-decoration: var(--heading-decoration);
+  text-shadow: var(--text-shadow);
+}
+
+.typography-live-preview h1 {
+  font-size: var(--h1-size);
+}
+
+.typography-live-preview h2 {
+  font-size: var(--h2-size);
+}
+
+.typography-live-preview h3 {
+  font-size: var(--h3-size);
+}
+
+.typography-live-preview h4 {
+  font-size: var(--h4-size);
+}
+
+.typography-live-preview .preview-kicker {
+  color: var(--text-accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+}
+
+.typography-live-preview .preview-muted {
+  color: var(--text-muted);
+}
+
+.typography-live-preview .preview-card {
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  padding: 1.25rem;
+  background: var(--card);
+  color: var(--text-primary);
+  box-shadow: var(--elevation-card);
+}
+
+.typography-live-preview .preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.typography-live-preview .preview-btn-primary,
+.typography-live-preview .preview-btn-ghost {
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-main);
+  letter-spacing: var(--letter-spacing);
+}
+
+.typography-live-preview .preview-btn-primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: 0;
+}
+
+.typography-live-preview .preview-btn-ghost {
+  background: transparent;
+  color: var(--text-accent);
+  border: 1px solid var(--border);
 }

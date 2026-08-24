@@ -2,6 +2,16 @@ import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  applyTypographyCss,
+  DEFAULT_TYPOGRAPHY,
+  isMissingColumnError,
+  isTypographyConfigured,
+  parseTypography,
+  SITE_SETTINGS_BASE_COLUMNS,
+  SITE_SETTINGS_COLUMNS_WITH_TYPOGRAPHY,
+  type TypographySettings,
+} from "@/lib/typography";
 
 export type SiteSettings = {
   id: string;
@@ -15,6 +25,8 @@ export type SiteSettings = {
   banner_url: string | null;
   theme_mode: string;
   layout_variant: string;
+  typography: TypographySettings;
+  typographyConfigured: boolean;
 };
 
 export type HeroContent = {
@@ -36,6 +48,8 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   banner_url: null,
   theme_mode: "light",
   layout_variant: "classic",
+  typography: DEFAULT_TYPOGRAPHY,
+  typographyConfigured: false,
 };
 
 export const DEFAULT_HERO: HeroContent = {
@@ -45,9 +59,6 @@ export const DEFAULT_HERO: HeroContent = {
   hero_subtitle:
     "Yemek, restoran, kafe, eğlence, market ve giyim: mahallenizdeki tüm işletmeler tek uygulamada.",
 };
-
-const SITE_SETTINGS_COLUMNS =
-  "id, brand_name, primary_color, accent_color, secondary_color, background_color, logo_url, favicon_url, banner_url, theme_mode, layout_variant, hero_badge, hero_title, hero_title_accent, hero_subtitle";
 
 type SiteSettingsContextValue = {
   settings: SiteSettings;
@@ -66,7 +77,16 @@ const SiteSettingsContext = createContext<SiteSettingsContextValue>({
 });
 
 function mergeSettings(row: Record<string, unknown> | null | undefined): SiteSettings & HeroContent {
-  return { ...DEFAULT_SETTINGS, ...DEFAULT_HERO, ...(row ?? {}) } as SiteSettings & HeroContent;
+  const raw = row ?? {};
+  const rest = { ...raw };
+  delete rest["typography"];
+  return {
+    ...DEFAULT_SETTINGS,
+    ...DEFAULT_HERO,
+    ...rest,
+    typography: parseTypography(raw["typography"]),
+    typographyConfigured: isTypographyConfigured(raw["typography"]),
+  } as SiteSettings & HeroContent;
 }
 
 export function SiteSettingsProvider({ children }: { children: ReactNode }) {
@@ -77,16 +97,28 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     queryKey: ["site-settings"],
     queryFn: async (): Promise<SiteSettings & HeroContent> => {
       try {
-        const { data, error } = await supabase
+        const withTypography = await supabase
           .from("site_settings")
-          .select(SITE_SETTINGS_COLUMNS)
+          .select(SITE_SETTINGS_COLUMNS_WITH_TYPOGRAPHY)
           .eq("id", "global")
           .maybeSingle();
-        if (error) {
-          console.error("[site-settings]", error.message);
+        if (withTypography.error && isMissingColumnError(withTypography.error, "typography")) {
+          const fallback = await supabase
+            .from("site_settings")
+            .select(SITE_SETTINGS_BASE_COLUMNS)
+            .eq("id", "global")
+            .maybeSingle();
+          if (fallback.error) {
+            console.error("[site-settings]", fallback.error.message);
+            return mergeSettings(null);
+          }
+          return mergeSettings((fallback.data ?? {}) as Record<string, unknown>);
+        }
+        if (withTypography.error) {
+          console.error("[site-settings]", withTypography.error.message);
           return mergeSettings(null);
         }
-        return mergeSettings((data ?? {}) as Record<string, unknown>);
+        return mergeSettings((withTypography.data ?? {}) as Record<string, unknown>);
       } catch (error) {
         console.error("[site-settings]", error);
         return mergeSettings(null);
@@ -123,7 +155,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     retry: false,
   });
 
-  const merged = mergeSettings(settingsQuery.data as Record<string, unknown> | null);
+  const merged = settingsQuery.data ?? mergeSettings(null);
   const settings: SiteSettings = merged;
 
   useEffect(() => {
@@ -143,6 +175,12 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     settings.theme_mode,
     settings.layout_variant,
   ]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (!settings.typographyConfigured) return;
+    applyTypographyCss(settings.typography);
+  }, [settings.typography, settings.typographyConfigured]);
 
   useEffect(() => {
     if (!settings.favicon_url) return;
