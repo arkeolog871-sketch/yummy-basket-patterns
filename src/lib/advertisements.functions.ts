@@ -38,10 +38,7 @@ export const listAdvertisements = createServerFn({ method: "GET" })
     runServerFn(async () => {
       const { assertFounder } = await import("./founder.server");
       await assertFounder(context.supabase, context.userId, context.claims as never);
-      const expired = await context.supabase.rpc("expire_stale_advertisements");
-      if (expired.error && isMissingAdvertisementsSchema(expired.error)) {
-        return { items: [], schemaMissing: true as const };
-      }
+      await context.supabase.rpc("expire_stale_advertisements");
       const { data, error } = await context.supabase
         .from("advertisements")
         .select("*")
