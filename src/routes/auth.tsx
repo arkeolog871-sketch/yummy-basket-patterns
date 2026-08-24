@@ -24,7 +24,8 @@ export const Route = createFileRoute("/auth")({
       { title: "Giriş yap veya kayıt ol — SİLVAN CEBİMDE" },
       {
         name: "description",
-        content: "SİLVAN CEBİMDE hesabınıza giriş yapın veya saniyeler içinde yeni hesap oluşturun.",
+        content:
+          "SİLVAN CEBİMDE hesabınıza giriş yapın veya saniyeler içinde yeni hesap oluşturun.",
       },
       { property: "og:title", content: "Giriş yap veya kayıt ol — SİLVAN CEBİMDE" },
       { property: "og:description", content: "Hesabınıza giriş yapın ve siparişinizi tamamlayın." },
@@ -171,8 +172,8 @@ function AuthPage() {
       ) : pendingVerification ? (
         <div className="mt-6 space-y-4 rounded-3xl border border-border/70 bg-card p-6 shadow-card">
           <p className="text-sm text-muted-foreground">
-            Hesabınız oluşturuldu ancak <strong>e-posta doğrulanmadı</strong>. {pendingVerification}
-            {" "}adresine gönderilen 6 haneli kodu girerek hesabınızı aktif edin.
+            Hesabınız oluşturuldu ancak <strong>e-posta doğrulanmadı</strong>. {pendingVerification}{" "}
+            adresine gönderilen 6 haneli kodu girerek hesabınızı aktif edin.
           </p>
           <EmailCodeLogin
             idPrefix="signup-otp"
@@ -196,70 +197,75 @@ function AuthPage() {
           />
         </div>
       ) : (
-      <form
-        onSubmit={(event) => void handleSubmit(event)}
-        className="mt-8 space-y-4 rounded-3xl border border-border/70 bg-card p-6 shadow-card"
-      >
-        {mode === "signup" ? (
+        <form
+          onSubmit={(event) => void handleSubmit(event)}
+          className="mt-8 space-y-4 rounded-3xl border border-border/70 bg-card p-6 shadow-card"
+        >
+          {mode === "signup" ? (
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Ad soyad</Label>
+              <Input
+                id="fullName"
+                name="name"
+                autoComplete="name"
+                value={fullName}
+                onChange={(event) => setFullName(event.target.value)}
+                required
+                className="rounded-xl"
+              />
+            </div>
+          ) : null}
+          {mode === "signup" ? (
+            <div className="space-y-2">
+              <Label htmlFor="phone">Telefon numarası</Label>
+              <Input
+                id="phone"
+                name="tel"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder="05xx xxx xx xx"
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                required
+                className="rounded-xl"
+              />
+              <p className="text-xs text-muted-foreground">
+                Kurye iletişimi ve giriş doğrulaması için zorunludur.
+              </p>
+            </div>
+          ) : null}
           <div className="space-y-2">
-            <Label htmlFor="fullName">Ad soyad</Label>
+            <Label htmlFor="email">E-posta</Label>
             <Input
-              id="fullName"
-              value={fullName}
-              onChange={(event) => setFullName(event.target.value)}
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
               required
               className="rounded-xl"
             />
           </div>
-        ) : null}
-        {mode === "signup" ? (
           <div className="space-y-2">
-            <Label htmlFor="phone">Telefon numarası</Label>
+            <Label htmlFor="password">Şifre</Label>
             <Input
-              id="phone"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder="05xx xxx xx xx"
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
+              id="password"
+              name="password"
+              type="password"
+              autoComplete={mode === "signin" ? "current-password" : "new-password"}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              minLength={6}
               required
               className="rounded-xl"
             />
-            <p className="text-xs text-muted-foreground">
-              Kurye iletişimi ve giriş doğrulaması için zorunludur.
-            </p>
           </div>
-        ) : null}
-        <div className="space-y-2">
-          <Label htmlFor="email">E-posta</Label>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-            className="rounded-xl"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="password">Şifre</Label>
-          <Input
-            id="password"
-            type="password"
-            autoComplete={mode === "signin" ? "current-password" : "new-password"}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            minLength={6}
-            required
-            className="rounded-xl"
-          />
-        </div>
-        <Button type="submit" disabled={busy} className="w-full rounded-full" size="lg">
-          {mode === "signin" ? "Giriş yap" : "Kayıt ol"}
-        </Button>
-      </form>
+          <Button type="submit" disabled={busy} className="w-full rounded-full" size="lg">
+            {mode === "signin" ? "Giriş yap" : "Kayıt ol"}
+          </Button>
+        </form>
       )}
 
       {vendorPortal ? null : (

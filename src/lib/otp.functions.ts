@@ -16,7 +16,7 @@ const verifySchema = z.object({
  * Kod sunucuda üretilip saklanır; istemciye veya cevaba hiçbir şekilde yazılmaz.
  */
 export const sendEmailVerificationCode = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => sendSchema.parse(input))
+  .validator((input: unknown) => sendSchema.parse(input))
   .handler(async ({ data }) => {
     const { reserveSend, createServerAuthClient, RESEND_COOLDOWN_SECONDS } = await import(
       "./otp.server"
@@ -64,7 +64,7 @@ export const sendEmailVerificationCode = createServerFn({ method: "POST" })
  * Kod yanlışsa hesap doğrulanmaz; 5 hatalı denemede mevcut kod geçersiz olur.
  */
 export const verifyEmailVerificationCode = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => verifySchema.parse(input))
+  .validator((input: unknown) => verifySchema.parse(input))
   .handler(async ({ data }) => {
     const {
       assertCanVerify,
@@ -130,7 +130,7 @@ const registerSchema = z.object({
  * 6 haneli kod gönderilir. E-posta gerçekten gönderilemezse ok:false döner.
  */
 export const registerWithEmailCode = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => registerSchema.parse(input))
+  .validator((input: unknown) => registerSchema.parse(input))
   .handler(async ({ data }) => {
     const { createUnverifiedAccount } = await import("./otp.server");
     const created = await createUnverifiedAccount(data);

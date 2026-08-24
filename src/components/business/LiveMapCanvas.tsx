@@ -7,6 +7,7 @@ import {
   subscribeMapsAuthFailure,
   watchMapContainerForAuthError,
 } from "@/lib/google-maps-loader";
+import { beginMapRuntime, swallowMapTeardown } from "@/lib/map-errors";
 import { cleanMapStyle } from "@/lib/mapStyle";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import type { GoogleInfoWindow, GoogleMap, GoogleMarker } from "@/lib/google-maps-types";
@@ -119,9 +120,17 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
     setIframeSrc(null);
 
     let cancelled = false;
+    const endMapRuntime = beginMapRuntime();
+    const timers: number[] = [];
+    let raf = 0;
+    const later = (fn: () => void, ms: number) => {
+      const id = window.setTimeout(() => {
+        if (!cancelled) fn();
+      }, ms);
+      timers.push(id);
+    };
     let stopWatching: (() => void) | undefined;
     let stopUser: (() => void) | undefined;
-    let stopSized: (() => void) | undefined;
     let googleMap: GoogleMap | null = null;
     const googleMarkers: GoogleMarker[] = [];
     let googleUser: GoogleMarker | null = null;
@@ -132,6 +141,11 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
       bindPopup: (html: string) => unknown;
       remove: () => void;
     } | null = null;
+
+    const refreshOsmSize = () => {
+      if (cancelled || !osmMap) return;
+      swallowMapTeardown(() => osmMap?.invalidateSize());
+    };
 
     const showIframe = () => {
       if (cancelled) return;
@@ -179,26 +193,28 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
         }
         if (showUserLocation) {
           stopUser = watchUserPosition((lat, lng) => {
-            if (cancelled) return;
-            if (!osmUser) {
-              osmUser = L.circleMarker([lat, lng], {
-                radius: 8,
-                color: "#fff",
-                weight: 2,
-                fillColor: "#2563eb",
-                fillOpacity: 1,
-              }).addTo(map);
-              osmUser.bindPopup("Konumunuz");
-            } else {
-              osmUser.setLatLng([lat, lng]);
-            }
+            if (cancelled || !osmMap) return;
+            swallowMapTeardown(() => {
+              if (!osmUser) {
+                osmUser = L.circleMarker([lat, lng], {
+                  radius: 8,
+                  color: "#fff",
+                  weight: 2,
+                  fillColor: "#2563eb",
+                  fillOpacity: 1,
+                }).addTo(map);
+                osmUser.bindPopup("Konumunuz");
+              } else {
+                osmUser.setLatLng([lat, lng]);
+              }
+            });
           });
         }
         if (!cancelled) {
           setIframeSrc(null);
           setReady(true);
-          window.requestAnimationFrame(() => map.invalidateSize());
-          window.setTimeout(() => map.invalidateSize(), 250);
+          raf = window.requestAnimationFrame(refreshOsmSize);
+          later(refreshOsmSize, 250);
         }
       } catch {
         showIframe();
@@ -269,7 +285,7 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
             setIframeSrc(null);
             setReady(true);
           });
-          window.setTimeout(() => {
+          later(() => {
             if (cancelled || googleOk || osmStarted) return;
             void startOsm();
           }, 3500);
@@ -290,7 +306,7 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
       if (!stopWatching) stopWatching = unsubscribeAuth;
     };
 
-    stopSized = whenSized(host, () => {
+    const stopSized = whenSized(host, () => {
       if (cancelled) return;
       const canGoogle =
         !isAndroidWebView() &&
@@ -302,16 +318,25 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
 
     return () => {
       cancelled = true;
+      for (const id of timers) window.clearTimeout(id);
+      if (raf) window.cancelAnimationFrame(raf);
       stopSized?.();
       stopWatching?.();
       stopUser?.();
-      info?.close();
-      googleUser?.setMap(null);
-      for (const pin of googleMarkers) pin.setMap(null);
+      swallowMapTeardown(() => info?.close());
+      swallowMapTeardown(() => googleUser?.setMap(null));
+      for (const pin of googleMarkers) swallowMapTeardown(() => pin.setMap(null));
+      const maps = getGoogleMaps();
+      if (googleMap && maps?.event?.clearInstanceListeners) {
+        swallowMapTeardown(() => maps.event?.clearInstanceListeners(googleMap));
+      }
       googleMap = null;
-      osmUser?.remove();
-      osmMap?.remove();
-      hostRef.current?.replaceChildren();
+      swallowMapTeardown(() => osmUser?.remove());
+      osmUser = null;
+      swallowMapTeardown(() => osmMap?.remove());
+      osmMap = null;
+      swallowMapTeardown(() => host.replaceChildren());
+      endMapRuntime();
     };
   }, [markerKey, mapsApiKey, showUserLocation, markers]);
 

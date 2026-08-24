@@ -24,7 +24,7 @@ type AuthContext = { supabase: SupabaseClient<Database>; userId: string };
 
 export const createOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => createOrderSchema.parse(input))
+  .validator((input: unknown) => createOrderSchema.parse(input))
   .handler(async ({ data, context }) => {
     try {
       const placed = await placeOrder(data, context);
@@ -143,7 +143,7 @@ export const listMyOrders = createServerFn({ method: "GET" })
 
 export const getMyOrder = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
       const { data: order, error } = await context.supabase

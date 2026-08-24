@@ -203,3 +203,8 @@
     display: none;
   }
 }
+
+/* Leaflet default marker path: keep absolute so CSS never 404s against this origin. */
+.leaflet-default-icon-path {
+  background-image: url("https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png");
+}

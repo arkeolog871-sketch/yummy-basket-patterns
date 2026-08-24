@@ -28,7 +28,7 @@ function maskEmail(email: string): string {
  * uygulanır; böylece denetim kaydı istemci verisiyle şişirilemez.
  */
 export const logFounderLoginAttempt = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => loginAttemptSchema.parse(input))
+  .validator((input: unknown) => loginAttemptSchema.parse(input))
   .handler(async ({ data }) => {
     const { logAudit, tooManyRecentLoginLogs } = await import("./audit.server");
     if (await tooManyRecentLoginLogs()) return { ok: false };
@@ -47,7 +47,7 @@ export const logFounderLoginAttempt = createServerFn({ method: "POST" })
 
 export const listAuditLogs = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => listSchema.parse(input ?? {}))
+  .validator((input: unknown) => listSchema.parse(input ?? {}))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     await assertFounder(context.supabase, context.userId, context.claims as never);

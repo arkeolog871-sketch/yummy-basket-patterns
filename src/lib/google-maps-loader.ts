@@ -37,7 +37,10 @@ if (typeof window !== "undefined") {
 }
 
 /** Google'ın İngilizce "Oops!" katmanını yakalayıp kendi yedek ekranımıza geçmek için. */
-export function watchMapContainerForAuthError(container: HTMLElement, onError: () => void): () => void {
+export function watchMapContainerForAuthError(
+  container: HTMLElement,
+  onError: () => void,
+): () => void {
   const looksLikeAuthError = () =>
     Boolean(container.querySelector(".gm-err-container, .gm-err-message, .gm-err-title"));
 
@@ -108,11 +111,15 @@ export async function ensureMapsLibrary(customKey?: string | null): Promise<void
       if (!maps || typeof maps.Map !== "function") {
         if (!key) throw new Error("Google Maps anahtarı yapılandırılmamış.");
         if (!document.querySelector('script[data-google-maps="true"]')) {
-          const script = document.createElement("script");
-          script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&libraries=marker&channel=${encodeURIComponent(channel ?? "")}`;
-          script.async = true;
-          script.setAttribute("data-google-maps", "true");
-          document.head.appendChild(script);
+          await new Promise<void>((resolve, reject) => {
+            const script = document.createElement("script");
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&libraries=marker&channel=${encodeURIComponent(channel ?? "")}`;
+            script.async = true;
+            script.setAttribute("data-google-maps", "true");
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error("Google Maps betiği yüklenemedi."));
+            document.head.appendChild(script);
+          });
         }
       }
 

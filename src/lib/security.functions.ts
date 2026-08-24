@@ -65,7 +65,7 @@ export const regenerateBackupCodes = createServerFn({ method: "POST" })
 /** Yedek kodu doğrular ve tek kullanımlık olarak işaretler. */
 export const redeemBackupCode = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z.object({ code: z.string().trim().min(6).max(20) }).parse(input),
   )
   .handler(async ({ data, context }) => {
