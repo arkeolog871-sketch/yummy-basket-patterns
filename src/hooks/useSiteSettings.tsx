@@ -5,13 +5,17 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   applyTypographyCss,
   DEFAULT_TYPOGRAPHY,
-  isMissingColumnError,
   isTypographyConfigured,
   parseTypography,
-  SITE_SETTINGS_BASE_COLUMNS,
-  SITE_SETTINGS_COLUMNS_WITH_TYPOGRAPHY,
   type TypographySettings,
 } from "@/lib/typography";
+import { fetchSiteSettingsRow } from "@/lib/site-settings-query";
+import {
+  DEFAULT_HERO_BANNERS,
+  isHeroBannersColumnPresent,
+  parseHeroBanners,
+  type HeroBannersSettings,
+} from "@/lib/hero-banners";
 
 export type SiteSettings = {
   id: string;
@@ -27,6 +31,8 @@ export type SiteSettings = {
   layout_variant: string;
   typography: TypographySettings;
   typographyConfigured: boolean;
+  heroBanners: HeroBannersSettings;
+  heroBannersConfigured: boolean;
 };
 
 export type HeroContent = {
@@ -50,6 +56,8 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   layout_variant: "classic",
   typography: DEFAULT_TYPOGRAPHY,
   typographyConfigured: false,
+  heroBanners: DEFAULT_HERO_BANNERS,
+  heroBannersConfigured: false,
 };
 
 export const DEFAULT_HERO: HeroContent = {
@@ -80,12 +88,15 @@ function mergeSettings(row: Record<string, unknown> | null | undefined): SiteSet
   const raw = row ?? {};
   const rest = { ...raw };
   delete rest["typography"];
+  delete rest["hero_banners"];
   return {
     ...DEFAULT_SETTINGS,
     ...DEFAULT_HERO,
     ...rest,
     typography: parseTypography(raw["typography"]),
     typographyConfigured: isTypographyConfigured(raw["typography"]),
+    heroBanners: parseHeroBanners(raw["hero_banners"]),
+    heroBannersConfigured: isHeroBannersColumnPresent(raw),
   } as SiteSettings & HeroContent;
 }
 
@@ -97,28 +108,8 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     queryKey: ["site-settings"],
     queryFn: async (): Promise<SiteSettings & HeroContent> => {
       try {
-        const withTypography = await supabase
-          .from("site_settings")
-          .select(SITE_SETTINGS_COLUMNS_WITH_TYPOGRAPHY)
-          .eq("id", "global")
-          .maybeSingle();
-        if (withTypography.error && isMissingColumnError(withTypography.error, "typography")) {
-          const fallback = await supabase
-            .from("site_settings")
-            .select(SITE_SETTINGS_BASE_COLUMNS)
-            .eq("id", "global")
-            .maybeSingle();
-          if (fallback.error) {
-            console.error("[site-settings]", fallback.error.message);
-            return mergeSettings(null);
-          }
-          return mergeSettings((fallback.data ?? {}) as Record<string, unknown>);
-        }
-        if (withTypography.error) {
-          console.error("[site-settings]", withTypography.error.message);
-          return mergeSettings(null);
-        }
-        return mergeSettings((withTypography.data ?? {}) as Record<string, unknown>);
+        const row = await fetchSiteSettingsRow(supabase as never);
+        return mergeSettings(row);
       } catch (error) {
         console.error("[site-settings]", error);
         return mergeSettings(null);

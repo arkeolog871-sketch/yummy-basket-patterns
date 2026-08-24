@@ -573,3 +573,5 @@ export const SITE_SETTINGS_BASE_COLUMNS =
   "id, brand_name, primary_color, accent_color, secondary_color, background_color, logo_url, favicon_url, banner_url, theme_mode, layout_variant, hero_badge, hero_title, hero_title_accent, hero_subtitle";
 
 export const SITE_SETTINGS_COLUMNS_WITH_TYPOGRAPHY = `${SITE_SETTINGS_BASE_COLUMNS}, typography`;
+
+export const SITE_SETTINGS_COLUMNS_FULL = `${SITE_SETTINGS_COLUMNS_WITH_TYPOGRAPHY}, hero_banners`;
