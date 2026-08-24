@@ -1,27 +1,30 @@
 #!/usr/bin/env node
 /** 10.000 eşzamanlı genel sayfa yüklemesi. */
 
-import { Agent, setGlobalDispatcher } from "undici";
-
 const baseUrl = process.env.BASE_URL ?? "http://127.0.0.1:4173";
 const users = Number(process.env.USERS || 10_000);
 const timeoutMs = Number(process.env.TIMEOUT_MS || 30_000);
-const connections = Number(process.env.CONNECTIONS || Math.min(users, 4_096));
+const connections = Number(process.env.CONNECTIONS || Math.min(users, 8_192));
 const paths = (process.env.PATHS || "/,/?kategori=yemek,/restoran/ocakbasi-dukkani,/sepet,/auth").split(
   ",",
 );
 
-setGlobalDispatcher(
-  new Agent({
-    connections,
-    pipelining: 0,
-    keepAliveTimeout: 30_000,
-    keepAliveMaxTimeout: 60_000,
-    connect: { timeout: timeoutMs },
-    headersTimeout: timeoutMs,
-    bodyTimeout: timeoutMs,
-  }),
-);
+try {
+  const undici = await import("undici");
+  undici.setGlobalDispatcher(
+    new undici.Agent({
+      connections,
+      pipelining: 0,
+      keepAliveTimeout: 30_000,
+      keepAliveMaxTimeout: 60_000,
+      connect: { timeout: timeoutMs },
+      headersTimeout: timeoutMs,
+      bodyTimeout: timeoutMs,
+    }),
+  );
+} catch {
+  // Bun and some Node builds expose fetch without a public undici entry.
+}
 
 function percentile(sorted, p) {
   if (sorted.length === 0) return 0;
