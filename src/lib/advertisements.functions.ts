@@ -9,7 +9,7 @@ import {
   sanitizeActionValue,
   type AdActionType,
 } from "@/lib/advertisements";
-import { adImageTooLargeMessage, MAX_AD_IMAGE_BYTES } from "@/lib/upload-limits";
+import { adImageTooLargeMessage, adImageTypeRejectedMessage, MAX_AD_IMAGE_BYTES } from "@/lib/upload-limits";
 
 const MISSING =
   "advertisements tablosu henüz yok. Kurucu Paneli’ndeki SQL’i Supabase SQL Editor’da bir kez çalıştırın.";
@@ -187,20 +187,12 @@ function parseAdImageFormData(input: FormData) {
   if (file.size > MAX_AD_IMAGE_BYTES) {
     throw new Error(adImageTooLargeMessage());
   }
-  const named = "name" in file && typeof file.name === "string" ? file.name : "";
-  const rawType = file.type === "image/jpg" ? "image/jpeg" : file.type;
-  const fromName = named.toLowerCase().endsWith(".webp")
-    ? "image/webp"
-    : named.toLowerCase().endsWith(".jpg") || named.toLowerCase().endsWith(".jpeg")
-      ? "image/jpeg"
-      : "";
-  const contentType = rawType === "image/jpeg" || rawType === "image/webp" ? rawType : fromName;
-  if (contentType !== "image/jpeg" && contentType !== "image/webp") {
-    throw new Error("Yalnızca JPEG veya WebP");
+  if (file.type && !file.type.startsWith("image/")) {
+    throw new Error(adImageTypeRejectedMessage());
   }
+  const named = "name" in file && typeof file.name === "string" ? file.name : "";
   return {
     file,
-    contentType,
     fileName: (named || "banner").slice(0, 120),
   };
 }
@@ -223,14 +215,15 @@ export const uploadAdvertisementImage = createServerFn({ method: "POST" })
         },
         async () => {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-          const { assertValidatedImageBytes } = await import("./vendor-media.server");
-          const binary = new Uint8Array(await data.file.arrayBuffer());
-          assertValidatedImageBytes(binary, data.contentType, MAX_AD_IMAGE_BYTES);
-          const extension = data.contentType === "image/webp" ? "webp" : "jpg";
-          const path = `ads/${crypto.randomUUID()}.${extension}`;
+          const { prepareAdImageBytes } = await import("./vendor-media.server");
+          const prepared = prepareAdImageBytes(
+            new Uint8Array(await data.file.arrayBuffer()),
+            MAX_AD_IMAGE_BYTES,
+          );
+          const path = `ads/${crypto.randomUUID()}.${prepared.extension}`;
           const { error: uploadError } = await supabaseAdmin.storage
             .from("branding")
-            .upload(path, binary, { contentType: data.contentType, upsert: true });
+            .upload(path, prepared.bytes, { contentType: prepared.contentType, upsert: true });
           if (uploadError) throw new Error(uploadError.message);
           return { ok: true, url: `/api/public/brand/${path}` };
         },

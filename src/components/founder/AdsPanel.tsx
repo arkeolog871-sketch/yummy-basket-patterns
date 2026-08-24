@@ -23,7 +23,7 @@ import {
   type AdActionType,
   type Advertisement,
 } from "@/lib/advertisements";
-import { adImageTooLargeMessage, MAX_AD_IMAGE_BYTES, MAX_AD_IMAGE_MB } from "@/lib/upload-limits";
+import { adImageTooLargeMessage, adImageTypeRejectedMessage, AD_IMAGE_ACCEPT, isAdImageFile, MAX_AD_IMAGE_BYTES, MAX_AD_IMAGE_MB } from "@/lib/upload-limits";
 import { HeroBannerSlider } from "@/components/home/HeroBannerSlider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -139,8 +139,8 @@ export function AdsPanel() {
   });
 
   async function onUpload(file: File) {
-    if (!/^image\/(jpeg|jpg|webp)$/i.test(file.type)) {
-      toast.error("Yalnızca JPEG veya WebP yükleyin");
+    if (!isAdImageFile(file)) {
+      toast.error(adImageTypeRejectedMessage());
       return;
     }
     if (file.size > MAX_AD_IMAGE_BYTES) {
@@ -451,7 +451,7 @@ function AdForm({
         </div>
       </div>
       <div>
-        <Label>Görsel (JPEG / WebP, en fazla {MAX_AD_IMAGE_MB} MB, 16:9 veya 3:1)</Label>
+        <Label>Görsel (PNG, JPEG, WebP, GIF, AVIF, SVG… en fazla {MAX_AD_IMAGE_MB} MB, 16:9 veya 3:1)</Label>
         <div className="mt-1.5 flex items-center gap-3">
           <div className="h-16 w-28 overflow-hidden rounded-xl border bg-muted">
             {draft.image_url ? <img src={draft.image_url} alt="" className="size-full object-cover" /> : null}
@@ -459,7 +459,7 @@ function AdForm({
           <input
             ref={fileRef}
             type="file"
-            accept="image/jpeg,image/webp"
+            accept={AD_IMAGE_ACCEPT}
             className="hidden"
             onChange={(event) => {
               const file = event.target.files?.[0];
