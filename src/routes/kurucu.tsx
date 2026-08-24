@@ -308,7 +308,9 @@ function FounderDashboard() {
           <TabsTrigger value="guvenlik">Güvenlik</TabsTrigger>
           <TabsTrigger value="siparisler">Siparişler</TabsTrigger>
           <TabsTrigger value="denetim">Denetim kaydı</TabsTrigger>
+          <TabsTrigger value="hatalar">Sistem hataları</TabsTrigger>
         </TabsList>
+
 
         <TabsContent value="gorunum" className="mt-6">
           <AppearancePanel />
