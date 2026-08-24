@@ -51,6 +51,7 @@ export function isMissingAdvertisementsSchema(error: { message?: string; code?: 
       msg.includes("could not find") ||
       error.code === "PGRST202" ||
       error.code === "PGRST204" ||
+      error.code === "PGRST205" ||
       error.code === "42P01" ||
       error.code === "42883")
   );
