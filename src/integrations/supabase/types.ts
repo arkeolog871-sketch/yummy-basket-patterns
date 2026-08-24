@@ -660,6 +660,7 @@ export type Database = {
           secondary_color: string
           theme_mode: string
           typography: Json
+          hero_banners: Json
           updated_at: string
         }
         Insert: {
@@ -680,6 +681,7 @@ export type Database = {
           secondary_color?: string
           theme_mode?: string
           typography?: Json
+          hero_banners?: Json
           updated_at?: string
         }
         Update: {
@@ -700,6 +702,7 @@ export type Database = {
           secondary_color?: string
           theme_mode?: string
           typography?: Json
+          hero_banners?: Json
           updated_at?: string
         }
         Relationships: []

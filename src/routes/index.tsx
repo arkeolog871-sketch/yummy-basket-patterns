@@ -5,6 +5,8 @@ import { Search, Clock, ShieldCheck, Sparkles } from "lucide-react";
 import { RestaurantCard } from "@/components/restaurant/RestaurantCard";
 import { homeQuery, type HomeSearch } from "@/lib/catalog.queries";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { publicHeroSlides } from "@/lib/hero-banners";
+import { HeroBannerSlider } from "@/components/home/HeroBannerSlider";
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +64,7 @@ function Index() {
   const { data: results } = useSuspenseQuery(homeQuery(search));
   const [term, setTerm] = useState(search.q ?? "");
   const activeSector = search.kategori;
+  const bannerSlides = publicHeroSlides(settings.heroBanners, settings.banner_url);
 
   useEffect(() => setTerm(search.q ?? ""), [search.q]);
 
@@ -80,19 +83,24 @@ function Index() {
     <div>
       <section className="bg-gradient-hero">
         <div className="mx-auto w-full max-w-6xl px-4 py-14 lg:py-20">
-          <div>
-            <span className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1 text-xs font-semibold text-muted-foreground">
-              <Sparkles className="size-3.5" /> {results.length} {hero.hero_badge}
-            </span>
-            <h1 className="mt-4 text-4xl leading-tight sm:text-5xl">
-              {hero.hero_title}{" "}
-              {hero.hero_title_accent ? (
-                <span className="text-accent">{hero.hero_title_accent}</span>
-              ) : null}
-            </h1>
-            <p className="mt-4 max-w-md text-base text-muted-foreground">
-              {hero.hero_subtitle}
-            </p>
+          <div
+            className={
+              bannerSlides.length > 0
+                ? "grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]"
+                : undefined
+            }
+          >
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1 text-xs font-semibold text-muted-foreground">
+                <Sparkles className="size-3.5" /> {results.length} {hero.hero_badge}
+              </span>
+              <h1 className="mt-4 text-4xl leading-tight sm:text-5xl">
+                {hero.hero_title}{" "}
+                {hero.hero_title_accent ? (
+                  <span className="text-accent">{hero.hero_title_accent}</span>
+                ) : null}
+              </h1>
+              <p className="mt-4 max-w-md text-base text-muted-foreground">{hero.hero_subtitle}</p>
 
             <form
               className="mt-7 flex max-w-md gap-2"
@@ -125,6 +133,14 @@ function Index() {
                 <ShieldCheck className="size-4" /> Güvenli ödeme
               </span>
             </div>
+            </div>
+            {bannerSlides.length > 0 ? (
+              <HeroBannerSlider
+                slides={bannerSlides}
+                autoplay={settings.heroBanners.autoplay}
+                intervalMs={settings.heroBanners.intervalMs}
+              />
+            ) : null}
           </div>
         </div>
       </section>
