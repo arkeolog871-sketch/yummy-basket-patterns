@@ -7,12 +7,6 @@
     <meta name="theme-color" content="#111113" />
     <title>SİLVAN CEBİMDE — Android uygulama önizlemesi</title>
     <style>
-      #lovable-badge {
-        display: none !important;
-        visibility: hidden !important;
-        pointer-events: none !important;
-        opacity: 0 !important;
-      }
       :root {
         --bezel: #0b0b0d;
         --screen: #fff8f0;
@@ -221,24 +215,6 @@
         host.endsWith("lovableproject.com") ||
         host.endsWith("uygulamamcebimde.online");
       document.getElementById("app").src = sameApp ? "/" : "https://uygulamamcebimde.online/";
-
-      const hideLovableBadge = () => {
-        try {
-          const el = document.getElementById("lovable-badge");
-          if (!el) return;
-          el.style.setProperty("display", "none", "important");
-          el.style.setProperty("visibility", "hidden", "important");
-          el.style.setProperty("pointer-events", "none", "important");
-          el.style.setProperty("opacity", "0", "important");
-          el.setAttribute("hidden", "");
-          el.setAttribute("aria-hidden", "true");
-        } catch (_) {}
-      };
-      hideLovableBadge();
-      new MutationObserver(hideLovableBadge).observe(document.documentElement, {
-        childList: true,
-        subtree: true,
-      });
     </script>
   </body>
 </html>
