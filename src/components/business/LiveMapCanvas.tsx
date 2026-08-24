@@ -335,7 +335,7 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
       osmMap?.remove();
       hostRef.current?.replaceChildren();
     };
-  }, [markerKey, mapsApiKey, showUserLocation]);
+  }, [markerKey, mapsApiKey, showUserLocation, markers]);
 
   return (
     <div className="relative mt-3 aspect-[16/9] w-full overflow-hidden rounded-2xl bg-muted">

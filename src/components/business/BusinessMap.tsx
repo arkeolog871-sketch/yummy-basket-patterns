@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { MapPin, ExternalLink } from "lucide-react";
 import { buildMapsUrl, resolveBusinessCoords, type BusinessLocation } from "@/lib/maps";
 import { LiveMapCanvas } from "@/components/business/LiveMapCanvas";
@@ -5,6 +6,20 @@ import { LiveMapCanvas } from "@/components/business/LiveMapCanvas";
 export function BusinessMap({ business }: { business: BusinessLocation }) {
   const point = resolveBusinessCoords(business);
   const directionsUrl = buildMapsUrl(business);
+  const markers = useMemo(
+    () =>
+      point
+        ? [
+            {
+              lat: point.lat,
+              lng: point.lng,
+              title: business.name,
+              address: business.address ?? null,
+            },
+          ]
+        : [],
+    [business.address, business.name, point?.lat, point?.lng],
+  );
 
   if (!point) {
     return (
@@ -34,14 +49,7 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
       </h3>
       <LiveMapCanvas
         label={`${business.name} konum haritası`}
-        markers={[
-          {
-            lat: point.lat,
-            lng: point.lng,
-            title: business.name,
-            address: business.address ?? null,
-          },
-        ]}
+        markers={markers}
       />
       {directionsUrl ? (
         <a

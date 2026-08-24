@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { MapPin } from "lucide-react";
 import { resolveBusinessCoords } from "@/lib/maps";
 import { LiveMapCanvas, type LiveMapMarker } from "@/components/business/LiveMapCanvas";
@@ -17,19 +18,23 @@ interface AllBusinessesMapProps {
 }
 
 export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
-  const markers: LiveMapMarker[] = businesses.flatMap((business) => {
-    const point = resolveBusinessCoords(business);
-    if (!point) return [];
-    return [
-      {
-        lat: point.lat,
-        lng: point.lng,
-        title: business.name,
+  const markers = useMemo<LiveMapMarker[]>(
+    () =>
+      businesses.flatMap((business) => {
+        const point = resolveBusinessCoords(business);
+        if (!point) return [];
+        return [
+          {
+            lat: point.lat,
+            lng: point.lng,
+            title: business.name,
             address: business.address ?? null,
-        href: `/restoran/${encodeURIComponent(business.slug)}`,
-      },
-    ];
-  });
+            href: `/restoran/${encodeURIComponent(business.slug)}`,
+          },
+        ];
+      }),
+    [businesses],
+  );
 
   if (markers.length === 0) {
     return (
