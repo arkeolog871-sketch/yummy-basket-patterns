@@ -84,6 +84,9 @@ for (const [name, path, accepted] of SECURITY) {
 }
 
 const home = await fetchPath("/");
+if (!home.text.includes("__PUBLIC_ENV__") || !home.text.includes("supabase.co")) {
+  fail("public env bootstrap", "HTML missing runtime Supabase env");
+} else pass("public env bootstrap");
 for (const header of REQUIRED_HEADERS) {
   if (!home.response.headers.get(header)) fail(`header ${header}`, "missing");
   else pass(`header ${header}`);

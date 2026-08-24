@@ -22,6 +22,7 @@ import { IosHomeScreenGuide } from "@/components/iphone/IosHomeScreenGuide";
 import { Toaster } from "@/components/ui/sonner";
 import { AppRealtimeBridge } from "@/hooks/useAppRealtime";
 import { appCategoriesQuery, serviceAreasQuery, siteSettingsQuery } from "@/lib/catalog.queries";
+import { publicEnvInlineScript } from "@/lib/public-env";
 
 function NotFoundComponent() {
   return (
@@ -138,6 +139,10 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="tr">
       <head>
+        <script
+          dangerouslySetInnerHTML={{ __html: publicEnvInlineScript() }}
+          suppressHydrationWarning
+        />
         <HeadContent />
       </head>
       <body>
