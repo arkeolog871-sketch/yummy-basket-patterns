@@ -26,7 +26,7 @@ const areaSchema = z.object({
 
 export const saveCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => categorySchema.parse(input))
+  .validator((input: unknown) => categorySchema.parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
@@ -53,7 +53,7 @@ export const saveCategory = createServerFn({ method: "POST" })
 
 export const deleteCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
@@ -79,7 +79,7 @@ export const deleteCategory = createServerFn({ method: "POST" })
 
 export const moveCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z
       .object({ id: z.string().uuid(), direction: z.enum(["up", "down"]) })
       .parse(input),
@@ -128,7 +128,7 @@ export const moveCategory = createServerFn({ method: "POST" })
 
 export const saveServiceArea = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => areaSchema.parse(input))
+  .validator((input: unknown) => areaSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
@@ -155,7 +155,7 @@ export const saveServiceArea = createServerFn({ method: "POST" })
 
 export const deleteServiceArea = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");

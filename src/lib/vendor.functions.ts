@@ -93,7 +93,7 @@ export const getVendorDashboard = createServerFn({ method: "GET" })
 /** Sipariş durumunu yalnızca siparişin sahibi işletme değiştirebilir. */
 export const setVendorOrderStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z.object({ id: z.string().uuid(), status: vendorStatusSchema }).parse(input),
   )
   .handler(async ({ data, context }) =>
@@ -130,7 +130,7 @@ export const setVendorOrderStatus = createServerFn({ method: "POST" })
 /** Mağazayı anlık açık/kapalı yapar. */
 export const setVendorStoreOpen = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ isOpen: z.boolean() }).parse(input))
+  .validator((input: unknown) => z.object({ isOpen: z.boolean() }).parse(input))
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
     const { assertVendor } = await import("./vendor.server");
@@ -161,7 +161,7 @@ export const setVendorStoreOpen = createServerFn({ method: "POST" })
 /** Ürünün stok durumunu (Stokta var / yok) değiştirir. */
 export const setVendorItemAvailability = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z.object({ id: z.string().uuid(), isAvailable: z.boolean() }).parse(input),
   )
   .handler(async ({ data, context }) =>

@@ -26,7 +26,7 @@ const uploadSchema = z.object({
 /** Kurucu, logo / favicon / banner görselini yükler. */
 export const uploadBrandAsset = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => uploadSchema.parse(input))
+  .validator((input: unknown) => uploadSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
@@ -74,7 +74,7 @@ export const uploadBrandAsset = createServerFn({ method: "POST" })
 /** Kurucu, yüklenen görseli kaldırır. */
 export const removeBrandAsset = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ kind: z.enum(KINDS) }).parse(input))
+  .validator((input: unknown) => z.object({ kind: z.enum(KINDS) }).parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");

@@ -24,7 +24,7 @@ const heroSchema = z.object({
 
 export const updateHeroContent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => heroSchema.parse(input))
+  .validator((input: unknown) => heroSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
@@ -71,7 +71,7 @@ const mapsSchema = z.object({
 
 export const updateMapsSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => mapsSchema.parse(input))
+  .validator((input: unknown) => mapsSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited, logAudit } = await import("./audit.server");
@@ -273,7 +273,7 @@ export const claimFounder = createServerFn({ method: "POST" })
 
 export const updateSiteSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => settingsSchema.parse(input))
+  .validator((input: unknown) => settingsSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
@@ -335,7 +335,7 @@ export const listAdminData = createServerFn({ method: "GET" })
 
 export const saveBusiness = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => businessWithHoursSchema.parse(input))
+  .validator((input: unknown) => businessWithHoursSchema.parse(input))
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
       const { assertFounder, ensureBusinessVendorAccount } = await import("./founder.server");
@@ -371,7 +371,7 @@ export const saveBusiness = createServerFn({ method: "POST" })
 
 export const deleteBusiness = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
@@ -395,7 +395,7 @@ export const deleteBusiness = createServerFn({ method: "POST" })
 /** Kurucu, gelen siparişin durumunu anlık olarak değiştirir. */
 export const updateOrderStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z
       .object({
         id: z.string().uuid(),
@@ -438,7 +438,7 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
 
 export const saveMenuCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => menuCategorySchema.parse(input))
+  .validator((input: unknown) => menuCategorySchema.parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
@@ -465,7 +465,7 @@ export const saveMenuCategory = createServerFn({ method: "POST" })
 
 export const deleteMenuCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
@@ -488,7 +488,7 @@ export const deleteMenuCategory = createServerFn({ method: "POST" })
 
 export const saveMenuItem = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => menuItemSchema.parse(input))
+  .validator((input: unknown) => menuItemSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
@@ -515,7 +515,7 @@ export const saveMenuItem = createServerFn({ method: "POST" })
 
 export const deleteMenuItem = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
@@ -569,7 +569,7 @@ export const listUsers = createServerFn({ method: "GET" })
 /** Kurucu, bir kullanıcıyı tek bir işletmeye atar veya atamasını kaldırır. */
 export const setVendorAssignment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z
       .object({
         userId: z.string().uuid(),
@@ -625,7 +625,7 @@ export const setVendorAssignment = createServerFn({ method: "POST" })
 
 export const setUserRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z
       .object({
         userId: z.string().uuid(),
@@ -672,7 +672,7 @@ export const setUserRole = createServerFn({ method: "POST" })
 /** Kurucu, yeni bir yetkili hesap oluşturur ve seçilen rolü atar. */
 export const createStaffUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z
       .object({
         email: z.string().trim().email().max(200),
@@ -758,7 +758,7 @@ export const createStaffUser = createServerFn({ method: "POST" })
 
 export const deleteUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ userId: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ userId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");

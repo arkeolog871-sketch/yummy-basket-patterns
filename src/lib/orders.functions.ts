@@ -24,7 +24,7 @@ type AuthContext = { supabase: SupabaseClient<Database>; userId: string };
 
 export const createOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => createOrderSchema.parse(input))
+  .validator((input: unknown) => createOrderSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
     enforceSensitiveRateLimit("order-create", 20, 60 * 1000);
@@ -147,7 +147,7 @@ export const listMyOrders = createServerFn({ method: "GET" })
 
 export const getMyOrder = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
       const { data: order, error } = await context.supabase
