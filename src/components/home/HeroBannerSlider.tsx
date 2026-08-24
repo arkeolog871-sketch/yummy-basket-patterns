@@ -1,90 +1,72 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import useEmblaCarousel from "embla-carousel-react";
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
-import type { HeroBannerSlide } from "@/lib/hero-banners";
+import {
+  BANNER_AUTOPLAY_MS,
+  BANNER_IMPRESSION_MS,
+  trackBanner,
+  type PublicBanner,
+} from "@/lib/advertisements";
 import { cn } from "@/lib/utils";
 
-function SlideMedia({ slide }: { slide: HeroBannerSlide }) {
+function activateBanner(banner: PublicBanner, navigate: ReturnType<typeof useNavigate>) {
+  trackBanner(banner.id, "click");
+  const value = banner.action_value;
+  if (!value) return;
+  if (banner.action_type === "phone") {
+    window.location.href = `tel:${value}`;
+    return;
+  }
+  if (banner.action_type === "external_link") {
+    window.open(value, "_blank", "noopener,noreferrer");
+    return;
+  }
+  void navigate({ to: value as never });
+}
+
+function SlideVisual({ banner, priority }: { banner: PublicBanner; priority: boolean }) {
   return (
     <>
       <img
-        src={slide.imageUrl}
-        alt={slide.title || "Kampanya görseli"}
+        src={banner.image_url}
+        alt={banner.title || "Reklam görseli"}
         className="size-full object-cover"
+        loading={priority ? "eager" : "lazy"}
+        decoding="async"
         draggable={false}
       />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
-      {slide.title || slide.subtitle || slide.ctaLabel ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4 sm:p-6">
-          {slide.title ? (
-            <p className="text-lg font-semibold text-white drop-shadow sm:text-2xl">{slide.title}</p>
-          ) : null}
-          {slide.subtitle ? (
-            <p className="mt-1 max-w-md text-sm text-white/90 drop-shadow">{slide.subtitle}</p>
-          ) : null}
-          {slide.ctaLabel && slide.href ? (
-            <span className="mt-3 inline-flex rounded-full bg-primary px-4 py-1.5 text-sm font-semibold text-primary-foreground">
-              {slide.ctaLabel}
-            </span>
-          ) : null}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+      {banner.title ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4 sm:p-5">
+          <p className="text-base font-semibold text-white drop-shadow sm:text-lg">{banner.title}</p>
         </div>
       ) : null}
     </>
   );
 }
 
-function SlideFrame({ slide }: { slide: HeroBannerSlide }) {
-  const label = slide.title || "Kampanyayı aç";
-  const media = <SlideMedia slide={slide} />;
-  if (!slide.href) {
-    return <div className="relative size-full">{media}</div>;
-  }
-  if (slide.href.startsWith("http")) {
-    return (
-      <a
-        href={slide.href}
-        className="relative block size-full"
-        aria-label={label}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        {media}
-      </a>
-    );
-  }
-  return (
-    <Link to={slide.href} className="relative block size-full" aria-label={label}>
-      {media}
-    </Link>
-  );
-}
-
 export function HeroBannerSlider({
-  slides,
-  autoplay,
-  intervalMs,
+  banners,
   className,
 }: {
-  slides: HeroBannerSlide[];
-  autoplay: boolean;
-  intervalMs: number;
+  banners: PublicBanner[];
   className?: string;
 }) {
-  const count = slides.length;
+  const navigate = useNavigate();
+  const count = banners.length;
   const [emblaRef, emblaApi] = useEmblaCarousel({
     loop: count > 1,
-    align: "start",
+    align: "center",
+    skipSnaps: false,
+    containScroll: false,
     duration: 22,
     watchDrag: count > 1,
   });
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [reduceMotion, setReduceMotion] = useState(false);
-
-  useEffect(() => {
-    setReduceMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-  }, []);
+  const holding = useRef(false);
+  const seen = useRef(new Set<string>());
 
   useEffect(() => {
     if (!emblaApi) return;
@@ -101,18 +83,27 @@ export function HeroBannerSlider({
     emblaApi?.scrollTo(0, true);
   }, [count, emblaApi]);
 
-  const go = useCallback(
-    (next: number) => {
-      emblaApi?.scrollTo(next);
-    },
-    [emblaApi],
-  );
-
   useEffect(() => {
-    if (!autoplay || paused || count <= 1 || !emblaApi || reduceMotion) return;
-    const timer = window.setInterval(() => emblaApi.scrollNext(), intervalMs);
+    if (paused || holding.current || count <= 1 || !emblaApi) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(() => emblaApi.scrollNext(), BANNER_AUTOPLAY_MS);
     return () => window.clearInterval(timer);
-  }, [autoplay, paused, count, intervalMs, emblaApi, reduceMotion]);
+  }, [paused, count, emblaApi, index]);
+
+  const current = banners[index];
+  useEffect(() => {
+    if (!current?.id || seen.current.has(current.id)) return;
+    const timer = window.setTimeout(() => {
+      seen.current.add(current.id);
+      trackBanner(current.id, "impression");
+    }, BANNER_IMPRESSION_MS);
+    return () => window.clearTimeout(timer);
+  }, [current?.id]);
+
+  const hold = useCallback((down: boolean) => {
+    holding.current = down;
+    setPaused(down);
+  }, []);
 
   if (count === 0) return null;
 
@@ -124,12 +115,11 @@ export function HeroBannerSlider({
       )}
       role="region"
       aria-roledescription="carousel"
-      aria-label="Kampanya panosu"
+      aria-label="Kayan reklam panosu"
       tabIndex={0}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onFocus={() => setPaused(true)}
-      onBlur={() => setPaused(false)}
+      onPointerDown={() => hold(true)}
+      onPointerUp={() => hold(false)}
+      onPointerCancel={() => hold(false)}
       onKeyDown={(event) => {
         if (event.key === "ArrowLeft") {
           event.preventDefault();
@@ -139,21 +129,31 @@ export function HeroBannerSlider({
           event.preventDefault();
           emblaApi?.scrollNext();
         }
+        if (event.key === "Enter" && current) {
+          event.preventDefault();
+          activateBanner(current, navigate);
+        }
       }}
     >
       <div className="overflow-hidden" ref={emblaRef}>
-        <div className="flex">
-          {slides.map((slide) => (
+        <div className="flex touch-pan-y">
+          {banners.map((banner, i) => (
             <div
-              key={slide.id}
-              className="relative min-w-0 shrink-0 grow-0 basis-full"
+              key={banner.id}
+              className="relative min-w-0 shrink-0 grow-0 basis-[85%] px-1.5 sm:basis-[86%]"
               role="group"
               aria-roledescription="slide"
-              aria-label={slide.title || "Kampanya"}
+              aria-label={banner.title || `Reklam ${i + 1}`}
             >
-              <div className="relative aspect-[16/10] min-h-[220px] w-full bg-muted sm:min-h-[280px]">
-                <SlideFrame slide={slide} />
-              </div>
+              <button
+                type="button"
+                className="relative block w-full overflow-hidden rounded-2xl text-left"
+                onClick={() => activateBanner(banner, navigate)}
+              >
+                <div className="relative aspect-video max-h-[240px] w-full bg-muted sm:aspect-[3/1] sm:max-h-[280px]">
+                  <SlideVisual banner={banner} priority={i === 0} />
+                </div>
+              </button>
             </div>
           ))}
         </div>
@@ -163,7 +163,7 @@ export function HeroBannerSlider({
         <>
           <button
             type="button"
-            className="absolute left-3 top-1/2 z-10 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-background/80 text-foreground shadow-sm backdrop-blur hover:bg-background"
+            className="absolute left-2 top-1/2 z-10 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-background/80 text-foreground shadow-sm backdrop-blur hover:bg-background sm:left-3"
             aria-label="Önceki reklam"
             onClick={() => emblaApi?.scrollPrev()}
           >
@@ -171,38 +171,60 @@ export function HeroBannerSlider({
           </button>
           <button
             type="button"
-            className="absolute right-3 top-1/2 z-10 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-background/80 text-foreground shadow-sm backdrop-blur hover:bg-background"
+            className="absolute right-2 top-1/2 z-10 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-background/80 text-foreground shadow-sm backdrop-blur hover:bg-background sm:right-3"
             aria-label="Sonraki reklam"
             onClick={() => emblaApi?.scrollNext()}
           >
             <ChevronRight className="size-4" />
           </button>
           <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5">
-            {slides.map((slide, i) => (
+            {banners.map((banner, i) => (
               <button
-                key={slide.id}
+                key={banner.id}
                 type="button"
-                aria-label={`${i + 1}. slayt`}
+                aria-label={`${i + 1}. reklam`}
                 aria-current={i === index}
                 className={`h-1.5 rounded-full transition-all ${
                   i === index ? "w-6 bg-white" : "w-2 bg-white/50 hover:bg-white/80"
                 }`}
-                onClick={() => go(i)}
+                onClick={() => emblaApi?.scrollTo(i)}
               />
             ))}
           </div>
-          {autoplay && !reduceMotion ? (
-            <button
-              type="button"
-              className="absolute right-3 top-3 z-10 flex size-8 items-center justify-center rounded-full bg-background/80 text-foreground shadow-sm backdrop-blur"
-              aria-label={paused ? "Otomatik kaydırmayı başlat" : "Otomatik kaydırmayı durdur"}
-              onClick={() => setPaused((value) => !value)}
-            >
-              {paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}
-            </button>
-          ) : null}
+          <button
+            type="button"
+            className="absolute right-3 top-3 z-10 flex size-8 items-center justify-center rounded-full bg-background/80 text-foreground shadow-sm backdrop-blur"
+            aria-label={paused ? "Otomatik kaydırmayı başlat" : "Otomatik kaydırmayı durdur"}
+            onClick={() => setPaused((value) => !value)}
+          >
+            {paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}
+          </button>
         </>
       ) : null}
     </div>
   );
+}
+
+/** Eski JSONB slaytlarını public banner şekline çevirir (yedek). */
+export function legacySlidesToBanners(
+  slides: { id: string; title: string; imageUrl: string; href: string }[],
+): PublicBanner[] {
+  return slides.map((slide, index) => {
+    const href = slide.href.trim();
+    const action_type = href.startsWith("http")
+      ? "external_link"
+      : href.startsWith("tel:")
+        ? "phone"
+        : "internal_route";
+    const action_value =
+      action_type === "phone" ? href.replace(/^tel:/, "") : href || "/";
+    return {
+      id: slide.id,
+      title: slide.title,
+      image_url: slide.imageUrl,
+      action_type,
+      action_value,
+      display_order: index,
+    };
+  });
 }

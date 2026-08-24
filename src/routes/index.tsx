@@ -1,12 +1,13 @@
 import { createFileRoute, useNavigate, ClientOnly } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useState, Suspense, lazy } from "react";
 import { Search, Clock, ShieldCheck, Sparkles } from "lucide-react";
 import { RestaurantCard } from "@/components/restaurant/RestaurantCard";
 import { homeQuery, type HomeSearch } from "@/lib/catalog.queries";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { publicHeroSlides } from "@/lib/hero-banners";
-import { HeroBannerSlider } from "@/components/home/HeroBannerSlider";
+import { fetchPublicBanners } from "@/lib/advertisements";
+import { HeroBannerSlider, legacySlidesToBanners } from "@/components/home/HeroBannerSlider";
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,9 +63,19 @@ function Index() {
   const { settings, hero } = useSiteSettings();
   const { categories } = useAppCategories();
   const { data: results } = useSuspenseQuery(homeQuery(search));
+  const bannersQuery = useQuery({
+    queryKey: ["public-banners"],
+    queryFn: fetchPublicBanners,
+    retry: false,
+    staleTime: 30_000,
+  });
   const [term, setTerm] = useState(search.q ?? "");
   const activeSector = search.kategori;
-  const bannerSlides = publicHeroSlides(settings.heroBanners, settings.banner_url);
+  const legacySlides = publicHeroSlides(settings.heroBanners, settings.banner_url);
+  const bannerSlides =
+    bannersQuery.data && bannersQuery.data.length > 0
+      ? bannersQuery.data
+      : legacySlidesToBanners(legacySlides);
 
   useEffect(() => setTerm(search.q ?? ""), [search.q]);
 
@@ -136,11 +147,7 @@ function Index() {
             </div>
             {bannerSlides.length > 0 ? (
               <div className="order-1 lg:order-2">
-                <HeroBannerSlider
-                  slides={bannerSlides}
-                  autoplay={settings.heroBanners.autoplay}
-                  intervalMs={settings.heroBanners.intervalMs}
-                />
+                <HeroBannerSlider banners={bannerSlides} />
               </div>
             ) : null}
           </div>
