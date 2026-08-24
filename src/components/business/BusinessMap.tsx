@@ -6,19 +6,21 @@ import { LiveMapCanvas } from "@/components/business/LiveMapCanvas";
 export function BusinessMap({ business }: { business: BusinessLocation }) {
   const point = resolveBusinessCoords(business);
   const directionsUrl = buildMapsUrl(business);
+  const latitude = point?.lat;
+  const longitude = point?.lng;
   const markers = useMemo(
     () =>
-      point
+      latitude !== undefined && longitude !== undefined
         ? [
             {
-              lat: point.lat,
-              lng: point.lng,
+              lat: latitude,
+              lng: longitude,
               title: business.name,
               address: business.address ?? null,
             },
           ]
         : [],
-    [business.address, business.name, point?.lat, point?.lng],
+    [business.address, business.name, latitude, longitude],
   );
 
   if (!point) {
@@ -27,7 +29,9 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
         <h3 className="flex items-center gap-2 text-base font-semibold">
           <MapPin className="size-4 text-primary" /> Konum
         </h3>
-        <p className="mt-2 text-sm text-muted-foreground">İşletme konumu haritada gösterilemiyor.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          İşletme konumu haritada gösterilemiyor.
+        </p>
         {directionsUrl ? (
           <a
             href={directionsUrl}
@@ -47,10 +51,7 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
       <h3 className="flex items-center gap-2 text-base font-semibold">
         <MapPin className="size-4 text-primary" /> Konum
       </h3>
-      <LiveMapCanvas
-        label={`${business.name} konum haritası`}
-        markers={markers}
-      />
+      <LiveMapCanvas label={`${business.name} konum haritası`} markers={markers} />
       {directionsUrl ? (
         <a
           href={directionsUrl}

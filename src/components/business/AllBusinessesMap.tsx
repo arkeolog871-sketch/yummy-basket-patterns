@@ -56,8 +56,8 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
         <MapPin className="size-4 text-primary" /> Tüm İşletmelerimiz
       </h3>
       <p className="mt-1 text-sm text-muted-foreground">
-        Harita üzerindeki pinlere tıklayarak işletme detaylarını inceleyebilirsiniz. Mavi nokta anlık
-        konumunuzdur.
+        Harita üzerindeki pinlere tıklayarak işletme detaylarını inceleyebilirsiniz. Mavi nokta
+        anlık konumunuzdur.
       </p>
       <LiveMapCanvas label="Tüm işletmeler haritası" markers={markers} />
     </div>

@@ -123,7 +123,6 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
     let cancelled = false;
     let stopWatching: (() => void) | undefined;
     let stopUser: (() => void) | undefined;
-    let stopSized: (() => void) | undefined;
     let googleFallbackTimer: number | undefined;
     let osmInvalidateFrame: number | undefined;
     let osmInvalidateTimer: number | undefined;
@@ -308,7 +307,7 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
       if (!stopWatching) stopWatching = unsubscribeAuth;
     };
 
-    stopSized = whenSized(host, () => {
+    const stopSized = whenSized(host, () => {
       if (cancelled) return;
       const canGoogle =
         !isAndroidWebView() &&
@@ -320,7 +319,7 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
 
     return () => {
       cancelled = true;
-      stopSized?.();
+      stopSized();
       stopWatching?.();
       stopUser?.();
       if (googleFallbackTimer !== undefined) window.clearTimeout(googleFallbackTimer);
@@ -333,7 +332,7 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
       googleMap = null;
       osmUser?.remove();
       osmMap?.remove();
-      hostRef.current?.replaceChildren();
+      host.replaceChildren();
     };
   }, [markerKey, mapsApiKey, showUserLocation, markers]);
 
