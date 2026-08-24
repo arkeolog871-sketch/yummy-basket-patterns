@@ -16,8 +16,8 @@ export const SECURITY_HEADERS: Record<string, string> = {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; " +
     "font-src 'self' data: https://fonts.gstatic.com https://unpkg.com; " +
     "img-src 'self' data: blob: https:; " +
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://maps.googleapis.com https://maps.gstatic.com https://unpkg.com " +
-    "https://tile.openstreetmap.org ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*; " +
+    "connect-src 'self' https://*.supabase.co https://maps.googleapis.com https://unpkg.com " +
+    "https://tile.openstreetmap.org ws://localhost:* ws://127.0.0.1:*; " +
     "frame-src 'self' https://www.openstreetmap.org; media-src 'self' blob:",
 };
 
