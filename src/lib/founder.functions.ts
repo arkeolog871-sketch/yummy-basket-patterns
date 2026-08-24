@@ -240,6 +240,21 @@ export const claimFounder = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { logAudit } = await import("./audit.server");
     const actorEmail = (context.claims as { email?: string } | null)?.email ?? null;
+    const allowedBootstrapEmails = (process.env["FOUNDER_BOOTSTRAP_EMAILS"] ?? "")
+      .split(",")
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean);
+    if (!actorEmail || !allowedBootstrapEmails.includes(actorEmail.trim().toLowerCase())) {
+      await logAudit({
+        actorId: context.userId,
+        actorEmail,
+        action: "founder.claim",
+        entity: "user_roles",
+        status: "denied",
+        detail: { reason: "Kurucu bootstrap allowlist dışında" },
+      });
+      throw new Error("Kurucu hesabı deployment yöneticisi tarafından yetkilendirilmelidir.");
+    }
     const { count, error } = await supabaseAdmin
       .from("user_roles")
       .select("id", { count: "exact", head: true })
@@ -310,7 +325,7 @@ export const listAdminData = createServerFn({ method: "GET" })
       const [businesses, categories, items, orders] = await Promise.all([
         supabaseAdmin.from("restaurants").select("*").order("name"),
         context.supabase.from("menu_categories").select("*").order("position"),
-        context.supabase.from("menu_items").select("*").order("name"),
+        supabaseAdmin.from("menu_items").select("*").order("name"),
         context.supabase
           .from("orders")
           .select(
@@ -425,7 +440,8 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
           detail: { status: data.status },
         },
         async () => {
-          const { error } = await context.supabase
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const { error } = await supabaseAdmin
             .from("orders")
             .update({ status: data.status })
             .eq("id", data.id);

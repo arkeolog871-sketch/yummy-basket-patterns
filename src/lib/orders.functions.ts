@@ -41,6 +41,7 @@ async function placeOrder(
   context: AuthContext,
 ): Promise<{ id: string; total: number }> {
   const { supabase, userId } = context;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
   const { assertVerifiedEmail } = await import("./otp.server");
   await assertVerifiedEmail(userId);
@@ -98,7 +99,7 @@ async function placeOrder(
   const deliveryFee = Number(restaurant.delivery_fee);
   const total = Number((subtotal + deliveryFee).toFixed(2));
 
-  const { data: order, error: orderError } = await supabase
+  const { data: order, error: orderError } = await supabaseAdmin
     .from("orders")
     .insert({
       user_id: userId,
@@ -119,11 +120,11 @@ async function placeOrder(
     .single();
   if (orderError) throw new Error(orderError.message);
 
-  const { error: linesError } = await supabase
+  const { error: linesError } = await supabaseAdmin
     .from("order_items")
     .insert(orderItems.map((line) => ({ ...line, order_id: order.id })));
   if (linesError) {
-    await supabase.from("orders").delete().eq("id", order.id).eq("user_id", userId);
+    await supabaseAdmin.from("orders").delete().eq("id", order.id).eq("user_id", userId);
     throw new Error(linesError.message);
   }
 

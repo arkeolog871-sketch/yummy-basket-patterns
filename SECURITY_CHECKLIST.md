@@ -21,7 +21,11 @@ Legend: `[PASS]` verified or implemented, `[WARNING]` requires deployment/archit
 - [PASS] Founder operations perform server-side founder checks.
 - [PASS] Direct authenticated role writes are revoked.
 - [PASS] Founder role changes use a server-only service-role client after authorization.
+- [PASS] Founder bootstrap requires an exact deployment-time email allowlist and a unique founder index.
 - [PASS] Order detail applies an explicit owner predicate (BOLA defense).
+- [PASS] Direct authenticated order and order-item writes are revoked; server-side order creation recomputes totals.
+- [PASS] Vendor reassignment revokes the previous vendor assignment and vendor role.
+- [PASS] Anonymous catalog reads omit `stock_quantity`.
 - [WARNING] Review future schema columns before adding them to public `SELECT` lists.
 
 ## API security
@@ -34,6 +38,7 @@ Legend: `[PASS]` verified or implemented, `[WARNING]` requires deployment/archit
 - [PASS] Body and upload data have bounded validation.
 - [PASS] Generic public error responses avoid stack/database/secret leakage.
 - [WARNING] Configure Cloudflare edge request/body limits and WAF rules.
+- [WARNING] OTP database counters still need atomic increment/RPC semantics for concurrent attack traffic.
 
 ## Injection and browser security
 

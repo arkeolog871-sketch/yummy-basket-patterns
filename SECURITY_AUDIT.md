@@ -8,9 +8,9 @@
 
 - Active CRITICAL findings after this change: **0**
 - Active HIGH findings after this change: **0**
-- Findings identified: **8**
-- Findings remediated in code: **7**
-- Remaining deployment/configuration warnings: **3**
+- Findings identified: **12**
+- Findings remediated in code: **10**
+- Remaining deployment/configuration warnings: **4**
 - Database destructive data changes: **none**
 
 The most serious finding was a committed Android release keystore and hard-coded signing passwords. The material is removed from the working tree and future builds require externally supplied secrets. Because published Git history must not be rewritten for the Lovable-connected repository, the old signing key must be rotated and the exposed key treated as compromised.
@@ -37,6 +37,24 @@ The wrapper previously allowed mixed content, third-party cookies, unrestricted 
 
 The legacy authenticated admin policy could have allowed direct role manipulation, including escalation toward founder. The hardening migration removes broad admin role policies and revokes authenticated INSERT/UPDATE/DELETE privileges. Founder role changes use the server-only service-role client only after `assertFounder`.
 
+### CRITICAL — Public founder bootstrap takeover
+
+**Evidence:** `src/lib/founder.functions.ts`, `src/routes/kurucu.tsx`.
+
+The first verified account could previously claim founder when no founder existed. Self-claim is now restricted to exact addresses in the deployment-only `FOUNDER_BOOTSTRAP_EMAILS` allowlist, and the database has an unconditional single-founder unique index. The UI no longer presents self-claim as an open registration path.
+
+### HIGH — Forged orders through direct PostgREST writes
+
+**Evidence:** order table grants and `src/lib/orders.functions.ts`.
+
+Authenticated clients could insert orders/order items directly with client-controlled totals and payment fields. Authenticated order writes are now revoked. The existing server-side order path uses the service-role client only after verified-email, restaurant, availability, stock, price, minimum-order, and total checks. A transactional stock/idempotency RPC remains a recommended next step.
+
+### HIGH — Stale vendor access after ownership change
+
+**Evidence:** `src/lib/founder.server.ts`.
+
+Changing a restaurant contact email previously returned early when an assignment existed, leaving the old vendor assigned. The existing assignment is now compared with the new account and the old vendor assignment/role is revoked before the new account is linked.
+
 ### MEDIUM — Missing endpoint-wide rate limiting
 
 Server functions previously relied mainly on per-email OTP guards and audit-derived limits. A bounded in-memory edge-safe limiter now covers all server functions by client address, with tighter limits for registration, OTP, vendor OTP, backup codes, founder login logging, and order creation. Cloudflare’s `cf-connecting-ip` is preferred.
@@ -50,6 +68,10 @@ Image uploads now validate base64 syntax, decoded byte size, and file signatures
 ### MEDIUM — Public storage proxy accepted overly broad paths
 
 The public media and branding proxy routes use the service-role client by design for public assets. They now accept only allowlisted bucket/path shapes, reject traversal/backslashes, send `nosniff`, and apply a restrictive SVG response CSP.
+
+### MEDIUM — Operational inventory exposed to anonymous catalog clients
+
+Anonymous menu reads no longer receive `stock_quantity`; that field remains available to server-side vendor/founder dashboard reads through the service-role client.
 
 ### LOW — Missing defense-in-depth response headers
 
@@ -69,6 +91,7 @@ Server responses and Cloudflare static assets now include CSP, frame protection,
 - Passwords are sent only to Supabase Auth; application tables do not store plaintext passwords.
 - The browser Supabase client currently persists sessions in `localStorage`. This remains a **WARNING**: XSS would expose a browser session. A full HttpOnly-cookie migration requires adopting server-managed Supabase SSR sessions and should be planned before high-risk production use.
 - Supabase Auth's built-in password-login and reset throttles remain relied upon for direct browser Auth API calls.
+- The database OTP counters use read/upsert operations and can still be contended under concurrent requests. The in-memory IP limiter reduces abuse, but atomic database increment/RPC and edge rate rules should be added for high-volume production traffic.
 
 ## Authorization, RBAC, and IDOR/BOLA
 
@@ -79,6 +102,7 @@ Server responses and Cloudflare static assets now include CSP, frame protection,
 - Founder/admin catalog and user operations require server-side founder checks.
 - Public catalog rows are intentionally public; contact and operational fields should be reviewed before adding future columns.
 - RLS is enabled on application tables and storage objects. The new migration removes direct authenticated role writes.
+- Authenticated order/order-item write grants are revoked; server-side order creation is the only application write path.
 
 ## API, injection, XSS, and CSRF
 

@@ -63,7 +63,6 @@ export async function assertFounder(
   throw new Error("İki adımlı doğrulama gerekli");
 }
 
-
 type BusinessVendorInput = {
   restaurantId: string;
   businessName: string;
@@ -87,7 +86,23 @@ export async function ensureBusinessVendorAccount(input: BusinessVendorInput): P
     .eq("restaurant_id", input.restaurantId)
     .maybeSingle();
   if (currentAssignmentError) throw new Error(currentAssignmentError.message);
-  if (currentAssignment) return;
+  let previousVendorUserId: string | null = null;
+  if (currentAssignment) {
+    const { data: currentUser } = await supabaseAdmin.auth.admin.getUserById(
+      currentAssignment.user_id,
+    );
+    if (currentUser.user?.email?.trim().toLowerCase() === email) {
+      const { error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .upsert(
+          { id: currentAssignment.user_id, phone, full_name: input.businessName },
+          { onConflict: "id" },
+        );
+      if (profileError) throw new Error(profileError.message);
+      return;
+    }
+    previousVendorUserId = currentAssignment.user_id;
+  }
 
   let matchedUserId: string | null = null;
   for (let page = 1; page <= 10 && !matchedUserId; page += 1) {
@@ -122,12 +137,24 @@ export async function ensureBusinessVendorAccount(input: BusinessVendorInput): P
     throw new Error("Bu e-posta başka bir işletme hesabına atanmış");
   }
 
+  if (previousVendorUserId && previousVendorUserId !== matchedUserId) {
+    const { error: revokeAssignmentError } = await supabaseAdmin
+      .from("vendor_assignments")
+      .delete()
+      .eq("restaurant_id", input.restaurantId)
+      .eq("user_id", previousVendorUserId);
+    if (revokeAssignmentError) throw new Error(revokeAssignmentError.message);
+    const { error: revokeRoleError } = await supabaseAdmin
+      .from("user_roles")
+      .delete()
+      .eq("user_id", previousVendorUserId)
+      .eq("role", "vendor");
+    if (revokeRoleError) throw new Error(revokeRoleError.message);
+  }
+
   const { error: profileError } = await supabaseAdmin
     .from("profiles")
-    .upsert(
-      { id: matchedUserId, phone, full_name: input.businessName },
-      { onConflict: "id" },
-    );
+    .upsert({ id: matchedUserId, phone, full_name: input.businessName }, { onConflict: "id" });
   if (profileError) throw new Error(profileError.message);
 
   const { error: roleError } = await supabaseAdmin
@@ -135,9 +162,11 @@ export async function ensureBusinessVendorAccount(input: BusinessVendorInput): P
     .upsert({ user_id: matchedUserId, role: "vendor" }, { onConflict: "user_id,role" });
   if (roleError) throw new Error(roleError.message);
 
-  const { error: assignmentError } = await supabaseAdmin.from("vendor_assignments").upsert(
-    { user_id: matchedUserId, restaurant_id: input.restaurantId },
-    { onConflict: "user_id" },
-  );
+  const { error: assignmentError } = await supabaseAdmin
+    .from("vendor_assignments")
+    .upsert(
+      { user_id: matchedUserId, restaurant_id: input.restaurantId },
+      { onConflict: "user_id" },
+    );
   if (assignmentError) throw new Error(assignmentError.message);
 }
