@@ -24,6 +24,7 @@ import { AppRealtimeBridge } from "@/hooks/useAppRealtime";
 import { ErrorCollector } from "@/components/system/ErrorCollector";
 import { AppErrorBoundary } from "@/components/system/AppErrorBoundary";
 import { publicEnvInlineScript } from "@/lib/public-env";
+import { TextPrefsProvider } from "@/hooks/useTextPrefs";
 
 function NotFoundComponent() {
   return (
@@ -193,25 +194,27 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AppErrorBoundary>
-        <AuthProvider>
-          <SiteSettingsProvider>
-            <CartProvider>
-              <AppErrorBoundary>
-                {standaloneChrome ? (
-                  <div className="min-h-screen">
-                    {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-                    <Outlet />
-                  </div>
-                ) : (
-                  <AppChrome />
-                )}
-              </AppErrorBoundary>
-              <AppRealtimeBridge />
-              <ErrorCollector />
-              <Toaster />
-            </CartProvider>
-          </SiteSettingsProvider>
-        </AuthProvider>
+        <TextPrefsProvider>
+          <AuthProvider>
+            <SiteSettingsProvider>
+              <CartProvider>
+                <AppErrorBoundary>
+                  {standaloneChrome ? (
+                    <div className="min-h-screen">
+                      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+                      <Outlet />
+                    </div>
+                  ) : (
+                    <AppChrome />
+                  )}
+                </AppErrorBoundary>
+                <AppRealtimeBridge />
+                <ErrorCollector />
+                <Toaster />
+              </CartProvider>
+            </SiteSettingsProvider>
+          </AuthProvider>
+        </TextPrefsProvider>
       </AppErrorBoundary>
     </QueryClientProvider>
   );

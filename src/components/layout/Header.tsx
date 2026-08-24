@@ -21,6 +21,7 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useAppCategories, useServiceAreas, areaLabel } from "@/hooks/useTaxonomy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TextPrefsPanel } from "@/components/layout/TextPrefsPanel";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -146,6 +147,7 @@ export function Header() {
         </form>
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
+          <TextPrefsPanel />
           <Button asChild variant="secondary" className="relative rounded-full">
             <Link to="/sepet">
               <ShoppingBag className="size-4" />

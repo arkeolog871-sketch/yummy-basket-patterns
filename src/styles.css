@@ -127,6 +127,12 @@
   );
   --gradient-warm: linear-gradient(120deg, oklch(0.762 0.156 54) 0%, oklch(0.648 0.196 30) 100%);
   --gradient-fade-up: linear-gradient(to top, oklch(0.22 0.03 50 / 0.88) 0%, oklch(0.22 0.03 50 / 0) 72%);
+
+  --app-font-size: 100%;
+  --app-text-color: var(--foreground);
+  --app-font-family: var(--font-sans);
+  --app-heading-family: var(--font-display);
+  --app-custom-text-color: var(--foreground);
 }
 
 .dark {
@@ -168,20 +174,53 @@
     border-color: var(--color-border);
   }
 
+  html {
+    font-size: var(--app-font-size, 100%);
+  }
+
   body {
     background-color: var(--color-background);
-    color: var(--color-foreground);
-    font-family: var(--font-sans);
+    color: var(--app-text-color, var(--color-foreground));
+    font-family: var(--app-font-family, var(--font-sans));
     -webkit-font-smoothing: antialiased;
+  }
+
+  p,
+  span,
+  li,
+  small,
+  label {
+    color: var(--app-text-color, inherit);
+    font-family: inherit;
   }
 
   h1,
   h2,
   h3,
-  h4 {
-    font-family: var(--font-display);
+  h4,
+  h5,
+  h6 {
+    font-family: var(--app-heading-family, var(--font-display));
     font-weight: 600;
     letter-spacing: -0.015em;
+    color: var(--app-text-color, var(--color-foreground));
+  }
+
+  html[data-app-contrast="high"] {
+    --app-text-color: oklch(0.18 0.02 62);
+    --foreground: oklch(0.18 0.02 62);
+    --muted-foreground: oklch(0.32 0.02 62);
+  }
+
+  html.dark[data-app-contrast="high"] {
+    --app-text-color: oklch(0.98 0.01 78);
+    --foreground: oklch(0.98 0.01 78);
+    --muted-foreground: oklch(0.86 0.02 78);
+  }
+
+  html[data-app-contrast="custom"] {
+    --app-text-color: var(--app-custom-text-color, var(--foreground));
+    --foreground: var(--app-custom-text-color, var(--foreground));
   }
 }
 
