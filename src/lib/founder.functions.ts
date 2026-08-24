@@ -148,13 +148,17 @@ const menuItemSchema = z.object({
 });
 
 export const getSiteSettings = createServerFn({ method: "GET" }).handler(async () => {
-  const { cachedPublicQuery } = await import("./public-cache.server");
-  return cachedPublicQuery("getSiteSettings", async () => {
-    const { createPublicClient } = await import("./catalog.server");
-    const { loadSiteSettingsRow } = await import("./site-settings-load");
-    const supabase = createPublicClient();
-    return loadSiteSettingsRow(supabase);
-  });
+  const { createPublicClient } = await import("./catalog.server");
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from("site_settings")
+    .select(
+      "id, brand_name, primary_color, accent_color, secondary_color, background_color, logo_url, favicon_url, banner_url, theme_mode, layout_variant, hero_badge, hero_title, hero_title_accent, hero_subtitle, maps_api_key, maps_allowed_referrers",
+    )
+    .eq("id", "global")
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data;
 });
 
 export const getFounderStatus = createServerFn({ method: "GET" })

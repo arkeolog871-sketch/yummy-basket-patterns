@@ -2,34 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-export const listAppCategories = createServerFn({ method: "GET" }).handler(async () => {
-  const { cachedPublicQuery } = await import("./public-cache.server");
-  return cachedPublicQuery("listAppCategories", async () => {
-    const { createPublicClient } = await import("./catalog.server");
-    const supabase = createPublicClient();
-    const { data, error } = await supabase
-      .from("app_categories")
-      .select("id, slug, label, icon, position, is_active")
-      .order("position");
-    if (error) throw new Error(error.message);
-    return data ?? [];
-  });
-});
-
-export const listServiceAreas = createServerFn({ method: "GET" }).handler(async () => {
-  const { cachedPublicQuery } = await import("./public-cache.server");
-  return cachedPublicQuery("listServiceAreas", async () => {
-    const { createPublicClient } = await import("./catalog.server");
-    const supabase = createPublicClient();
-    const { data, error } = await supabase
-      .from("service_areas")
-      .select("id, city, district, position, is_active")
-      .order("position");
-    if (error) throw new Error(error.message);
-    return data ?? [];
-  });
-});
-
 const categorySchema = z.object({
   id: z.string().uuid().optional(),
   slug: z
