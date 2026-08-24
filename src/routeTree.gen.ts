@@ -30,10 +30,12 @@ import { Route as AdminSplatRouteImport } from './routes/admin.$'
 import { Route as RestoranSlugRouteImport } from './routes/restoran.$slug'
 import { Route as SiparisIdRouteImport } from './routes/siparis.$id'
 import { Route as VendorDashboardRouteImport } from './routes/vendor.dashboard'
+import { Route as ApiV1BannersRouteImport } from './routes/api/v1/banners'
 import { Route as ApiPublicBrandSplatRouteImport } from './routes/api/public/brand.$'
 import { Route as ApiPublicMediaSplatRouteImport } from './routes/api/public/media.$'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
+import { Route as ApiV1BannersIdTrackRouteImport } from './routes/api/v1/banners.$id.track'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -140,6 +142,11 @@ const VendorDashboardRoute = VendorDashboardRouteImport.update({
   path: '/vendor/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1BannersRoute = ApiV1BannersRouteImport.update({
+  id: '/api/v1/banners',
+  path: '/api/v1/banners',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicBrandSplatRoute = ApiPublicBrandSplatRouteImport.update({
   id: '/api/public/brand/$',
   path: '/api/public/brand/$',
@@ -159,6 +166,11 @@ const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
   id: '/lovable/email/auth/webhook',
   path: '/lovable/email/auth/webhook',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1BannersIdTrackRoute = ApiV1BannersIdTrackRouteImport.update({
+  id: '/$id/track',
+  path: '/$id/track',
+  getParentRoute: () => ApiV1BannersRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -183,10 +195,12 @@ export interface FileRoutesByFullPath {
   '/siparis/$id': typeof SiparisIdRoute
   '/vendor/dashboard': typeof VendorDashboardRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/v1/banners': typeof ApiV1BannersRouteWithChildren
   '/api/public/brand/$': typeof ApiPublicBrandSplatRoute
   '/api/public/media/$': typeof ApiPublicMediaSplatRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
+  '/api/v1/banners/$id/track': typeof ApiV1BannersIdTrackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -210,10 +224,12 @@ export interface FileRoutesByTo {
   '/siparis/$id': typeof SiparisIdRoute
   '/vendor/dashboard': typeof VendorDashboardRoute
   '/admin': typeof AdminIndexRoute
+  '/api/v1/banners': typeof ApiV1BannersRouteWithChildren
   '/api/public/brand/$': typeof ApiPublicBrandSplatRoute
   '/api/public/media/$': typeof ApiPublicMediaSplatRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
+  '/api/v1/banners/$id/track': typeof ApiV1BannersIdTrackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -238,10 +254,12 @@ export interface FileRoutesById {
   '/siparis/$id': typeof SiparisIdRoute
   '/vendor/dashboard': typeof VendorDashboardRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/v1/banners': typeof ApiV1BannersRouteWithChildren
   '/api/public/brand/$': typeof ApiPublicBrandSplatRoute
   '/api/public/media/$': typeof ApiPublicMediaSplatRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
+  '/api/v1/banners/$id/track': typeof ApiV1BannersIdTrackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -267,10 +285,12 @@ export interface FileRouteTypes {
     | '/siparis/$id'
     | '/vendor/dashboard'
     | '/admin/'
+    | '/api/v1/banners'
     | '/api/public/brand/$'
     | '/api/public/media/$'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
+    | '/api/v1/banners/$id/track'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -294,10 +314,12 @@ export interface FileRouteTypes {
     | '/siparis/$id'
     | '/vendor/dashboard'
     | '/admin'
+    | '/api/v1/banners'
     | '/api/public/brand/$'
     | '/api/public/media/$'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
+    | '/api/v1/banners/$id/track'
   id:
     | '__root__'
     | '/'
@@ -321,10 +343,12 @@ export interface FileRouteTypes {
     | '/siparis/$id'
     | '/vendor/dashboard'
     | '/admin/'
+    | '/api/v1/banners'
     | '/api/public/brand/$'
     | '/api/public/media/$'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
+    | '/api/v1/banners/$id/track'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -349,6 +373,7 @@ export interface RootRouteChildren {
   SiparisIdRoute: typeof SiparisIdRoute
   VendorDashboardRoute: typeof VendorDashboardRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  ApiV1BannersRoute: typeof ApiV1BannersRouteWithChildren
   ApiPublicBrandSplatRoute: typeof ApiPublicBrandSplatRoute
   ApiPublicMediaSplatRoute: typeof ApiPublicMediaSplatRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
@@ -504,6 +529,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VendorDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/banners': {
+      id: '/api/v1/banners'
+      path: '/api/v1/banners'
+      fullPath: '/api/v1/banners'
+      preLoaderRoute: typeof ApiV1BannersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/brand/$': {
       id: '/api/public/brand/$'
       path: '/api/public/brand/$'
@@ -532,8 +564,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailAuthWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/banners/$id/track': {
+      id: '/api/v1/banners/$id/track'
+      path: '/$id/track'
+      fullPath: '/api/v1/banners/$id/track'
+      preLoaderRoute: typeof ApiV1BannersIdTrackRouteImport
+      parentRoute: typeof ApiV1BannersRoute
+    }
   }
 }
+
+interface ApiV1BannersRouteChildren {
+  ApiV1BannersIdTrackRoute: typeof ApiV1BannersIdTrackRoute
+}
+
+const ApiV1BannersRouteChildren: ApiV1BannersRouteChildren = {
+  ApiV1BannersIdTrackRoute: ApiV1BannersIdTrackRoute,
+}
+
+const ApiV1BannersRouteWithChildren = ApiV1BannersRoute._addFileChildren(
+  ApiV1BannersRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -557,6 +608,7 @@ const rootRouteChildren: RootRouteChildren = {
   SiparisIdRoute: SiparisIdRoute,
   VendorDashboardRoute: VendorDashboardRoute,
   AdminIndexRoute: AdminIndexRoute,
+  ApiV1BannersRoute: ApiV1BannersRouteWithChildren,
   ApiPublicBrandSplatRoute: ApiPublicBrandSplatRoute,
   ApiPublicMediaSplatRoute: ApiPublicMediaSplatRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,

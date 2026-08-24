@@ -59,6 +59,60 @@ export type Database = {
         }
         Relationships: []
       }
+      advertisements: {
+        Row: {
+          action_type: Database["public"]["Enums"]["advertisement_action_type"]
+          action_value: string
+          click_count: number
+          client_name: string
+          client_phone: string
+          created_at: string
+          display_order: number
+          end_date: string
+          id: string
+          image_url: string
+          impression_count: number
+          is_active: boolean
+          start_date: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          action_type?: Database["public"]["Enums"]["advertisement_action_type"]
+          action_value?: string
+          click_count?: number
+          client_name?: string
+          client_phone?: string
+          created_at?: string
+          display_order?: number
+          end_date?: string
+          id?: string
+          image_url: string
+          impression_count?: number
+          is_active?: boolean
+          start_date?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          action_type?: Database["public"]["Enums"]["advertisement_action_type"]
+          action_value?: string
+          click_count?: number
+          client_name?: string
+          client_phone?: string
+          created_at?: string
+          display_order?: number
+          end_date?: string
+          id?: string
+          image_url?: string
+          impression_count?: number
+          is_active?: boolean
+          start_date?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       app_categories: {
         Row: {
           created_at: string
@@ -762,6 +816,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      expire_stale_advertisements: { Args: Record<PropertyKey, never>; Returns: number }
+      get_active_banners: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          action_type: Database["public"]["Enums"]["advertisement_action_type"]
+          action_value: string
+          display_order: number
+          id: string
+          image_url: string
+          title: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -773,9 +839,14 @@ export type Database = {
         Args: { _restaurant_id: string; _user_id: string }
         Returns: boolean
       }
+      track_advertisement: {
+        Args: { p_id: string; p_type: string }
+        Returns: undefined
+      }
       vendor_restaurant_id: { Args: { _user_id: string }; Returns: string }
     }
     Enums: {
+      advertisement_action_type: "phone" | "internal_route" | "external_link"
       app_role: "admin" | "user" | "founder" | "vendor"
       order_status:
         | "pending"

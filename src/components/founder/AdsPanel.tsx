@@ -1,0 +1,562 @@
+import { useMemo, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
+import { Copy, ImageUp, Megaphone, Pencil, Plus, Trash2 } from "lucide-react";
+import { toPublicErrorMessage } from "@/lib/public-error";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
+import {
+  deleteAdvertisement,
+  listAdvertisements,
+  saveAdvertisement,
+  setAdvertisementActive,
+  uploadAdvertisementImage,
+} from "@/lib/advertisements.functions";
+import {
+  emptyAdvertisementDraft,
+  formatCtr,
+  fromDatetimeLocalValue,
+  isAdExpired,
+  isAdScheduled,
+  MAX_ADVERTISEMENTS,
+  toDatetimeLocalValue,
+  type AdActionType,
+  type Advertisement,
+} from "@/lib/advertisements";
+import { HeroBannerSlider } from "@/components/home/HeroBannerSlider";
+import { AdMedia } from "@/components/home/AdMedia";
+import { adImageTooLargeMessage, adImageTypeRejectedMessage, AD_MEDIA_ACCEPT, isAdMediaFile, MAX_AD_IMAGE_MB, MAX_AD_MEDIA_BYTES } from "@/lib/upload-limits";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+const ACTION_LABELS: Record<AdActionType, string> = {
+  phone: "Telefon",
+  internal_route: "Uygulama içi sayfa",
+  external_link: "Harici bağlantı",
+};
+
+type Draft = ReturnType<typeof emptyAdvertisementDraft> & { id?: string };
+
+function toDraft(ad?: Advertisement | null): Draft {
+  if (!ad) return emptyAdvertisementDraft();
+  const { id, title, client_name, client_phone, image_url, action_type, action_value, display_order, is_active, start_date, end_date } = ad;
+  return {
+    id,
+    title,
+    client_name,
+    client_phone,
+    image_url,
+    action_type,
+    action_value,
+    display_order,
+    is_active,
+    start_date,
+    end_date,
+  };
+}
+
+export function AdsPanel() {
+  const { isFounder } = useSiteSettings();
+  const queryClient = useQueryClient();
+  const listFn = useServerFn(listAdvertisements);
+  const saveFn = useServerFn(saveAdvertisement);
+  const toggleFn = useServerFn(setAdvertisementActive);
+  const deleteFn = useServerFn(deleteAdvertisement);
+  const uploadFn = useServerFn(uploadAdvertisementImage);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<Draft>(emptyAdvertisementDraft());
+  const [uploading, setUploading] = useState(false);
+
+  const query = useQuery({
+    queryKey: ["founder-advertisements"],
+    enabled: isFounder,
+    queryFn: () => listFn(),
+    retry: false,
+  });
+
+  const items = query.data?.items ?? [];
+  const schemaMissing = query.data?.schemaMissing === true;
+
+  const saveMutation = useMutation({
+    mutationFn: (values: Draft) =>
+      saveFn({
+        data: {
+          ...(values.id ? { id: values.id } : {}),
+          title: values.title,
+          client_name: values.client_name,
+          client_phone: values.client_phone,
+          image_url: values.image_url,
+          action_type: values.action_type,
+          action_value: values.action_value,
+          display_order: values.display_order,
+          is_active: values.is_active,
+          start_date: values.start_date,
+          end_date: values.end_date,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Reklam kaydedildi");
+      setOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ["founder-advertisements"] });
+      void queryClient.invalidateQueries({ queryKey: ["public-banners"] });
+    },
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: (input: { id: string; is_active: boolean }) => toggleFn({ data: input }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["founder-advertisements"] });
+      void queryClient.invalidateQueries({ queryKey: ["public-banners"] });
+    },
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteFn({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Reklam silindi");
+      void queryClient.invalidateQueries({ queryKey: ["founder-advertisements"] });
+      void queryClient.invalidateQueries({ queryKey: ["public-banners"] });
+    },
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
+  });
+
+  async function onUpload(file: File) {
+    if (!isAdMediaFile(file)) {
+      toast.error(adImageTypeRejectedMessage());
+      return;
+    }
+    if (file.size > MAX_AD_MEDIA_BYTES) {
+      toast.error(adImageTooLargeMessage());
+      return;
+    }
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const result = (await uploadFn({ data: form })) as { url?: string };
+      if (!result.url) throw new Error("Görsel adresi alınamadı");
+      setDraft((prev) => ({ ...prev, image_url: result.url as string }));
+      toast.success("Dosya yüklendi");
+    } catch (error) {
+      toast.error(toPublicErrorMessage(error));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const livePreview = useMemo(
+    () =>
+      items
+        .filter((ad) => ad.is_active && !isAdExpired(ad) && !isAdScheduled(ad) && ad.image_url)
+        .map((ad) => ({
+          id: ad.id,
+          title: ad.title,
+          image_url: ad.image_url,
+          action_type: ad.action_type,
+          action_value: ad.action_value,
+          display_order: ad.display_order,
+        })),
+    [items],
+  );
+
+  async function copySql() {
+    try {
+      const text = await fetch("/src/../supabase/migrations/20260824160000_advertisements.sql").then((r) =>
+        r.ok ? r.text() : Promise.reject(new Error("okunamadı")),
+      );
+      await navigator.clipboard.writeText(text);
+      toast.success("SQL kopyalandı");
+    } catch {
+      try {
+        await navigator.clipboard.writeText(
+          "supabase/migrations/20260824160000_advertisements.sql dosyasını SQL Editor’da çalıştırın; sonda NOTIFY pgrst, 'reload schema'; satırı vardır.",
+        );
+        toast.success("Dosya yolu kopyalandı");
+      } catch {
+        toast.error("Kopyalanamadı");
+      }
+    }
+  }
+
+  if (!isFounder) {
+    return (
+      <div className="rounded-3xl border border-border bg-card p-6">
+        <h2 className="text-xl">Reklam yönetimi</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Kayan reklam panosunu yalnızca kurucu hesaplar düzenleyebilir.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {schemaMissing ? (
+        <div className="rounded-3xl border border-dashed border-primary/40 bg-card p-6">
+          <h2 className="text-lg font-semibold">Şema SQL’si (bir kez)</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            `advertisements` tablosu henüz yok. Supabase SQL Editor’da{" "}
+            <code className="rounded bg-muted px-1">supabase/migrations/20260824160000_advertisements.sql</code>{" "}
+            dosyasını çalıştırın. Token gerekmez. Sonda{" "}
+            <code className="rounded bg-muted px-1">NOTIFY pgrst, 'reload schema'</code> şema önbelleğini yeniler.
+          </p>
+          <Button type="button" variant="outline" className="mt-3 rounded-full" onClick={() => void copySql()}>
+            <Copy className="size-4" />
+            Hatırlatmayı kopyala
+          </Button>
+        </div>
+      ) : null}
+
+      <div className="rounded-3xl border border-border bg-card p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Megaphone className="size-4 text-accent" />
+              <h2 className="text-xl">Kayan reklam / banner</h2>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Mobil `GET /api/v1/banners` yalnızca yayındaki slaytları döner. Metrikler `POST .../track` ile artar.
+              En fazla {MAX_ADVERTISEMENTS} kayıt önerilir.
+            </p>
+          </div>
+          <Button
+            type="button"
+            className="rounded-full"
+            disabled={items.length >= MAX_ADVERTISEMENTS}
+            onClick={() => {
+              setDraft(emptyAdvertisementDraft());
+              setOpen(true);
+            }}
+          >
+            <Plus className="size-4" />
+            Reklam ekle
+          </Button>
+        </div>
+
+        {livePreview.length > 0 ? (
+          <div className="mt-5">
+            <p className="mb-2 text-sm font-medium">Canlı önizleme (yayındaki slaytlar)</p>
+            <HeroBannerSlider banners={livePreview} />
+          </div>
+        ) : (
+          <p className="mt-5 rounded-2xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+            Şu an yayında slayt yok. Tarih aralığı içinde ve aktif olanlar ana sayfada görünür.
+          </p>
+        )}
+      </div>
+
+      <div className="overflow-hidden rounded-3xl border border-border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Reklam</TableHead>
+              <TableHead>Esnaf</TableHead>
+              <TableHead>Aksiyon</TableHead>
+              <TableHead>Tarih</TableHead>
+              <TableHead className="text-right">Gösterim</TableHead>
+              <TableHead className="text-right">Tıklama</TableHead>
+              <TableHead className="text-right">CTR</TableHead>
+              <TableHead>Durum</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
+                  {query.isLoading ? "Yükleniyor…" : "Henüz reklam yok."}
+                </TableCell>
+              </TableRow>
+            ) : (
+              items.map((ad) => {
+                const expired = isAdExpired(ad);
+                const scheduled = isAdScheduled(ad);
+                return (
+                  <TableRow key={ad.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="h-12 w-20 overflow-hidden rounded-lg border bg-muted">
+                          {ad.image_url ? (
+                            <AdMedia src={ad.image_url} className="size-full object-cover" />
+                          ) : null}
+                        </div>
+                        <div>
+                          <p className="font-medium">{ad.title}</p>
+                          <p className="text-[11px] text-muted-foreground">sıra {ad.display_order}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <p>{ad.client_name || "—"}</p>
+                      <p className="text-[11px] text-muted-foreground">{ad.client_phone || ""}</p>
+                    </TableCell>
+                    <TableCell>
+                      <p>{ACTION_LABELS[ad.action_type]}</p>
+                      <p className="max-w-[140px] truncate text-[11px] text-muted-foreground">{ad.action_value}</p>
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      <p>{new Date(ad.start_date).toLocaleString("tr-TR")}</p>
+                      <p className="text-muted-foreground">{new Date(ad.end_date).toLocaleString("tr-TR")}</p>
+                      {expired ? (
+                        <span className="mt-1 inline-flex rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-destructive">
+                          Süresi doldu
+                        </span>
+                      ) : scheduled ? (
+                        <span className="mt-1 inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold">
+                          Zamanlandı
+                        </span>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">{ad.impression_count}</TableCell>
+                    <TableCell className="text-right font-medium">{ad.click_count}</TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCtr(ad.impression_count, ad.click_count)}
+                    </TableCell>
+                    <TableCell>
+                      <Switch
+                        checked={ad.is_active && !expired}
+                        disabled={expired || toggleMutation.isPending}
+                        onCheckedChange={(is_active) => toggleMutation.mutate({ id: ad.id, is_active })}
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            setDraft(toDraft(ad));
+                            setOpen(true);
+                          }}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="text-destructive"
+                          onClick={() => {
+                            if (window.confirm("Bu reklam silinsin mi?")) deleteMutation.mutate(ad.id);
+                          }}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{draft.id ? "Reklamı düzenle" : "Yeni reklam"}</DialogTitle>
+          </DialogHeader>
+          <AdForm
+            draft={draft}
+            setDraft={setDraft}
+            uploading={uploading}
+            fileRef={fileRef}
+            onUpload={onUpload}
+            onSubmit={() => saveMutation.mutate(draft)}
+            pending={saveMutation.isPending}
+          />
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function AdForm({
+  draft,
+  setDraft,
+  uploading,
+  fileRef,
+  onUpload,
+  onSubmit,
+  pending,
+}: {
+  draft: Draft;
+  setDraft: (next: Draft) => void;
+  uploading: boolean;
+  fileRef: React.RefObject<HTMLInputElement | null>;
+  onUpload: (file: File) => void;
+  onSubmit: () => void;
+  pending: boolean;
+}) {
+  const patch = (partial: Partial<Draft>) => setDraft({ ...draft, ...partial });
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit();
+      }}
+    >
+      <div>
+        <Label htmlFor="ad-title">Başlık</Label>
+        <Input
+          id="ad-title"
+          value={draft.title}
+          maxLength={120}
+          required
+          onChange={(event) => patch({ title: event.target.value })}
+          className="mt-1"
+        />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <Label htmlFor="ad-client">Advertisör / esnaf adı</Label>
+          <Input
+            id="ad-client"
+            value={draft.client_name}
+            maxLength={80}
+            onChange={(event) => patch({ client_name: event.target.value })}
+            className="mt-1"
+          />
+        </div>
+        <div>
+          <Label htmlFor="ad-phone">Esnaf telefonu</Label>
+          <Input
+            id="ad-phone"
+            value={draft.client_phone}
+            inputMode="tel"
+            onChange={(event) => patch({ client_phone: event.target.value })}
+            className="mt-1"
+          />
+        </div>
+      </div>
+      <div>
+        <Label>Görsel veya video (PNG, JPEG, MP4, MOV, WEBM… en fazla {MAX_AD_IMAGE_MB} MB, 16:9 veya 3:1)</Label>
+        <div className="mt-1.5 flex items-center gap-3">
+          <div className="h-16 w-28 overflow-hidden rounded-xl border bg-muted">
+            {draft.image_url ? <AdMedia src={draft.image_url} className="size-full object-cover" /> : null}
+          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept={AD_MEDIA_ACCEPT}
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (file) onUpload(file);
+            }}
+          />
+          <Button type="button" variant="outline" className="rounded-full" disabled={uploading} onClick={() => fileRef.current?.click()}>
+            <ImageUp className="size-4" />
+            {uploading ? "Yükleniyor…" : "Dosya yükle"}
+          </Button>
+        </div>
+        <Input
+          className="mt-2"
+          placeholder="veya görsel / video URL"
+          value={draft.image_url}
+          onChange={(event) => patch({ image_url: event.target.value })}
+        />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <Label htmlFor="ad-action">Tıklama aksiyonu</Label>
+          <select
+            id="ad-action"
+            className="mt-1 h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            value={draft.action_type}
+            onChange={(event) => patch({ action_type: event.target.value as AdActionType })}
+          >
+            <option value="phone">Telefon ara</option>
+            <option value="internal_route">Uygulama içi sayfa</option>
+            <option value="external_link">Harici bağlantı</option>
+          </select>
+        </div>
+        <div>
+          <Label htmlFor="ad-target">Hedef</Label>
+          <Input
+            id="ad-target"
+            value={draft.action_value}
+            placeholder={
+              draft.action_type === "phone"
+                ? "+90…"
+                : draft.action_type === "external_link"
+                  ? "https://"
+                  : "/restoranlar"
+            }
+            onChange={(event) => patch({ action_value: event.target.value })}
+            className="mt-1"
+          />
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <Label htmlFor="ad-start">Yayın başlangıcı</Label>
+          <Input
+            id="ad-start"
+            type="datetime-local"
+            value={toDatetimeLocalValue(draft.start_date)}
+            onChange={(event) => patch({ start_date: fromDatetimeLocalValue(event.target.value) })}
+            className="mt-1"
+          />
+        </div>
+        <div>
+          <Label htmlFor="ad-end">Yayın bitişi</Label>
+          <Input
+            id="ad-end"
+            type="datetime-local"
+            value={toDatetimeLocalValue(draft.end_date)}
+            onChange={(event) => patch({ end_date: fromDatetimeLocalValue(event.target.value) })}
+            className="mt-1"
+          />
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <Label htmlFor="ad-order">Gösterim sırası</Label>
+          <Input
+            id="ad-order"
+            type="number"
+            min={0}
+            max={9999}
+            value={draft.display_order}
+            onChange={(event) => patch({ display_order: Number(event.target.value) || 0 })}
+            className="mt-1"
+          />
+        </div>
+        <div className="flex items-end justify-between rounded-xl border px-3 py-2">
+          <div>
+            <p className="text-sm font-medium">Yayında</p>
+            <p className="text-[11px] text-muted-foreground">Tarihi dolanlar otomatik pasif</p>
+          </div>
+          <Switch checked={draft.is_active} onCheckedChange={(is_active) => patch({ is_active })} />
+        </div>
+      </div>
+      <Button type="submit" className="w-full rounded-full" disabled={pending || !draft.image_url || !draft.title}>
+        {pending ? "Kaydediliyor…" : "Kaydet"}
+      </Button>
+    </form>
+  );
+}

@@ -1,10 +1,12 @@
 import { createFileRoute, useNavigate, ClientOnly } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useState, Suspense, lazy } from "react";
 import { Search, Clock, ShieldCheck, Sparkles } from "lucide-react";
 import { RestaurantCard } from "@/components/restaurant/RestaurantCard";
 import { homeQuery, type HomeSearch } from "@/lib/catalog.queries";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { fetchPublicBanners } from "@/lib/advertisements";
+import { HeroBannerSlider, legacySlidesToBanners } from "@/components/home/HeroBannerSlider";
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,8 +62,20 @@ function Index() {
   const { settings, hero } = useSiteSettings();
   const { categories } = useAppCategories();
   const { data: results } = useSuspenseQuery(homeQuery(search));
+  const bannersQuery = useQuery({
+    queryKey: ["public-banners"],
+    queryFn: fetchPublicBanners,
+    retry: false,
+    staleTime: 30_000,
+  });
   const [term, setTerm] = useState(search.q ?? "");
   const activeSector = search.kategori;
+  const bannerSlides =
+    bannersQuery.data && bannersQuery.data.length > 0
+      ? bannersQuery.data
+      : settings.banner_url
+        ? legacySlidesToBanners([{ id: "banner", title: "", imageUrl: settings.banner_url, href: "/" }])
+        : [];
 
   useEffect(() => setTerm(search.q ?? ""), [search.q]);
 
@@ -80,7 +94,14 @@ function Index() {
     <div>
       <section className="bg-gradient-hero">
         <div className="mx-auto w-full max-w-6xl px-4 py-14 lg:py-20">
-          <div>
+          <div
+            className={
+              bannerSlides.length > 0
+                ? "grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]"
+                : undefined
+            }
+          >
+            <div className={bannerSlides.length > 0 ? "order-2 lg:order-1" : undefined}>
             <span className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1 text-xs font-semibold text-muted-foreground">
               <Sparkles className="size-3.5" /> {results.length} {hero.hero_badge}
             </span>
@@ -125,6 +146,12 @@ function Index() {
                 <ShieldCheck className="size-4" /> Güvenli ödeme
               </span>
             </div>
+            </div>
+            {bannerSlides.length > 0 ? (
+              <div className="order-1 lg:order-2">
+                <HeroBannerSlider banners={bannerSlides} />
+              </div>
+            ) : null}
           </div>
         </div>
       </section>

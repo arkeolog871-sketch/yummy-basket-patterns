@@ -6,6 +6,19 @@ const EXTENSIONS: Record<string, string> = {
   "image/jpg": "jpg",
   "image/webp": "webp",
   "image/avif": "avif",
+  "image/gif": "gif",
+  "image/bmp": "bmp",
+  "image/svg+xml": "svg",
+  "image/x-icon": "ico",
+  "image/vnd.microsoft.icon": "ico",
+  "video/mp4": "mp4",
+  "video/webm": "webm",
+  "video/quicktime": "mov",
+};
+
+export type SniffedImage = {
+  contentType: string;
+  extension: string;
 };
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
@@ -30,33 +43,157 @@ export function decodeValidatedImage(
   }
 
   const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-  const isPng =
+  assertImageMagic(bytes, contentType);
+  return bytes;
+}
+
+function ascii(bytes: Uint8Array, start: number, length: number): string {
+  return String.fromCharCode(...bytes.slice(start, start + length));
+}
+
+function isPng(bytes: Uint8Array): boolean {
+  return (
     bytes.length >= 8 &&
-    bytes.slice(0, 8).every((byte, i) => byte === [137, 80, 78, 71, 13, 10, 26, 10][i]);
-  const isJpeg = bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
-  const isWebp =
-    bytes.length >= 12 &&
-    String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" &&
-    String.fromCharCode(...bytes.slice(8, 12)) === "WEBP";
-  const isAvif =
-    bytes.length >= 12 &&
-    String.fromCharCode(...bytes.slice(4, 8)) === "ftyp" &&
-    ["avif", "avis"].includes(String.fromCharCode(...bytes.slice(8, 12)));
-  const isIco =
+    bytes.slice(0, 8).every((byte, i) => byte === [137, 80, 78, 71, 13, 10, 26, 10][i])
+  );
+}
+
+function isJpeg(bytes: Uint8Array): boolean {
+  return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+}
+
+function isWebp(bytes: Uint8Array): boolean {
+  return bytes.length >= 12 && ascii(bytes, 0, 4) === "RIFF" && ascii(bytes, 8, 4) === "WEBP";
+}
+
+function isGif(bytes: Uint8Array): boolean {
+  if (bytes.length < 6) return false;
+  const header = ascii(bytes, 0, 6);
+  return header === "GIF87a" || header === "GIF89a";
+}
+
+function isBmp(bytes: Uint8Array): boolean {
+  return bytes.length >= 2 && bytes[0] === 0x42 && bytes[1] === 0x4d;
+}
+
+function isIco(bytes: Uint8Array): boolean {
+  return (
     bytes.length >= 4 &&
     bytes[0] === 0 &&
     bytes[1] === 0 &&
     (bytes[2] === 1 || bytes[2] === 2) &&
-    bytes[3] === 0;
+    bytes[3] === 0
+  );
+}
 
+function ftypBrand(bytes: Uint8Array): string {
+  if (bytes.length < 12 || ascii(bytes, 4, 4) !== "ftyp") return "";
+  return ascii(bytes, 8, 4).toLowerCase();
+}
+
+function isAvif(bytes: Uint8Array): boolean {
+  return ["avif", "avis"].includes(ftypBrand(bytes));
+}
+
+function isHeif(bytes: Uint8Array): boolean {
+  return ["heic", "heix", "heif", "heis", "mif1", "msf1"].includes(ftypBrand(bytes));
+}
+
+const IMAGE_FTYP = new Set(["avif", "avis", "heic", "heix", "heif", "heis", "mif1", "msf1"]);
+
+function isWebm(bytes: Uint8Array): boolean {
+  if (bytes.length < 4 || bytes[0] !== 0x1a || bytes[1] !== 0x45 || bytes[2] !== 0xdf || bytes[3] !== 0xa3) {
+    return false;
+  }
+  const head = ascii(bytes, 0, Math.min(bytes.length, 80)).toLowerCase();
+  if (head.includes("matroska") && !head.includes("webm")) return false;
+  return true;
+}
+
+function sniffVideo(bytes: Uint8Array): SniffedImage | null {
+  if (isWebm(bytes)) return { contentType: "video/webm", extension: "webm" };
+  const brand = ftypBrand(bytes);
+  if (!brand || IMAGE_FTYP.has(brand)) return null;
+  if (brand === "qt  ") return { contentType: "video/quicktime", extension: "mov" };
+  return { contentType: "video/mp4", extension: "mp4" };
+}
+
+function sniffRasterImage(bytes: Uint8Array): SniffedImage | null {
+  if (isPng(bytes)) return { contentType: "image/png", extension: "png" };
+  if (isJpeg(bytes)) return { contentType: "image/jpeg", extension: "jpg" };
+  if (isWebp(bytes)) return { contentType: "image/webp", extension: "webp" };
+  if (isGif(bytes)) return { contentType: "image/gif", extension: "gif" };
+  if (isAvif(bytes)) return { contentType: "image/avif", extension: "avif" };
+  if (isBmp(bytes)) return { contentType: "image/bmp", extension: "bmp" };
+  if (isIco(bytes)) return { contentType: "image/x-icon", extension: "ico" };
+  return null;
+}
+
+function sanitizeSvgBytes(bytes: Uint8Array, maxBytes: number): Uint8Array {
+  let text: string;
+  try {
+    text = new TextDecoder().decode(bytes);
+  } catch {
+    throw new Error("SVG verisi geçersiz.");
+  }
+  if (
+    text.length === 0 ||
+    text.length > maxBytes ||
+    !/<svg[\s>]/i.test(text) ||
+    /<script[\s>]|on[a-z]+\s*=|javascript:|data:text\/html|<foreignObject/i.test(text)
+  ) {
+    throw new Error("Güvenli olmayan SVG reddedildi.");
+  }
+  return Uint8Array.from(new TextEncoder().encode(text));
+}
+
+function looksLikeSvg(bytes: Uint8Array): boolean {
+  const head = new TextDecoder("utf-8", { fatal: false }).decode(bytes.slice(0, Math.min(bytes.length, 512)));
+  return /<svg[\s>]/i.test(head) || /<\?xml[\s\S]{0,200}<svg[\s>]/i.test(head);
+}
+
+/** Detects images plus MP4 / MOV / WEBM from file bytes. Stores HTML5 MIME types. */
+export function prepareAdMediaBytes(
+  bytes: Uint8Array,
+  maxBytes: number,
+): { bytes: Uint8Array; contentType: string; extension: string } {
+  if (bytes.length === 0 || bytes.length > maxBytes) {
+    throw new Error("Dosya boyutu izin verilen sınırı aşıyor.");
+  }
+  if (isHeif(bytes)) {
+    throw new Error("HEIC/HEIF tarayıcıda açılamaz. PNG, JPEG, WebP, GIF, AVIF, MP4, MOV veya WEBM kullanın.");
+  }
+  const raster = sniffRasterImage(bytes);
+  if (raster) return { bytes, contentType: raster.contentType, extension: raster.extension };
+  const video = sniffVideo(bytes);
+  if (video) return { bytes, contentType: video.contentType, extension: video.extension };
+  if (looksLikeSvg(bytes)) {
+    return {
+      bytes: sanitizeSvgBytes(bytes, maxBytes),
+      contentType: "image/svg+xml",
+      extension: "svg",
+    };
+  }
+  throw new Error("Desteklenmeyen dosya formatı");
+}
+
+export function prepareAdImageBytes(
+  bytes: Uint8Array,
+  maxBytes: number,
+): { bytes: Uint8Array; contentType: string; extension: string } {
+  return prepareAdMediaBytes(bytes, maxBytes);
+}
+
+function assertImageMagic(bytes: Uint8Array, contentType: string): void {
   const valid =
-    (contentType === "image/png" && isPng) ||
-    ((contentType === "image/jpeg" || contentType === "image/jpg") && isJpeg) ||
-    (contentType === "image/webp" && isWebp) ||
-    (contentType === "image/avif" && isAvif) ||
-    ((contentType === "image/x-icon" || contentType === "image/vnd.microsoft.icon") && isIco);
+    (contentType === "image/png" && isPng(bytes)) ||
+    ((contentType === "image/jpeg" || contentType === "image/jpg") && isJpeg(bytes)) ||
+    (contentType === "image/webp" && isWebp(bytes)) ||
+    (contentType === "image/gif" && isGif(bytes)) ||
+    (contentType === "image/avif" && isAvif(bytes)) ||
+    (contentType === "image/bmp" && isBmp(bytes)) ||
+    ((contentType === "image/x-icon" || contentType === "image/vnd.microsoft.icon") && isIco(bytes));
   if (!valid) throw new Error("Görsel içeriği türüyle eşleşmiyor.");
-  return bytes;
 }
 
 export function decodeValidatedBrandImage(base64: string, contentType: string): Uint8Array {
