@@ -25,6 +25,7 @@ import {
 } from "@/lib/advertisements";
 import { HeroBannerSlider } from "@/components/home/HeroBannerSlider";
 import { AdMedia } from "@/components/home/AdMedia";
+import { ADVERTISEMENTS_SETUP_SQL } from "@/lib/advertisements-setup-sql";
 import {
   adImageTooLargeMessage,
   adImageTypeRejectedMessage,
@@ -214,20 +215,10 @@ export function AdsPanel() {
 
   async function copySql() {
     try {
-      const text = await fetch("/src/../supabase/migrations/20260824160000_advertisements.sql").then((r) =>
-        r.ok ? r.text() : Promise.reject(new Error("okunamadı")),
-      );
-      await navigator.clipboard.writeText(text);
-      toast.success("SQL kopyalandı");
+      await navigator.clipboard.writeText(ADVERTISEMENTS_SETUP_SQL);
+      toast.success("SQL kopyalandı — SQL Editor’a yapıştırıp çalıştırın");
     } catch {
-      try {
-        await navigator.clipboard.writeText(
-          "supabase/migrations/20260824160000_advertisements.sql dosyasını SQL Editor’da çalıştırın; sonda NOTIFY pgrst, 'reload schema'; satırı vardır.",
-        );
-        toast.success("Dosya yolu kopyalandı");
-      } catch {
-        toast.error("Kopyalanamadı");
-      }
+      toast.error("Kopyalanamadı; aşağıdaki kutudaki metni seçin");
     }
   }
 
@@ -248,14 +239,22 @@ export function AdsPanel() {
         <div className="rounded-3xl border border-dashed border-primary/40 bg-card p-6">
           <h2 className="text-lg font-semibold">Şema SQL’si (bir kez)</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            `advertisements` tablosu henüz yok. Supabase SQL Editor’da{" "}
-            <code className="rounded bg-muted px-1">supabase/migrations/20260824160000_advertisements.sql</code>{" "}
-            dosyasını çalıştırın. Token gerekmez. Sonda{" "}
-            <code className="rounded bg-muted px-1">NOTIFY pgrst, 'reload schema'</code> şema önbelleğini yeniler.
+            `banners` kovası yetmez. `advertisements` tablosu ve `get_active_banners` fonksiyonu bu projede yok.
+            Supabase → SQL Editor’da aşağıdaki metnin tamamını yapıştırıp çalıştırın. Token gerekmez. Sonda{" "}
+            <code className="rounded bg-muted px-1">NOTIFY pgrst, 'reload schema'</code> önbelleği yeniler. Sonra bu
+            sekmeyi yenileyin.
           </p>
+          <textarea
+            readOnly
+            value={ADVERTISEMENTS_SETUP_SQL}
+            rows={12}
+            className="mt-3 w-full resize-y rounded-xl border border-border bg-muted/40 p-3 font-mono text-[11px] leading-relaxed"
+            onFocus={(event) => event.currentTarget.select()}
+            aria-label="Advertisements kurulum SQL"
+          />
           <Button type="button" variant="outline" className="mt-3 rounded-full" onClick={() => void copySql()}>
             <Copy className="size-4" />
-            Hatırlatmayı kopyala
+            SQL’i kopyala
           </Button>
         </div>
       ) : null}
@@ -276,7 +275,7 @@ export function AdsPanel() {
           <Button
             type="button"
             className="rounded-full"
-            disabled={items.length >= MAX_ADVERTISEMENTS}
+            disabled={schemaMissing || items.length >= MAX_ADVERTISEMENTS}
             onClick={() => {
               clearLocalPreview();
               setDraft(emptyAdvertisementDraft());
