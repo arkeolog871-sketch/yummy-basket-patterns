@@ -1,54 +1,14 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { siteSettingsQuery } from "@/lib/catalog.queries";
+import { getSiteSettings } from "@/lib/founder.functions";
+import { DEFAULT_HERO, DEFAULT_SETTINGS } from "@/lib/site-settings-load";
 
-export type SiteSettings = {
-  id: string;
-  brand_name: string;
-  primary_color: string;
-  accent_color: string;
-  secondary_color: string;
-  background_color: string;
-  logo_url: string | null;
-  favicon_url: string | null;
-  banner_url: string | null;
-  theme_mode: string;
-  layout_variant: string;
-  maps_api_key?: string | null;
-  maps_allowed_referrers?: string | null;
-};
-
-export type HeroContent = {
-  hero_badge: string;
-  hero_title: string;
-  hero_title_accent: string;
-  hero_subtitle: string;
-};
-
-export const DEFAULT_SETTINGS: SiteSettings = {
-  id: "global",
-  brand_name: "SİLVAN CEBİMDE",
-  primary_color: "#ff8c42",
-  accent_color: "#e63946",
-  secondary_color: "#ffe9d6",
-  background_color: "#fff8f0",
-  logo_url: null,
-  favicon_url: null,
-  banner_url: null,
-  theme_mode: "light",
-  layout_variant: "classic",
-  maps_api_key: null,
-  maps_allowed_referrers: null,
-};
-
-export const DEFAULT_HERO: HeroContent = {
-  hero_badge: "işletme, dakikalar içinde kapınızda",
-  hero_title: "Mahalleniz hazır,",
-  hero_title_accent: "kapınıza geliyor",
-  hero_subtitle:
-    "Yemek, restoran, kafe, eğlence, market ve giyim: mahallenizdeki tüm işletmeler tek uygulamada.",
-};
+export type SiteSettings = typeof DEFAULT_SETTINGS;
+export type HeroContent = typeof DEFAULT_HERO;
+export { DEFAULT_SETTINGS, DEFAULT_HERO };
 
 type SiteSettingsContextValue = {
   settings: SiteSettings;
@@ -66,32 +26,28 @@ const SiteSettingsContext = createContext<SiteSettingsContextValue>({
   refresh: () => {},
 });
 
+function mergeSettings(row: Record<string, unknown> | null | undefined): SiteSettings & HeroContent {
+  return { ...DEFAULT_SETTINGS, ...DEFAULT_HERO, ...(row ?? {}) } as SiteSettings & HeroContent;
+}
+
 export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => setHydrated(true), []);
 
   const settingsQuery = useQuery({
-    queryKey: ["site-settings"],
-    enabled: hydrated,
-    queryFn: async (): Promise<SiteSettings & HeroContent> => {
-      const { data, error } = await supabase
-        .from("site_settings")
-        .select(
-          "id, brand_name, primary_color, accent_color, secondary_color, background_color, logo_url, favicon_url, banner_url, theme_mode, layout_variant, hero_badge, hero_title, hero_title_accent, hero_subtitle",
-        )
-        .eq("id", "global")
-        .maybeSingle();
-      if (error) throw new Error(error.message);
-      return { ...DEFAULT_SETTINGS, ...DEFAULT_HERO, ...((data ?? {}) as Record<string, unknown>) } as SiteSettings & HeroContent;
+    ...siteSettingsQuery,
+    queryFn: async () => {
+      try {
+        return await getSiteSettings();
+      } catch {
+        return mergeSettings(null);
+      }
     },
   });
 
   const rolesQuery = useQuery({
     queryKey: ["my-roles", user?.id ?? "anon"],
-    enabled: hydrated && Boolean(user),
+    enabled: Boolean(user),
     queryFn: async () => {
       const [own, founders] = await Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", user!.id),
@@ -108,7 +64,8 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  const settings = settingsQuery.data ?? DEFAULT_SETTINGS;
+  const merged = mergeSettings(settingsQuery.data as Record<string, unknown> | null);
+  const settings: SiteSettings = merged;
 
   useEffect(() => {
     const root = document.documentElement;
@@ -144,11 +101,10 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
       value={{
         settings,
         hero: {
-          hero_badge: settingsQuery.data?.hero_badge ?? DEFAULT_HERO.hero_badge,
-          hero_title: settingsQuery.data?.hero_title ?? DEFAULT_HERO.hero_title,
-          hero_title_accent:
-            settingsQuery.data?.hero_title_accent ?? DEFAULT_HERO.hero_title_accent,
-          hero_subtitle: settingsQuery.data?.hero_subtitle ?? DEFAULT_HERO.hero_subtitle,
+          hero_badge: merged.hero_badge ?? DEFAULT_HERO.hero_badge,
+          hero_title: merged.hero_title ?? DEFAULT_HERO.hero_title,
+          hero_title_accent: merged.hero_title_accent ?? DEFAULT_HERO.hero_title_accent,
+          hero_subtitle: merged.hero_subtitle ?? DEFAULT_HERO.hero_subtitle,
         },
         isFounder: rolesQuery.data?.isFounder ?? false,
         founderExists: rolesQuery.data?.founderExists ?? true,

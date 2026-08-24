@@ -43,6 +43,15 @@ function redactDetail(value: unknown, key = ""): unknown {
   return value;
 }
 
+const PUBLIC_CACHE_ENTITIES = new Set([
+  "restaurants",
+  "menu_items",
+  "menu_categories",
+  "site_settings",
+  "app_categories",
+  "service_areas",
+]);
+
 export async function logAudit(entry: AuditEntry): Promise<void> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -57,6 +66,10 @@ export async function logAudit(entry: AuditEntry): Promise<void> {
         JSON.stringify(redactDetail({ ...requestMeta(), ...(entry.detail ?? {}) })),
       ) as Record<string, string | number | boolean | null>,
     });
+    if ((entry.status ?? "success") === "success" && PUBLIC_CACHE_ENTITIES.has(entry.entity)) {
+      const { invalidatePublicCaches } = await import("./public-cache.server");
+      invalidatePublicCaches();
+    }
   } catch (error) {
     // Denetim kaydı yazılamazsa asıl işlemi bozmuyoruz.
     console.error("[audit] kayıt yazılamadı", error);

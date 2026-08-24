@@ -22,6 +22,8 @@ import { IosHomeScreenGuide } from "@/components/iphone/IosHomeScreenGuide";
 import { Toaster } from "@/components/ui/sonner";
 import { AppRealtimeBridge } from "@/hooks/useAppRealtime";
 import { ErrorCollector } from "@/components/system/ErrorCollector";
+import { appCategoriesQuery, serviceAreasQuery, siteSettingsQuery } from "@/lib/catalog.queries";
+import { publicEnvInlineScript } from "@/lib/public-env";
 
 function NotFoundComponent() {
   return (
@@ -82,6 +84,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  loader: async ({ context }) => {
+    await Promise.allSettled([
+      context.queryClient.ensureQueryData(siteSettingsQuery),
+      context.queryClient.ensureQueryData(appCategoriesQuery),
+      context.queryClient.ensureQueryData(serviceAreasQuery),
+    ]);
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -131,6 +140,10 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="tr">
       <head>
+        <script
+          dangerouslySetInnerHTML={{ __html: publicEnvInlineScript() }}
+          suppressHydrationWarning
+        />
         <HeadContent />
       </head>
       <body>
