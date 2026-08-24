@@ -367,10 +367,11 @@ export const saveBusiness = createServerFn({ method: "POST" })
           detail: { name: values.name, slug: values.slug, category: values.category },
         },
         async () => {
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const businessId = id ?? crypto.randomUUID();
           const { error } = id
-            ? await context.supabase.from("restaurants").update(values).eq("id", id)
-            : await context.supabase.from("restaurants").insert({ ...values, id: businessId });
+            ? await supabaseAdmin.from("restaurants").update(values).eq("id", id)
+            : await supabaseAdmin.from("restaurants").insert({ ...values, id: businessId });
           if (error) throw new Error(error.message);
           await ensureBusinessVendorAccount({
             restaurantId: businessId,

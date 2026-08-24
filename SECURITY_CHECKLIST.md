@@ -26,6 +26,10 @@ Legend: `[PASS]` verified or implemented, `[WARNING]` requires deployment/archit
 - [PASS] Direct authenticated order and order-item writes are revoked; server-side order creation recomputes totals.
 - [PASS] Vendor reassignment revokes the previous vendor assignment and vendor role.
 - [PASS] Anonymous catalog reads omit `stock_quantity`.
+- [PASS] Authenticated catalog reads omit `stock_quantity`; authorized dashboards use the server-only client.
+- [PASS] Vendor restaurant updates are limited to `is_open_manual`, `logo_url`, and `cover_image_url`.
+- [PASS] Backup-code hashes are not readable through the authenticated PostgREST role.
+- [PASS] Backup-code redemption uses a conditional unused-row update.
 - [WARNING] Review future schema columns before adding them to public `SELECT` lists.
 
 ## API security
@@ -39,6 +43,8 @@ Legend: `[PASS]` verified or implemented, `[WARNING]` requires deployment/archit
 - [PASS] Generic public error responses avoid stack/database/secret leakage.
 - [WARNING] Configure Cloudflare edge request/body limits and WAF rules.
 - [WARNING] OTP database counters still need atomic increment/RPC semantics for concurrent attack traffic.
+- [WARNING] Vendor login should use indistinguishable responses for existing and unknown identifiers.
+- [WARNING] Order stock reservation/idempotency still needs a transaction-backed RPC.
 
 ## Injection and browser security
 

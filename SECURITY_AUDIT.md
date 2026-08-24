@@ -92,6 +92,7 @@ Server responses and Cloudflare static assets now include CSP, frame protection,
 - The browser Supabase client currently persists sessions in `localStorage`. This remains a **WARNING**: XSS would expose a browser session. A full HttpOnly-cookie migration requires adopting server-managed Supabase SSR sessions and should be planned before high-risk production use.
 - Supabase Auth's built-in password-login and reset throttles remain relied upon for direct browser Auth API calls.
 - The database OTP counters use read/upsert operations and can still be contended under concurrent requests. The in-memory IP limiter reduces abuse, but atomic database increment/RPC and edge rate rules should be added for high-volume production traffic.
+- Vendor login responses still need a single indistinguishable response for known and unknown identifiers to fully remove account-enumeration timing/content differences.
 
 ## Authorization, RBAC, and IDOR/BOLA
 
@@ -103,6 +104,9 @@ Server responses and Cloudflare static assets now include CSP, frame protection,
 - Public catalog rows are intentionally public; contact and operational fields should be reviewed before adding future columns.
 - RLS is enabled on application tables and storage objects. The new migration removes direct authenticated role writes.
 - Authenticated order/order-item write grants are revoked; server-side order creation is the only application write path.
+- Authenticated clients receive only public menu columns; stock is available only to authorized server-side dashboards.
+- Vendor restaurant updates are limited to storefront operation/logo columns; founder catalog writes use the server-only client.
+- Backup-code status and redemption use the server-only client, and redemption is conditional on `used_at IS NULL`.
 
 ## API, injection, XSS, and CSRF
 
@@ -137,6 +141,8 @@ Remaining:
 3. Add Turnstile to registration, password reset, and suspicious login attempts. Keep `TURNSTILE_SECRET_KEY` backend-only.
 4. Confirm HTTPS-only mode and HSTS behavior on the actual custom domain.
 5. Configure upload and request-size limits at the edge.
+6. Configure an atomic OTP counter RPC and a database transaction/idempotency key for stock/order creation.
+7. Ensure rate-limit failures fail closed for security-critical flows and strip forwarded-IP headers at the trusted edge.
 
 ## Production deployment checklist
 
