@@ -8,11 +8,6 @@ import {
   blockedProbeResponse,
   isBlockedProbe,
 } from "./lib/security-wall.server";
-import {
-  isCacheablePublicGet,
-  serveCachedPublicHtml,
-  SsrBusyError,
-} from "./lib/public-cache.server";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -62,46 +57,14 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
-function serviceBusyResponse(): Response {
-  return applySecurityHeaders(
-    new Response(renderErrorPage(), {
-      status: 503,
-      headers: {
-        "content-type": "text/html; charset=utf-8",
-        "retry-after": "2",
-        "cache-control": "no-store",
-      },
-    }),
-  );
-}
-
-async function renderRequest(request: Request, env: unknown, ctx: unknown): Promise<Response> {
-  try {
-    const handler = await getServerEntry();
-    const response = await handler.fetch(request, env, ctx);
-    return applySecurityHeaders(await normalizeCatastrophicSsrResponse(response, request));
-  } catch (error) {
-    if (error instanceof SsrBusyError) return serviceBusyResponse();
-    console.error(error);
-    return applySecurityHeaders(
-      new Response(renderErrorPage(), {
-        status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
-      }),
-    );
-  }
-}
-
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     if (isBlockedProbe(request)) return blockedProbeResponse();
     try {
-      if (isCacheablePublicGet(request)) {
-        return await serveCachedPublicHtml(request, () => renderRequest(request, env, ctx));
-      }
-      return await renderRequest(request, env, ctx);
+      const handler = await getServerEntry();
+      const response = await handler.fetch(request, env, ctx);
+      return applySecurityHeaders(await normalizeCatastrophicSsrResponse(response, request));
     } catch (error) {
-      if (error instanceof SsrBusyError) return serviceBusyResponse();
       console.error(error);
       return applySecurityHeaders(
         new Response(renderErrorPage(), {
