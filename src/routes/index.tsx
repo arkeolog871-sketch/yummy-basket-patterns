@@ -90,7 +90,7 @@ function Index() {
                 : undefined
             }
           >
-            <div>
+            <div className={bannerSlides.length > 0 ? "order-2 lg:order-1" : undefined}>
               <span className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1 text-xs font-semibold text-muted-foreground">
                 <Sparkles className="size-3.5" /> {results.length} {hero.hero_badge}
               </span>
@@ -135,11 +135,13 @@ function Index() {
             </div>
             </div>
             {bannerSlides.length > 0 ? (
-              <HeroBannerSlider
-                slides={bannerSlides}
-                autoplay={settings.heroBanners.autoplay}
-                intervalMs={settings.heroBanners.intervalMs}
-              />
+              <div className="order-1 lg:order-2">
+                <HeroBannerSlider
+                  slides={bannerSlides}
+                  autoplay={settings.heroBanners.autoplay}
+                  intervalMs={settings.heroBanners.intervalMs}
+                />
+              </div>
             ) : null}
           </div>
         </div>

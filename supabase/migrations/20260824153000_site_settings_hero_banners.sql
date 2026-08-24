@@ -5,3 +5,5 @@ ALTER TABLE public.site_settings
 
 COMMENT ON COLUMN public.site_settings.hero_banners IS
   'Kurucu paneli kayan reklam / hero banner slaytları.';
+
+NOTIFY pgrst, 'reload schema';

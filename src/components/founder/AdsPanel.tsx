@@ -141,8 +141,8 @@ export function AdsPanel() {
           <h2 className="text-lg font-semibold">Şema SQL’si (bir kez)</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Sütun henüz bu ortamda görünmüyorsa Supabase SQL Editor’da aşağıdaki komutu çalıştırın. Token
-            gerekmez. Komut <code className="rounded bg-muted px-1">IF NOT EXISTS</code> olduğu için tekrar
-            çalıştırmak güvenlidir.
+            veya veritabanı şifresi gerekmez. <code className="rounded bg-muted px-1">NOTIFY</code> satırı
+            API şema önbelleğini yeniler.
           </p>
           <pre className="mt-3 overflow-x-auto rounded-2xl bg-muted p-4 text-xs">{HERO_BANNERS_SQL}</pre>
           <Button type="button" variant="outline" className="mt-3 rounded-full" onClick={() => void copySql()}>
@@ -269,6 +269,16 @@ export function AdsPanel() {
                     value={slide.href}
                     placeholder="/restoranlar veya https://…"
                     onChange={(event) => patchSlide(slide.id, { href: event.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`img-${slide.id}`}>Görsel adresi</Label>
+                  <Input
+                    id={`img-${slide.id}`}
+                    value={slide.imageUrl}
+                    placeholder="/api/public/brand/hero/… veya https://…"
+                    onChange={(event) => patchSlide(slide.id, { imageUrl: event.target.value })}
                     className="mt-1"
                   />
                 </div>

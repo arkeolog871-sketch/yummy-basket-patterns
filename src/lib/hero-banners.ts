@@ -28,7 +28,9 @@ export const HERO_BANNERS_SQL = `ALTER TABLE public.site_settings
   ADD COLUMN IF NOT EXISTS hero_banners jsonb NOT NULL DEFAULT '{"autoplay":true,"intervalMs":5000,"slides":[]}'::jsonb;
 
 COMMENT ON COLUMN public.site_settings.hero_banners IS
-  'Kurucu paneli kayan reklam / hero banner slaytları.';`;
+  'Kurucu paneli kayan reklam / hero banner slaytları.';
+
+NOTIFY pgrst, 'reload schema';`;
 
 function str(value: unknown, fallback: string, max: number): string {
   if (typeof value !== "string") return fallback;
