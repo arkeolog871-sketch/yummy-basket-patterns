@@ -23,6 +23,7 @@ import {
   type AdActionType,
   type Advertisement,
 } from "@/lib/advertisements";
+import { adImageTooLargeMessage, MAX_AD_IMAGE_BYTES, MAX_AD_IMAGE_MB } from "@/lib/upload-limits";
 import { HeroBannerSlider } from "@/components/home/HeroBannerSlider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,18 +68,6 @@ function toDraft(ad?: Advertisement | null): Draft {
     start_date,
     end_date,
   };
-}
-
-function toBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result);
-      resolve(result.slice(result.indexOf(",") + 1));
-    };
-    reader.onerror = () => reject(new Error("Dosya okunamadı"));
-    reader.readAsDataURL(file);
-  });
 }
 
 export function AdsPanel() {
@@ -154,16 +143,15 @@ export function AdsPanel() {
       toast.error("Yalnızca JPEG veya WebP yükleyin");
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("Dosya 2 MB sınırını aşıyor");
+    if (file.size > MAX_AD_IMAGE_BYTES) {
+      toast.error(adImageTooLargeMessage());
       return;
     }
     setUploading(true);
     try {
-      const base64 = await toBase64(file);
-      const result = (await uploadFn({
-        data: { fileName: file.name, contentType: file.type === "image/jpg" ? "image/jpeg" : file.type, base64 },
-      })) as { url?: string };
+      const form = new FormData();
+      form.append("file", file);
+      const result = (await uploadFn({ data: form })) as { url?: string };
       if (!result.url) throw new Error("Görsel adresi alınamadı");
       setDraft((prev) => ({ ...prev, image_url: result.url as string }));
       toast.success("Görsel yüklendi");
@@ -463,7 +451,7 @@ function AdForm({
         </div>
       </div>
       <div>
-        <Label>Görsel (JPEG / WebP, 16:9 veya 3:1)</Label>
+        <Label>Görsel (JPEG / WebP, en fazla {MAX_AD_IMAGE_MB} MB, 16:9 veya 3:1)</Label>
         <div className="mt-1.5 flex items-center gap-3">
           <div className="h-16 w-28 overflow-hidden rounded-xl border bg-muted">
             {draft.image_url ? <img src={draft.image_url} alt="" className="size-full object-cover" /> : null}

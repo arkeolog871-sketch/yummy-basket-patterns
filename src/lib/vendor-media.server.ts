@@ -30,6 +30,22 @@ export function decodeValidatedImage(
   }
 
   const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  assertImageMagic(bytes, contentType);
+  return bytes;
+}
+
+export function assertValidatedImageBytes(
+  bytes: Uint8Array,
+  contentType: string,
+  maxBytes: number,
+): void {
+  if (bytes.length === 0 || bytes.length > maxBytes) {
+    throw new Error("Görsel boyutu izin verilen sınırı aşıyor.");
+  }
+  assertImageMagic(bytes, contentType);
+}
+
+function assertImageMagic(bytes: Uint8Array, contentType: string): void {
   const isPng =
     bytes.length >= 8 &&
     bytes.slice(0, 8).every((byte, i) => byte === [137, 80, 78, 71, 13, 10, 26, 10][i]);
@@ -56,7 +72,6 @@ export function decodeValidatedImage(
     (contentType === "image/avif" && isAvif) ||
     ((contentType === "image/x-icon" || contentType === "image/vnd.microsoft.icon") && isIco);
   if (!valid) throw new Error("Görsel içeriği türüyle eşleşmiyor.");
-  return bytes;
 }
 
 export function decodeValidatedBrandImage(base64: string, contentType: string): Uint8Array {
