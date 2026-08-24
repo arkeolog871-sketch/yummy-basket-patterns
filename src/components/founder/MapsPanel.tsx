@@ -29,7 +29,7 @@ export function MapsPanel() {
   const config = useQuery({
     queryKey: ["maps-admin-config"],
     enabled: isFounder,
-    queryFn: () => loadConfig({ data: {} }),
+    queryFn: () => loadConfig(),
   });
   const [apiKey, setApiKey] = useState("");
   const [referrers, setReferrers] = useState("");
