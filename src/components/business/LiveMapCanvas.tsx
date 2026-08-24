@@ -8,7 +8,9 @@ import {
   watchMapContainerForAuthError,
 } from "@/lib/google-maps-loader";
 import { cleanMapStyle } from "@/lib/mapStyle";
-import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getMapsBrowserConfig } from "@/lib/maps.functions";
 import type { GoogleInfoWindow, GoogleMap, GoogleMarker } from "@/lib/google-maps-types";
 
 export type LiveMapMarker = {

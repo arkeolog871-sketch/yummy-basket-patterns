@@ -85,7 +85,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
         .eq("id", "global")
         .maybeSingle();
       if (error) throw new Error(error.message);
-      return { ...DEFAULT_SETTINGS, ...DEFAULT_HERO, ...((data ?? {}) as Record<string, unknown>) } as SiteSettings;
+      return { ...DEFAULT_SETTINGS, ...DEFAULT_HERO, ...((data ?? {}) as Record<string, unknown>) } as SiteSettings & HeroContent;
     },
   });
 
