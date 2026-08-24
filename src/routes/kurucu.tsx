@@ -22,6 +22,7 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { readTwoFactorState, clearTwoFactorFlag } from "@/lib/two-factor";
 import { SecurityPanel } from "@/components/founder/SecurityPanel";
 import { AppearancePanel } from "@/components/founder/AppearancePanel";
+import { TypographyPanel } from "@/components/founder/TypographyPanel";
 import { BrandingPanel } from "@/components/founder/BrandingPanel";
 import { HeroContentPanel } from "@/components/founder/HeroContentPanel";
 import { MapsPanel } from "@/components/founder/MapsPanel";
@@ -282,7 +283,7 @@ function FounderDashboard() {
         <div>
           <h1 className="text-3xl">Kurucu paneli</h1>
           <p className="text-sm text-muted-foreground">
-            Tema, işletme, kategori, ürün, kullanıcı ve sipariş yönetimi
+            Tema, tipografi, işletme, kategori, ürün, kullanıcı ve sipariş yönetimi
           </p>
         </div>
       </div>
@@ -296,6 +297,7 @@ function FounderDashboard() {
       <Tabs defaultValue="gorunum" className="mt-8">
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
           <TabsTrigger value="gorunum">Görünüm</TabsTrigger>
+          <TabsTrigger value="tipografi">Tipografi</TabsTrigger>
           <TabsTrigger value="gorseller">Görseller</TabsTrigger>
           <TabsTrigger value="anasayfa">Ana sayfa</TabsTrigger>
           <TabsTrigger value="harita">Harita</TabsTrigger>
@@ -314,6 +316,10 @@ function FounderDashboard() {
 
         <TabsContent value="gorunum" className="mt-6">
           <AppearancePanel />
+        </TabsContent>
+
+        <TabsContent value="tipografi" className="mt-6">
+          <TypographyPanel />
         </TabsContent>
 
         <TabsContent value="gorseller" className="mt-6">

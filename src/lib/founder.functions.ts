@@ -2,6 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { runServerFn } from "./public-error";
+import {
+  isMissingColumnError,
+  parseTypography,
+  SITE_SETTINGS_BASE_COLUMNS,
+  SITE_SETTINGS_COLUMNS_WITH_TYPOGRAPHY,
+} from "./typography";
+import type { Json } from "@/integrations/supabase/types";
 
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Geçerli bir renk kodu girin");
 
@@ -150,18 +157,28 @@ const menuItemSchema = z.object({
 export const getSiteSettings = createServerFn({ method: "GET" }).handler(async () => {
   const { createPublicClient } = await import("./catalog.server");
   const supabase = createPublicClient();
-  const { data, error } = await supabase
+  const withTypography = await supabase
     .from("site_settings")
-    .select(
-      "id, brand_name, primary_color, accent_color, secondary_color, background_color, logo_url, favicon_url, banner_url, theme_mode, layout_variant, hero_badge, hero_title, hero_title_accent, hero_subtitle",
-    )
+    .select(SITE_SETTINGS_COLUMNS_WITH_TYPOGRAPHY)
     .eq("id", "global")
     .maybeSingle();
-  if (error) {
-    console.error("[getSiteSettings]", error.message);
+  if (withTypography.error && isMissingColumnError(withTypography.error, "typography")) {
+    const fallback = await supabase
+      .from("site_settings")
+      .select(SITE_SETTINGS_BASE_COLUMNS)
+      .eq("id", "global")
+      .maybeSingle();
+    if (fallback.error) {
+      console.error("[getSiteSettings]", fallback.error.message);
+      return null;
+    }
+    return fallback.data;
+  }
+  if (withTypography.error) {
+    console.error("[getSiteSettings]", withTypography.error.message);
     return null;
   }
-  return data;
+  return withTypography.data;
 });
 
 export const getFounderStatus = createServerFn({ method: "GET" })
@@ -253,6 +270,40 @@ export const updateSiteSettings = createServerFn({ method: "POST" })
           .update(data)
           .eq("id", "global");
         if (error) throw new Error(error.message);
+        return { ok: true };
+      },
+    );
+  });
+
+export const updateTypography = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => parseTypography(input))
+  .handler(async ({ data, context }) => {
+    const { assertFounder } = await import("./founder.server");
+    const { audited } = await import("./audit.server");
+    await assertFounder(context.supabase, context.userId, context.claims as never);
+    return audited(
+      {
+        actorId: context.userId,
+        actorEmail: (context.claims as { email?: string } | null)?.email ?? null,
+        action: "typography.update",
+        entity: "site_settings",
+        entityId: "global",
+        detail: { scaleRatio: data.scaleRatio, fontFamily: data.fontFamily },
+      },
+      async () => {
+        const { error } = await context.supabase
+          .from("site_settings")
+          .update({ typography: data as unknown as Json })
+          .eq("id", "global");
+        if (error) {
+          if (isMissingColumnError(error, "typography")) {
+            throw new Error(
+              "Tipografi sütunu henüz yok. Lütfen site_settings şema güncellemesini uygulayın.",
+            );
+          }
+          throw new Error(error.message);
+        }
         return { ok: true };
       },
     );
