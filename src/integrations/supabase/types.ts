@@ -220,6 +220,27 @@ export type Database = {
         }
         Relationships: []
       }
+      maps_config: {
+        Row: {
+          allowed_referrers: string | null
+          api_key: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          allowed_referrers?: string | null
+          api_key?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          allowed_referrers?: string | null
+          api_key?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       menu_categories: {
         Row: {
           created_at: string
@@ -590,8 +611,6 @@ export type Database = {
           id: string
           layout_variant: string
           logo_url: string | null
-          maps_allowed_referrers: string | null
-          maps_api_key: string | null
           primary_color: string
           secondary_color: string
           theme_mode: string
@@ -611,8 +630,6 @@ export type Database = {
           id?: string
           layout_variant?: string
           logo_url?: string | null
-          maps_allowed_referrers?: string | null
-          maps_api_key?: string | null
           primary_color?: string
           secondary_color?: string
           theme_mode?: string
@@ -632,8 +649,6 @@ export type Database = {
           id?: string
           layout_variant?: string
           logo_url?: string | null
-          maps_allowed_referrers?: string | null
-          maps_api_key?: string | null
           primary_color?: string
           secondary_color?: string
           theme_mode?: string
