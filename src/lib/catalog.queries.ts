@@ -1,7 +1,11 @@
 import { queryOptions } from "@tanstack/react-query";
 import { listRestaurants, listCategories, getRestaurantBySlug } from "@/lib/catalog.functions";
 
-export type HomeSearch = { kategori?: string | undefined; q?: string | undefined };
+export type HomeSearch = {
+  kategori?: string | undefined;
+  q?: string | undefined;
+  sim?: "reklam" | undefined;
+};
 export type RestoranSearch = { q?: string | undefined; kategori?: string | undefined };
 
 export function homeQuery(search: HomeSearch) {

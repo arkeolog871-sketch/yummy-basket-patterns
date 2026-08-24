@@ -20,6 +20,7 @@ import { Route as KurucuRouteImport } from './routes/kurucu'
 import { Route as KurucuGirisRouteImport } from './routes/kurucu-giris'
 import { Route as MobilRouteImport } from './routes/mobil'
 import { Route as OdemeRouteImport } from './routes/odeme'
+import { Route as ReklamSimulasyonRouteImport } from './routes/reklam-simulasyon'
 import { Route as RestoranlarRouteImport } from './routes/restoranlar'
 import { Route as SepetRouteImport } from './routes/sepet'
 import { Route as SifreSifirlamaRouteImport } from './routes/sifre-sifirlama'
@@ -90,6 +91,11 @@ const MobilRoute = MobilRouteImport.update({
 const OdemeRoute = OdemeRouteImport.update({
   id: '/odeme',
   path: '/odeme',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReklamSimulasyonRoute = ReklamSimulasyonRouteImport.update({
+  id: '/reklam-simulasyon',
+  path: '/reklam-simulasyon',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RestoranlarRoute = RestoranlarRouteImport.update({
@@ -185,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/kurucu-giris': typeof KurucuGirisRoute
   '/mobil': typeof MobilRoute
   '/odeme': typeof OdemeRoute
+  '/reklam-simulasyon': typeof ReklamSimulasyonRoute
   '/restoranlar': typeof RestoranlarRoute
   '/sepet': typeof SepetRoute
   '/sifre-sifirlama': typeof SifreSifirlamaRoute
@@ -214,6 +221,7 @@ export interface FileRoutesByTo {
   '/kurucu-giris': typeof KurucuGirisRoute
   '/mobil': typeof MobilRoute
   '/odeme': typeof OdemeRoute
+  '/reklam-simulasyon': typeof ReklamSimulasyonRoute
   '/restoranlar': typeof RestoranlarRoute
   '/sepet': typeof SepetRoute
   '/sifre-sifirlama': typeof SifreSifirlamaRoute
@@ -244,6 +252,7 @@ export interface FileRoutesById {
   '/kurucu-giris': typeof KurucuGirisRoute
   '/mobil': typeof MobilRoute
   '/odeme': typeof OdemeRoute
+  '/reklam-simulasyon': typeof ReklamSimulasyonRoute
   '/restoranlar': typeof RestoranlarRoute
   '/sepet': typeof SepetRoute
   '/sifre-sifirlama': typeof SifreSifirlamaRoute
@@ -275,6 +284,7 @@ export interface FileRouteTypes {
     | '/kurucu-giris'
     | '/mobil'
     | '/odeme'
+    | '/reklam-simulasyon'
     | '/restoranlar'
     | '/sepet'
     | '/sifre-sifirlama'
@@ -304,6 +314,7 @@ export interface FileRouteTypes {
     | '/kurucu-giris'
     | '/mobil'
     | '/odeme'
+    | '/reklam-simulasyon'
     | '/restoranlar'
     | '/sepet'
     | '/sifre-sifirlama'
@@ -333,6 +344,7 @@ export interface FileRouteTypes {
     | '/kurucu-giris'
     | '/mobil'
     | '/odeme'
+    | '/reklam-simulasyon'
     | '/restoranlar'
     | '/sepet'
     | '/sifre-sifirlama'
@@ -363,6 +375,7 @@ export interface RootRouteChildren {
   KurucuGirisRoute: typeof KurucuGirisRoute
   MobilRoute: typeof MobilRoute
   OdemeRoute: typeof OdemeRoute
+  ReklamSimulasyonRoute: typeof ReklamSimulasyonRoute
   RestoranlarRoute: typeof RestoranlarRoute
   SepetRoute: typeof SepetRoute
   SifreSifirlamaRoute: typeof SifreSifirlamaRoute
@@ -457,6 +470,13 @@ declare module '@tanstack/react-router' {
       path: '/odeme'
       fullPath: '/odeme'
       preLoaderRoute: typeof OdemeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reklam-simulasyon': {
+      id: '/reklam-simulasyon'
+      path: '/reklam-simulasyon'
+      fullPath: '/reklam-simulasyon'
+      preLoaderRoute: typeof ReklamSimulasyonRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/restoranlar': {
@@ -598,6 +618,7 @@ const rootRouteChildren: RootRouteChildren = {
   KurucuGirisRoute: KurucuGirisRoute,
   MobilRoute: MobilRoute,
   OdemeRoute: OdemeRoute,
+  ReklamSimulasyonRoute: ReklamSimulasyonRoute,
   RestoranlarRoute: RestoranlarRoute,
   SepetRoute: SepetRoute,
   SifreSifirlamaRoute: SifreSifirlamaRoute,
