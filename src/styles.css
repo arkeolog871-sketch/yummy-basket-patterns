@@ -203,3 +203,11 @@
     display: none;
   }
 }
+
+/* Host-injected "Edit with Lovable" badge. Hide only — do not remove the node. */
+#lovable-badge {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}

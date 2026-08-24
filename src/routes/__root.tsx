@@ -131,6 +131,11 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="tr">
       <head>
         <HeadContent />
+        <style>
+          {
+            "#lovable-badge{display:none!important;visibility:hidden!important;pointer-events:none!important;opacity:0!important}"
+          }
+        </style>
       </head>
       <body>
         {children}
@@ -159,6 +164,21 @@ function AppChrome() {
   );
 }
 
+function hideInjectedLovableBadge() {
+  try {
+    const el = document.getElementById("lovable-badge");
+    if (!el) return;
+    el.style.setProperty("display", "none", "important");
+    el.style.setProperty("visibility", "hidden", "important");
+    el.style.setProperty("pointer-events", "none", "important");
+    el.style.setProperty("opacity", "0", "important");
+    el.setAttribute("hidden", "");
+    el.setAttribute("aria-hidden", "true");
+  } catch {
+    /* Host badge is optional; never break the app if it is absent or locked. */
+  }
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
@@ -168,6 +188,17 @@ function RootComponent() {
     pathname === "/sifre-sifirlama" ||
     pathname === "/android" ||
     pathname === "/iphone";
+
+  useEffect(() => {
+    try {
+      hideInjectedLovableBadge();
+      const observer = new MutationObserver(hideInjectedLovableBadge);
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+      return () => observer.disconnect();
+    } catch {
+      return undefined;
+    }
+  }, []);
 
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event) => {
