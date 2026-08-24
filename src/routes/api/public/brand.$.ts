@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-const SAFE_BRAND_PATH = /^(logo|favicon|banner|hero|ads)\/[A-Za-z0-9-]{1,80}\.(png|jpg|jpeg|webp|svg|ico)$/i;
+const SAFE_BRAND_PATH = /^(logo|favicon|banner)\/[A-Za-z0-9-]{1,80}\.(png|jpg|jpeg|webp|svg|ico)$/i;
 
 export const Route = createFileRoute("/api/public/brand/$")({
   server: {
