@@ -21,17 +21,21 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
   const markers = useMemo<LiveMapMarker[]>(
     () =>
       businesses.flatMap((business) => {
-        const point = resolveBusinessCoords(business);
-        if (!point) return [];
-        return [
-          {
-            lat: point.lat,
-            lng: point.lng,
-            title: business.name,
-            address: business.address ?? null,
-            href: `/restoran/${encodeURIComponent(business.slug)}`,
-          },
-        ];
+        try {
+          const point = resolveBusinessCoords(business);
+          if (!point) return [];
+          return [
+            {
+              lat: point.lat,
+              lng: point.lng,
+              title: business.name,
+              address: business.address ?? null,
+              href: `/restoran/${encodeURIComponent(business.slug)}`,
+            },
+          ];
+        } catch {
+          return [];
+        }
       }),
     [businesses],
   );

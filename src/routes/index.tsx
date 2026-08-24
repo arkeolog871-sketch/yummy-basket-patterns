@@ -105,6 +105,7 @@ function Index() {
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   value={term}
+                  name="q"
                   onChange={(event) => setTerm(event.target.value)}
                   placeholder="İşletme, mutfak veya ürün ara"
                   aria-label="İşletme ara"

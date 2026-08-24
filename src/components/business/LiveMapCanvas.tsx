@@ -7,6 +7,7 @@ import {
   subscribeMapsAuthFailure,
   watchMapContainerForAuthError,
 } from "@/lib/google-maps-loader";
+import { beginMapRuntime, swallowMapTeardown } from "@/lib/map-errors";
 import { cleanMapStyle } from "@/lib/mapStyle";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -112,8 +113,15 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
   const mapsConfig = useQuery({
     queryKey: ["maps-browser-config"],
-    queryFn: () => fetchMapsConfig(),
+    queryFn: async () => {
+      try {
+        return await fetchMapsConfig();
+      } catch {
+        return { apiKey: null as string | null };
+      }
+    },
     staleTime: 10 * 60 * 1000,
+    retry: false,
   });
   const mapsApiKey = mapsConfig.data?.apiKey ?? null;
   const markerKey = JSON.stringify(
@@ -128,11 +136,17 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
     setIframeSrc(null);
 
     let cancelled = false;
+    const endMapRuntime = beginMapRuntime();
+    const timers: number[] = [];
+    let raf = 0;
+    const later = (fn: () => void, ms: number) => {
+      const id = window.setTimeout(() => {
+        if (!cancelled) fn();
+      }, ms);
+      timers.push(id);
+    };
     let stopWatching: (() => void) | undefined;
     let stopUser: (() => void) | undefined;
-    let googleFallbackTimer: number | undefined;
-    let osmInvalidateFrame: number | undefined;
-    let osmInvalidateTimer: number | undefined;
     let googleMap: GoogleMap | null = null;
     const googleMarkers: GoogleMarker[] = [];
     let googleUser: GoogleMarker | null = null;
@@ -143,6 +157,11 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
       bindPopup: (html: string) => unknown;
       remove: () => void;
     } | null = null;
+
+    const refreshOsmSize = () => {
+      if (cancelled || !osmMap) return;
+      swallowMapTeardown(() => osmMap?.invalidateSize());
+    };
 
     const showIframe = () => {
       if (cancelled) return;
@@ -197,32 +216,28 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
         }
         if (showUserLocation) {
           stopUser = watchUserPosition((lat, lng) => {
-            if (cancelled) return;
-            if (!osmUser) {
-              osmUser = L.circleMarker([lat, lng], {
-                radius: 8,
-                color: "#fff",
-                weight: 2,
-                fillColor: "#2563eb",
-                fillOpacity: 1,
-              }).addTo(map);
-              osmUser.bindPopup("Konumunuz");
-            } else {
-              osmUser.setLatLng([lat, lng]);
-            }
+            if (cancelled || !osmMap) return;
+            swallowMapTeardown(() => {
+              if (!osmUser) {
+                osmUser = L.circleMarker([lat, lng], {
+                  radius: 8,
+                  color: "#fff",
+                  weight: 2,
+                  fillColor: "#2563eb",
+                  fillOpacity: 1,
+                }).addTo(map);
+                osmUser.bindPopup("Konumunuz");
+              } else {
+                osmUser.setLatLng([lat, lng]);
+              }
+            });
           });
         }
         if (!cancelled) {
           setIframeSrc(null);
           setReady(true);
-          osmInvalidateFrame = window.requestAnimationFrame(() => {
-            osmInvalidateFrame = undefined;
-            if (!cancelled && osmMap === map) map.invalidateSize();
-          });
-          osmInvalidateTimer = window.setTimeout(() => {
-            osmInvalidateTimer = undefined;
-            if (!cancelled && osmMap === map) map.invalidateSize();
-          }, 250);
+          raf = window.requestAnimationFrame(refreshOsmSize);
+          later(refreshOsmSize, 250);
         }
       } catch {
         showIframe();
@@ -293,7 +308,7 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
             setIframeSrc(null);
             setReady(true);
           });
-          googleFallbackTimer = window.setTimeout(() => {
+          later(() => {
             if (cancelled || googleOk || osmStarted) return;
             void startOsm();
           }, 3500);
@@ -326,20 +341,25 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
 
     return () => {
       cancelled = true;
-      stopSized();
+      for (const id of timers) window.clearTimeout(id);
+      if (raf) window.cancelAnimationFrame(raf);
+      stopSized?.();
       stopWatching?.();
       stopUser?.();
-      if (googleFallbackTimer !== undefined) window.clearTimeout(googleFallbackTimer);
-      if (osmInvalidateFrame !== undefined) window.cancelAnimationFrame(osmInvalidateFrame);
-      if (osmInvalidateTimer !== undefined) window.clearTimeout(osmInvalidateTimer);
-      info?.close();
-      googleUser?.setMap(null);
-      for (const pin of googleMarkers) pin.setMap(null);
-      googleMarkers.length = 0;
+      swallowMapTeardown(() => info?.close());
+      swallowMapTeardown(() => googleUser?.setMap(null));
+      for (const pin of googleMarkers) swallowMapTeardown(() => pin.setMap(null));
+      const maps = getGoogleMaps();
+      if (googleMap && maps?.event?.clearInstanceListeners) {
+        swallowMapTeardown(() => maps.event?.clearInstanceListeners(googleMap));
+      }
       googleMap = null;
-      osmUser?.remove();
-      osmMap?.remove();
-      host.replaceChildren();
+      swallowMapTeardown(() => osmUser?.remove());
+      osmUser = null;
+      swallowMapTeardown(() => osmMap?.remove());
+      osmMap = null;
+      swallowMapTeardown(() => host.replaceChildren());
+      endMapRuntime();
     };
   }, [markerKey, mapsApiKey, showUserLocation, markers]);
 

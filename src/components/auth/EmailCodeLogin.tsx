@@ -3,10 +3,7 @@ import { toast } from "sonner";
 import { KeyRound, MailCheck } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  sendEmailVerificationCode,
-  verifyEmailVerificationCode,
-} from "@/lib/otp.functions";
+import { sendEmailVerificationCode, verifyEmailVerificationCode } from "@/lib/otp.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -99,14 +96,12 @@ export function EmailCodeLogin({
   }
 
   return (
-    <form
-      onSubmit={(event) => void (sent ? verify(event) : sendCode(event))}
-      className="space-y-4"
-    >
+    <form onSubmit={(event) => void (sent ? verify(event) : sendCode(event))} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor={`${idPrefix}-email`}>E-posta</Label>
         <Input
           id={`${idPrefix}-email`}
+          name="email"
           type="email"
           autoComplete="email"
           value={email}
@@ -122,6 +117,7 @@ export function EmailCodeLogin({
           <Label htmlFor={`${idPrefix}-code`}>E-posta doğrulama kodu</Label>
           <Input
             id={`${idPrefix}-code`}
+            name="one-time-code"
             inputMode="numeric"
             maxLength={6}
             autoComplete="one-time-code"

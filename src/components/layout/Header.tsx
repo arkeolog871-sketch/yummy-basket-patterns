@@ -89,7 +89,9 @@ export function Header() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="rounded-full px-3 text-sm">
               <MapPin className="size-4 text-accent" />
-              <span className="max-w-[9rem] truncate">{activeCity}</span>
+              <span className="max-w-[9rem] truncate" suppressHydrationWarning>
+                {activeCity}
+              </span>
               <ChevronDown className="size-3.5 opacity-60" />
             </Button>
           </DropdownMenuTrigger>
@@ -117,12 +119,23 @@ export function Header() {
           className="order-last w-full min-w-0 flex-1 sm:order-none sm:w-auto"
           onSubmit={(event) => {
             event.preventDefault();
-            navigate({ to: "/", search: term.trim() ? { q: term.trim() } : {} });
+            navigate({
+              to: "/",
+              search: (prev) => {
+                const kategori = typeof prev.kategori === "string" ? prev.kategori : undefined;
+                const q = term.trim() || undefined;
+                return {
+                  ...(kategori ? { kategori } : {}),
+                  ...(q ? { q } : {}),
+                };
+              },
+            });
           }}
         >
           <div className="relative">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              name="q"
               value={term}
               onChange={(event) => setTerm(event.target.value)}
               placeholder="İşletme, mutfak veya ürün ara"
@@ -206,7 +219,9 @@ export function Header() {
             search={{ kategori: sector.slug }}
             activeOptions={{ exact: true, includeSearch: true }}
             className="shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-warm hover:text-warm-foreground"
-            activeProps={{ className: "shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium text-foreground" }}
+            activeProps={{
+              className: "shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium text-foreground",
+            }}
           >
             {sector.label}
           </Link>

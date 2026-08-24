@@ -25,6 +25,9 @@ export interface GoogleMapsLibrary {
   Marker: new (options: Record<string, unknown>) => GoogleMarker;
   InfoWindow: new (options: Record<string, unknown>) => GoogleInfoWindow;
   LatLngBounds: new () => GoogleLatLngBounds;
+  event?: {
+    clearInstanceListeners: (instance: unknown) => void;
+  };
   importLibrary?: (name: string) => Promise<unknown>;
 }
 

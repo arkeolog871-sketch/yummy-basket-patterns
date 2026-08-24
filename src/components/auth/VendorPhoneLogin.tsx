@@ -74,6 +74,7 @@ export function VendorPhoneLogin() {
         <Label htmlFor="vendor-phone">İşletme telefonu veya e-postası</Label>
         <Input
           id="vendor-phone"
+          name="username"
           type="text"
           autoComplete="username"
           placeholder="05xx xxx xx xx veya ornek@eposta.com"
@@ -94,6 +95,7 @@ export function VendorPhoneLogin() {
           <Label htmlFor="vendor-code">Tek kullanımlık şifre</Label>
           <Input
             id="vendor-code"
+            name="one-time-code"
             inputMode="numeric"
             autoComplete="one-time-code"
             placeholder="123456"

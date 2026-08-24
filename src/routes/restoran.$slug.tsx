@@ -64,8 +64,10 @@ function RestaurantDetail() {
   const { data } = useSuspenseQuery(restaurantDetailQuery(slug));
   const cart = useCart();
 
-  if (!data) return <RestaurantNotFound />;
-  const { restaurant, categories, items } = data;
+  if (!data?.restaurant) return <RestaurantNotFound />;
+  const restaurant = data.restaurant;
+  const categories = Array.isArray(data.categories) ? data.categories : [];
+  const items = Array.isArray(data.items) ? data.items : [];
   const open = isBusinessOpen(restaurant);
   const hours = hoursLabel(restaurant);
 

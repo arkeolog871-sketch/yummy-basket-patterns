@@ -68,7 +68,9 @@ export const regenerateBackupCodes = createServerFn({ method: "POST" })
 /** Yedek kodu doğrular ve tek kullanımlık olarak işaretler. */
 export const redeemBackupCode = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => z.object({ code: z.string().trim().min(6).max(20) }).parse(input))
+  .validator((input: unknown) =>
+    z.object({ code: z.string().trim().min(6).max(20) }).parse(input),
+  )
   .handler(async ({ data, context }) => {
     const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
     enforceSensitiveRateLimit("backup-code-verify", 8, 15 * 60 * 1000);
