@@ -21,6 +21,7 @@ import { Footer } from "@/components/layout/Footer";
 import { IosHomeScreenGuide } from "@/components/iphone/IosHomeScreenGuide";
 import { Toaster } from "@/components/ui/sonner";
 import { AppRealtimeBridge } from "@/hooks/useAppRealtime";
+import { ErrorCollector } from "@/components/system/ErrorCollector";
 
 function NotFoundComponent() {
   return (
@@ -192,6 +193,7 @@ function RootComponent() {
               <AppChrome />
             )}
             <AppRealtimeBridge />
+            <ErrorCollector />
             <Toaster />
           </CartProvider>
         </SiteSettingsProvider>
