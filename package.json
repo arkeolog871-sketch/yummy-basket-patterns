@@ -7,12 +7,10 @@
     "dev": "vite dev",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-    "preview": "node scripts/serve-prod.mjs",
-    "start": "node scripts/serve-prod.mjs",
+    "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "security:test": "node scripts/security-smoke.mjs",
-    "loadtest:10k": "node scripts/loadtest-10k.mjs"
+    "security:test": "node scripts/security-smoke.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
