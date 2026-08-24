@@ -13,10 +13,7 @@ export type AuditEntry = {
 function requestMeta(): Record<string, unknown> {
   try {
     return {
-      ip:
-        getRequestHeader("cf-connecting-ip") ??
-        getRequestHeader("x-forwarded-for") ??
-        null,
+      ip: getRequestHeader("cf-connecting-ip") ?? getRequestHeader("x-forwarded-for") ?? null,
       user_agent: getRequestHeader("user-agent") ?? null,
     };
   } catch {
@@ -24,18 +21,40 @@ function requestMeta(): Record<string, unknown> {
   }
 }
 
+function maskEmail(email: string): string {
+  const [local = "", domain = ""] = email.trim().toLowerCase().split("@");
+  if (!local || !domain) return "•••";
+  return `${local.slice(0, 2)}${"•".repeat(Math.max(3, local.length - 2))}@${domain}`;
+}
+
+function redactDetail(value: unknown, key = ""): unknown {
+  if (/password|token|secret|authorization|cookie|jwt|code/i.test(key)) return "[REDACTED]";
+  if (/email/i.test(key) && typeof value === "string") return maskEmail(value);
+  if (/phone/i.test(key) && typeof value === "string") return "[REDACTED]";
+  if (Array.isArray(value)) return value.map((item) => redactDetail(item));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([childKey, childValue]) => [
+        childKey,
+        redactDetail(childValue, childKey),
+      ]),
+    );
+  }
+  return value;
+}
+
 export async function logAudit(entry: AuditEntry): Promise<void> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.from("audit_logs").insert({
       actor_id: entry.actorId ?? null,
-      actor_email: entry.actorEmail ?? null,
+      actor_email: entry.actorEmail ? maskEmail(entry.actorEmail) : null,
       action: entry.action,
       entity: entry.entity,
       entity_id: entry.entityId ?? null,
       status: entry.status ?? "success",
       detail: JSON.parse(
-        JSON.stringify({ ...requestMeta(), ...(entry.detail ?? {}) }),
+        JSON.stringify(redactDetail({ ...requestMeta(), ...(entry.detail ?? {}) })),
       ) as Record<string, string | number | boolean | null>,
     });
   } catch (error) {

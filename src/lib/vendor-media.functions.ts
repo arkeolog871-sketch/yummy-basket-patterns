@@ -27,7 +27,7 @@ const productSchema = z.object({
 /** Ürün ekler (görsel yüklemesi opsiyoneldir). */
 export const createVendorProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => productSchema.parse(input))
+  .validator((input: unknown) => productSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { assertVendor } = await import("./vendor.server");
     const restaurantId = await assertVendor(context.supabase, context.userId);
@@ -65,7 +65,7 @@ export const createVendorProduct = createServerFn({ method: "POST" })
 /** Mevcut ürünü günceller; yalnızca işletmenin kendi ürünü. */
 export const updateVendorProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     productSchema.extend({ id: z.string().uuid() }).parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -107,7 +107,7 @@ export const updateVendorProduct = createServerFn({ method: "POST" })
 /** Ürünü siler. */
 export const deleteVendorProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { assertVendor } = await import("./vendor.server");
     const restaurantId = await assertVendor(context.supabase, context.userId);
@@ -127,7 +127,7 @@ export const deleteVendorProduct = createServerFn({ method: "POST" })
 /** Ürün kategorisi (menü grubu) oluşturur. */
 export const createVendorCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z.object({ name: z.string().trim().min(2).max(80) }).parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -146,7 +146,7 @@ export const createVendorCategory = createServerFn({ method: "POST" })
 /** İşletme logosu veya kapak görselini yükler. */
 export const uploadVendorBrandImage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     imageSchema.extend({ kind: z.enum(["logo", "cover"]) }).parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -175,7 +175,7 @@ export const uploadVendorBrandImage = createServerFn({ method: "POST" })
 /** İşletme logosu veya kapak görselini kaldırır. */
 export const removeVendorBrandImage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z.object({ kind: z.enum(["logo", "cover"]) }).parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -193,7 +193,7 @@ export const removeVendorBrandImage = createServerFn({ method: "POST" })
 /** Galeriye bir veya birden çok görsel ekler. */
 export const addVendorGalleryImages = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z.object({ images: z.array(imageSchema).min(1).max(10) }).parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -232,7 +232,7 @@ export const addVendorGalleryImages = createServerFn({ method: "POST" })
 /** Galeri görselini kaldırır. */
 export const deleteVendorGalleryImage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { assertVendor } = await import("./vendor.server");
     const restaurantId = await assertVendor(context.supabase, context.userId);

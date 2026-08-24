@@ -17,9 +17,11 @@ const GENERIC_RATE_ERROR = "Çok fazla deneme yaptınız. Lütfen kısa süre so
 
 /** İşletme telefonu veya e-postasına karşılık gelen hesaba tek kullanımlık kod gönderir. */
 export const requestVendorLoginCode = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => identifierSchema.parse(input))
+  .validator((input: unknown) => identifierSchema.parse(input))
   .handler(async ({ data }) => {
     try {
+      const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
+      enforceSensitiveRateLimit("vendor-code-send", 8, 10 * 60 * 1000);
       const { findVendorUser, maskEmail } = await import("./vendor-auth.server");
       const { logAudit, tooManyRecentVendorAttempts } = await import("./audit.server");
       const { reserveSend, hashEmail, createServerAuthClient } = await import("./otp.server");
@@ -92,11 +94,13 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
 
 /** Kodu doğrular ve tarayıcıda oturum kurmak için jetonları döner. */
 export const verifyVendorLoginCode = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     identifierSchema.extend({ code: z.string().trim().max(20) }).parse(input),
   )
   .handler(async ({ data }) => {
     try {
+      const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
+      enforceSensitiveRateLimit("vendor-code-verify", 12, 10 * 60 * 1000);
       const { findVendorUser } = await import("./vendor-auth.server");
       const { logAudit, tooManyRecentVendorAttempts } = await import("./audit.server");
       const { assertCanVerify, registerFailedAttempt, clearGuard, createServerAuthClient } =
@@ -178,7 +182,7 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
 /** İşletme kendi şifresini mevcut şifresini doğrulayarak değiştirir. */
 export const changeVendorPassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z
       .object({
         currentPassword: z.string().min(1, "Mevcut şifrenizi girin").max(72),

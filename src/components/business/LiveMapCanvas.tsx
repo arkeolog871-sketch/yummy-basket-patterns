@@ -109,7 +109,9 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
   const { settings } = useSiteSettings();
   const mapsApiKey = settings.maps_api_key ?? null;
-  const markerKey = markers.map((m) => `${m.lat},${m.lng},${m.title}`).join("|");
+  const markerKey = JSON.stringify(
+    markers.map(({ lat, lng, title, href, address }) => ({ lat, lng, title, href, address })),
+  );
 
   useEffect(() => {
     if (markers.length === 0) return;
@@ -121,7 +123,9 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
     let cancelled = false;
     let stopWatching: (() => void) | undefined;
     let stopUser: (() => void) | undefined;
-    let stopSized: (() => void) | undefined;
+    let googleFallbackTimer: number | undefined;
+    let osmInvalidateFrame: number | undefined;
+    let osmInvalidateTimer: number | undefined;
     let googleMap: GoogleMap | null = null;
     const googleMarkers: GoogleMarker[] = [];
     let googleUser: GoogleMarker | null = null;
@@ -145,6 +149,13 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
       osmStarted = true;
       stopWatching?.();
       stopWatching = undefined;
+      stopUser?.();
+      stopUser = undefined;
+      info?.close();
+      googleUser?.setMap(null);
+      for (const pin of googleMarkers) pin.setMap(null);
+      googleMarkers.length = 0;
+      googleMap = null;
       try {
         const L = await ensureLeaflet();
         if (cancelled || !hostRef.current) {
@@ -197,8 +208,14 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
         if (!cancelled) {
           setIframeSrc(null);
           setReady(true);
-          window.requestAnimationFrame(() => map.invalidateSize());
-          window.setTimeout(() => map.invalidateSize(), 250);
+          osmInvalidateFrame = window.requestAnimationFrame(() => {
+            osmInvalidateFrame = undefined;
+            if (!cancelled && osmMap === map) map.invalidateSize();
+          });
+          osmInvalidateTimer = window.setTimeout(() => {
+            osmInvalidateTimer = undefined;
+            if (!cancelled && osmMap === map) map.invalidateSize();
+          }, 250);
         }
       } catch {
         showIframe();
@@ -269,7 +286,7 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
             setIframeSrc(null);
             setReady(true);
           });
-          window.setTimeout(() => {
+          googleFallbackTimer = window.setTimeout(() => {
             if (cancelled || googleOk || osmStarted) return;
             void startOsm();
           }, 3500);
@@ -290,7 +307,7 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
       if (!stopWatching) stopWatching = unsubscribeAuth;
     };
 
-    stopSized = whenSized(host, () => {
+    const stopSized = whenSized(host, () => {
       if (cancelled) return;
       const canGoogle =
         !isAndroidWebView() &&
@@ -302,16 +319,20 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
 
     return () => {
       cancelled = true;
-      stopSized?.();
+      stopSized();
       stopWatching?.();
       stopUser?.();
+      if (googleFallbackTimer !== undefined) window.clearTimeout(googleFallbackTimer);
+      if (osmInvalidateFrame !== undefined) window.cancelAnimationFrame(osmInvalidateFrame);
+      if (osmInvalidateTimer !== undefined) window.clearTimeout(osmInvalidateTimer);
       info?.close();
       googleUser?.setMap(null);
       for (const pin of googleMarkers) pin.setMap(null);
+      googleMarkers.length = 0;
       googleMap = null;
       osmUser?.remove();
       osmMap?.remove();
-      hostRef.current?.replaceChildren();
+      host.replaceChildren();
     };
   }, [markerKey, mapsApiKey, showUserLocation, markers]);
 

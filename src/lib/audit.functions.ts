@@ -21,15 +21,16 @@ function maskEmail(email: string): string {
   return `${visible}${"*".repeat(Math.max(local.length - 2, 1))}@${domain}`;
 }
 
-
 /**
  * Kurucu giriş denemelerini kaydeder (giriş başarısız olabileceği için kimlik doğrulaması
  * gerekmez). Yazılan alanlar sabittir, e-posta maskelenir ve aynı istemci için hız sınırı
  * uygulanır; böylece denetim kaydı istemci verisiyle şişirilemez.
  */
 export const logFounderLoginAttempt = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => loginAttemptSchema.parse(input))
+  .validator((input: unknown) => loginAttemptSchema.parse(input))
   .handler(async ({ data }) => {
+    const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
+    enforceSensitiveRateLimit("founder-login-log", 20, 10 * 60 * 1000);
     const { logAudit, tooManyRecentLoginLogs } = await import("./audit.server");
     if (await tooManyRecentLoginLogs()) return { ok: false };
 
@@ -44,10 +45,9 @@ export const logFounderLoginAttempt = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-
 export const listAuditLogs = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => listSchema.parse(input ?? {}))
+  .validator((input: unknown) => listSchema.parse(input ?? {}))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     await assertFounder(context.supabase, context.userId, context.claims as never);

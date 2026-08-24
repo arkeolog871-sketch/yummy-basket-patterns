@@ -1,3 +1,5 @@
+import { randomUUID } from "crypto";
+
 const EXTENSIONS: Record<string, string> = {
   "image/png": "png",
   "image/jpeg": "jpg",
@@ -5,6 +7,82 @@ const EXTENSIONS: Record<string, string> = {
   "image/webp": "webp",
   "image/avif": "avif",
 };
+
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+
+export function decodeValidatedImage(
+  base64: string,
+  contentType: string,
+  maxBytes = MAX_IMAGE_BYTES,
+): Uint8Array {
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64) || base64.length % 4 === 1) {
+    throw new Error("Görsel verisi geçersiz.");
+  }
+
+  let binary: string;
+  try {
+    binary = atob(base64);
+  } catch {
+    throw new Error("Görsel verisi geçersiz.");
+  }
+  if (binary.length === 0 || binary.length > maxBytes) {
+    throw new Error("Görsel boyutu izin verilen sınırı aşıyor.");
+  }
+
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  const isPng =
+    bytes.length >= 8 &&
+    bytes.slice(0, 8).every((byte, i) => byte === [137, 80, 78, 71, 13, 10, 26, 10][i]);
+  const isJpeg = bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  const isWebp =
+    bytes.length >= 12 &&
+    String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" &&
+    String.fromCharCode(...bytes.slice(8, 12)) === "WEBP";
+  const isAvif =
+    bytes.length >= 12 &&
+    String.fromCharCode(...bytes.slice(4, 8)) === "ftyp" &&
+    ["avif", "avis"].includes(String.fromCharCode(...bytes.slice(8, 12)));
+  const isIco =
+    bytes.length >= 4 &&
+    bytes[0] === 0 &&
+    bytes[1] === 0 &&
+    (bytes[2] === 1 || bytes[2] === 2) &&
+    bytes[3] === 0;
+
+  const valid =
+    (contentType === "image/png" && isPng) ||
+    ((contentType === "image/jpeg" || contentType === "image/jpg") && isJpeg) ||
+    (contentType === "image/webp" && isWebp) ||
+    (contentType === "image/avif" && isAvif) ||
+    ((contentType === "image/x-icon" || contentType === "image/vnd.microsoft.icon") && isIco);
+  if (!valid) throw new Error("Görsel içeriği türüyle eşleşmiyor.");
+  return bytes;
+}
+
+export function decodeValidatedBrandImage(base64: string, contentType: string): Uint8Array {
+  if (contentType !== "image/svg+xml") {
+    return decodeValidatedImage(base64, contentType, 2 * 1024 * 1024);
+  }
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64) || base64.length % 4 === 1) {
+    throw new Error("Görsel verisi geçersiz.");
+  }
+
+  let text: string;
+  try {
+    text = new TextDecoder().decode(Uint8Array.from(atob(base64), (char) => char.charCodeAt(0)));
+  } catch {
+    throw new Error("SVG verisi geçersiz.");
+  }
+  if (
+    text.length === 0 ||
+    text.length > 2 * 1024 * 1024 ||
+    !/<svg[\s>]/i.test(text) ||
+    /<script[\s>]|on[a-z]+\s*=|javascript:|data:text\/html|<foreignObject/i.test(text)
+  ) {
+    throw new Error("Güvenli olmayan SVG reddedildi.");
+  }
+  return Uint8Array.from(new TextEncoder().encode(text));
+}
 
 /** Base64 görseli ilgili kovaya yükler ve herkese açık proxy adresini döner. */
 export async function uploadRestaurantImage(input: {
@@ -16,9 +94,9 @@ export async function uploadRestaurantImage(input: {
 }) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const extension = EXTENSIONS[input.contentType] ?? "png";
-  const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
+  const safeName = `${randomUUID()}.${extension}`;
   const path = `${input.restaurantId}/${safeName}`;
-  const binary = Uint8Array.from(atob(input.base64), (char) => char.charCodeAt(0));
+  const binary = decodeValidatedImage(input.base64, input.contentType);
 
   const { error } = await supabaseAdmin.storage
     .from(input.bucket)

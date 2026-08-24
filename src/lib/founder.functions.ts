@@ -24,7 +24,7 @@ const heroSchema = z.object({
 
 export const updateHeroContent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => heroSchema.parse(input))
+  .validator((input: unknown) => heroSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
@@ -71,7 +71,7 @@ const mapsSchema = z.object({
 
 export const updateMapsSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => mapsSchema.parse(input))
+  .validator((input: unknown) => mapsSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited, logAudit } = await import("./audit.server");
@@ -208,7 +208,13 @@ const menuItemSchema = z.object({
 export const getSiteSettings = createServerFn({ method: "GET" }).handler(async () => {
   const { createPublicClient } = await import("./catalog.server");
   const supabase = createPublicClient();
-  const { data, error } = await supabase.from("site_settings").select("*").eq("id", "global").maybeSingle();
+  const { data, error } = await supabase
+    .from("site_settings")
+    .select(
+      "id, brand_name, primary_color, accent_color, secondary_color, background_color, logo_url, favicon_url, banner_url, theme_mode, layout_variant, hero_badge, hero_title, hero_title_accent, hero_subtitle, maps_api_key, maps_allowed_referrers",
+    )
+    .eq("id", "global")
+    .maybeSingle();
   if (error) throw new Error(error.message);
   return data;
 });
@@ -234,6 +240,21 @@ export const claimFounder = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { logAudit } = await import("./audit.server");
     const actorEmail = (context.claims as { email?: string } | null)?.email ?? null;
+    const allowedBootstrapEmails = (process.env["FOUNDER_BOOTSTRAP_EMAILS"] ?? "")
+      .split(",")
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean);
+    if (!actorEmail || !allowedBootstrapEmails.includes(actorEmail.trim().toLowerCase())) {
+      await logAudit({
+        actorId: context.userId,
+        actorEmail,
+        action: "founder.claim",
+        entity: "user_roles",
+        status: "denied",
+        detail: { reason: "Kurucu bootstrap allowlist dışında" },
+      });
+      throw new Error("Kurucu hesabı deployment yöneticisi tarafından yetkilendirilmelidir.");
+    }
     const { count, error } = await supabaseAdmin
       .from("user_roles")
       .select("id", { count: "exact", head: true })
@@ -267,7 +288,7 @@ export const claimFounder = createServerFn({ method: "POST" })
 
 export const updateSiteSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => settingsSchema.parse(input))
+  .validator((input: unknown) => settingsSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
@@ -296,76 +317,77 @@ export const listAdminData = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) =>
     runServerFn(async () => {
-    const { assertFounder } = await import("./founder.server");
-    await assertFounder(context.supabase, context.userId, context.claims as never);
-    // Kurucu doğrulandıktan sonra iletişim alanlarını da okuyabilmek için yetkili istemci.
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { assertFounder } = await import("./founder.server");
+      await assertFounder(context.supabase, context.userId, context.claims as never);
+      // Kurucu doğrulandıktan sonra iletişim alanlarını da okuyabilmek için yetkili istemci.
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const [businesses, categories, items, orders] = await Promise.all([
-      supabaseAdmin.from("restaurants").select("*").order("name"),
-      context.supabase.from("menu_categories").select("*").order("position"),
-      context.supabase.from("menu_items").select("*").order("name"),
-      context.supabase
-        .from("orders")
-        .select(
-          "id, status, payment_status, total, recipient_name, phone, street, district, city, created_at, restaurants(name)",
-        )
-        .order("created_at", { ascending: false })
-        .limit(50),
-    ]);
+      const [businesses, categories, items, orders] = await Promise.all([
+        supabaseAdmin.from("restaurants").select("*").order("name"),
+        context.supabase.from("menu_categories").select("*").order("position"),
+        supabaseAdmin.from("menu_items").select("*").order("name"),
+        context.supabase
+          .from("orders")
+          .select(
+            "id, status, payment_status, total, recipient_name, phone, street, district, city, created_at, restaurants(name)",
+          )
+          .order("created_at", { ascending: false })
+          .limit(50),
+      ]);
 
-    const firstError =
-      businesses.error ?? categories.error ?? items.error ?? orders.error ?? null;
-    if (firstError) throw new Error(firstError.message);
+      const firstError =
+        businesses.error ?? categories.error ?? items.error ?? orders.error ?? null;
+      if (firstError) throw new Error(firstError.message);
 
-    return {
-      businesses: businesses.data ?? [],
-      categories: categories.data ?? [],
-      items: items.data ?? [],
-      orders: orders.data ?? [],
-    };
+      return {
+        businesses: businesses.data ?? [],
+        categories: categories.data ?? [],
+        items: items.data ?? [],
+        orders: orders.data ?? [],
+      };
     }),
   );
 
 export const saveBusiness = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => businessWithHoursSchema.parse(input))
+  .validator((input: unknown) => businessWithHoursSchema.parse(input))
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
-    const { assertFounder, ensureBusinessVendorAccount } = await import("./founder.server");
-    const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId, context.claims as never);
-    const { id, ...values } = data;
-    return audited(
-      {
-        actorId: context.userId,
-        actorEmail: (context.claims as { email?: string } | null)?.email ?? null,
-        action: id ? "business.update" : "business.create",
-        entity: "restaurants",
-        entityId: id ?? null,
-        detail: { name: values.name, slug: values.slug, category: values.category },
-      },
-      async () => {
-        const businessId = id ?? crypto.randomUUID();
-        const { error } = id
-          ? await context.supabase.from("restaurants").update(values).eq("id", id)
-          : await context.supabase.from("restaurants").insert({ ...values, id: businessId });
-        if (error) throw new Error(error.message);
-        await ensureBusinessVendorAccount({
-          restaurantId: businessId,
-          businessName: values.name,
-          email: values.contact_email,
-          phone: values.contact_phone,
-        });
-        return { ok: true, vendorLinked: true };
-      },
-    );
+      const { assertFounder, ensureBusinessVendorAccount } = await import("./founder.server");
+      const { audited } = await import("./audit.server");
+      await assertFounder(context.supabase, context.userId, context.claims as never);
+      const { id, ...values } = data;
+      return audited(
+        {
+          actorId: context.userId,
+          actorEmail: (context.claims as { email?: string } | null)?.email ?? null,
+          action: id ? "business.update" : "business.create",
+          entity: "restaurants",
+          entityId: id ?? null,
+          detail: { name: values.name, slug: values.slug, category: values.category },
+        },
+        async () => {
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const businessId = id ?? crypto.randomUUID();
+          const { error } = id
+            ? await supabaseAdmin.from("restaurants").update(values).eq("id", id)
+            : await supabaseAdmin.from("restaurants").insert({ ...values, id: businessId });
+          if (error) throw new Error(error.message);
+          await ensureBusinessVendorAccount({
+            restaurantId: businessId,
+            businessName: values.name,
+            email: values.contact_email,
+            phone: values.contact_phone,
+          });
+          return { ok: true, vendorLinked: true };
+        },
+      );
     }),
   );
 
 export const deleteBusiness = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
@@ -389,7 +411,7 @@ export const deleteBusiness = createServerFn({ method: "POST" })
 /** Kurucu, gelen siparişin durumunu anlık olarak değiştirir. */
 export const updateOrderStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z
       .object({
         id: z.string().uuid(),
@@ -406,33 +428,34 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
-    const { assertFounder } = await import("./founder.server");
-    const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId, context.claims as never);
-    return audited(
-      {
-        actorId: context.userId,
-        actorEmail: (context.claims as { email?: string } | null)?.email ?? null,
-        action: "order.status",
-        entity: "orders",
-        entityId: data.id,
-        detail: { status: data.status },
-      },
-      async () => {
-        const { error } = await context.supabase
-          .from("orders")
-          .update({ status: data.status })
-          .eq("id", data.id);
-        if (error) throw new Error(error.message);
-        return { ok: true };
-      },
-    );
+      const { assertFounder } = await import("./founder.server");
+      const { audited } = await import("./audit.server");
+      await assertFounder(context.supabase, context.userId, context.claims as never);
+      return audited(
+        {
+          actorId: context.userId,
+          actorEmail: (context.claims as { email?: string } | null)?.email ?? null,
+          action: "order.status",
+          entity: "orders",
+          entityId: data.id,
+          detail: { status: data.status },
+        },
+        async () => {
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const { error } = await supabaseAdmin
+            .from("orders")
+            .update({ status: data.status })
+            .eq("id", data.id);
+          if (error) throw new Error(error.message);
+          return { ok: true };
+        },
+      );
     }),
   );
 
 export const saveMenuCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => menuCategorySchema.parse(input))
+  .validator((input: unknown) => menuCategorySchema.parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
@@ -459,7 +482,7 @@ export const saveMenuCategory = createServerFn({ method: "POST" })
 
 export const deleteMenuCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
@@ -482,7 +505,7 @@ export const deleteMenuCategory = createServerFn({ method: "POST" })
 
 export const saveMenuItem = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => menuItemSchema.parse(input))
+  .validator((input: unknown) => menuItemSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
@@ -509,7 +532,7 @@ export const saveMenuItem = createServerFn({ method: "POST" })
 
 export const deleteMenuItem = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
@@ -563,7 +586,7 @@ export const listUsers = createServerFn({ method: "GET" })
 /** Kurucu, bir kullanıcıyı tek bir işletmeye atar veya atamasını kaldırır. */
 export const setVendorAssignment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z
       .object({
         userId: z.string().uuid(),
@@ -619,7 +642,7 @@ export const setVendorAssignment = createServerFn({ method: "POST" })
 
 export const setUserRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z
       .object({
         userId: z.string().uuid(),
@@ -647,11 +670,12 @@ export const setUserRole = createServerFn({ method: "POST" })
         detail: { role: data.role },
       },
       async () => {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { error } = data.grant
-          ? await context.supabase
+          ? await supabaseAdmin
               .from("user_roles")
               .upsert({ user_id: data.userId, role: data.role }, { onConflict: "user_id,role" })
-          : await context.supabase
+          : await supabaseAdmin
               .from("user_roles")
               .delete()
               .eq("user_id", data.userId)
@@ -665,7 +689,7 @@ export const setUserRole = createServerFn({ method: "POST" })
 /** Kurucu, yeni bir yetkili hesap oluşturur ve seçilen rolü atar. */
 export const createStaffUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z
       .object({
         email: z.string().trim().email().max(200),
@@ -751,7 +775,7 @@ export const createStaffUser = createServerFn({ method: "POST" })
 
 export const deleteUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ userId: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ userId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");

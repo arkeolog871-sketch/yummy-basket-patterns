@@ -15,7 +15,10 @@ const uploadSchema = z.object({
   contentType: z
     .string()
     .trim()
-    .regex(/^image\/(png|jpeg|jpg|webp|svg\+xml|x-icon|vnd\.microsoft\.icon)$/, "Desteklenmeyen görsel türü"),
+    .regex(
+      /^image\/(png|jpeg|jpg|webp|svg\+xml|x-icon|vnd\.microsoft\.icon)$/,
+      "Desteklenmeyen görsel türü",
+    ),
   /** base64 (data URL öneki olmadan), en fazla ~2MB */
   base64: z.string().min(16).max(3_000_000),
 });
@@ -23,7 +26,7 @@ const uploadSchema = z.object({
 /** Kurucu, logo / favicon / banner görselini yükler. */
 export const uploadBrandAsset = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => uploadSchema.parse(input))
+  .validator((input: unknown) => uploadSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
@@ -40,9 +43,17 @@ export const uploadBrandAsset = createServerFn({ method: "POST" })
       },
       async () => {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const binary = Uint8Array.from(atob(data.base64), (char) => char.charCodeAt(0));
-        const extension = (data.fileName.split(".").pop() ?? "png").toLowerCase().slice(0, 5);
-        const path = `${data.kind}/${Date.now()}.${extension}`;
+        const { decodeValidatedBrandImage } = await import("./vendor-media.server");
+        const binary = decodeValidatedBrandImage(data.base64, data.contentType);
+        const extension =
+          data.contentType === "image/svg+xml"
+            ? "svg"
+            : data.contentType === "image/x-icon" || data.contentType === "image/vnd.microsoft.icon"
+              ? "ico"
+              : data.contentType.split("/")[1] === "jpeg"
+                ? "jpg"
+                : data.contentType.split("/")[1];
+        const path = `${data.kind}/${crypto.randomUUID()}.${extension}`;
 
         const { error: uploadError } = await supabaseAdmin.storage
           .from("branding")
@@ -63,7 +74,7 @@ export const uploadBrandAsset = createServerFn({ method: "POST" })
 /** Kurucu, yüklenen görseli kaldırır. */
 export const removeBrandAsset = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ kind: z.enum(KINDS) }).parse(input))
+  .validator((input: unknown) => z.object({ kind: z.enum(KINDS) }).parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");

@@ -8,7 +8,17 @@ export const SECURITY_HEADERS: Record<string, string> = {
   "Permissions-Policy": "camera=(), microphone=(), payment=(), usb=(), interest-cohort=()",
   "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
   "X-DNS-Prefetch-Control": "off",
+  "X-Frame-Options": "SAMEORIGIN",
   "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+  "Content-Security-Policy":
+    "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'self'; form-action 'self'; " +
+    "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com https://unpkg.com; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; " +
+    "font-src 'self' data: https://fonts.gstatic.com https://unpkg.com; " +
+    "img-src 'self' data: blob: https:; " +
+    "connect-src 'self' https://*.supabase.co https://maps.googleapis.com https://unpkg.com " +
+    "https://tile.openstreetmap.org ws://localhost:* ws://127.0.0.1:*; " +
+    "frame-src 'self' https://www.openstreetmap.org; media-src 'self' blob:",
 };
 
 const BLOCKED_PATH =

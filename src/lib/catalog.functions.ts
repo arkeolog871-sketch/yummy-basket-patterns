@@ -20,7 +20,7 @@ function ilikePattern(raw: string): string | null {
 }
 
 export const listRestaurants = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => listSchema.parse(input ?? {}))
+  .validator((input: unknown) => listSchema.parse(input ?? {}))
   .handler(async ({ data }) => {
     const { createPublicClient } = await import("./catalog.server");
     const supabase = createPublicClient();
@@ -65,7 +65,7 @@ export const listCategories = createServerFn({ method: "GET" }).handler(async ()
 });
 
 export const getRestaurantBySlug = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => z.object({ slug: z.string().min(1).max(80) }).parse(input))
+  .validator((input: unknown) => z.object({ slug: z.string().min(1).max(80) }).parse(input))
   .handler(async ({ data }) => {
     const { createPublicClient } = await import("./catalog.server");
     const supabase = createPublicClient();

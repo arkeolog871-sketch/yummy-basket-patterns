@@ -24,8 +24,10 @@ type AuthContext = { supabase: SupabaseClient<Database>; userId: string };
 
 export const createOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => createOrderSchema.parse(input))
+  .validator((input: unknown) => createOrderSchema.parse(input))
   .handler(async ({ data, context }) => {
+    const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
+    enforceSensitiveRateLimit("order-create", 20, 60 * 1000);
     try {
       const placed = await placeOrder(data, context);
       return { ok: true as const, ...placed };
@@ -39,6 +41,7 @@ async function placeOrder(
   context: AuthContext,
 ): Promise<{ id: string; total: number }> {
   const { supabase, userId } = context;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
   const { assertVerifiedEmail } = await import("./otp.server");
   await assertVerifiedEmail(userId);
@@ -96,7 +99,7 @@ async function placeOrder(
   const deliveryFee = Number(restaurant.delivery_fee);
   const total = Number((subtotal + deliveryFee).toFixed(2));
 
-  const { data: order, error: orderError } = await supabase
+  const { data: order, error: orderError } = await supabaseAdmin
     .from("orders")
     .insert({
       user_id: userId,
@@ -117,11 +120,11 @@ async function placeOrder(
     .single();
   if (orderError) throw new Error(orderError.message);
 
-  const { error: linesError } = await supabase
+  const { error: linesError } = await supabaseAdmin
     .from("order_items")
     .insert(orderItems.map((line) => ({ ...line, order_id: order.id })));
   if (linesError) {
-    await supabase.from("orders").delete().eq("id", order.id).eq("user_id", userId);
+    await supabaseAdmin.from("orders").delete().eq("id", order.id).eq("user_id", userId);
     throw new Error(linesError.message);
   }
 
@@ -134,7 +137,9 @@ export const listMyOrders = createServerFn({ method: "GET" })
     runServerFn(async () => {
       const { data, error } = await context.supabase
         .from("orders")
-        .select("id, created_at, status, payment_status, total, restaurants(name, slug, cover_image_url)")
+        .select(
+          "id, created_at, status, payment_status, total, restaurants(name, slug, cover_image_url)",
+        )
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
       return data ?? [];
@@ -143,12 +148,14 @@ export const listMyOrders = createServerFn({ method: "GET" })
 
 export const getMyOrder = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
       const { data: order, error } = await context.supabase
         .from("orders")
-        .select("*, restaurants(name, slug, delivery_minutes), order_items(id, name, quantity, unit_price)")
+        .select(
+          "*, restaurants(name, slug, delivery_minutes), order_items(id, name, quantity, unit_price)",
+        )
         .eq("id", data.id)
         .eq("user_id", context.userId)
         .maybeSingle();

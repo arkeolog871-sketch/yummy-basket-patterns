@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { MapPin } from "lucide-react";
 import { resolveBusinessCoords } from "@/lib/maps";
 import { LiveMapCanvas, type LiveMapMarker } from "@/components/business/LiveMapCanvas";
@@ -17,19 +18,23 @@ interface AllBusinessesMapProps {
 }
 
 export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
-  const markers: LiveMapMarker[] = businesses.flatMap((business) => {
-    const point = resolveBusinessCoords(business);
-    if (!point) return [];
-    return [
-      {
-        lat: point.lat,
-        lng: point.lng,
-        title: business.name,
+  const markers = useMemo<LiveMapMarker[]>(
+    () =>
+      businesses.flatMap((business) => {
+        const point = resolveBusinessCoords(business);
+        if (!point) return [];
+        return [
+          {
+            lat: point.lat,
+            lng: point.lng,
+            title: business.name,
             address: business.address ?? null,
-        href: `/restoran/${encodeURIComponent(business.slug)}`,
-      },
-    ];
-  });
+            href: `/restoran/${encodeURIComponent(business.slug)}`,
+          },
+        ];
+      }),
+    [businesses],
+  );
 
   if (markers.length === 0) {
     return (
@@ -51,8 +56,8 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
         <MapPin className="size-4 text-primary" /> Tüm İşletmelerimiz
       </h3>
       <p className="mt-1 text-sm text-muted-foreground">
-        Harita üzerindeki pinlere tıklayarak işletme detaylarını inceleyebilirsiniz. Mavi nokta anlık
-        konumunuzdur.
+        Harita üzerindeki pinlere tıklayarak işletme detaylarını inceleyebilirsiniz. Mavi nokta
+        anlık konumunuzdur.
       </p>
       <LiveMapCanvas label="Tüm işletmeler haritası" markers={markers} />
     </div>
