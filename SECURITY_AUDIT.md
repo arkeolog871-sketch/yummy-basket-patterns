@@ -126,4 +126,3 @@ Remaining:
 8. Test the production CSP with Google Maps, Leaflet, Supabase Auth, OSM, image uploads, and OAuth.
 9. Configure alerting for failed login, denied authorization, rate-limit, role-change, and upload events.
 10. Plan migration from browser `localStorage` sessions to HttpOnly/Secure/SameSite server-managed sessions.
-

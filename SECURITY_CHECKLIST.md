@@ -87,4 +87,3 @@ Legend: `[PASS]` verified or implemented, `[WARNING]` requires deployment/archit
 - [PASS] API1/API3/API5/API6: object/function authorization, validation, mass-assignment controls.
 - [PASS] API4/API7: rate limits and generic errors.
 - [WARNING] API8/API10: configure production inventory and Cloudflare edge controls.
-

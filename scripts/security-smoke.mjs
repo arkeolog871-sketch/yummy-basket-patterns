@@ -4,7 +4,7 @@ const checks = [
   ["home", "/", 200],
   ["unknown route", "/security-smoke-404", 404],
   ["env probe", "/.env", 404],
-  ["git probe", "/.git/config", 404],
+  ["git probe", "/.git/config", [403, 404]],
   ["php probe", "/wp-admin", 404],
   ["media traversal", "/api/public/media/product-images/../secret.png", 404],
   ["media invalid path", "/api/public/media/product-images/not-a-uuid/file.png", 404],
@@ -15,9 +15,12 @@ let failures = 0;
 
 for (const [name, path, expectedStatus] of checks) {
   const response = await fetch(new URL(path, baseUrl));
-  if (response.status !== expectedStatus) {
+  const acceptedStatuses = Array.isArray(expectedStatus) ? expectedStatus : [expectedStatus];
+  if (!acceptedStatuses.includes(response.status)) {
     failures += 1;
-    console.error(`FAIL ${name}: expected ${expectedStatus}, received ${response.status}`);
+    console.error(
+      `FAIL ${name}: expected ${acceptedStatuses.join(" or ")}, received ${response.status}`,
+    );
   } else {
     console.log(`PASS ${name}: ${response.status}`);
   }
