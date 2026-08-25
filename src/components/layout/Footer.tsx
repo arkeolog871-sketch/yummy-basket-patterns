@@ -60,6 +60,18 @@ export function Footer() {
       </div>
       <div className="border-t border-border/70 py-4 text-center text-xs text-muted-foreground">
         © {new Date().getFullYear()} {settings.brand_name}. Tüm hakları saklıdır. ·{" "}
+        <Link to="/kullanim-kosullari" className="underline-offset-4 hover:underline">
+          Kullanım Koşulları
+        </Link>
+        {" · "}
+        <Link to="/gizlilik-politikasi" className="underline-offset-4 hover:underline">
+          Gizlilik Politikası
+        </Link>
+        {" · "}
+        <Link to="/kvkk" className="underline-offset-4 hover:underline">
+          KVKK Aydınlatma Metni
+        </Link>
+        {" · "}
         <Link to="/kurucu-giris" className="underline-offset-4 hover:underline">
           Kurucu girişi
         </Link>

@@ -11,6 +11,7 @@ const sendSchema = z.object({
 const verifySchema = z.object({
   email: z.string().trim().email("Geçerli bir e-posta adresi girin").max(255),
   code: z.union([z.string(), z.number()]),
+  termsAccepted: z.boolean().optional().default(false),
 });
 
 /**
@@ -48,15 +49,21 @@ export const verifyEmailVerificationCode = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
     enforceSensitiveRateLimit("otp-verify", 12, 10 * 60 * 1000);
+    const { TERMS_ACCEPTANCE_REQUIRED } = await import("./legal");
     const {
       assertCanVerify,
       registerFailedAttempt,
       clearGuard,
       matchIssuedOtp,
       createVerifiedSession,
+      recordTermsAcceptance,
       MAX_FAILED_ATTEMPTS,
       OTP_INVALID_MESSAGE: invalidMessage,
     } = await import("./otp.server");
+
+    if (data.termsAccepted !== true) {
+      return { ok: false as const, error: TERMS_ACCEPTANCE_REQUIRED };
+    }
 
     const token = normalizeOtpCode(data.code);
     if (!isCompleteOtpCode(token)) {
@@ -78,6 +85,9 @@ export const verifyEmailVerificationCode = createServerFn({ method: "POST" })
 
     const session = await createVerifiedSession(data.email);
     if (!session.ok) return { ok: false as const, error: session.error };
+
+    const terms = await recordTermsAcceptance(session.userId);
+    if (!terms.ok) return { ok: false as const, error: terms.error };
 
     await clearGuard(data.email);
 
