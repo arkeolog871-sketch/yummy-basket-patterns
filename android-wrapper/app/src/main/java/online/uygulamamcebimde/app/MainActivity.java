@@ -186,14 +186,39 @@ public class MainActivity extends Activity {
 
     private boolean openAllowedUrlOrExternal(String rawUrl) {
         Uri uri = Uri.parse(rawUrl);
-        if ("about".equals(uri.getScheme())) {
+        String scheme = uri.getScheme();
+        if ("about".equals(scheme)) {
             return false;
         }
-        if ("https".equals(uri.getScheme()) && APP_HOST.equals(uri.getHost())) {
+        if ("https".equals(scheme) && APP_HOST.equals(uri.getHost())) {
             return false;
         }
+
+        // Google Maps ve benzeri uygulamalar intent:// bağlantısı üretir; WebView bunu açamaz.
+        if ("intent".equals(scheme)) {
+            String fallbackUrl = null;
+            try {
+                Intent intent = Intent.parseUri(rawUrl, Intent.URI_INTENT_SCHEME);
+                fallbackUrl = intent.getStringExtra("browser_fallback_url");
+                intent.addCategory(Intent.CATEGORY_BROWSABLE);
+                intent.setComponent(null);
+                intent.setSelector(null);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+                return true;
+            } catch (Exception ignored) {
+                // Uygulama kurulu değilse web adresine düşülür.
+            }
+            if (fallbackUrl != null) {
+                webView.loadUrl(fallbackUrl);
+            }
+            return true;
+        }
+
         try {
-            startActivity(new Intent(Intent.ACTION_VIEW, uri));
+            Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
         } catch (Exception ignored) {
             // Do not load unknown schemes or hosts inside the WebView.
         }
