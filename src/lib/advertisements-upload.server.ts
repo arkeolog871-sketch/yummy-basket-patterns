@@ -78,6 +78,10 @@ function extensionOf(fileName: string, contentType: string): string {
   throw new Error("Yalnızca görsel veya video yükleyin (PNG, JPEG, MP4, MOV, WEBM…)");
 }
 
+export function bytesFromBase64(base64: string): Uint8Array {
+  return new Uint8Array(Buffer.from(base64, "base64"));
+}
+
 export async function uploadFounderBannerFile(input: {
   supabase: ReturnType<typeof createClient<Database>>;
   bytes: Uint8Array;
