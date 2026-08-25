@@ -11,6 +11,7 @@ import {
   listAdvertisements,
   saveAdvertisement,
   setAdvertisementActive,
+  uploadAdvertisementMedia,
 } from "@/lib/advertisements.functions";
 import {
   emptyAdvertisementDraft,
@@ -64,6 +65,19 @@ const ACTION_LABELS: Record<AdActionType, string> = {
 
 type Draft = ReturnType<typeof emptyAdvertisementDraft> & { id?: string };
 
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result ?? "");
+      const comma = result.indexOf(",");
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(new Error("Dosya okunamadı"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function toDraft(ad?: Advertisement | null): Draft {
   if (!ad) return emptyAdvertisementDraft();
   const { id, title, client_name, client_phone, image_url, action_type, action_value, display_order, is_active, start_date, end_date } = ad;
@@ -87,14 +101,17 @@ export function AdsPanel() {
   const queryClient = useQueryClient();
   const listFn = useServerFn(listAdvertisements);
   const saveFn = useServerFn(saveAdvertisement);
+  const uploadFn = useServerFn(uploadAdvertisementMedia);
   const toggleFn = useServerFn(setAdvertisementActive);
   const deleteFn = useServerFn(deleteAdvertisement);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const pendingFileRef = useRef<File | null>(null);
   const localPreviewRef = useRef("");
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(emptyAdvertisementDraft());
   const [uploading, setUploading] = useState(false);
   const [localPreview, setLocalPreview] = useState("");
+  const [pickedName, setPickedName] = useState("");
 
   const query = useQuery({
     queryKey: ["founder-advertisements"],
@@ -137,11 +154,11 @@ export function AdsPanel() {
       }),
     onSuccess: () => {
       toast.success("Reklam kaydedildi");
+      resetMedia();
       setOpen(false);
       void queryClient.invalidateQueries({ queryKey: ["founder-advertisements"] });
       void queryClient.invalidateQueries({ queryKey: ["public-banners"] });
     },
-    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
   const toggleMutation = useMutation({
@@ -169,7 +186,13 @@ export function AdsPanel() {
     setLocalPreview("");
   }
 
-  async function onUpload(file: File) {
+  function resetMedia() {
+    pendingFileRef.current = null;
+    setPickedName("");
+    clearLocalPreview();
+  }
+
+  function onPickFile(file: File) {
     if (!isAdMediaFile(file)) {
       toast.error(adImageTypeRejectedMessage());
       return;
@@ -187,39 +210,50 @@ export function AdsPanel() {
       toast.message("HEIC bazı tarayıcılarda görünmez; mümkünse JPEG veya PNG seçin");
     }
     clearLocalPreview();
+    pendingFileRef.current = file;
+    setPickedName(file.name || "görsel");
     const blobUrl = URL.createObjectURL(file);
     localPreviewRef.current = blobUrl;
     setLocalPreview(blobUrl);
+    setDraft((prev) => ({ ...prev, image_url: "" }));
+  }
+
+  async function resolveImageUrl(): Promise<string> {
+    const existing = draft.image_url.trim();
+    if (existing && !pendingFileRef.current) return existing;
+    const pending = pendingFileRef.current;
+    if (!pending) return existing;
+    const base64 = await fileToBase64(pending);
+    const uploaded = await uploadFn({
+      data: {
+        fileName: pending.name || "reklam",
+        contentType: pending.type || "application/octet-stream",
+        base64,
+      },
+    });
+    pendingFileRef.current = null;
+    return uploaded.url;
+  }
+
+  async function submitAd() {
+    if (saveMutation.isPending || uploading) return;
+    if (!draft.title.trim()) {
+      toast.error("Başlık girin");
+      return;
+    }
+    if (!draft.image_url.trim() && !pendingFileRef.current) {
+      toast.error("Galeriden bir görsel veya video seçin");
+      return;
+    }
     setUploading(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      if (!token) throw new Error("Oturum bulunamadı. Kurucu girişi yapın.");
-      const form = new FormData();
-      form.append("file", file, file.name || `reklam.${extension}`);
-      const response = await fetch("/api/v1/banners", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/json",
-        },
-        body: form,
-      });
-      const payload: unknown = await response.json().catch(() => null);
-      const url =
-        payload && typeof payload === "object" && typeof (payload as Record<string, unknown>)["url"] === "string"
-          ? String((payload as Record<string, unknown>)["url"])
-          : "";
-      const errText =
-        payload && typeof payload === "object" && typeof (payload as Record<string, unknown>)["error"] === "string"
-          ? String((payload as Record<string, unknown>)["error"])
-          : "";
-      if (!response.ok || !url) {
-        throw new Error(errText || `Yükleme başarısız (${response.status})`);
+      const imageUrl = await resolveImageUrl();
+      if (!imageUrl) {
+        toast.error("Galeriden bir görsel veya video seçin");
+        return;
       }
-      setDraft((prev) => ({ ...prev, image_url: url }));
-      clearLocalPreview();
-      toast.success("Dosya banners kovasına yüklendi");
+      setDraft((prev) => ({ ...prev, image_url: imageUrl }));
+      await saveMutation.mutateAsync({ ...draft, image_url: imageUrl });
     } catch (error) {
       toast.error(adStorageUploadErrorMessage(error));
     } finally {
@@ -274,7 +308,7 @@ export function AdsPanel() {
             type="button"
             className="rounded-full"
             onClick={() => {
-              clearLocalPreview();
+              resetMedia();
               setDraft(emptyAdvertisementDraft());
               setOpen(true);
             }}
@@ -381,7 +415,7 @@ export function AdsPanel() {
                           size="icon"
                           variant="ghost"
                           onClick={() => {
-                            clearLocalPreview();
+                            resetMedia();
                             setDraft(toDraft(ad));
                             setOpen(true);
                           }}
@@ -413,7 +447,7 @@ export function AdsPanel() {
         open={open}
         onOpenChange={(next) => {
           setOpen(next);
-          if (!next) clearLocalPreview();
+          if (!next) resetMedia();
         }}
       >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
@@ -426,14 +460,10 @@ export function AdsPanel() {
             previewSrc={localPreview || draft.image_url}
             uploading={uploading}
             fileRef={fileRef}
-            onUpload={onUpload}
+            pickedName={pickedName}
+            onPickFile={onPickFile}
             onSubmit={() => {
-              if (saveMutation.isPending || uploading) return;
-              if (!draft.title.trim() || !draft.image_url) {
-                toast.error("Başlık ve galeriden bir görsel/video seçin");
-                return;
-              }
-              saveMutation.mutate(draft);
+              void submitAd();
             }}
             pending={saveMutation.isPending}
           />
@@ -449,7 +479,8 @@ function AdForm({
   previewSrc,
   uploading,
   fileRef,
-  onUpload,
+  pickedName,
+  onPickFile,
   onSubmit,
   pending,
 }: {
@@ -458,7 +489,8 @@ function AdForm({
   previewSrc: string;
   uploading: boolean;
   fileRef: React.RefObject<HTMLInputElement | null>;
-  onUpload: (file: File) => void;
+  pickedName: string;
+  onPickFile: (file: File) => void;
   onSubmit: () => void;
   pending: boolean;
 }) {
@@ -526,7 +558,7 @@ function AdForm({
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 event.target.value = "";
-                if (file) onUpload(file);
+                if (file) onPickFile(file);
               }}
             />
             <span className="pointer-events-none inline-flex items-center gap-2">
@@ -535,12 +567,11 @@ function AdForm({
             </span>
           </label>
         </div>
-        <Input
-          className="mt-2"
-          placeholder="veya görsel / video URL"
-          value={draft.image_url}
-          onChange={(event) => patch({ image_url: event.target.value })}
-        />
+        {pickedName || previewSrc ? (
+          <p className="mt-2 text-xs text-muted-foreground">
+            {pickedName ? `${pickedName} seçildi. Kaydet ile yüklenecek.` : "Görsel hazır."}
+          </p>
+        ) : null}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
