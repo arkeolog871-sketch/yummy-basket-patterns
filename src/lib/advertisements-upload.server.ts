@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
-import { parseActionType, sanitizeActionValue, type AdActionType } from "@/lib/advertisements";
+import { defaultAdDates, parseActionType, sanitizeActionValue, type AdActionType } from "@/lib/advertisements";
 import { BANNERS_BUCKET, contentTypeForBrandPath, MAX_AD_MEDIA_BYTES } from "@/lib/upload-limits";
 
 const SAFE_EXT = /^(png|jpg|jpeg|webp|gif|avif|bmp|svg|ico|heic|heif|mp4|mov|webm)$/i;
@@ -25,6 +25,24 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
+function tokenFromRequest(request: Request): string {
+  const authHeader = request.headers.get("authorization") ?? "";
+  if (authHeader.startsWith("Bearer ")) {
+    const bearer = authHeader.slice("Bearer ".length).trim();
+    if (bearer && bearer.split(".").length === 3) return bearer;
+  }
+  const cookie = request.headers.get("cookie") ?? "";
+  const match = /(?:^|;\s*)sb-access-token=([^;]+)/.exec(cookie);
+  const raw = match?.[1];
+  if (!raw) return "";
+  try {
+    const token = decodeURIComponent(raw).trim();
+    return token.split(".").length === 3 ? token : "";
+  } catch {
+    return "";
+  }
+}
+
 export async function founderClientFromRequest(request: Request) {
   const url = process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"];
   const key =
@@ -32,13 +50,9 @@ export async function founderClientFromRequest(request: Request) {
     process.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
   if (!url || !key) throw new Error("Supabase ortam değişkenleri eksik");
 
-  const authHeader = request.headers.get("authorization") ?? "";
-  if (!authHeader.startsWith("Bearer ")) {
+  const token = tokenFromRequest(request);
+  if (!token) {
     throw new Error("Unauthorized: No authorization header provided");
-  }
-  const token = authHeader.slice("Bearer ".length).trim();
-  if (!token || token.split(".").length !== 3) {
-    throw new Error("Unauthorized: Invalid token");
   }
 
   const supabase = createClient<Database>(url, key, {
@@ -194,8 +208,10 @@ export async function uploadAndSaveFounderBanner(request: Request): Promise<{
   if (!title) throw new Error("Başlık girin");
   if (!imageUrl) throw new Error("Galeriden bir görsel veya video seçin");
 
-  const actionType = parseActionType(formText(form, "action_type")) as AdActionType;
-  const actionValue = sanitizeActionValue(actionType, formText(form, "action_value"));
+  const actionType = parseActionType(formText(form, "action_type") || "internal_route") as AdActionType;
+  const actionValue =
+    sanitizeActionValue(actionType, formText(form, "action_value")) ||
+    (actionType === "internal_route" ? "/" : "");
   if (!actionValue) {
     throw new Error("Aksiyon hedefi geçersiz (telefon, /rota veya https:// bağlantı).");
   }
@@ -205,8 +221,9 @@ export async function uploadAndSaveFounderBanner(request: Request): Promise<{
     throw new Error("Geçerli bir telefon girin");
   }
 
-  const start = new Date(formText(form, "start_date"));
-  const end = new Date(formText(form, "end_date"));
+  const dates = defaultAdDates();
+  const start = new Date(formText(form, "start_date") || dates.start_date);
+  const end = new Date(formText(form, "end_date") || dates.end_date);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
     throw new Error("Bitiş tarihi başlangıçtan sonra olmalıdır.");
   }
@@ -226,6 +243,10 @@ export async function uploadAndSaveFounderBanner(request: Request): Promise<{
     end_date: end.toISOString(),
   };
 
+  const writer = process.env["SUPABASE_SERVICE_ROLE_KEY"]
+    ? (await import("@/integrations/supabase/client.server")).supabaseAdmin
+    : supabase;
+
   const { audited } = await import("@/lib/audit.server");
   return audited(
     {
@@ -238,11 +259,11 @@ export async function uploadAndSaveFounderBanner(request: Request): Promise<{
     },
     async () => {
       if (id) {
-        const { error } = await supabase.from("advertisements").update(values).eq("id", id);
+        const { error } = await writer.from("advertisements").update(values).eq("id", id);
         if (error) throw new Error(error.message);
         return { url: imageUrl, path, id };
       }
-      const { data: inserted, error } = await supabase
+      const { data: inserted, error } = await writer
         .from("advertisements")
         .insert(values)
         .select("id")

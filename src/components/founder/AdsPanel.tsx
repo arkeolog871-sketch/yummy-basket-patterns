@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type FormEvent, type RefObject } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -87,11 +87,11 @@ export function AdsPanel() {
   const toggleFn = useServerFn(setAdvertisementActive);
   const deleteFn = useServerFn(deleteAdvertisement);
   const fileRef = useRef<HTMLInputElement | null>(null);
-  const pendingFileRef = useRef<File | null>(null);
   const localPreviewRef = useRef("");
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(emptyAdvertisementDraft());
-  const [uploading, setUploading] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
   const [localPreview, setLocalPreview] = useState("");
   const [pickedName, setPickedName] = useState("");
 
@@ -143,21 +143,21 @@ export function AdsPanel() {
   }
 
   function resetMedia() {
-    pendingFileRef.current = null;
+    setFile(null);
     setPickedName("");
     clearLocalPreview();
   }
 
-  function onPickFile(file: File) {
-    if (!isAdMediaFile(file)) {
+  function onPickFile(next: File) {
+    if (!isAdMediaFile(next)) {
       toast.error(adImageTypeRejectedMessage());
       return;
     }
-    if (file.size > MAX_AD_MEDIA_BYTES) {
+    if (next.size > MAX_AD_MEDIA_BYTES) {
       toast.error(adImageTooLargeMessage());
       return;
     }
-    const extension = extensionForAdMediaFile(file);
+    const extension = extensionForAdMediaFile(next);
     if (!extension) {
       toast.error(adImageTypeRejectedMessage());
       return;
@@ -166,25 +166,25 @@ export function AdsPanel() {
       toast.message("HEIC bazı tarayıcılarda görünmez; mümkünse JPEG veya PNG seçin");
     }
     clearLocalPreview();
-    pendingFileRef.current = file;
-    setPickedName(file.name || "görsel");
-    const blobUrl = URL.createObjectURL(file);
+    setFile(next);
+    setPickedName(next.name || "görsel");
+    const blobUrl = URL.createObjectURL(next);
     localPreviewRef.current = blobUrl;
     setLocalPreview(blobUrl);
     setDraft((prev) => ({ ...prev, image_url: "" }));
   }
 
-  async function submitAd() {
-    if (uploading) return;
-    if (!draft.title.trim()) {
-      toast.error("Başlık girin");
-      return;
+  const handleUpload = async (e: FormEvent) => {
+    e.preventDefault();
+    const title = draft.title.trim();
+    if (!file || !title) {
+      if (!title) toast.error("Başlık girin");
+      else if (!draft.image_url.trim()) toast.error("Galeriden bir görsel veya video seçin");
+      if (!title || (!file && !draft.image_url.trim())) return;
     }
-    if (!draft.image_url.trim() && !pendingFileRef.current) {
-      toast.error("Galeriden bir görsel veya video seçin");
-      return;
-    }
-    setUploading(true);
+    if (loading) return;
+
+    setLoading(true);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
@@ -192,33 +192,36 @@ export function AdsPanel() {
         toast.error("Oturumunuz geçersiz veya süresi doldu. Lütfen yeniden giriş yapın.");
         return;
       }
-      const form = new FormData();
-      if (draft.id) form.set("id", draft.id);
-      form.set("title", draft.title.trim());
-      form.set("client_name", draft.client_name);
-      form.set("client_phone", draft.client_phone);
-      form.set("image_url", draft.image_url.trim());
-      form.set("action_type", draft.action_type);
-      form.set("action_value", draft.action_value);
-      form.set("display_order", String(draft.display_order));
-      form.set("is_active", draft.is_active ? "true" : "false");
-      form.set("start_date", draft.start_date);
-      form.set("end_date", draft.end_date);
-      const pending = pendingFileRef.current;
-      if (pending) form.set("file", pending, pending.name || "reklam");
+      const secure = window.location.protocol === "https:" ? "; Secure" : "";
+      document.cookie = `sb-access-token=${encodeURIComponent(token)}; Path=/; Max-Age=300; SameSite=Lax${secure}`;
+
+      const formData = new FormData();
+      if (file) formData.append("file", file);
+      formData.append("title", title);
+      if (draft.id) formData.append("id", draft.id);
+      formData.append("client_name", draft.client_name);
+      formData.append("client_phone", draft.client_phone);
+      formData.append("image_url", draft.image_url.trim());
+      formData.append("action_type", draft.action_type);
+      formData.append("action_value", draft.action_value);
+      formData.append("display_order", String(draft.display_order));
+      formData.append("is_active", draft.is_active ? "true" : "false");
+      formData.append("start_date", draft.start_date);
+      formData.append("end_date", draft.end_date);
 
       const response = await fetch("/api/v1/banners", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: form,
+        body: formData,
       });
+
       const body: unknown = await response.json().catch(() => null);
       if (!response.ok) {
         const record = body && typeof body === "object" ? (body as Record<string, unknown>) : null;
-        const message = typeof record?.["error"] === "string" ? record["error"] : "Reklam kaydedilemedi";
+        const message =
+          typeof record?.["error"] === "string" ? record["error"] : "Yükleme başarısız";
         throw new Error(message);
       }
-      pendingFileRef.current = null;
+
       toast.success("Reklam kaydedildi");
       resetMedia();
       setOpen(false);
@@ -227,9 +230,9 @@ export function AdsPanel() {
     } catch (error) {
       toast.error(toPublicErrorMessage(error));
     } finally {
-      setUploading(false);
+      setLoading(false);
     }
-  }
+  };
 
   const tablePreview = useMemo(
     () =>
@@ -428,14 +431,11 @@ export function AdsPanel() {
             draft={draft}
             setDraft={setDraft}
             previewSrc={localPreview || draft.image_url}
-            uploading={uploading}
+            loading={loading}
             fileRef={fileRef}
             pickedName={pickedName}
             onPickFile={onPickFile}
-            onSubmit={() => {
-              void submitAd();
-            }}
-            pending={uploading}
+            onSubmit={handleUpload}
           />
         </DialogContent>
       </Dialog>
@@ -447,30 +447,27 @@ function AdForm({
   draft,
   setDraft,
   previewSrc,
-  uploading,
+  loading,
   fileRef,
   pickedName,
   onPickFile,
   onSubmit,
-  pending,
 }: {
   draft: Draft;
   setDraft: (next: Draft) => void;
   previewSrc: string;
-  uploading: boolean;
-  fileRef: React.RefObject<HTMLInputElement | null>;
+  loading: boolean;
+  fileRef: RefObject<HTMLInputElement | null>;
   pickedName: string;
   onPickFile: (file: File) => void;
-  onSubmit: () => void;
-  pending: boolean;
+  onSubmit: (e: FormEvent) => void | Promise<void>;
 }) {
   const patch = (partial: Partial<Draft>) => setDraft({ ...draft, ...partial });
   return (
     <form
       className="space-y-4"
       onSubmit={(event) => {
-        event.preventDefault();
-        onSubmit();
+        void onSubmit(event);
       }}
     >
       <div>
@@ -533,7 +530,7 @@ function AdForm({
             />
             <span className="pointer-events-none inline-flex items-center gap-2">
               <ImageUp className="size-4" />
-              {uploading ? "Yükleniyor…" : "Galeriden seç"}
+              {loading ? "Yükleniyor…" : "Galeriden seç"}
             </span>
           </label>
         </div>
@@ -618,7 +615,7 @@ function AdForm({
         </div>
       </div>
       <Button type="submit" className="w-full rounded-full">
-        {pending || uploading ? "Kaydediliyor…" : "Kaydet"}
+        {loading ? "Kaydediliyor…" : "Kaydet"}
       </Button>
     </form>
   );
