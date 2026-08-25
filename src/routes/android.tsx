@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
+const APK_VERSION = "1.3";
+const APK_URL = `/silvan-cebimde.apk?v=${APK_VERSION}`;
+
 export const Route = createFileRoute("/android")({
   head: () => ({
     meta: [
@@ -38,9 +41,9 @@ function AndroidPreview() {
       <div className="w-full max-w-[393px]">
         <div className="mb-4 text-center text-[#f4ece4]">
           <p className="text-[15px] font-semibold uppercase tracking-[0.08em]">SİLVAN CEBİMDE</p>
-          <p className="mt-1.5 text-[13px] text-[#cbb8a8]">Android mobil uygulama önizlemesi</p>
+          <p className="mt-1.5 text-[13px] text-[#cbb8a8]">Android mobil uygulama önizlemesi · v{APK_VERSION}</p>
           <a
-            href="/silvan-cebimde.apk"
+            href={APK_URL}
             download="silvan-cebimde.apk"
             className="mt-3 inline-flex rounded-full bg-[#ff8c42] px-4 py-2 text-[13px] font-semibold text-white"
           >

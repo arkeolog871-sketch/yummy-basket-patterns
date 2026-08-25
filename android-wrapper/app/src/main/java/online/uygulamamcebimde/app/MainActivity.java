@@ -18,8 +18,8 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
-    private static final String APP_URL = "https://uygulamamcebimde.online/";
-    private static final String APP_HOST = "uygulamamcebimde.online";
+    private static final String APP_URL = "https://yummy-basket-patterns.lovable.app/";
+    private static final String APP_HOST = "yummy-basket-patterns.lovable.app";
     private static final int FILE_CHOOSER_REQUEST = 1001;
     private WebView webView;
     private ValueCallback<Uri[]> fileChooserCallback;
@@ -52,7 +52,9 @@ public class MainActivity extends Activity {
         settings.setDatabaseEnabled(true);
         settings.setGeolocationEnabled(true);
         settings.setAllowFileAccess(false);
-        settings.setAllowContentAccess(false);
+        // Android galerisi/dosya seçici `content://` URI döndürür; WebView'ın seçilen medyayı
+        // okuyabilmesi için content erişimi açık kalmalı. Yerel `file://` erişimi kapalıdır.
+        settings.setAllowContentAccess(true);
         settings.setAllowFileAccessFromFileURLs(false);
         settings.setAllowUniversalAccessFromFileURLs(false);
         settings.setSupportMultipleWindows(false);
@@ -107,17 +109,20 @@ public class MainActivity extends Activity {
                 }
                 fileChooserCallback = filePathCallback;
 
-                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
-                intent.setType("*/*");
-                String[] acceptTypes = params.getAcceptTypes();
-                if (acceptTypes != null && acceptTypes.length > 0 && !acceptTypes[0].isEmpty()) {
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+
+                String[] acceptTypes = normalizeAcceptTypes(params.getAcceptTypes());
+                if (acceptTypes.length == 1) {
                     intent.setType(acceptTypes[0]);
-                    if (acceptTypes.length > 1) {
-                        intent.putExtra(Intent.EXTRA_MIME_TYPES, acceptTypes);
-                    }
+                } else if (acceptTypes.length > 1) {
+                    intent.setType("*/*");
+                    intent.putExtra(Intent.EXTRA_MIME_TYPES, acceptTypes);
                 } else {
-                    intent.setType("image/*");
+                    intent.setType("*/*");
+                    intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[] { "image/*", "video/*" });
                 }
                 intent.putExtra(
                         Intent.EXTRA_ALLOW_MULTIPLE,
@@ -160,9 +165,12 @@ public class MainActivity extends Activity {
                 results = new Uri[count];
                 for (int i = 0; i < count; i++) {
                     results[i] = data.getClipData().getItemAt(i).getUri();
+                    persistReadPermission(results[i]);
                 }
             } else if (data.getData() != null) {
-                results = new Uri[] { data.getData() };
+                Uri uri = data.getData();
+                persistReadPermission(uri);
+                results = new Uri[] { uri };
             }
         }
         fileChooserCallback.onReceiveValue(results);
@@ -229,5 +237,43 @@ public class MainActivity extends Activity {
             // Do not load unknown schemes or hosts inside the WebView.
         }
         return true;
+    }
+
+    private String[] normalizeAcceptTypes(String[] rawTypes) {
+        java.util.ArrayList<String> types = new java.util.ArrayList<>();
+        if (rawTypes != null) {
+            for (String raw : rawTypes) {
+                if (raw == null) continue;
+                String[] parts = raw.split(",");
+                for (String part : parts) {
+                    String type = part.trim().toLowerCase(java.util.Locale.ROOT);
+                    if (type.isEmpty() || "*".equals(type) || ".*".equals(type)) continue;
+                    if (type.startsWith(".")) {
+                        String extension = type.substring(1);
+                        if ("jpg".equals(extension) || "jpeg".equals(extension)) type = "image/jpeg";
+                        else if ("png".equals(extension)) type = "image/png";
+                        else if ("webp".equals(extension)) type = "image/webp";
+                        else if ("gif".equals(extension)) type = "image/gif";
+                        else if ("mp4".equals(extension)) type = "video/mp4";
+                        else if ("mov".equals(extension)) type = "video/quicktime";
+                        else if ("webm".equals(extension)) type = "video/webm";
+                        else continue;
+                    }
+                    if (!types.contains(type)) types.add(type);
+                }
+            }
+        }
+        return types.toArray(new String[0]);
+    }
+
+    private void persistReadPermission(Uri uri) {
+        try {
+            getContentResolver().takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+            );
+        } catch (Exception ignored) {
+            // Bazı galeri sağlayıcıları kalıcı izin vermez; anlık izin WebView için yeterlidir.
+        }
     }
 }
