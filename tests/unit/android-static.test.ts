@@ -35,6 +35,14 @@ describe("Android wrapper static controls", () => {
     expect(activity).toMatch(/setAllowFileAccess\(false\)/);
   });
 
+  it("keeps JavaScript on for the SPA and documents third-party cookies for OAuth", () => {
+    expect(activity).toMatch(/setJavaScriptEnabled\(true\)/);
+    expect(activity).toMatch(/setAcceptThirdPartyCookies\(webView, true\)/);
+    expect(activity).toMatch(/SameSite çerezi için Chrome Custom Tabs/);
+    expect(manifest).toMatch(/usesCleartextTraffic="false"/);
+    expect(manifest).toMatch(/networkSecurityConfig="@xml\/network_security_config"/);
+  });
+
   it("does not embed signing passwords in Gradle", () => {
     expect(gradle).not.toMatch(/storePassword\s*=\s*"/);
     expect(gradle).toMatch(/ANDROID_KEYSTORE/);

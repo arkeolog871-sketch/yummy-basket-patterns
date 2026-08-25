@@ -66,6 +66,8 @@ public class MainActivity extends Activity {
 
         CookieManager cookies = CookieManager.getInstance();
         cookies.setAcceptCookie(true);
+        // First-party session is the app origin. Third-party cookies stay on so
+        // Google OAuth / SameSite cookies from Custom Tabs can complete /auth.
         cookies.setAcceptThirdPartyCookies(webView, true);
 
         WebSettings settings = webView.getSettings();

@@ -13,7 +13,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:sql": "node scripts/run-sql-rpc-tests.mjs",
     "security:test": "node scripts/security-smoke.mjs",
+    "security:prod": "node scripts/production-readonly-probe.mjs",
+    "staging:migrate": "node scripts/staging-migrate.mjs",
     "ios:prepare": "node scripts/prepare-ios-pwa.mjs",
     "build:ios": "node scripts/prepare-ios-pwa.mjs && vite build"
   },

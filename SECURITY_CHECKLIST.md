@@ -43,11 +43,11 @@ Legend: `[PASS]` verified or implemented, `[WARNING]` requires deployment/archit
 - [PASS] No wildcard CORS policy is configured.
 - [PASS] Body and upload data have bounded validation.
 - [PASS] Generic public error responses avoid stack/database/secret leakage.
-- [PASS] OTP issue/consume/failure counters use row-locked RPCs (`issue_email_otp`, `consume_email_otp`, `register_email_otp_failure`) with a non-atomic fallback if the migration is not yet applied.
+- [PASS] OTP issue/consume/failure counters use row-locked RPCs plus an advisory transaction lock and compare-and-swap consume (`20260825230000_otp_advisory_lock_cas.sql`). A non-atomic fallback remains if those functions are not yet deployed.
 - [PASS] Vendor login success bodies use a single generic mask for known and unknown identifiers.
 - [PASS] Order placement uses a transactional stock+idempotency RPC (`place_customer_order`) with a fallback insert path.
 - [WARNING] Configure Cloudflare edge request/body limits and WAF rules.
-- [WARNING] Apply the `20260825223000_otp_order_atomic_rpc` migration in staging, then production, before relying on the RPC path.
+- [WARNING] Apply `20260825223000_otp_order_atomic_rpc.sql` and `20260825230000_otp_advisory_lock_cas.sql` on a dedicated staging project first. This agent could not apply them: no staging credentials were present, and the only known project ref is production. Until applied, the app may use non-atomic fallbacks.
 
 ## Injection and browser security
 
@@ -70,13 +70,15 @@ Legend: `[PASS]` verified or implemented, `[WARNING]` requires deployment/archit
 
 ## Mobile security
 
-- [PASS] Android cleartext and mixed content are disabled.
-- [PASS] WebView debugging, file access, content access, and third-party cookies are disabled.
-- [PASS] Top-level WebView navigation is host-allowlisted; external links leave the WebView.
+- [PASS] Android cleartext and mixed content are disabled (`usesCleartextTraffic=false`, `MIXED_CONTENT_NEVER_ALLOW`).
+- [PASS] WebView debugging and `file://` access are disabled. Content access stays on for gallery/camera `content://` URIs.
+- [PASS] JavaScript and DOM storage are enabled because the product is a WebView-hosted SPA; there is no separate native UI.
+- [WARNING] Third-party cookies are **enabled** in the WebView so Google OAuth / Custom Tabs cookie handoff can complete. This is intentional and documented; do not disable it without a physical-device OAuth retest.
+- [PASS] Top-level WebView navigation is host-allowlisted; Google authorize URLs open in Custom Tabs; other external links leave the WebView.
 - [PASS] Geolocation is granted only to the production app origin.
 - [PASS] TLS validation errors cancel navigation.
 - [PASS] Android backup/data transfer is disabled for WebView session data.
-- [WARNING] OAuth/provider behavior must be retested on a physical device after navigation allowlisting.
+- [WARNING] Login → signup → OTP → session → address → order must be retested on a physical Android device before production GO.
 
 ## Secrets and dependencies
 

@@ -1,4 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
+import { isProductionTarget } from "./target";
+
+test.skip(isProductionTarget(), "Production OTP send/verify is forbidden in this suite");
 
 async function openAuth(page: Page) {
   await page.goto("/auth");
