@@ -25,6 +25,7 @@ import { ErrorCollector } from "@/components/system/ErrorCollector";
 import { AppErrorBoundary } from "@/components/system/AppErrorBoundary";
 import { publicEnvInlineScript } from "@/lib/public-env";
 import { TextPrefsProvider } from "@/hooks/useTextPrefs";
+import { installMapsSchemeGuard } from "@/lib/maps";
 
 function NotFoundComponent() {
   return (
@@ -190,6 +191,8 @@ function RootComponent() {
       return undefined;
     }
   }, [router, queryClient]);
+
+  useEffect(() => installMapsSchemeGuard(), []);
 
   return (
     <QueryClientProvider client={queryClient}>

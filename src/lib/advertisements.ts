@@ -216,6 +216,34 @@ export function emptyAdvertisementDraft(): Omit<Advertisement, "id" | "created_a
   };
 }
 
+export async function postFounderBanner(form: FormData, accessToken?: string | null): Promise<{
+  url: string;
+  publicUrl: string;
+  path: string;
+  id: string | null;
+}> {
+  const response = await fetch("/api/v1/banners", {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
+    body: form,
+  });
+  const body: unknown = await response.json().catch(() => null);
+  const record = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  if (!response.ok) {
+    const message = typeof record["error"] === "string" ? record["error"] : "Reklam kaydedilemedi";
+    throw new Error(message);
+  }
+  const url = typeof record["url"] === "string" ? record["url"] : "";
+  const publicUrl = typeof record["publicUrl"] === "string" ? record["publicUrl"] : url;
+  const path = typeof record["path"] === "string" ? record["path"] : "";
+  const id = typeof record["id"] === "string" ? record["id"] : null;
+  if (!url && !publicUrl) throw new Error("Yüklenen medya adresi alınamadı");
+  return { url: url || publicUrl, publicUrl: publicUrl || url, path, id };
+}
+
 export async function fetchPublicBanners(): Promise<PublicBanner[]> {
   try {
     const response = await fetch("/api/v1/banners", { headers: { accept: "application/json" } });

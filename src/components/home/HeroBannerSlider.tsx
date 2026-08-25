@@ -10,20 +10,27 @@ import {
 } from "@/lib/advertisements";
 import { cn } from "@/lib/utils";
 import { AdMedia } from "@/components/home/AdMedia";
+import { openExternalUrl } from "@/lib/maps";
 
 function activateBanner(banner: PublicBanner, navigate: ReturnType<typeof useNavigate>) {
   trackBanner(banner.id, "click");
   const value = banner.action_value;
   if (!value) return;
-  if (banner.action_type === "phone") {
-    window.location.href = `tel:${value}`;
-    return;
+  try {
+    if (banner.action_type === "phone") {
+      window.location.href = `tel:${value}`;
+      return;
+    }
+    if (banner.action_type === "external_link") {
+      if (!openExternalUrl(value)) {
+        window.open(value, "_blank", "noopener,noreferrer");
+      }
+      return;
+    }
+    void navigate({ to: value as never });
+  } catch {
+    /* WebView / harici uygulama reddetti */
   }
-  if (banner.action_type === "external_link") {
-    window.open(value, "_blank", "noopener,noreferrer");
-    return;
-  }
-  void navigate({ to: value as never });
 }
 
 function SlideVisual({ banner, priority, active }: { banner: PublicBanner; priority: boolean; active: boolean }) {

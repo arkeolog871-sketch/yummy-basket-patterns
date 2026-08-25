@@ -1,15 +1,15 @@
-import { useMemo, useRef, useState, type FormEvent, type RefObject } from "react";
+import { useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { ImageUp, Megaphone, Pencil, Plus, Trash2 } from "lucide-react";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import {
   deleteAdvertisement,
   listAdvertisements,
-  saveAdvertisement,
   setAdvertisementActive,
 } from "@/lib/advertisements.functions";
 import {
@@ -20,6 +20,7 @@ import {
   isAdScheduled,
   MAX_ADVERTISEMENTS,
   parsePublicBanner,
+  postFounderBanner,
   toDatetimeLocalValue,
   type AdActionType,
   type Advertisement,
@@ -29,14 +30,12 @@ import { AdMedia } from "@/components/home/AdMedia";
 import {
   adImageTooLargeMessage,
   adImageTypeRejectedMessage,
-  AD_MEDIA_ACCEPT,
   extensionForAdMediaFile,
   isAdMediaFile,
   MAX_AD_IMAGE_MB,
   MAX_AD_MEDIA_BYTES,
 } from "@/lib/upload-limits";
-import { cn } from "@/lib/utils";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -63,19 +62,6 @@ const ACTION_LABELS: Record<AdActionType, string> = {
 
 type Draft = ReturnType<typeof emptyAdvertisementDraft> & { id?: string };
 
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result ?? "");
-      const comma = result.indexOf(",");
-      resolve(comma >= 0 ? result.slice(comma + 1) : result);
-    };
-    reader.onerror = () => reject(new Error("Dosya okunamadı"));
-    reader.readAsDataURL(file);
-  });
-}
-
 function toDraft(ad?: Advertisement | null): Draft {
   if (!ad) return emptyAdvertisementDraft();
   const { id, title, client_name, client_phone, image_url, action_type, action_value, display_order, is_active, start_date, end_date } = ad;
@@ -96,12 +82,12 @@ function toDraft(ad?: Advertisement | null): Draft {
 
 export function AdsPanel() {
   const { isFounder } = useSiteSettings();
+  const { session } = useAuth();
   const queryClient = useQueryClient();
   const listFn = useServerFn(listAdvertisements);
-  const saveFn = useServerFn(saveAdvertisement);
   const toggleFn = useServerFn(setAdvertisementActive);
   const deleteFn = useServerFn(deleteAdvertisement);
-  const fileRef = useRef<HTMLInputElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const localPreviewRef = useRef("");
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(emptyAdvertisementDraft());
@@ -189,6 +175,19 @@ export function AdsPanel() {
     setDraft((prev) => ({ ...prev, image_url: "" }));
   }
 
+  function openGalleryPicker() {
+    const input = fileInputRef.current;
+    if (!input) return;
+    input.value = "";
+    input.click();
+  }
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const next = event.target.files?.[0];
+    event.target.value = "";
+    if (next) onPickFile(next);
+  }
+
   const handleUpload = async (e: FormEvent) => {
     e.preventDefault();
     const title = draft.title.trim();
@@ -204,29 +203,24 @@ export function AdsPanel() {
 
     setLoading(true);
     try {
-      const base64 = file ? await fileToBase64(file) : undefined;
-      await saveFn({
-        data: {
-          ...(draft.id ? { id: draft.id } : {}),
-          title,
-          client_name: draft.client_name,
-          client_phone: draft.client_phone,
-          image_url: draft.image_url.trim(),
-          action_type: draft.action_type,
-          action_value: draft.action_value,
-          display_order: draft.display_order,
-          is_active: draft.is_active,
-          start_date: draft.start_date,
-          end_date: draft.end_date,
-          ...(file && base64
-            ? {
-                fileName: file.name || "reklam",
-                contentType: file.type || "application/octet-stream",
-                base64,
-              }
-            : {}),
-        },
-      });
+      const form = new FormData();
+      if (draft.id) form.set("id", draft.id);
+      form.set("title", title);
+      form.set("client_name", draft.client_name);
+      form.set("client_phone", draft.client_phone);
+      form.set("image_url", draft.image_url.trim());
+      form.set("action_type", draft.action_type);
+      form.set("action_value", draft.action_value);
+      form.set("display_order", String(draft.display_order));
+      form.set("is_active", draft.is_active ? "true" : "false");
+      form.set("start_date", draft.start_date);
+      form.set("end_date", draft.end_date);
+      if (file) form.set("file", file, file.name || "reklam");
+
+      const saved = await postFounderBanner(form, session?.access_token);
+      if (saved.publicUrl) {
+        setDraft((prev) => ({ ...prev, image_url: saved.publicUrl }));
+      }
       toast.success("Reklam kaydedildi");
       resetMedia();
       setOpen(false);
@@ -421,13 +415,17 @@ export function AdsPanel() {
       </div>
 
       <Dialog
+        modal={false}
         open={open}
         onOpenChange={(next) => {
           setOpen(next);
           if (!next) resetMedia();
         }}
       >
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent
+          className="max-h-[90vh] overflow-y-auto sm:max-w-lg"
+          onOpenAutoFocus={(event) => event.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>{draft.id ? "Reklamı düzenle" : "Yeni reklam"}</DialogTitle>
           </DialogHeader>
@@ -436,13 +434,20 @@ export function AdsPanel() {
             setDraft={setDraft}
             previewSrc={localPreview || draft.image_url}
             loading={loading}
-            fileRef={fileRef}
             pickedName={pickedName}
-            onPickFile={onPickFile}
+            onPickClick={openGalleryPicker}
             onSubmit={handleUpload}
           />
         </DialogContent>
       </Dialog>
+      <input
+        id="founder-ad-media-file"
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,video/*"
+        style={{ display: "none" }}
+        onChange={handleFileChange}
+      />
     </div>
   );
 }
@@ -452,18 +457,16 @@ function AdForm({
   setDraft,
   previewSrc,
   loading,
-  fileRef,
   pickedName,
-  onPickFile,
+  onPickClick,
   onSubmit,
 }: {
   draft: Draft;
   setDraft: (next: Draft) => void;
   previewSrc: string;
   loading: boolean;
-  fileRef: RefObject<HTMLInputElement | null>;
   pickedName: string;
-  onPickFile: (file: File) => void;
+  onPickClick: () => void;
   onSubmit: (e: FormEvent) => void | Promise<void>;
 }) {
   const patch = (partial: Partial<Draft>) => setDraft({ ...draft, ...partial });
@@ -508,35 +511,17 @@ function AdForm({
         </div>
       </div>
       <div>
-        <Label htmlFor="ad-media-file">
+        <Label htmlFor="ad-media-pick">
           Görsel veya video (PNG, JPEG, MP4, MOV, WEBM… en fazla {MAX_AD_IMAGE_MB} MB, 16:9 veya 3:1)
         </Label>
         <div className="mt-1.5 flex items-center gap-3">
           <div className="h-16 w-28 overflow-hidden rounded-xl border bg-muted">
             {previewSrc ? <AdMedia src={previewSrc} className="size-full object-cover" active /> : null}
           </div>
-          <label
-            htmlFor="ad-media-file"
-            className={cn(buttonVariants({ variant: "default" }), "relative cursor-pointer rounded-full")}
-          >
-            <input
-              ref={fileRef}
-              id="ad-media-file"
-              type="file"
-              accept={AD_MEDIA_ACCEPT}
-              className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
-              style={{ fontSize: 16 }}
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = "";
-                if (file) onPickFile(file);
-              }}
-            />
-            <span className="pointer-events-none inline-flex items-center gap-2">
-              <ImageUp className="size-4" />
-              {loading ? "Yükleniyor…" : "Galeriden seç"}
-            </span>
-          </label>
+          <Button id="ad-media-pick" type="button" className="rounded-full" onClick={onPickClick}>
+            <ImageUp className="size-4" />
+            {loading ? "Yükleniyor…" : "Galeriden seç"}
+          </Button>
         </div>
         {pickedName || previewSrc ? (
           <p className="mt-2 text-xs text-muted-foreground">

@@ -143,10 +143,9 @@ public class MainActivity extends Activity {
                 }
                 fileChooserCallback = filePathCallback;
 
-                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
 
                 String[] acceptTypes = normalizeAcceptTypes(params.getAcceptTypes());
                 if (acceptTypes.length == 1) {
@@ -165,12 +164,23 @@ public class MainActivity extends Activity {
 
                 try {
                     startActivityForResult(
-                            Intent.createChooser(intent, "Dosya seç"),
+                            Intent.createChooser(intent, "Galeriden seç"),
                             FILE_CHOOSER_REQUEST
                     );
                 } catch (Exception ignored) {
-                    fileChooserCallback = null;
-                    return false;
+                    try {
+                        Intent documents = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                        documents.addCategory(Intent.CATEGORY_OPENABLE);
+                        documents.setType("*/*");
+                        documents.putExtra(Intent.EXTRA_MIME_TYPES, new String[] { "image/*", "video/*" });
+                        startActivityForResult(
+                                Intent.createChooser(documents, "Galeriden seç"),
+                                FILE_CHOOSER_REQUEST
+                        );
+                    } catch (Exception alsoIgnored) {
+                        fileChooserCallback = null;
+                        return false;
+                    }
                 }
                 return true;
             }
@@ -425,7 +435,21 @@ public class MainActivity extends Activity {
     }
 
     private String httpsFromIntentUrl(String rawUrl) {
-        if (rawUrl == null || !rawUrl.startsWith("intent://")) return null;
+        if (rawUrl == null || rawUrl.isEmpty()) return null;
+        String markerKey = "S.browser_fallback_url=";
+        int idx = rawUrl.indexOf(markerKey);
+        if (idx >= 0) {
+            int start = idx + markerKey.length();
+            int end = rawUrl.indexOf(';', start);
+            if (end < 0) end = rawUrl.length();
+            try {
+                String decoded = Uri.decode(rawUrl.substring(start, end));
+                if (decoded.startsWith("https://") || decoded.startsWith("http://")) return decoded;
+            } catch (Exception ignored) {
+                // Bozuk yedek adres.
+            }
+        }
+        if (!rawUrl.startsWith("intent://")) return null;
         int marker = rawUrl.indexOf("#Intent;");
         if (marker <= "intent://".length()) return null;
         return "https://" + rawUrl.substring("intent://".length(), marker);

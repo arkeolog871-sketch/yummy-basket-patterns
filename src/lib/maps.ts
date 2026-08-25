@@ -61,6 +61,8 @@ function firstGoogleMapsUrl(raw: string | null | undefined): string | null {
   const candidates = [raw.trim(), decoded, ...((decoded.match(/https?:\/\/[^\s"'<>]+/gi) as string[] | null) ?? [])];
   for (const candidate of candidates) {
     if (isGoogleMapsUrl(candidate)) return candidate;
+    const fromIntent = toSafeHttpsMapsUrl(candidate);
+    if (fromIntent && isGoogleMapsUrl(fromIntent)) return fromIntent;
   }
   return null;
 }
@@ -69,14 +71,8 @@ function googleMapsDirUrl(destination: string): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
 }
 
-function osmDirectionsUrl(business: BusinessLocation): string | null {
-  const coords = resolveBusinessCoords(business);
-  if (coords) {
-    return `https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=;${coords.lat}%2C${coords.lng}`;
-  }
-  const destination = destinationQuery(business);
-  if (!destination) return null;
-  return `https://www.openstreetmap.org/search?query=${encodeURIComponent(destination)}`;
+function googleMapsSearchUrl(query: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
 type NativeMapsBridge = { openMaps?: (url: string) => void };
@@ -95,49 +91,116 @@ export function isAndroidWebView() {
   return /Android/i.test(ua) && (/; wv\)/i.test(ua) || /Version\/4\.0/i.test(ua));
 }
 
-function openHttpsUrl(url: string) {
-  if (!/^https:\/\//i.test(url)) return false;
-  const opened = window.open(url, "_blank", "noopener,noreferrer");
-  if (!opened) {
-    const link = document.createElement("a");
-    link.href = url;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.click();
+/** Android intent:// → HTTPS. Önce S.browser_fallback_url, yoksa şema+host, yoksa Maps search. */
+export function httpsFromIntentUrl(raw: string, queryFallback = ""): string | null {
+  const trimmed = raw.trim();
+  if (!/^intent:/i.test(trimmed)) return null;
+
+  const fallbackMatch = trimmed.match(/S\.browser_fallback_url=([^;]*)/i);
+  if (fallbackMatch?.[1]) {
+    const decoded = tryDecode(fallbackMatch[1]);
+    if (/^https:\/\//i.test(decoded)) return decoded;
   }
-  return true;
+
+  const marker = trimmed.indexOf("#Intent;");
+  const schemeMatch = trimmed.match(/;scheme=([^;]+)/i);
+  const scheme = (schemeMatch?.[1] || "https").toLowerCase();
+  if (marker > "intent://".length && (scheme === "https" || scheme === "http")) {
+    return `${scheme}://${trimmed.slice("intent://".length, marker)}`;
+  }
+
+  const coords = matchCoords(trimmed);
+  if (coords) return googleMapsSearchUrl(`${coords.lat},${coords.lng}`);
+  const dest = trimmed.match(/[?&](?:destination|query|q)=([^&;#]+)/i);
+  if (dest?.[1]) return googleMapsSearchUrl(tryDecode(dest[1]));
+  if (queryFallback.trim()) return googleMapsSearchUrl(queryFallback.trim());
+  return googleMapsSearchUrl("");
+}
+
+function httpsFromGeoUrl(raw: string): string | null {
+  const coords = matchCoords(raw);
+  if (coords) return googleMapsSearchUrl(`${coords.lat},${coords.lng}`);
+  const q = raw.match(/[?&]q=([^&]*)/i);
+  if (q?.[1]) return googleMapsSearchUrl(tryDecode(q[1]));
+  return null;
+}
+
+/** intent://, geo: ve google.navigation: adreslerini WebView'in yükleyebileceği HTTPS'e çevirir. */
+export function toSafeHttpsMapsUrl(raw: string, queryFallback = ""): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  if (/^intent:/i.test(trimmed)) return httpsFromIntentUrl(trimmed, queryFallback);
+  if (/^geo:/i.test(trimmed) || /^google\.navigation:/i.test(trimmed)) {
+    return httpsFromGeoUrl(trimmed) ?? (queryFallback.trim() ? googleMapsSearchUrl(queryFallback.trim()) : googleMapsSearchUrl(""));
+  }
+  if (/^https:\/\//i.test(trimmed)) return trimmed;
+  return null;
 }
 
 /**
- * Yol tarifi: APK'da native köprüyle Google Haritalar uygulaması.
- * Köprü yoksa (eski APK) Google Maps WebView'de açılmaz — intent:// hatası vermesin diye OSM kullanılır.
+ * Harici harita / bağlantı aç. intent:// asla location'a yazılmaz.
+ * WebView'de native köprü, yoksa HTTPS (try/catch).
  */
-export function openDirections(business: BusinessLocation) {
+export function openExternalUrl(raw: string, queryFallback = ""): boolean {
   if (typeof window === "undefined") return false;
+  try {
+    const https = toSafeHttpsMapsUrl(raw, queryFallback);
+    if (!https || !/^https:\/\//i.test(https)) return false;
 
-  const native = nativeMapsBridge();
-  const googleUrl = buildMapsUrl(business);
-  if (native?.openMaps && googleUrl) {
-    native.openMaps(googleUrl);
+    const native = nativeMapsBridge();
+    if (native?.openMaps) {
+      try {
+        native.openMaps(https);
+        return true;
+      } catch {
+        /* native yok / reddetti */
+      }
+    }
+
+    if (isAndroidWebView()) {
+      window.location.href = https;
+      return true;
+    }
+
+    const opened = window.open(https, "_blank", "noopener,noreferrer");
+    if (!opened) window.location.href = https;
     return true;
+  } catch {
+    return false;
   }
-
-  if (isAndroidWebView()) {
-    const osmUrl = osmDirectionsUrl(business);
-    if (!osmUrl) return false;
-    return openHttpsUrl(osmUrl);
-  }
-
-  if (!googleUrl) return false;
-  return openHttpsUrl(googleUrl);
 }
 
-/** <a href> için: WebView'de Google Maps adresi kullanma. */
+/** intent:// ve geo: link tıklamalarını HTTPS'e çevirir. */
+export function installMapsSchemeGuard() {
+  if (typeof document === "undefined") return () => undefined;
+  const onClick = (event: MouseEvent) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const anchor = target.closest("a");
+    if (!anchor) return;
+    const href = anchor.getAttribute("href") ?? "";
+    if (!/^(intent:|geo:|google\.navigation:)/i.test(href)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    openExternalUrl(href, anchor.textContent?.trim() ?? "");
+  };
+  document.addEventListener("click", onClick, true);
+  return () => document.removeEventListener("click", onClick, true);
+}
+
+/** Yol tarifi: her zaman HTTPS Google Maps; intent:// WebView'e hiç yazılmaz. */
+export function openDirections(business: BusinessLocation) {
+  if (typeof window === "undefined") return false;
+  const googleUrl = buildMapsUrl(business);
+  if (!googleUrl) return false;
+  return openExternalUrl(googleUrl, destinationQuery(business) ?? business.name);
+}
+
+/** <a href> her zaman https:// — intent:// / geo: yok. */
 export function directionsLinkUrl(business: BusinessLocation) {
-  if (typeof window !== "undefined" && isAndroidWebView() && !nativeMapsBridge()) {
-    return osmDirectionsUrl(business) ?? buildMapsUrl(business);
-  }
-  return buildMapsUrl(business);
+  const url = buildMapsUrl(business);
+  if (!url) return null;
+  return toSafeHttpsMapsUrl(url, destinationQuery(business) ?? business.name) ?? url;
 }
 
 /**
@@ -152,7 +215,7 @@ export function buildMapsUrl(business: BusinessLocation) {
   if (share) {
     const fromShare = coordsFromMapsUrl(share);
     if (fromShare) return googleMapsDirUrl(`${fromShare.lat},${fromShare.lng}`);
-    return share;
+    return toSafeHttpsMapsUrl(share) ?? share;
   }
 
   const destination = destinationQuery(business);

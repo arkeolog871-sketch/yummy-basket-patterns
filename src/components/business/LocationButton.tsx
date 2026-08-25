@@ -22,8 +22,12 @@ export function LocationButton({
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
-        const opened = openDirections(business);
-        if (!opened) toast.error("Bu işletme için konum bilgisi bulunamadı.");
+        try {
+          const opened = openDirections(business);
+          if (!opened) toast.error("Bu işletme için konum bilgisi bulunamadı.");
+        } catch {
+          toast.error("Harita açılamadı");
+        }
       }}
       aria-label={`${business.name} için yol tarifi al (${label})`}
       title="Yol tarifi al"

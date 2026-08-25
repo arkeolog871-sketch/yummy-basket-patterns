@@ -40,7 +40,11 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
             rel="noopener noreferrer"
             onClick={(event) => {
               event.preventDefault();
-              if (!openDirections(business)) toast.error("Bu işletme için konum bilgisi bulunamadı.");
+              try {
+                if (!openDirections(business)) toast.error("Bu işletme için konum bilgisi bulunamadı.");
+              } catch {
+                toast.error("Harita açılamadı");
+              }
             }}
             className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
           >
@@ -64,7 +68,11 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
           rel="noopener noreferrer"
           onClick={(event) => {
             event.preventDefault();
-            if (!openDirections(business)) toast.error("Bu işletme için konum bilgisi bulunamadı.");
+            try {
+              if (!openDirections(business)) toast.error("Bu işletme için konum bilgisi bulunamadı.");
+            } catch {
+              toast.error("Harita açılamadı");
+            }
           }}
           className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
         >
