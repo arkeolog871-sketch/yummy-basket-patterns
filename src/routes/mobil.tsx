@@ -4,9 +4,7 @@ import { Smartphone, Share2, PlusSquare, MoreVertical, Download } from "lucide-r
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-const APK_VERSION = "1.3";
-const APK_URL = `/silvan-cebimde.apk?v=${APK_VERSION}`;
+import { APK_DOWNLOAD, APK_URL, APK_VERSION } from "@/lib/android-apk";
 
 export const Route = createFileRoute("/mobil")({
   head: () => ({
@@ -75,7 +73,7 @@ function MobilePage() {
             Telefonuna gerçek uygulama dosyasını kur. Play Store gerekmez. Güncel sürüm: {APK_VERSION}.
           </p>
           <Button className="w-full" asChild>
-            <a href={APK_URL} download="silvan-cebimde.apk">
+            <a href={APK_URL} download={APK_DOWNLOAD}>
               <Download className="mr-2 size-4" />
               APK dosyasını indir
             </a>

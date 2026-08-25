@@ -4,7 +4,7 @@
 //     nitro (build-only using cloudflare as a default target), VITE_* env injection, @ path alias,
 //     React/TanStack dedupe, error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { loadEnv, type Plugin } from "vite";
@@ -45,9 +45,26 @@ function iphoneProfileHeadersPlugin(): Plugin {
   };
 }
 
+function apkVersionName(): string {
+  const gradle = path.resolve(import.meta.dirname, "android-wrapper/app/build.gradle.kts");
+  if (!existsSync(gradle)) return "";
+  const match = readFileSync(gradle, "utf8").match(/versionName\s*=\s*"([^"]+)"/);
+  return match?.[1]?.trim() ?? "";
+}
+
+function apkRev(): string {
+  const version = apkVersionName() || "1";
+  const apk = path.resolve(import.meta.dirname, "public/silvan-cebimde.apk");
+  if (!existsSync(apk)) return version;
+  const st = statSync(apk);
+  return `${version}.${st.size}-${Math.trunc(st.mtimeMs)}`;
+}
+
 // Sunucu rotaları (e-posta webhook'ları vb.) VITE_ öneki olmayan değişkenlere ihtiyaç duyar.
 const serverEnv = loadEnv(process.env["NODE_ENV"] ?? "development", process.cwd(), "");
 Object.assign(process.env, serverEnv);
+process.env["VITE_APK_VERSION"] = apkVersionName() || process.env["VITE_APK_VERSION"] || "1";
+process.env["VITE_APK_REV"] = apkRev();
 
 export default defineConfig({
   tanstackStart: {

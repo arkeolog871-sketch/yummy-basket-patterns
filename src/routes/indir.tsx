@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { APK_DOWNLOAD, APK_URL } from "@/lib/android-apk";
 
 export const Route = createFileRoute("/indir")({
   head: () => ({
@@ -27,13 +28,13 @@ function IndirPage() {
         seçeneğini açmanız gerekir.
       </p>
       <a
-        href="/silvan-cebimde.apk"
-        download="silvan-cebimde.apk"
+        href={APK_URL}
+        download={APK_DOWNLOAD}
         className="mt-8 inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-glow transition-colors hover:bg-primary/90"
       >
         APK dosyasını indir
       </a>
-      <p className="mt-3 text-xs text-muted-foreground">silvan-cebimde.apk · ücretsiz</p>
+      <p className="mt-3 text-xs text-muted-foreground">{APK_DOWNLOAD} · ücretsiz</p>
       <Link to="/" className="mt-10 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
         Siteye dön
       </Link>
