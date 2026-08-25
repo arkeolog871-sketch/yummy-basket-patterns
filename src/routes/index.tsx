@@ -23,7 +23,11 @@ export const Route = createFileRoute("/")({
   }),
   loaderDeps: ({ search }) => search,
   loader: async ({ context, deps }) => {
-    await context.queryClient.ensureQueryData(homeQuery(deps));
+    try {
+      await context.queryClient.ensureQueryData(homeQuery(deps));
+    } catch (error) {
+      console.error("[home] katalog yüklenemedi");
+    }
   },
   errorComponent: () => (
     <div className="mx-auto max-w-lg px-4 py-20 text-center">

@@ -17,8 +17,9 @@ export default defineConfig({
   },
   webServer: startLocal
     ? {
-        command: "bun run dev -- --host 127.0.0.1 --port 5173",
-        url: "http://127.0.0.1:5173",
+        command:
+          "SUPABASE_URL=https://example.supabase.co SUPABASE_PUBLISHABLE_KEY=sb_publishable_test_placeholder VITE_SUPABASE_URL=https://example.supabase.co VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_test_placeholder bun run dev -- --host 127.0.0.1 --port 5173",
+        url: "http://127.0.0.1:5173/auth",
         reuseExistingServer: true,
         timeout: 120_000,
       }

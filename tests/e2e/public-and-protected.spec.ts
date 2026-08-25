@@ -3,7 +3,8 @@ import { expect, test } from "@playwright/test";
 test.describe("public catalog and legal pages", () => {
   test("home page renders without leaking stack traces", async ({ page }) => {
     const response = await page.goto("/");
-    expect(response?.ok() || response?.status() === 200).toBeTruthy();
+    expect(response).toBeTruthy();
+    expect(response!.status()).toBeLessThan(500);
     await expect(page.locator("body")).not.toContainText("at Object.");
     await expect(page.locator("body")).not.toContainText("SUPABASE_SERVICE_ROLE_KEY");
     await expect(page.locator("body")).not.toContainText("sb_secret_");

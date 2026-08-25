@@ -193,6 +193,7 @@ function AuthPage() {
           <button
             key={value}
             type="button"
+            data-testid={`auth-portal-${value}`}
             onClick={() => {
               setPortal(value);
               if (value === "vendor") setMode("signin");
@@ -208,7 +209,7 @@ function AuthPage() {
         ))}
       </div>
 
-      <h1 className="mt-6 text-3xl">
+      <h1 className="mt-6 text-3xl" data-testid="auth-heading">
         {vendorPortal ? "İşletme girişi" : mode === "signin" ? "Giriş yap" : "Hesap oluştur"}
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
@@ -228,6 +229,7 @@ function AuthPage() {
             <button
               key={value}
               type="button"
+              data-testid={`auth-method-${value}`}
               onClick={() => setMethod(value)}
               className={`rounded-full px-3 py-2 transition ${
                 method === value
@@ -376,6 +378,7 @@ function AuthPage() {
       ) : (
         <button
           type="button"
+          data-testid="auth-toggle-mode"
           onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
           className="mt-5 w-full text-sm text-muted-foreground underline-offset-4 hover:underline"
         >
