@@ -10,6 +10,8 @@
 
 /silvan-cebimde.apk
   Content-Disposition: attachment; filename="silvan-cebimde.apk"
+  Content-Type: application/vnd.android.package-archive
+  Cache-Control: no-store, max-age=0, must-revalidate
   X-Content-Type-Options: nosniff
 /*
   X-Content-Type-Options: nosniff
