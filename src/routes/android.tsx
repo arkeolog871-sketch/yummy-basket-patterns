@@ -1,8 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-
-const APK_VERSION = "1.3";
-const APK_URL = `/silvan-cebimde.apk?v=${APK_VERSION}`;
+import { APK_DOWNLOAD, APK_URL, APK_VERSION } from "@/lib/android-apk";
 
 export const Route = createFileRoute("/android")({
   head: () => ({
@@ -44,7 +42,7 @@ function AndroidPreview() {
           <p className="mt-1.5 text-[13px] text-[#cbb8a8]">Android mobil uygulama önizlemesi · v{APK_VERSION}</p>
           <a
             href={APK_URL}
-            download="silvan-cebimde.apk"
+            download={APK_DOWNLOAD}
             className="mt-3 inline-flex rounded-full bg-[#ff8c42] px-4 py-2 text-[13px] font-semibold text-white"
           >
             APK indir

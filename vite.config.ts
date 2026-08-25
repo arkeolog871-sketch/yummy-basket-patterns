@@ -4,7 +4,7 @@
 //     nitro (build-only using cloudflare as a default target), VITE_* env injection, @ path alias,
 //     React/TanStack dedupe, error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { loadEnv, type Plugin } from "vite";
@@ -45,9 +45,57 @@ function iphoneProfileHeadersPlugin(): Plugin {
   };
 }
 
+function apkLinkRevPlugin(): Plugin {
+  const stamp = (html: string) =>
+    html.replace(/\/silvan-cebimde\.apk(?:\?v=[^"'\s]*)?/g, `/silvan-cebimde.apk?v=${encodeURIComponent(apkRev())}`);
+
+  return {
+    name: "apk-link-rev",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = req.url?.split("?")[0] ?? "";
+        if (url !== "/android.html") {
+          next();
+          return;
+        }
+        const file = path.resolve(import.meta.dirname, "public/android.html");
+        if (!existsSync(file)) {
+          next();
+          return;
+        }
+        const body = stamp(readFileSync(file, "utf8"));
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        res.end(body);
+      });
+    },
+    closeBundle() {
+      const file = path.resolve(".output/public/android.html");
+      if (!existsSync(file)) return;
+      writeFileSync(file, stamp(readFileSync(file, "utf8")));
+    },
+  };
+}
+
+function apkVersionName(): string {
+  const gradle = path.resolve(import.meta.dirname, "android-wrapper/app/build.gradle.kts");
+  if (!existsSync(gradle)) return "";
+  const match = readFileSync(gradle, "utf8").match(/versionName\s*=\s*"([^"]+)"/);
+  return match?.[1]?.trim() ?? "";
+}
+
+function apkRev(): string {
+  const version = apkVersionName() || "1";
+  const apk = path.resolve(import.meta.dirname, "public/silvan-cebimde.apk");
+  if (!existsSync(apk)) return version;
+  const st = statSync(apk);
+  return `${version}.${st.size}-${Math.trunc(st.mtimeMs)}`;
+}
+
 // Sunucu rotaları (e-posta webhook'ları vb.) VITE_ öneki olmayan değişkenlere ihtiyaç duyar.
 const serverEnv = loadEnv(process.env["NODE_ENV"] ?? "development", process.cwd(), "");
 Object.assign(process.env, serverEnv);
+process.env["VITE_APK_VERSION"] = apkVersionName() || process.env["VITE_APK_VERSION"] || "1";
+process.env["VITE_APK_REV"] = apkRev();
 
 export default defineConfig({
   tanstackStart: {
@@ -56,7 +104,7 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
-    plugins: [iphoneProfileHeadersPlugin()],
+    plugins: [iphoneProfileHeadersPlugin(), apkLinkRevPlugin()],
     resolve: {
       alias: {
         "entities/lib/decode.js": path.resolve(
