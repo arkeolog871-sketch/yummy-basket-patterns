@@ -116,9 +116,8 @@ export async function uploadFounderBannerFile(input: {
     console.error("[banners.upload]", error.message);
     throw new Error(storageUploadMessage(error.message));
   }
-  const published = supabaseAdmin.storage.from(BANNERS_BUCKET).getPublicUrl(path);
-  const url = published.data.publicUrl;
-  if (!url) throw new Error("Görsel adresi alınamadı");
+  // Kova özel (private); dosyalar sunucu üzerinden proxy edilir.
+  const url = `/api/public/media/${BANNERS_BUCKET}/${path}`;
   return { url, path };
 }
 
