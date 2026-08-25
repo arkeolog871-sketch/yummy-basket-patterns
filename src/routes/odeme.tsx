@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { listAddresses } from "@/lib/addresses.functions";
 import { createOrder } from "@/lib/orders.functions";
@@ -24,7 +24,7 @@ export const Route = createFileRoute("/odeme")({
     ],
   }),
   component: () => (
-    <RequireAuth>
+    <RequireAuth requireVerified>
       <CheckoutPage />
     </RequireAuth>
   ),
@@ -37,6 +37,9 @@ function CheckoutPage() {
   const submitOrder = useServerFn(createOrder);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  const idempotencyKeyRef = useRef(
+    typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}`,
+  );
 
   const { data: addresses = [], isLoading, isError } = useQuery({
     queryKey: ["addresses"],
@@ -65,12 +68,15 @@ function CheckoutPage() {
           street: address.street,
           directions: address.directions,
           note: note || null,
+          idempotency_key: idempotencyKeyRef.current,
         },
       });
       if (!result.ok) throw new Error(result.error);
       return result;
     },
     onSuccess: (result) => {
+      idempotencyKeyRef.current =
+        typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}`;
       cart.clear();
       toast.success("Siparişiniz alındı!");
       navigate({ to: "/siparis/$id", params: { id: result.id } });

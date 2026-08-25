@@ -34,6 +34,12 @@ dist-ssr
 .env.*
 !.env.example
 
+# Test artifacts
+test-results
+playwright-report
+blob-report
+playwright/.cache
+
 # Android signing material must stay in a secret manager or local secure storage.
 android-wrapper/app/*.keystore
 android-wrapper/app/*.jks

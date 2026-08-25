@@ -15,6 +15,9 @@ export function maskEmail(email: string): string {
   return `${visible}${"•".repeat(Math.max(3, name.length - 2))}@${domain}`;
 }
 
+/** Bilinen ve bilinmeyen tanımlayıcılar için aynı başarı gövdesi (hesap sayımı yok). */
+export const GENERIC_VENDOR_MASKED_EMAIL = "kayıtlı e-posta";
+
 /** Sunucu tarafı publishable (anon) istemcisi; oturum saklamaz. */
 export function createServerPublicClient() {
   const url = process.env["SUPABASE_URL"];

@@ -7,9 +7,10 @@ Legend: `[PASS]` verified or implemented, `[WARNING]` requires deployment/archit
 - [PASS] Supabase verifies JWT signature and claims server-side.
 - [PASS] Server functions derive identity from verified claims, not client role flags.
 - [PASS] Application tables do not store plaintext passwords.
-- [PASS] OTP expiration, cooldown, hourly send, and failed-attempt limits exist.
+- [PASS] OTP expiration, cooldown, hourly send, failed-attempt limits, exact 6-digit parse, consume-on-match, and undelivered-code invalidation exist.
 - [PASS] Password reset is delegated to Supabase Auth.
 - [PASS] Founder TOTP/backup-code checks are server-side.
+- [PASS] Unverified sessions cannot use customer order/address APIs or those routes.
 - [WARNING] Browser sessions remain in `localStorage`; migrate to HttpOnly/Secure/SameSite SSR sessions.
 - [WARNING] Direct password login/reset throttling depends on Supabase Auth configuration.
 
@@ -41,10 +42,11 @@ Legend: `[PASS]` verified or implemented, `[WARNING]` requires deployment/archit
 - [PASS] No wildcard CORS policy is configured.
 - [PASS] Body and upload data have bounded validation.
 - [PASS] Generic public error responses avoid stack/database/secret leakage.
+- [PASS] OTP issue/consume/failure counters use row-locked RPCs (`issue_email_otp`, `consume_email_otp`, `register_email_otp_failure`) with a non-atomic fallback if the migration is not yet applied.
+- [PASS] Vendor login success bodies use a single generic mask for known and unknown identifiers.
+- [PASS] Order placement uses a transactional stock+idempotency RPC (`place_customer_order`) with a fallback insert path.
 - [WARNING] Configure Cloudflare edge request/body limits and WAF rules.
-- [WARNING] OTP database counters still need atomic increment/RPC semantics for concurrent attack traffic.
-- [WARNING] Vendor login should use indistinguishable responses for existing and unknown identifiers.
-- [WARNING] Order stock reservation/idempotency still needs a transaction-backed RPC.
+- [WARNING] Apply the `20260825223000_otp_order_atomic_rpc` migration in staging, then production, before relying on the RPC path.
 
 ## Injection and browser security
 

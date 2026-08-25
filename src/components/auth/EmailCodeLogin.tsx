@@ -9,7 +9,7 @@ import {
   OTP_RESEND_COOLDOWN_SECONDS,
   OTP_TTL_MINUTES,
   isCompleteOtpCode,
-  normalizeOtpCode,
+  parseExactOtpCode,
 } from "@/lib/otp";
 import { OtpCodeInput } from "@/components/auth/OtpCodeInput";
 import { LegalConsentCheckbox } from "@/components/legal/LegalConsentCheckbox";
@@ -90,8 +90,8 @@ export function EmailCodeLogin({
   }
 
   async function verify(rawCode?: string) {
-    const token = normalizeOtpCode(rawCode ?? code);
-    if (!isCompleteOtpCode(token) || submittingRef.current) return;
+    const token = parseExactOtpCode(rawCode ?? code);
+    if (!token || submittingRef.current) return;
     if (!termsAcceptedRef.current) {
       setError(TERMS_ACCEPTANCE_REQUIRED);
       return;

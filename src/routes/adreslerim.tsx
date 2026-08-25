@@ -23,7 +23,7 @@ export const Route = createFileRoute("/adreslerim")({
     ],
   }),
   component: () => (
-    <RequireAuth>
+    <RequireAuth requireVerified>
       <AddressesPage />
     </RequireAuth>
   ),

@@ -21,10 +21,16 @@ export const Route = createFileRoute("/restoranlar")({
   }),
   loaderDeps: ({ search }) => search,
   loader: async ({ context, deps }) => {
-    await Promise.all([
-      context.queryClient.ensureQueryData(restaurantsQuery(deps)),
-      context.queryClient.ensureQueryData(categoriesQuery),
-    ]);
+    try {
+      await Promise.all([
+        context.queryClient.ensureQueryData(restaurantsQuery(deps)),
+        context.queryClient.ensureQueryData(categoriesQuery),
+      ]);
+    } catch {
+      console.error("[catalog] restoran listesi yüklenemedi");
+      context.queryClient.setQueryData(restaurantsQuery(deps).queryKey, []);
+      context.queryClient.setQueryData(categoriesQuery.queryKey, []);
+    }
   },
   errorComponent: () => (
     <div className="mx-auto max-w-lg px-4 py-20 text-center">

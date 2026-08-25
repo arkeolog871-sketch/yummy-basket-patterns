@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { KeyRound, Smartphone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { requestVendorLoginCode, verifyVendorLoginCode } from "@/lib/vendor-auth.functions";
-import { OTP_RESEND_COOLDOWN_SECONDS, isCompleteOtpCode, normalizeOtpCode } from "@/lib/otp";
+import { OTP_RESEND_COOLDOWN_SECONDS, isCompleteOtpCode, parseExactOtpCode } from "@/lib/otp";
 import { TERMS_ACCEPTANCE_REQUIRED } from "@/lib/legal";
 import { OtpCodeInput } from "@/components/auth/OtpCodeInput";
 import { LegalConsentCheckbox } from "@/components/legal/LegalConsentCheckbox";
@@ -58,8 +58,8 @@ export function VendorPhoneLogin() {
   }
 
   async function verify(rawCode?: string) {
-    const digits = normalizeOtpCode(rawCode ?? code);
-    if (!isCompleteOtpCode(digits) || submittingRef.current) return;
+    const digits = parseExactOtpCode(rawCode ?? code);
+    if (!digits || submittingRef.current) return;
     if (!termsAcceptedRef.current) {
       setError(TERMS_ACCEPTANCE_REQUIRED);
       return;
@@ -153,8 +153,8 @@ export function VendorPhoneLogin() {
             </p>
           ) : (
             <p className="text-xs text-muted-foreground">
-              Kod, işletme hesabınızın kayıtlı e-posta adresine ({maskedEmail}) gönderildi. 6 haneyi
-              yazın veya yapıştırın; yalnızca rakam kabul edilir.
+              Kod, işletme hesabınıza kayıtlı e-posta adresine gönderildi. 6 haneyi yazın veya
+              yapıştırın; yalnızca rakam kabul edilir.
             </p>
           )}
         </div>

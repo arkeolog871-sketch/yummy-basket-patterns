@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { runServerFn, toPublicErrorMessage } from "./public-error";
+import { isMissingRpcError } from "./rpc-fallback";
 
 const createOrderSchema = z.object({
   restaurant_id: z.string().uuid(),
@@ -18,9 +19,11 @@ const createOrderSchema = z.object({
   street: z.string().trim().min(4).max(200),
   directions: z.string().trim().max(300).optional().nullable(),
   note: z.string().trim().max(300).optional().nullable(),
+  idempotency_key: z.string().uuid().optional(),
 });
 
 type AuthContext = { supabase: SupabaseClient<Database>; userId: string };
+type OrderInput = z.infer<typeof createOrderSchema>;
 
 export const createOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -36,10 +39,7 @@ export const createOrder = createServerFn({ method: "POST" })
     }
   });
 
-async function placeOrder(
-  data: z.infer<typeof createOrderSchema>,
-  context: AuthContext,
-): Promise<{ id: string; total: number }> {
+async function placeOrder(data: OrderInput, context: AuthContext): Promise<{ id: string; total: number }> {
   const { supabase, userId } = context;
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -57,8 +57,52 @@ async function placeOrder(
   const { isBusinessOpen, closedReason } = await import("./hours");
   if (!isBusinessOpen(restaurant)) throw new Error(closedReason(restaurant));
 
+  const rpc = await supabaseAdmin.rpc("place_customer_order", {
+    p_user_id: userId,
+    p_restaurant_id: restaurant.id,
+    p_items: data.items,
+    p_recipient_name: data.recipient_name,
+    p_phone: data.phone,
+    p_city: data.city,
+    p_district: data.district,
+    p_street: data.street,
+    p_directions: data.directions ?? null,
+    p_note: data.note ?? null,
+    p_idempotency_key: data.idempotency_key ?? null,
+  });
+
+  if (!rpc.error) {
+    const result = rpc.data as { ok?: boolean; id?: string; total?: number; error?: string } | null;
+    if (result?.ok && result.id && result.total != null) {
+      return { id: result.id, total: Number(result.total) };
+    }
+    throw new Error(result?.error || "Sipariş oluşturulamadı.");
+  }
+  if (!isMissingRpcError(rpc.error)) {
+    throw new Error(rpc.error.message);
+  }
+
+  return placeOrderFallback(data, context, restaurant.id);
+}
+
+async function placeOrderFallback(
+  data: OrderInput,
+  context: AuthContext,
+  restaurantId: string,
+): Promise<{ id: string; total: number }> {
+  const { userId } = context;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
   const ids = data.items.map((item) => item.menu_item_id);
-  const { data: menuItems, error: itemsError } = await supabase
+  const { data: restaurant, error: restaurantError } = await supabaseAdmin
+    .from("restaurants")
+    .select("id, delivery_fee, min_order, is_active")
+    .eq("id", restaurantId)
+    .maybeSingle();
+  if (restaurantError) throw new Error(restaurantError.message);
+  if (!restaurant || !restaurant.is_active) throw new Error("Restoran şu anda sipariş almıyor.");
+
+  const { data: menuItems, error: itemsError } = await supabaseAdmin
     .from("menu_items")
     .select("id, name, price, restaurant_id, is_available, stock_quantity")
     .in("id", ids);
@@ -99,26 +143,36 @@ async function placeOrder(
   const deliveryFee = Number(restaurant.delivery_fee);
   const total = Number((subtotal + deliveryFee).toFixed(2));
 
-  const { data: order, error: orderError } = await supabaseAdmin
-    .from("orders")
-    .insert({
-      user_id: userId,
-      restaurant_id: restaurant.id,
-      recipient_name: data.recipient_name,
-      phone: data.phone,
-      city: data.city,
-      district: data.district,
-      street: data.street,
-      directions: data.directions ?? null,
-      note: data.note ?? null,
-      subtotal: Number(subtotal.toFixed(2)),
-      delivery_fee: deliveryFee,
-      total,
-      status: "confirmed",
-    })
-    .select("id")
-    .single();
-  if (orderError) throw new Error(orderError.message);
+  const insertPayload: Database["public"]["Tables"]["orders"]["Insert"] = {
+    user_id: userId,
+    restaurant_id: restaurant.id,
+    recipient_name: data.recipient_name,
+    phone: data.phone,
+    city: data.city,
+    district: data.district,
+    street: data.street,
+    directions: data.directions ?? null,
+    note: data.note ?? null,
+    subtotal: Number(subtotal.toFixed(2)),
+    delivery_fee: deliveryFee,
+    total,
+    status: "confirmed",
+    idempotency_key: data.idempotency_key ?? null,
+  };
+
+  let order: { id: string } | null = null;
+  const firstTry = await supabaseAdmin.from("orders").insert(insertPayload).select("id").single();
+  if (firstTry.error && /idempotency_key/i.test(firstTry.error.message)) {
+    const { idempotency_key: _ignored, ...withoutKey } = insertPayload;
+    const retry = await supabaseAdmin.from("orders").insert(withoutKey).select("id").single();
+    if (retry.error) throw new Error(retry.error.message);
+    order = retry.data;
+  } else if (firstTry.error) {
+    throw new Error(firstTry.error.message);
+  } else {
+    order = firstTry.data;
+  }
+  if (!order) throw new Error("Sipariş oluşturulamadı.");
 
   const { error: linesError } = await supabaseAdmin
     .from("order_items")
@@ -135,11 +189,14 @@ export const listMyOrders = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) =>
     runServerFn(async () => {
+      const { assertVerifiedEmail } = await import("./otp.server");
+      await assertVerifiedEmail(context.userId);
       const { data, error } = await context.supabase
         .from("orders")
         .select(
           "id, created_at, status, payment_status, total, restaurants(name, slug, cover_image_url)",
         )
+        .eq("user_id", context.userId)
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
       return data ?? [];
@@ -151,6 +208,8 @@ export const getMyOrder = createServerFn({ method: "GET" })
   .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
+      const { assertVerifiedEmail } = await import("./otp.server");
+      await assertVerifiedEmail(context.userId);
       const { data: order, error } = await context.supabase
         .from("orders")
         .select(

@@ -491,6 +491,7 @@ export type Database = {
           directions: string | null
           district: string
           id: string
+          idempotency_key: string | null
           note: string | null
           payment_reference: string | null
           payment_status: Database["public"]["Enums"]["payment_status"]
@@ -511,6 +512,7 @@ export type Database = {
           directions?: string | null
           district: string
           id?: string
+          idempotency_key?: string | null
           note?: string | null
           payment_reference?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
@@ -531,6 +533,7 @@ export type Database = {
           directions?: string | null
           district?: string
           id?: string
+          idempotency_key?: string | null
           note?: string | null
           payment_reference?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
@@ -828,7 +831,35 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      consume_email_otp: {
+        Args: { p_code_hash: string; p_email_hash: string; p_now?: string }
+        Returns: string
+      }
       expire_stale_advertisements: { Args: never; Returns: number }
+      issue_email_otp: {
+        Args: { p_code_hash: string; p_email_hash: string; p_now?: string }
+        Returns: Json
+      }
+      place_customer_order: {
+        Args: {
+          p_city: string
+          p_directions: string | null
+          p_district: string
+          p_idempotency_key: string | null
+          p_items: Json
+          p_note: string | null
+          p_phone: string
+          p_recipient_name: string
+          p_restaurant_id: string
+          p_street: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      register_email_otp_failure: {
+        Args: { p_email_hash: string; p_now?: string }
+        Returns: number
+      }
       get_active_banners: {
         Args: never
         Returns: {

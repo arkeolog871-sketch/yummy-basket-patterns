@@ -71,7 +71,10 @@ function AuthPage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
-  const [pendingVerification, setPendingVerification] = useState<string | null>(null);
+  const [pendingVerification, setPendingVerification] = useState<{
+    email: string;
+    startAtCode: boolean;
+  } | null>(null);
   const [googleCompleting, setGoogleCompleting] = useState(() =>
     typeof window === "undefined" ? false : isGoogleOAuthCallbackParams(),
   );
@@ -103,6 +106,10 @@ function AuthPage() {
 
   useEffect(() => {
     if (!user || access.loading) return;
+    if (!user.email_confirmed_at) {
+      if (user.email) setPendingVerification({ email: user.email, startAtCode: false });
+      return;
+    }
     if (access.isFounder) {
       navigate({ to: "/kurucu", replace: true });
       return;
@@ -129,11 +136,17 @@ function AuthPage() {
           data: { email: email.trim(), password, fullName: fullName.trim(), phone: phone.trim() },
         });
         if (!result.ok) throw new Error(result.error);
-        setPendingVerification(email.trim());
+        setPendingVerification({ email: email.trim(), startAtCode: true });
         toast.success("Kayıt alındı. E-postanıza gönderilen 6 haneli kodu girin.");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data: signed, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        if (signed.user && !signed.user.email_confirmed_at) {
+          await supabase.auth.signOut();
+          setPendingVerification({ email: email.trim(), startAtCode: false });
+          toast.error("E-posta adresiniz doğrulanmadı. Lütfen 6 haneli kodu isteyin.");
+          return;
+        }
         toast.success("Hoş geldiniz!");
       }
     } catch (error) {
@@ -179,6 +192,7 @@ function AuthPage() {
           <button
             key={value}
             type="button"
+            data-testid={`auth-portal-${value}`}
             onClick={() => {
               setPortal(value);
               if (value === "vendor") setMode("signin");
@@ -194,7 +208,7 @@ function AuthPage() {
         ))}
       </div>
 
-      <h1 className="mt-6 text-3xl">
+      <h1 className="mt-6 text-3xl" data-testid="auth-heading">
         {vendorPortal ? "İşletme girişi" : mode === "signin" ? "Giriş yap" : "Hesap oluştur"}
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
@@ -211,10 +225,11 @@ function AuthPage() {
               ["code", "E-posta kodu ile"],
             ] as const
           ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setMethod(value)}
+          <button
+            key={value}
+            type="button"
+            data-testid={`auth-method-${value}`}
+            onClick={() => setMethod(value)}
               className={`rounded-full px-3 py-2 transition ${
                 method === value
                   ? "bg-card font-medium shadow-card"
@@ -234,14 +249,14 @@ function AuthPage() {
       ) : pendingVerification ? (
         <div className="mt-6 space-y-4 rounded-3xl border border-border/70 bg-card p-4 shadow-card sm:p-6">
           <p className="text-sm text-muted-foreground">
-            Hesabınız oluşturuldu ancak <strong>e-posta doğrulanmadı</strong>. {pendingVerification}{" "}
+            Hesabınız oluşturuldu ancak <strong>e-posta doğrulanmadı</strong>. {pendingVerification.email}{" "}
             adresine gönderilen 6 haneli kodu girerek hesabınızı aktif edin.
           </p>
           <EmailCodeLogin
             idPrefix="signup-otp"
             allowSignUp={false}
-            initialEmail={pendingVerification}
-            startAtCode
+            initialEmail={pendingVerification.email}
+            startAtCode={pendingVerification.startAtCode}
             onVerified={() => {
               setPendingVerification(null);
               toast.success("E-postanız doğrulandı, hoş geldiniz!");
@@ -363,6 +378,7 @@ function AuthPage() {
         <button
           type="button"
           onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+          data-testid="auth-toggle-mode"
           className="mt-5 w-full text-sm text-muted-foreground underline-offset-4 hover:underline"
         >
           {mode === "signin"

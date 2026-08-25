@@ -24,7 +24,7 @@ export const Route = createFileRoute("/siparislerim")({
     ],
   }),
   component: () => (
-    <RequireAuth>
+    <RequireAuth requireVerified>
       <OrdersPage />
     </RequireAuth>
   ),

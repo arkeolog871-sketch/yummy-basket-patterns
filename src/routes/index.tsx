@@ -23,7 +23,12 @@ export const Route = createFileRoute("/")({
   }),
   loaderDeps: ({ search }) => search,
   loader: async ({ context, deps }) => {
-    await context.queryClient.ensureQueryData(homeQuery(deps));
+    try {
+      await context.queryClient.ensureQueryData(homeQuery(deps));
+    } catch {
+      console.error("[catalog] ana sayfa yüklenemedi");
+      context.queryClient.setQueryData(homeQuery(deps).queryKey, []);
+    }
   },
   errorComponent: () => (
     <div className="mx-auto max-w-lg px-4 py-20 text-center">

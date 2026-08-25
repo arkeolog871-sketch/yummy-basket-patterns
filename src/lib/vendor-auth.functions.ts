@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { EMAIL_SEND_FAILED_MESSAGE } from "@/lib/otp";
+import { parseExactOtpCode } from "@/lib/otp";
 
 const identifierSchema = z.object({
   identifier: z
@@ -15,20 +15,32 @@ const GENERIC_SEND_ERROR =
   "Kod e-postası şu anda gönderilemedi. Lütfen birkaç saniye sonra tekrar deneyin.";
 const GENERIC_VERIFY_ERROR = "Girdiğiniz kod hatalı veya süresi dolmuş";
 const GENERIC_RATE_ERROR = "Çok fazla deneme yaptınız. Lütfen kısa süre sonra tekrar deneyin.";
+const MIN_VENDOR_SEND_MS = 400;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function padElapsed(startedAt: number): Promise<void> {
+  const wait = MIN_VENDOR_SEND_MS - (Date.now() - startedAt);
+  if (wait > 0) await sleep(wait);
+}
 
 /** İşletme telefonu veya e-postasına karşılık gelen hesaba tek kullanımlık kod gönderir. */
 export const requestVendorLoginCode = createServerFn({ method: "POST" })
   .validator((input: unknown) => identifierSchema.parse(input))
   .handler(async ({ data }) => {
+    const startedAt = Date.now();
     try {
       const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
       enforceSensitiveRateLimit("vendor-code-send", 8, 10 * 60 * 1000);
-      const { findVendorUser, maskEmail } = await import("./vendor-auth.server");
+      const { findVendorUser, GENERIC_VENDOR_MASKED_EMAIL } = await import("./vendor-auth.server");
       const { logAudit, tooManyRecentVendorAttempts } = await import("./audit.server");
       const { reserveSend, hashEmail, sendSixDigitOtp, RESEND_COOLDOWN_SECONDS } =
         await import("./otp.server");
 
       if (await tooManyRecentVendorAttempts()) {
+        await padElapsed(startedAt);
         return { ok: false as const, error: GENERIC_RATE_ERROR };
       }
 
@@ -36,6 +48,7 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
       if (!vendor) {
         const rate = await reserveSend(`${hashEmail(data.identifier)}@guard.local`);
         if (!rate.ok) {
+          await padElapsed(startedAt);
           return { ok: false as const, error: rate.error, retryAfterSeconds: rate.retryAfterSeconds };
         }
         await logAudit({
@@ -46,9 +59,10 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
           status: "denied",
           detail: { reason: "Telefon/e-postaya bağlı işletme hesabı yok" },
         });
+        await padElapsed(startedAt);
         return {
           ok: true as const,
-          maskedEmail: "kayıtlı e-posta",
+          maskedEmail: GENERIC_VENDOR_MASKED_EMAIL,
           cooldownSeconds: RESEND_COOLDOWN_SECONDS,
         };
       }
@@ -65,11 +79,19 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
           status: "denied",
           detail: { reason: sent.error },
         });
+        await padElapsed(startedAt);
+        if (sent.retryAfterSeconds != null) {
+          return {
+            ok: false as const,
+            error: sent.error,
+            retryAfterSeconds: sent.retryAfterSeconds,
+          };
+        }
+        // SMTP hatasını hesap varlığı sızıntısına çevirme.
         return {
-          ok: false as const,
-          error:
-            sent.retryAfterSeconds != null ? sent.error : EMAIL_SEND_FAILED_MESSAGE,
-          retryAfterSeconds: sent.retryAfterSeconds,
+          ok: true as const,
+          maskedEmail: GENERIC_VENDOR_MASKED_EMAIL,
+          cooldownSeconds: RESEND_COOLDOWN_SECONDS,
         };
       }
 
@@ -81,13 +103,15 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
         entityId: vendor.userId,
       });
 
+      await padElapsed(startedAt);
       return {
         ok: true as const,
-        maskedEmail: maskEmail(vendor.email),
+        maskedEmail: GENERIC_VENDOR_MASKED_EMAIL,
         cooldownSeconds: RESEND_COOLDOWN_SECONDS,
       };
     } catch (error) {
       console.error("[vendor-login] kod isteği başarısız", error);
+      await padElapsed(startedAt);
       return { ok: false as const, error: GENERIC_SEND_ERROR };
     }
   });
@@ -97,7 +121,7 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
   .validator((input: unknown) =>
     identifierSchema
       .extend({
-        code: z.union([z.string(), z.number()]).transform((value) => String(value)),
+        code: z.union([z.string(), z.number()]),
         termsAccepted: z.boolean().optional().default(false),
       })
       .parse(input),
@@ -108,13 +132,13 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
       enforceSensitiveRateLimit("vendor-code-verify", 12, 10 * 60 * 1000);
       const { findVendorUser } = await import("./vendor-auth.server");
       const { logAudit, tooManyRecentVendorAttempts } = await import("./audit.server");
-      const { isCompleteOtpCode, normalizeOtpCode } = await import("./otp");
+      const { OTP_LENGTH_MESSAGE } = await import("./otp");
       const { TERMS_ACCEPTANCE_REQUIRED } = await import("./legal");
       const {
         assertCanVerify,
         registerFailedAttempt,
         clearGuard,
-        inspectIssuedOtp,
+        consumeIssuedOtp,
         messageForOtpInspect,
         createVerifiedSession,
         recordTermsAcceptance,
@@ -128,12 +152,9 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
         return { ok: false as const, error: TERMS_ACCEPTANCE_REQUIRED };
       }
 
-      const token = normalizeOtpCode(data.code);
-      if (!isCompleteOtpCode(token)) {
-        return {
-          ok: false as const,
-          error: "Lütfen e-postanıza gelen 6 haneli kodu eksiksiz girin.",
-        };
+      const token = parseExactOtpCode(data.code);
+      if (!token) {
+        return { ok: false as const, error: OTP_LENGTH_MESSAGE };
       }
 
       const vendor = await findVendorUser(data.identifier);
@@ -143,12 +164,12 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
 
       const allowed = await assertCanVerify(vendor.email);
       if (!allowed.ok) {
-        return { ok: false as const, error: allowed.error };
+        return { ok: false as const, error: GENERIC_VERIFY_ERROR };
       }
 
-      const inspected = await inspectIssuedOtp(vendor.email, token);
-      if (inspected !== "match") {
-        if (inspected === "mismatch") await registerFailedAttempt(vendor.email);
+      const consumed = await consumeIssuedOtp(vendor.email, token);
+      if (consumed !== "match") {
+        if (consumed === "mismatch") await registerFailedAttempt(vendor.email);
         await logAudit({
           actorId: vendor.userId,
           actorEmail: vendor.email,
@@ -156,14 +177,13 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
           entity: "vendor_assignments",
           entityId: vendor.userId,
           status: "denied",
-          detail: { reason: inspected },
+          detail: { reason: consumed },
         });
-        return { ok: false as const, error: messageForOtpInspect(inspected) };
+        return { ok: false as const, error: GENERIC_VERIFY_ERROR };
       }
 
       const session = await createVerifiedSession(vendor.email);
       if (!session.ok) {
-        await registerFailedAttempt(vendor.email);
         await logAudit({
           actorId: vendor.userId,
           actorEmail: vendor.email,

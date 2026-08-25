@@ -91,8 +91,9 @@ Server responses and Cloudflare static assets now include CSP, frame protection,
 - Passwords are sent only to Supabase Auth; application tables do not store plaintext passwords.
 - The browser Supabase client currently persists sessions in `localStorage`. This remains a **WARNING**: XSS would expose a browser session. A full HttpOnly-cookie migration requires adopting server-managed Supabase SSR sessions and should be planned before high-risk production use.
 - Supabase Auth's built-in password-login and reset throttles remain relied upon for direct browser Auth API calls.
-- The database OTP counters use read/upsert operations and can still be contended under concurrent requests. The in-memory IP limiter reduces abuse, but atomic database increment/RPC and edge rate rules should be added for high-volume production traffic.
-- Vendor login responses still need a single indistinguishable response for known and unknown identifiers to fully remove account-enumeration timing/content differences.
+- The database OTP counters use row-locked RPCs (`issue_email_otp`, `consume_email_otp`, `register_email_otp_failure`) with a read/upsert fallback if those functions are not yet deployed.
+- Vendor login success responses use one generic mask for known and unknown identifiers. SMTP failure on a known account is not distinguished from success.
+- Order creation prefers `place_customer_order`, which locks menu rows, decrements stock, and honors an idempotency key. A non-transactional fallback remains until the migration is applied.
 
 ## Authorization, RBAC, and IDOR/BOLA
 
@@ -141,7 +142,7 @@ Remaining:
 3. Add Turnstile to registration, password reset, and suspicious login attempts. Keep `TURNSTILE_SECRET_KEY` backend-only.
 4. Confirm HTTPS-only mode and HSTS behavior on the actual custom domain.
 5. Configure upload and request-size limits at the edge.
-6. Configure an atomic OTP counter RPC and a database transaction/idempotency key for stock/order creation.
+6. OTP issue/consume/failure and order stock/idempotency RPCs are in `supabase/migrations/20260825223000_otp_order_atomic_rpc.sql`. Apply in staging first, then production. Until applied, the application falls back to the previous non-atomic paths.
 7. Ensure rate-limit failures fail closed for security-critical flows and strip forwarded-IP headers at the trusted edge.
 
 ## Production deployment checklist
