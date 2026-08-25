@@ -16,6 +16,7 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
+import android.webkit.JavascriptInterface;
 import android.webkit.SslErrorHandler;
 import android.net.http.SslError;
 import android.webkit.WebView;
@@ -29,7 +30,7 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> fileChooserCallback;
 
     @Override
-    @SuppressLint("SetJavaScriptEnabled")
+    @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -75,6 +76,7 @@ public class MainActivity extends Activity {
         }
 
         WebView.setWebContentsDebuggingEnabled(false);
+        webView.addJavascriptInterface(new SilvanNativeBridge(), "SilvanNative");
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
@@ -228,6 +230,35 @@ public class MainActivity extends Activity {
             webView.goBack();
         } else {
             super.onBackPressed();
+        }
+    }
+
+    private final class SilvanNativeBridge {
+        @JavascriptInterface
+        public void openMaps(final String url) {
+            if (!isExternalMapsUrl(url)) return;
+            runOnUiThread(() -> openAllowedUrlOrExternal(url));
+        }
+    }
+
+    private boolean isExternalMapsUrl(String url) {
+        if (url == null) return false;
+        String lower = url.trim().toLowerCase(java.util.Locale.ROOT);
+        if (lower.startsWith("geo:") || lower.startsWith("google.navigation:") || lower.startsWith("intent:")) {
+            return true;
+        }
+        if (!lower.startsWith("https://")) return false;
+        try {
+            String host = Uri.parse(url).getHost();
+            if (host == null) return false;
+            host = host.toLowerCase(java.util.Locale.ROOT);
+            return "www.google.com".equals(host)
+                || "maps.google.com".equals(host)
+                || "maps.app.goo.gl".equals(host)
+                || host.endsWith(".google.com")
+                || host.endsWith(".google.com.tr");
+        } catch (Exception ignored) {
+            return false;
         }
     }
 

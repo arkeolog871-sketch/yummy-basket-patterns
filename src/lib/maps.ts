@@ -69,10 +69,12 @@ function googleMapsDirUrl(destination: string): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
 }
 
-function isAndroidWebView() {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent;
-  return /Android/i.test(ua) && (/; wv\)/i.test(ua) || /Version\/4\.0/i.test(ua));
+type NativeMapsBridge = { openMaps?: (url: string) => void };
+
+function nativeMapsBridge(): NativeMapsBridge | null {
+  if (typeof window === "undefined") return null;
+  const native = (window as Window & { SilvanNative?: NativeMapsBridge }).SilvanNative;
+  return native && typeof native.openMaps === "function" ? native : null;
 }
 
 /** Opens Google Maps directions (app on mobile if installed). */
@@ -80,17 +82,20 @@ export function openDirections(business: BusinessLocation) {
   const webUrl = buildMapsUrl(business);
   if (!webUrl || typeof window === "undefined") return false;
 
-  if (isAndroidWebView()) {
-    const coords = resolveBusinessCoords(business);
-    const nativeUrl = coords
-      ? `geo:${coords.lat},${coords.lng}?q=${coords.lat},${coords.lng}`
-      : webUrl;
-    window.location.assign(nativeUrl);
+  const native = nativeMapsBridge();
+  if (native?.openMaps) {
+    native.openMaps(webUrl);
     return true;
   }
 
   const opened = window.open(webUrl, "_blank", "noopener,noreferrer");
-  if (!opened) window.location.assign(webUrl);
+  if (!opened) {
+    const link = document.createElement("a");
+    link.href = webUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.click();
+  }
   return true;
 }
 
