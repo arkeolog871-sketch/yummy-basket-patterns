@@ -758,7 +758,7 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
         />
         <div className="space-y-2 rounded-2xl border border-border p-3">
           <p className="text-xs font-medium text-muted-foreground">
-            Konum (isteğe bağlı) — girildiğinde kartlarda tıklanabilir yol tarifi görünür
+            Konum (isteğe bağlı) — WhatsApp konum linki yol tarifinde Google Haritalar ile açılır
           </p>
           <Input
             placeholder="Açık adres (Mahalle, sokak, no)"
@@ -790,7 +790,7 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
             />
           </div>
           <Input
-            placeholder="Google Maps bağlantısı (https://…)"
+            placeholder="WhatsApp konum veya Google Maps bağlantısı (https://maps…)"
             value={form.maps_url}
             onChange={(event) => setForm({ ...form, maps_url: event.target.value })}
           />

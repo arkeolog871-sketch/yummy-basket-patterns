@@ -275,7 +275,7 @@ export function AdsPanel() {
           <Button
             type="button"
             className="rounded-full"
-            disabled={schemaMissing || items.length >= MAX_ADVERTISEMENTS}
+            disabled={items.length >= MAX_ADVERTISEMENTS}
             onClick={() => {
               clearLocalPreview();
               setDraft(emptyAdvertisementDraft());
@@ -502,21 +502,25 @@ function AdForm({
           <div className="h-16 w-28 overflow-hidden rounded-xl border bg-muted">
             {previewSrc ? <AdMedia src={previewSrc} className="size-full object-cover" active /> : null}
           </div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept={AD_MEDIA_ACCEPT}
-            className="hidden"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              event.target.value = "";
-              if (file) onUpload(file);
-            }}
-          />
-          <Button type="button" variant="outline" className="rounded-full" disabled={uploading} onClick={() => fileRef.current?.click()}>
-            <ImageUp className="size-4" />
-            {uploading ? "Yükleniyor…" : "Galeriden seç"}
-          </Button>
+          <div className="relative inline-flex overflow-hidden rounded-full">
+            <Button type="button" variant="outline" className="pointer-events-none rounded-full" disabled={uploading} tabIndex={-1}>
+              <ImageUp className="size-4" />
+              {uploading ? "Yükleniyor…" : "Galeriden seç"}
+            </Button>
+            <input
+              ref={fileRef}
+              id="ad-media-file"
+              type="file"
+              accept={AD_MEDIA_ACCEPT}
+              disabled={uploading}
+              className="absolute inset-0 z-10 cursor-pointer opacity-0"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) onUpload(file);
+              }}
+            />
+          </div>
         </div>
         <Input
           className="mt-2"

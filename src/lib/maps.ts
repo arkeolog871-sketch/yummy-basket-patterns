@@ -25,87 +25,112 @@ export function locationLabel(business: BusinessLocation) {
 }
 
 function destinationQuery(business: BusinessLocation) {
-  const lat = toCoord(business.latitude);
-  const lng = toCoord(business.longitude);
-  if (lat !== null && lng !== null) return `${lat},${lng}`;
+  const coords = resolveBusinessCoords(business);
+  if (coords) return `${coords.lat},${coords.lng}`;
   const parts = [business.name, business.address, business.district, business.city]
     .filter((part): part is string => typeof part === "string" && part.trim().length > 0)
     .map((part) => part.trim());
   return parts.length > 0 ? parts.join(", ") : null;
 }
 
+function tryDecode(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function isGoogleMapsUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    if (host === "maps.google.com" || host === "maps.app.goo.gl" || host === "goo.gl") return true;
+    if (url.pathname.toLowerCase().includes("/maps") && (host === "google.com" || host === "www.google.com" || host.endsWith(".google.com") || host.endsWith(".google.com.tr"))) {
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function firstGoogleMapsUrl(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const decoded = tryDecode(raw.trim());
+  const candidates = [raw.trim(), decoded, ...((decoded.match(/https?:\/\/[^\s"'<>]+/gi) as string[] | null) ?? [])];
+  for (const candidate of candidates) {
+    if (isGoogleMapsUrl(candidate)) return candidate;
+  }
+  return null;
+}
+
+function googleMapsDirUrl(destination: string): string {
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
+}
+
 /**
- * Builds a maps URL for the business. Falls back to a plain Google Maps
- * search on the address text, and finally to a search on the business name,
- * so a missing coordinate never breaks the UI.
+ * Builds a Google Maps directions URL. WhatsApp konum paylaşımlarındaki
+ * Google Maps / geo linklerinden koordinat çıkarılır; ham wa.me açılmaz.
  */
 export function buildMapsUrl(business: BusinessLocation) {
-  const custom = business.maps_url?.trim();
-  if (custom && /^https?:\/\//i.test(custom)) return custom;
+  const coords = resolveBusinessCoords(business);
+  if (coords) return googleMapsDirUrl(`${coords.lat},${coords.lng}`);
+
+  const share = firstGoogleMapsUrl(business.maps_url);
+  if (share) {
+    const fromShare = coordsFromMapsUrl(share);
+    if (fromShare) return googleMapsDirUrl(`${fromShare.lat},${fromShare.lng}`);
+    return share;
+  }
 
   const destination = destinationQuery(business);
   if (!destination) return null;
-
-  const lat = toCoord(business.latitude);
-  const lng = toCoord(business.longitude);
-  if (lat !== null && lng !== null) {
-    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
-  }
 
   const hasAddress = Boolean(
     business.address?.trim() || business.district?.trim() || business.city?.trim(),
   );
   return hasAddress
-    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`
+    ? googleMapsDirUrl(destination)
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destination)}`;
 }
 
-function isMobile() {
-  if (typeof navigator === "undefined") return false;
-  return /android|iphone|ipad|ipod/i.test(navigator.userAgent);
-}
-
-function isApple() {
-  if (typeof navigator === "undefined") return false;
-  return /iphone|ipad|ipod|macintosh/i.test(navigator.userAgent);
-}
-
-/** Opens the device map app on mobile, or Google Maps directions in a new tab. */
+/** Opens Google Maps directions (app on mobile if installed). */
 export function openDirections(business: BusinessLocation) {
   const webUrl = buildMapsUrl(business);
-  if (!webUrl) return false;
-  if (typeof window === "undefined") return false;
-
-  const destination = destinationQuery(business);
-  if (isMobile() && destination) {
-    const encoded = encodeURIComponent(destination);
-    const appUrl = isApple()
-      ? `maps://?daddr=${encoded}`
-      : `geo:0,0?q=${encoded}`;
-    window.location.href = appUrl;
-    window.setTimeout(() => {
-      window.open(webUrl, "_blank", "noopener,noreferrer");
-    }, 900);
-    return true;
-  }
-
-  window.open(webUrl, "_blank", "noopener,noreferrer");
+  if (!webUrl || typeof window === "undefined") return false;
+  const opened = window.open(webUrl, "_blank", "noopener,noreferrer");
+  if (!opened) window.location.href = webUrl;
   return true;
 }
 
-/** Google Maps / OSM bağlantısından enlem-boylam çıkarır. */
-export function coordsFromMapsUrl(url: string | null | undefined) {
-  if (!url) return null;
+function matchCoords(source: string): { lat: number; lng: number } | null {
   const match =
-    url.match(/[?&]q=(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/) ??
-    url.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/) ??
-    url.match(/[?&](?:ll|center)=(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/) ??
-    url.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+    source.match(/[?&]q=(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/i) ??
+    source.match(/[?&]query=(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/i) ??
+    source.match(/[?&]destination=(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/i) ??
+    source.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/) ??
+    source.match(/[?&](?:ll|center)=(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/) ??
+    source.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/) ??
+    source.match(/geo:(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/i);
   if (!match) return null;
   const lat = Number(match[1]);
   const lng = Number(match[2]);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
   return { lat, lng };
+}
+
+/** Google Maps / WhatsApp konum / OSM bağlantısından enlem-boylam çıkarır. */
+export function coordsFromMapsUrl(url: string | null | undefined) {
+  if (!url) return null;
+  const decoded = tryDecode(url);
+  const pieces = [url, decoded, ...((decoded.match(/https?:\/\/[^\s"'<>]+/gi) as string[] | null) ?? [])];
+  for (const piece of pieces) {
+    const found = matchCoords(piece);
+    if (found) return found;
+  }
+  return null;
 }
 
 /** İşletme kaydından harita noktası. Koordinat yoksa maps_url içinden okunur. */

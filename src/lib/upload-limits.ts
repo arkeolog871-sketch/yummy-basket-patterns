@@ -14,9 +14,8 @@ const AD_VIDEO_MIME_ALIASES: readonly string[] = [
   "video/x-m4v",
 ];
 
-/** OS picker: images plus MP4 / MOV / WEBM. */
-export const AD_MEDIA_ACCEPT =
-  "image/*,video/mp4,video/webm,video/quicktime,.mp4,.mov,.webm";
+/** OS / gallery picker: all images and videos. */
+export const AD_MEDIA_ACCEPT = "image/*,video/*";
 export const AD_IMAGE_ACCEPT = AD_MEDIA_ACCEPT;
 
 export const BANNERS_BUCKET = "banners";
