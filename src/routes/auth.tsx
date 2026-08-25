@@ -108,7 +108,7 @@ function AuthPage() {
   async function handleGoogle() {
     if (isInAppBrowser()) {
       toast.error(
-        "Google girişi Instagram / Facebook içi tarayıcıda çalışmaz. Bağlantıyı Chrome veya Safari ile açın.",
+        "Google girişi WhatsApp / Instagram / Facebook içi tarayıcıda çalışmaz. Bağlantıyı Chrome veya Safari ile açın.",
       );
       return;
     }
@@ -301,8 +301,9 @@ function AuthPage() {
             Google ile devam et
           </Button>
           <p className="mt-2 text-center text-xs text-muted-foreground">
-            Google penceresi aynı tarayıcıda açılmalıdır. Instagram veya Facebook içi tarayıcıda
-            çalışmaz.
+            Google aynı tarayıcı sekmesinde açılmalıdır. WhatsApp, Instagram veya Facebook içi
+            tarayıcıda çalışmaz; Chrome veya Safari kullanın. E-posta kodu ile giriş her zaman
+            kullanılabilir.
           </p>
         </>
       )}

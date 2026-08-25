@@ -10,11 +10,13 @@ const lovableAuth = createLovableAuth({
 });
 
 const IN_APP_BROWSER =
-  /FBAN|FBAV|Instagram|Line\/|Twitter|LinkedInApp|MicroMessenger|Snapchat|TikTok|Pinterest|GSA\//i;
+  /FBAN|FBAV|Instagram|Line\/|Twitter|LinkedInApp|MicroMessenger|Snapchat|TikTok|Pinterest|WhatsApp|Telegram|GSA\//i;
 
 export function isInAppBrowser(): boolean {
   if (typeof navigator === "undefined") return false;
-  return IN_APP_BROWSER.test(navigator.userAgent);
+  const ua = navigator.userAgent;
+  if (/SilvanCebimde/i.test(ua)) return false;
+  return IN_APP_BROWSER.test(ua);
 }
 
 /** Google dönüşü aynı kökte kalsın; yol eklemek Lovable yönlendirme listesini bozabilir. */
