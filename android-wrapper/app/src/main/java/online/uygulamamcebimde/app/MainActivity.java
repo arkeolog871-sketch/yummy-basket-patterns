@@ -145,6 +145,31 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode != FILE_CHOOSER_REQUEST) {
+            super.onActivityResult(requestCode, resultCode, data);
+            return;
+        }
+        if (fileChooserCallback == null) {
+            return;
+        }
+        Uri[] results = null;
+        if (resultCode == RESULT_OK && data != null) {
+            if (data.getClipData() != null) {
+                int count = data.getClipData().getItemCount();
+                results = new Uri[count];
+                for (int i = 0; i < count; i++) {
+                    results[i] = data.getClipData().getItemAt(i).getUri();
+                }
+            } else if (data.getData() != null) {
+                results = new Uri[] { data.getData() };
+            }
+        }
+        fileChooserCallback.onReceiveValue(results);
+        fileChooserCallback = null;
+    }
+
+    @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         webView.saveState(outState);
