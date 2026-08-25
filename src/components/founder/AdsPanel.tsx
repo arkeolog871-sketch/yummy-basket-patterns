@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "rea
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ImageUp, Megaphone, Pencil, Plus, Trash2 } from "lucide-react";
+import { ImageUp, Megaphone, Pencil, Plus, Trash2, Camera } from "lucide-react";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useAuth } from "@/hooks/useAuth";
@@ -88,6 +88,7 @@ export function AdsPanel() {
   const toggleFn = useServerFn(setAdvertisementActive);
   const deleteFn = useServerFn(deleteAdvertisement);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const localPreviewRef = useRef("");
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(emptyAdvertisementDraft());
@@ -177,6 +178,13 @@ export function AdsPanel() {
 
   function openGalleryPicker() {
     const input = fileInputRef.current;
+    if (!input) return;
+    input.value = "";
+    input.click();
+  }
+
+  function openCameraPicker() {
+    const input = cameraInputRef.current;
     if (!input) return;
     input.value = "";
     input.click();
@@ -436,6 +444,7 @@ export function AdsPanel() {
             loading={loading}
             pickedName={pickedName}
             onPickClick={openGalleryPicker}
+            onCameraClick={openCameraPicker}
             onSubmit={handleUpload}
           />
         </DialogContent>
@@ -445,6 +454,15 @@ export function AdsPanel() {
         ref={fileInputRef}
         type="file"
         accept="image/*,video/*"
+        style={{ display: "none" }}
+        onChange={handleFileChange}
+      />
+      <input
+        id="founder-ad-media-camera"
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
         style={{ display: "none" }}
         onChange={handleFileChange}
       />
@@ -459,6 +477,7 @@ function AdForm({
   loading,
   pickedName,
   onPickClick,
+  onCameraClick,
   onSubmit,
 }: {
   draft: Draft;
@@ -467,6 +486,7 @@ function AdForm({
   loading: boolean;
   pickedName: string;
   onPickClick: () => void;
+  onCameraClick: () => void;
   onSubmit: (e: FormEvent) => void | Promise<void>;
 }) {
   const patch = (partial: Partial<Draft>) => setDraft({ ...draft, ...partial });
@@ -514,13 +534,17 @@ function AdForm({
         <Label htmlFor="ad-media-pick">
           Görsel veya video (PNG, JPEG, MP4, MOV, WEBM… en fazla {MAX_AD_IMAGE_MB} MB, 16:9 veya 3:1)
         </Label>
-        <div className="mt-1.5 flex items-center gap-3">
+        <div className="mt-1.5 flex flex-wrap items-center gap-3">
           <div className="h-16 w-28 overflow-hidden rounded-xl border bg-muted">
             {previewSrc ? <AdMedia src={previewSrc} className="size-full object-cover" active /> : null}
           </div>
           <Button id="ad-media-pick" type="button" className="rounded-full" onClick={onPickClick}>
             <ImageUp className="size-4" />
             {loading ? "Yükleniyor…" : "Galeriden seç"}
+          </Button>
+          <Button type="button" variant="outline" className="rounded-full" onClick={onCameraClick}>
+            <Camera className="size-4" />
+            Kamera ile çek
           </Button>
         </div>
         {pickedName || previewSrc ? (

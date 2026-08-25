@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { toPublicErrorMessage } from "@/lib/public-error";
-import { ImageUp, Trash2 } from "lucide-react";
+import { Camera, ImageUp, Trash2 } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { uploadBrandAsset, removeBrandAsset } from "@/lib/branding.functions";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ export function BrandingPanel() {
   const remove = useServerFn(removeBrandAsset);
   const [busy, setBusy] = useState<Kind | null>(null);
   const inputs = useRef<Record<string, HTMLInputElement | null>>({});
+  const cameraInputs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const uploadMutation = useMutation({
     mutationFn: async ({ kind, file }: { kind: Kind; file: File }) => {
@@ -112,7 +113,23 @@ export function BrandingPanel() {
                   uploadMutation.mutate({ kind: slot.kind, file });
                 }}
               />
-              <div className="flex gap-2">
+              <input
+                ref={(node) => {
+                  cameraInputs.current[slot.kind] = node;
+                }}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (!file) return;
+                  setBusy(slot.kind);
+                  uploadMutation.mutate({ kind: slot.kind, file });
+                }}
+              />
+              <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
                   className="rounded-full"
@@ -121,6 +138,20 @@ export function BrandingPanel() {
                 >
                   <ImageUp className="size-4" />
                   {busy === slot.kind ? "Yükleniyor…" : url ? "Değiştir" : "Yükle"}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="rounded-full"
+                  disabled={busy === slot.kind}
+                  onClick={() => {
+                    const input = cameraInputs.current[slot.kind];
+                    if (!input) return;
+                    input.value = "";
+                    input.click();
+                  }}
+                >
+                  <Camera className="size-4" />
+                  Kamera
                 </Button>
                 {url ? (
                   <Button
