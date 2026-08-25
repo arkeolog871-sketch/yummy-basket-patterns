@@ -210,7 +210,13 @@ public class MainActivity extends Activity {
                 // Uygulama kurulu değilse web adresine düşülür.
             }
             if (fallbackUrl != null) {
-                webView.loadUrl(fallbackUrl);
+                try {
+                    Intent web = new Intent(Intent.ACTION_VIEW, Uri.parse(fallbackUrl));
+                    web.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(web);
+                } catch (Exception alsoIgnored) {
+                    // Tarayıcı da yoksa sessizce vazgeç.
+                }
             }
             return true;
         }
