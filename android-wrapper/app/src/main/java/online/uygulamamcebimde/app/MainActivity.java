@@ -95,6 +95,46 @@ public class MainActivity extends Activity {
                 boolean allowed = "https".equals(uri.getScheme()) && APP_HOST.equals(uri.getHost());
                 callback.invoke(origin, allowed, false);
             }
+
+            @Override
+            public boolean onShowFileChooser(
+                    WebView view,
+                    ValueCallback<Uri[]> filePathCallback,
+                    FileChooserParams params
+            ) {
+                if (fileChooserCallback != null) {
+                    fileChooserCallback.onReceiveValue(null);
+                }
+                fileChooserCallback = filePathCallback;
+
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("*/*");
+                String[] acceptTypes = params.getAcceptTypes();
+                if (acceptTypes != null && acceptTypes.length > 0 && !acceptTypes[0].isEmpty()) {
+                    intent.setType(acceptTypes[0]);
+                    if (acceptTypes.length > 1) {
+                        intent.putExtra(Intent.EXTRA_MIME_TYPES, acceptTypes);
+                    }
+                } else {
+                    intent.setType("image/*");
+                }
+                intent.putExtra(
+                        Intent.EXTRA_ALLOW_MULTIPLE,
+                        params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE
+                );
+
+                try {
+                    startActivityForResult(
+                            Intent.createChooser(intent, "Dosya seç"),
+                            FILE_CHOOSER_REQUEST
+                    );
+                } catch (Exception ignored) {
+                    fileChooserCallback = null;
+                    return false;
+                }
+                return true;
+            }
         });
 
         if (savedInstanceState == null) {
