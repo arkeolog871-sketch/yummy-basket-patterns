@@ -3,14 +3,18 @@ package online.uygulamamcebimde.app;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Message;
 import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.SslErrorHandler;
 import android.net.http.SslError;
@@ -57,8 +61,8 @@ public class MainActivity extends Activity {
         settings.setAllowContentAccess(true);
         settings.setAllowFileAccessFromFileURLs(false);
         settings.setAllowUniversalAccessFromFileURLs(false);
-        settings.setSupportMultipleWindows(false);
-        settings.setJavaScriptCanOpenWindowsAutomatically(false);
+        settings.setSupportMultipleWindows(true);
+        settings.setJavaScriptCanOpenWindowsAutomatically(true);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
         settings.setSupportZoom(false);
@@ -85,6 +89,16 @@ public class MainActivity extends Activity {
             @Override
             public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
                 handler.cancel();
+            }
+
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                if (request == null || error == null || !request.isForMainFrame()) return;
+                if (error.getErrorCode() != WebViewClient.ERROR_UNSUPPORTED_SCHEME) return;
+                String failing = request.getUrl() != null ? request.getUrl().toString() : "";
+                if (openAllowedUrlOrExternal(failing) && view.canGoBack()) {
+                    view.goBack();
+                }
             }
         });
         webView.setWebChromeClient(new WebChromeClient() {
@@ -140,6 +154,31 @@ public class MainActivity extends Activity {
                 }
                 return true;
             }
+
+            @Override
+            public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, Message resultMsg) {
+                if (resultMsg == null || !(resultMsg.obj instanceof WebView.WebViewTransport)) {
+                    return false;
+                }
+                WebView popup = new WebView(view.getContext());
+                popup.setWebViewClient(new WebViewClient() {
+                    @Override
+                    public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest request) {
+                        openAllowedUrlOrExternal(request.getUrl().toString());
+                        return true;
+                    }
+
+                    @Override
+                    public boolean shouldOverrideUrlLoading(WebView v, String url) {
+                        openAllowedUrlOrExternal(url);
+                        return true;
+                    }
+                });
+                WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
+                transport.setWebView(popup);
+                resultMsg.sendToTarget();
+                return true;
+            }
         });
 
         if (savedInstanceState == null) {
@@ -193,6 +232,7 @@ public class MainActivity extends Activity {
     }
 
     private boolean openAllowedUrlOrExternal(String rawUrl) {
+        if (rawUrl == null || rawUrl.isEmpty()) return true;
         Uri uri = Uri.parse(rawUrl);
         String scheme = uri.getScheme();
         if ("about".equals(scheme)) {
@@ -202,41 +242,57 @@ public class MainActivity extends Activity {
             return false;
         }
 
-        // Google Maps ve benzeri uygulamalar intent:// bağlantısı üretir; WebView bunu açamaz.
         if ("intent".equals(scheme)) {
-            String fallbackUrl = null;
-            try {
-                Intent intent = Intent.parseUri(rawUrl, Intent.URI_INTENT_SCHEME);
-                fallbackUrl = intent.getStringExtra("browser_fallback_url");
-                intent.addCategory(Intent.CATEGORY_BROWSABLE);
-                intent.setComponent(null);
-                intent.setSelector(null);
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(intent);
-                return true;
-            } catch (Exception ignored) {
-                // Uygulama kurulu değilse web adresine düşülür.
-            }
-            if (fallbackUrl != null) {
-                try {
-                    Intent web = new Intent(Intent.ACTION_VIEW, Uri.parse(fallbackUrl));
-                    web.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    startActivity(web);
-                } catch (Exception alsoIgnored) {
-                    // Tarayıcı da yoksa sessizce vazgeç.
-                }
-            }
-            return true;
+            return openIntentUrl(rawUrl);
         }
 
         try {
             Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+            intent.addCategory(Intent.CATEGORY_BROWSABLE);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
         } catch (Exception ignored) {
             // Do not load unknown schemes or hosts inside the WebView.
         }
         return true;
+    }
+
+    private boolean openIntentUrl(String rawUrl) {
+        String fallbackUrl = httpsFromIntentUrl(rawUrl);
+        try {
+            Intent intent = Intent.parseUri(rawUrl, Intent.URI_INTENT_SCHEME);
+            if (intent.getStringExtra("browser_fallback_url") != null) {
+                fallbackUrl = intent.getStringExtra("browser_fallback_url");
+            }
+            intent.addCategory(Intent.CATEGORY_BROWSABLE);
+            intent.setComponent(null);
+            intent.setSelector(null);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            return true;
+        } catch (ActivityNotFoundException ignored) {
+            // Maps kurulu değilse https yedek adrese düş.
+        } catch (Exception ignored) {
+            // Bozuk intent:// adresi.
+        }
+        if (fallbackUrl != null) {
+            try {
+                Intent web = new Intent(Intent.ACTION_VIEW, Uri.parse(fallbackUrl));
+                web.addCategory(Intent.CATEGORY_BROWSABLE);
+                web.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(web);
+            } catch (Exception alsoIgnored) {
+                // Tarayıcı da yoksa WebView içinde intent:// yüklenmesin.
+            }
+        }
+        return true;
+    }
+
+    private String httpsFromIntentUrl(String rawUrl) {
+        if (rawUrl == null || !rawUrl.startsWith("intent://")) return null;
+        int marker = rawUrl.indexOf("#Intent;");
+        if (marker <= "intent://".length()) return null;
+        return "https://" + rawUrl.substring("intent://".length(), marker);
     }
 
     private String[] normalizeAcceptTypes(String[] rawTypes) {

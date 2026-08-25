@@ -69,6 +69,31 @@ function googleMapsDirUrl(destination: string): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
 }
 
+function isAndroidWebView() {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return /Android/i.test(ua) && (/; wv\)/i.test(ua) || /Version\/4\.0/i.test(ua));
+}
+
+/** Opens Google Maps directions (app on mobile if installed). */
+export function openDirections(business: BusinessLocation) {
+  const webUrl = buildMapsUrl(business);
+  if (!webUrl || typeof window === "undefined") return false;
+
+  if (isAndroidWebView()) {
+    const coords = resolveBusinessCoords(business);
+    const nativeUrl = coords
+      ? `geo:${coords.lat},${coords.lng}?q=${coords.lat},${coords.lng}`
+      : webUrl;
+    window.location.assign(nativeUrl);
+    return true;
+  }
+
+  const opened = window.open(webUrl, "_blank", "noopener,noreferrer");
+  if (!opened) window.location.assign(webUrl);
+  return true;
+}
+
 /**
  * Builds a Google Maps directions URL. WhatsApp konum paylaşımlarındaki
  * Google Maps / geo linklerinden koordinat çıkarılır; ham wa.me açılmaz.
@@ -93,15 +118,6 @@ export function buildMapsUrl(business: BusinessLocation) {
   return hasAddress
     ? googleMapsDirUrl(destination)
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destination)}`;
-}
-
-/** Opens Google Maps directions (app on mobile if installed). */
-export function openDirections(business: BusinessLocation) {
-  const webUrl = buildMapsUrl(business);
-  if (!webUrl || typeof window === "undefined") return false;
-  const opened = window.open(webUrl, "_blank", "noopener,noreferrer");
-  if (!opened) window.location.href = webUrl;
-  return true;
 }
 
 function matchCoords(source: string): { lat: number; lng: number } | null {
