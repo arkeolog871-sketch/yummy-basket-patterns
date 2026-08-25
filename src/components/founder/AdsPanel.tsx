@@ -9,9 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   deleteAdvertisement,
   listAdvertisements,
-  saveAdvertisement,
   setAdvertisementActive,
-  uploadAdvertisementMedia,
 } from "@/lib/advertisements.functions";
 import {
   emptyAdvertisementDraft,
@@ -30,7 +28,6 @@ import { AdMedia } from "@/components/home/AdMedia";
 import {
   adImageTooLargeMessage,
   adImageTypeRejectedMessage,
-  adStorageUploadErrorMessage,
   AD_MEDIA_ACCEPT,
   extensionForAdMediaFile,
   isAdMediaFile,
@@ -65,19 +62,6 @@ const ACTION_LABELS: Record<AdActionType, string> = {
 
 type Draft = ReturnType<typeof emptyAdvertisementDraft> & { id?: string };
 
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result ?? "");
-      const comma = result.indexOf(",");
-      resolve(comma >= 0 ? result.slice(comma + 1) : result);
-    };
-    reader.onerror = () => reject(new Error("Dosya okunamadı"));
-    reader.readAsDataURL(file);
-  });
-}
-
 function toDraft(ad?: Advertisement | null): Draft {
   if (!ad) return emptyAdvertisementDraft();
   const { id, title, client_name, client_phone, image_url, action_type, action_value, display_order, is_active, start_date, end_date } = ad;
@@ -100,8 +84,6 @@ export function AdsPanel() {
   const { isFounder } = useSiteSettings();
   const queryClient = useQueryClient();
   const listFn = useServerFn(listAdvertisements);
-  const saveFn = useServerFn(saveAdvertisement);
-  const uploadFn = useServerFn(uploadAdvertisementMedia);
   const toggleFn = useServerFn(setAdvertisementActive);
   const deleteFn = useServerFn(deleteAdvertisement);
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -134,32 +116,6 @@ export function AdsPanel() {
   });
 
   const items = query.data?.items ?? [];
-
-  const saveMutation = useMutation({
-    mutationFn: (values: Draft) =>
-      saveFn({
-        data: {
-          ...(values.id ? { id: values.id } : {}),
-          title: values.title,
-          client_name: values.client_name,
-          client_phone: values.client_phone,
-          image_url: values.image_url,
-          action_type: values.action_type,
-          action_value: values.action_value,
-          display_order: values.display_order,
-          is_active: values.is_active,
-          start_date: values.start_date,
-          end_date: values.end_date,
-        },
-      }),
-    onSuccess: () => {
-      toast.success("Reklam kaydedildi");
-      resetMedia();
-      setOpen(false);
-      void queryClient.invalidateQueries({ queryKey: ["founder-advertisements"] });
-      void queryClient.invalidateQueries({ queryKey: ["public-banners"] });
-    },
-  });
 
   const toggleMutation = useMutation({
     mutationFn: (input: { id: string; is_active: boolean }) => toggleFn({ data: input }),
@@ -218,25 +174,8 @@ export function AdsPanel() {
     setDraft((prev) => ({ ...prev, image_url: "" }));
   }
 
-  async function resolveImageUrl(): Promise<string> {
-    const existing = draft.image_url.trim();
-    if (existing && !pendingFileRef.current) return existing;
-    const pending = pendingFileRef.current;
-    if (!pending) return existing;
-    const base64 = await fileToBase64(pending);
-    const uploaded = await uploadFn({
-      data: {
-        fileName: pending.name || "reklam",
-        contentType: pending.type || "application/octet-stream",
-        base64,
-      },
-    });
-    pendingFileRef.current = null;
-    return uploaded.url;
-  }
-
   async function submitAd() {
-    if (saveMutation.isPending || uploading) return;
+    if (uploading) return;
     if (!draft.title.trim()) {
       toast.error("Başlık girin");
       return;
@@ -247,15 +186,46 @@ export function AdsPanel() {
     }
     setUploading(true);
     try {
-      const imageUrl = await resolveImageUrl();
-      if (!imageUrl) {
-        toast.error("Galeriden bir görsel veya video seçin");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        toast.error("Oturumunuz geçersiz veya süresi doldu. Lütfen yeniden giriş yapın.");
         return;
       }
-      setDraft((prev) => ({ ...prev, image_url: imageUrl }));
-      await saveMutation.mutateAsync({ ...draft, image_url: imageUrl });
+      const form = new FormData();
+      if (draft.id) form.set("id", draft.id);
+      form.set("title", draft.title.trim());
+      form.set("client_name", draft.client_name);
+      form.set("client_phone", draft.client_phone);
+      form.set("image_url", draft.image_url.trim());
+      form.set("action_type", draft.action_type);
+      form.set("action_value", draft.action_value);
+      form.set("display_order", String(draft.display_order));
+      form.set("is_active", draft.is_active ? "true" : "false");
+      form.set("start_date", draft.start_date);
+      form.set("end_date", draft.end_date);
+      const pending = pendingFileRef.current;
+      if (pending) form.set("file", pending, pending.name || "reklam");
+
+      const response = await fetch("/api/v1/banners", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+      const body: unknown = await response.json().catch(() => null);
+      if (!response.ok) {
+        const record = body && typeof body === "object" ? (body as Record<string, unknown>) : null;
+        const message = typeof record?.["error"] === "string" ? record["error"] : "Reklam kaydedilemedi";
+        throw new Error(message);
+      }
+      pendingFileRef.current = null;
+      toast.success("Reklam kaydedildi");
+      resetMedia();
+      setOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ["founder-advertisements"] });
+      void queryClient.invalidateQueries({ queryKey: ["public-banners"] });
     } catch (error) {
-      toast.error(adStorageUploadErrorMessage(error));
+      toast.error(toPublicErrorMessage(error));
     } finally {
       setUploading(false);
     }
@@ -299,9 +269,9 @@ export function AdsPanel() {
               <h2 className="text-xl">Kayan reklam / banner</h2>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Galeriden seçilen görsel veya video `banners` kovasına yüklenir; Kaydet ile `advertisements`
-              tablosuna yazılır. Ana sayfa `get_active_banners` ile yayındaki slaytları gösterir.
-              En fazla {MAX_ADVERTISEMENTS} kayıt önerilir.
+              Galeriden seçilen görsel veya video Kaydet ile `/api/v1/banners` üzerinden `banners`
+              kovasına yüklenir ve `advertisements` tablosuna yazılır. Ana sayfa yayındaki slaytları
+              aynı uç noktadan okur. En fazla {MAX_ADVERTISEMENTS} kayıt önerilir.
             </p>
           </div>
           <Button
@@ -465,7 +435,7 @@ export function AdsPanel() {
             onSubmit={() => {
               void submitAd();
             }}
-            pending={saveMutation.isPending}
+            pending={uploading}
           />
         </DialogContent>
       </Dialog>

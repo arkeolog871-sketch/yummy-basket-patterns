@@ -40,7 +40,11 @@ function sanitizeMessage(message: string, fallback: string): string {
   if (/^Forbidden$/i.test(text)) {
     return "Bu işlem için yetkiniz yok.";
   }
-  if (/permission denied|PGRST|JWT|column|relation|violates|supabase|stack|ECONN|fetch failed/i.test(text)) {
+  if (
+    /permission denied|PGRST|JWT|column|relation|violates|supabase|stack|ECONN|fetch failed|nosuchbucket|bucket not found/i.test(
+      text,
+    )
+  ) {
     return fallback;
   }
   if (text.startsWith("<!doctype") || text.startsWith("<html")) {

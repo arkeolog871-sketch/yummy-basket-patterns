@@ -256,7 +256,4 @@ SELECT
     FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname = 'public' AND p.proname = 'get_active_banners'
-  ) AS get_active_banners,
-  EXISTS (
-    SELECT 1 FROM storage.buckets WHERE id = 'banners'
-  ) AS banners_bucket;
+  ) AS get_active_banners;
