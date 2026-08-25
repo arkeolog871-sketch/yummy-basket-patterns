@@ -20,7 +20,9 @@ import { AccessDenied } from "@/components/auth/AccessDenied";
 import { EmptyState } from "@/components/vendor/EmptyState";
 import { ProductPanel } from "@/components/vendor/ProductPanel";
 import { MediaPanel } from "@/components/vendor/MediaPanel";
+import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { useAccess } from "@/hooks/useAccess";
+import { useAuth } from "@/hooks/useAuth";
 
 import {
   getVendorDashboard,
@@ -78,7 +80,9 @@ const VENDOR_STATUS_FLOW = [
 type VendorStatus = (typeof VENDOR_STATUS_FLOW)[number]["value"];
 
 function VendorGate() {
-  const { loading, isVendor, isFounder } = useAccess();
+  const { loading, isVendor, isFounder, emailVerified } = useAccess();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   if (loading) {
     return <div className="px-4 py-24 text-center text-sm text-muted-foreground">Yükleniyor…</div>;
@@ -93,6 +97,31 @@ function VendorGate() {
             : "Hesabınıza bağlı bir işletme bulunmuyor. İşletme yetkisi için kurucu ile iletişime geçin."
         }
       />
+    );
+  }
+
+  if (!emailVerified) {
+    return (
+      <div className="mx-auto w-full max-w-md px-4 py-16">
+        <h1 className="text-3xl">E-posta doğrulama</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          İşletme paneli için e-posta adresiniz doğrulanmalı. Size gönderilen 6 haneli kodu girin
+          veya yeni kod isteyin.
+        </p>
+        <div className="mt-6 rounded-3xl border border-border/70 bg-card p-4 shadow-card sm:p-6">
+          <EmailCodeLogin
+            idPrefix="vendor-verify"
+            allowSignUp={false}
+            initialEmail={user?.email ?? ""}
+            startAtCode={false}
+            onVerified={async () => {
+              toast.success("E-posta doğrulandı. İşletme profilinizi tamamlayabilirsiniz.");
+              await queryClient.invalidateQueries({ queryKey: ["access-context"] });
+              await queryClient.invalidateQueries({ queryKey: ["vendor-dashboard"] });
+            }}
+          />
+        </div>
+      </div>
     );
   }
 

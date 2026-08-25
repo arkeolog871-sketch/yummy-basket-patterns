@@ -365,17 +365,47 @@ export const saveBusiness = createServerFn({ method: "POST" })
         async () => {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const businessId = id ?? crypto.randomUUID();
+          const createdBusiness = !id;
           const { error } = id
             ? await supabaseAdmin.from("restaurants").update(values).eq("id", id)
-            : await supabaseAdmin.from("restaurants").insert({ ...values, id: businessId });
+            : await supabaseAdmin.from("restaurants").insert({
+                ...values,
+                id: businessId,
+                is_active: false,
+              });
           if (error) throw new Error(error.message);
-          await ensureBusinessVendorAccount({
-            restaurantId: businessId,
-            businessName: values.name,
-            email: values.contact_email,
-            phone: values.contact_phone,
-          });
-          return { ok: true, vendorLinked: true };
+          try {
+            const vendor = await ensureBusinessVendorAccount({
+              restaurantId: businessId,
+              businessName: values.name,
+              email: values.contact_email,
+              phone: values.contact_phone,
+            });
+            if (!vendor.emailVerified) {
+              const { error: inactiveError } = await supabaseAdmin
+                .from("restaurants")
+                .update({ is_active: false })
+                .eq("id", businessId);
+              if (inactiveError) throw new Error(inactiveError.message);
+            } else if (createdBusiness) {
+              const { error: activeError } = await supabaseAdmin
+                .from("restaurants")
+                .update({ is_active: values.is_active })
+                .eq("id", businessId);
+              if (activeError) throw new Error(activeError.message);
+            }
+            return {
+              ok: true,
+              vendorLinked: true,
+              verificationSent: vendor.verificationSent,
+              emailVerified: vendor.emailVerified,
+            };
+          } catch (error) {
+            if (createdBusiness) {
+              await supabaseAdmin.from("restaurants").delete().eq("id", businessId);
+            }
+            throw error;
+          }
         },
       );
     }),
@@ -740,27 +770,45 @@ export const createStaffUser = createServerFn({ method: "POST" })
         const newId = created.user?.id;
         if (!newId) throw new Error("Kullanıcı oluşturulamadı");
 
-        const { error: profileError } = await supabaseAdmin
-          .from("profiles")
-          .upsert(
-            { id: newId, phone, full_name: data.fullName?.trim() || null },
-            { onConflict: "id" },
-          );
-        if (profileError) throw new Error(profileError.message);
+        try {
+          const { error: profileError } = await supabaseAdmin
+            .from("profiles")
+            .upsert(
+              { id: newId, phone, full_name: data.fullName?.trim() || null },
+              { onConflict: "id" },
+            );
+          if (profileError) throw new Error(profileError.message);
 
-        const { error: roleError } = await supabaseAdmin
-          .from("user_roles")
-          .upsert({ user_id: newId, role: data.role }, { onConflict: "user_id,role" });
-        if (roleError) throw new Error(roleError.message);
+          const { error: roleError } = await supabaseAdmin
+            .from("user_roles")
+            .upsert({ user_id: newId, role: data.role }, { onConflict: "user_id,role" });
+          if (roleError) throw new Error(roleError.message);
 
-        // Müşteri girişindeki ile aynı doğrulama akışı: e-postaya 6 haneli kod gönderilir.
-        let verificationSent = false;
-        if (data.verifyEmail) {
-          const { sendSixDigitOtp } = await import("./otp.server");
-          const sent = await sendSixDigitOtp(data.email, "signup");
-          verificationSent = sent.ok;
+          let verificationSent = false;
+          if (data.verifyEmail) {
+            const { sendSixDigitOtp, hashEmail, EMAIL_SEND_FAILED_MESSAGE, clearGuard } =
+              await import("./otp.server");
+            const sent = await sendSixDigitOtp(data.email, "signup");
+            if (!sent.ok) {
+              console.error("[staff-signup] doğrulama e-postası gönderilemedi", {
+                emailHash: hashEmail(data.email),
+                role: data.role,
+                message: sent.error,
+              });
+              await supabaseAdmin.from("user_roles").delete().eq("user_id", newId);
+              await supabaseAdmin.from("profiles").delete().eq("id", newId);
+              await supabaseAdmin.auth.admin.deleteUser(newId);
+              await clearGuard(data.email);
+              throw new Error(EMAIL_SEND_FAILED_MESSAGE);
+            }
+            verificationSent = true;
+          }
+          return { ok: true, userId: newId, verificationSent };
+        } catch (error) {
+          if (error instanceof Error && error.message.includes("Doğrulama e-postası")) throw error;
+          await supabaseAdmin.auth.admin.deleteUser(newId).catch(() => undefined);
+          throw error;
         }
-        return { ok: true, userId: newId, verificationSent };
       },
     );
   });

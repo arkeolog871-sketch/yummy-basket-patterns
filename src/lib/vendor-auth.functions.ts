@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { EMAIL_SEND_FAILED_MESSAGE } from "@/lib/otp";
 
 const identifierSchema = z.object({
   identifier: z
@@ -67,9 +68,7 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
         return {
           ok: false as const,
           error:
-            sent.retryAfterSeconds != null
-              ? sent.error
-              : "Kod e-postası şu anda gönderilemedi (e-posta servisi yanıt vermedi). Lütfen birkaç saniye sonra tekrar deneyin.",
+            sent.retryAfterSeconds != null ? sent.error : EMAIL_SEND_FAILED_MESSAGE,
           retryAfterSeconds: sent.retryAfterSeconds,
         };
       }
@@ -115,7 +114,8 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
         assertCanVerify,
         registerFailedAttempt,
         clearGuard,
-        matchIssuedOtp,
+        inspectIssuedOtp,
+        messageForOtpInspect,
         createVerifiedSession,
         recordTermsAcceptance,
       } = await import("./otp.server");
@@ -146,9 +146,9 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
         return { ok: false as const, error: allowed.error };
       }
 
-      const matched = await matchIssuedOtp(vendor.email, token);
-      if (!matched) {
-        await registerFailedAttempt(vendor.email);
+      const inspected = await inspectIssuedOtp(vendor.email, token);
+      if (inspected !== "match") {
+        if (inspected === "mismatch") await registerFailedAttempt(vendor.email);
         await logAudit({
           actorId: vendor.userId,
           actorEmail: vendor.email,
@@ -156,9 +156,9 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
           entity: "vendor_assignments",
           entityId: vendor.userId,
           status: "denied",
-          detail: { reason: "Kod eşleşmedi veya süresi doldu" },
+          detail: { reason: inspected },
         });
-        return { ok: false as const, error: GENERIC_VERIFY_ERROR };
+        return { ok: false as const, error: messageForOtpInspect(inspected) };
       }
 
       const session = await createVerifiedSession(vendor.email);

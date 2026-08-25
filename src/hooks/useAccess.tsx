@@ -31,6 +31,7 @@ export function useAccess() {
     role,
     isFounder: query.data?.isFounder ?? false,
     isVendor: query.data?.isVendor ?? false,
+    emailVerified: query.data?.emailVerified ?? false,
     restaurantId: query.data?.restaurantId ?? null,
     /** Rolün varsayılan giriş sonrası hedefi. */
     homePath,
