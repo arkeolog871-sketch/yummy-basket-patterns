@@ -113,6 +113,7 @@ function createSupabaseClient(): SupabaseClient<Database> {
       storage: brokeredPreviewStorage(),
       persistSession: true,
       autoRefreshToken: true,
+      detectSessionInUrl: true,
     },
   });
 }

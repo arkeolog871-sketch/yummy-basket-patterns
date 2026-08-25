@@ -11,14 +11,17 @@ export const SECURITY_HEADERS: Record<string, string> = {
   "X-Frame-Options": "SAMEORIGIN",
   "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
   "Content-Security-Policy":
-    "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'self'; form-action 'self'; " +
+    "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'self'; " +
+    "form-action 'self' https://oauth.lovable.app https://auth.lovable.app https://accounts.google.com https://accounts.google.com.tr; " +
     "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com https://unpkg.com; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; " +
     "font-src 'self' data: https://fonts.gstatic.com https://unpkg.com; " +
     "img-src 'self' data: blob: https:; " +
-    "connect-src 'self' https://*.supabase.co https://maps.googleapis.com https://unpkg.com " +
+    "connect-src 'self' https://*.supabase.co https://oauth.lovable.app https://auth.lovable.app " +
+    "https://accounts.google.com https://maps.googleapis.com https://unpkg.com " +
     "https://tile.openstreetmap.org ws://localhost:* ws://127.0.0.1:*; " +
-    "frame-src 'self' https://www.openstreetmap.org; media-src 'self' blob: https:",
+    "frame-src 'self' https://www.openstreetmap.org https://accounts.google.com https://oauth.lovable.app https://auth.lovable.app; " +
+    "media-src 'self' blob: https:",
 };
 
 const BLOCKED_PATH =
