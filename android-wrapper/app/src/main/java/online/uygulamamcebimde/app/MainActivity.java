@@ -8,8 +8,11 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.graphics.Bitmap;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Message;
+import android.os.Parcelable;
+import android.provider.MediaStore;
 import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.ValueCallback;
@@ -27,6 +30,7 @@ public class MainActivity extends Activity {
     private static final String APP_URL = "https://yummy-basket-patterns.lovable.app/";
     private static final String APP_HOST = "yummy-basket-patterns.lovable.app";
     private static final int FILE_CHOOSER_REQUEST = 1001;
+    private static final int MEDIA_PERMISSION_REQUEST = 1002;
     private WebView webView;
     private ValueCallback<Uri[]> fileChooserCallback;
 
@@ -34,15 +38,15 @@ public class MainActivity extends Activity {
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        java.util.ArrayList<String> startup = new java.util.ArrayList<>();
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(
-                    new String[] {
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.ACCESS_COARSE_LOCATION
-                    },
-                    1
-            );
+            startup.add(Manifest.permission.ACCESS_FINE_LOCATION);
+            startup.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+        }
+        addMissingMediaPermissions(startup);
+        if (!startup.isEmpty()) {
+            requestPermissions(startup.toArray(new String[0]), MEDIA_PERMISSION_REQUEST);
         }
 
         webView = new WebView(this);
@@ -142,45 +146,10 @@ public class MainActivity extends Activity {
                     fileChooserCallback.onReceiveValue(null);
                 }
                 fileChooserCallback = filePathCallback;
-
-                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-                intent.addCategory(Intent.CATEGORY_OPENABLE);
-                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-                String[] acceptTypes = normalizeAcceptTypes(params.getAcceptTypes());
-                if (acceptTypes.length == 1) {
-                    intent.setType(acceptTypes[0]);
-                } else if (acceptTypes.length > 1) {
-                    intent.setType("*/*");
-                    intent.putExtra(Intent.EXTRA_MIME_TYPES, acceptTypes);
-                } else {
-                    intent.setType("*/*");
-                    intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[] { "image/*", "video/*" });
-                }
-                intent.putExtra(
-                        Intent.EXTRA_ALLOW_MULTIPLE,
-                        params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE
-                );
-
-                try {
-                    startActivityForResult(
-                            Intent.createChooser(intent, "Galeriden seç"),
-                            FILE_CHOOSER_REQUEST
-                    );
-                } catch (Exception ignored) {
-                    try {
-                        Intent documents = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-                        documents.addCategory(Intent.CATEGORY_OPENABLE);
-                        documents.setType("*/*");
-                        documents.putExtra(Intent.EXTRA_MIME_TYPES, new String[] { "image/*", "video/*" });
-                        startActivityForResult(
-                                Intent.createChooser(documents, "Galeriden seç"),
-                                FILE_CHOOSER_REQUEST
-                        );
-                    } catch (Exception alsoIgnored) {
-                        fileChooserCallback = null;
-                        return false;
-                    }
+                if (!launchGalleryChooser(params)) {
+                    fileChooserCallback = null;
+                    filePathCallback.onReceiveValue(null);
+                    return false;
                 }
                 return true;
             }
@@ -261,6 +230,85 @@ public class MainActivity extends Activity {
         }
         fileChooserCallback.onReceiveValue(results);
         fileChooserCallback = null;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    }
+
+    private void addMissingMediaPermissions(java.util.ArrayList<String> needed) {
+        if (Build.VERSION.SDK_INT >= 33) {
+            if (checkSelfPermission(Manifest.permission.READ_MEDIA_IMAGES)
+                    != PackageManager.PERMISSION_GRANTED) {
+                needed.add(Manifest.permission.READ_MEDIA_IMAGES);
+            }
+            if (checkSelfPermission(Manifest.permission.READ_MEDIA_VIDEO)
+                    != PackageManager.PERMISSION_GRANTED) {
+                needed.add(Manifest.permission.READ_MEDIA_VIDEO);
+            }
+        } else if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            needed.add(Manifest.permission.READ_EXTERNAL_STORAGE);
+        }
+    }
+
+    private boolean launchGalleryChooser(WebChromeClient.FileChooserParams params) {
+        String[] acceptTypes = params != null ? normalizeAcceptTypes(params.getAcceptTypes()) : new String[0];
+        if (acceptTypes.length == 0) {
+            acceptTypes = new String[] { "image/*", "video/*" };
+        }
+        boolean allowMultiple =
+            params != null && params.getMode() == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE;
+
+        Intent gallery = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        gallery.setType(acceptsVideo(acceptTypes) && !acceptsImage(acceptTypes) ? "video/*" : "image/*");
+        gallery.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+        Intent content = new Intent(Intent.ACTION_GET_CONTENT);
+        content.addCategory(Intent.CATEGORY_OPENABLE);
+        content.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        if (acceptTypes.length == 1) {
+            content.setType(acceptTypes[0]);
+        } else {
+            content.setType("*/*");
+            content.putExtra(Intent.EXTRA_MIME_TYPES, acceptTypes);
+        }
+        content.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, allowMultiple);
+
+        try {
+            Intent chooser = Intent.createChooser(content, "Galeriden seç");
+            chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Parcelable[] { gallery });
+            startActivityForResult(chooser, FILE_CHOOSER_REQUEST);
+            return true;
+        } catch (Exception ignored) {
+            try {
+                Intent documents = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                documents.addCategory(Intent.CATEGORY_OPENABLE);
+                documents.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                documents.setType("*/*");
+                documents.putExtra(Intent.EXTRA_MIME_TYPES, acceptTypes);
+                documents.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, allowMultiple);
+                startActivityForResult(Intent.createChooser(documents, "Galeriden seç"), FILE_CHOOSER_REQUEST);
+                return true;
+            } catch (Exception alsoIgnored) {
+                return false;
+            }
+        }
+    }
+
+    private boolean acceptsImage(String[] types) {
+        for (String type : types) {
+            if (type.startsWith("image/") || "*/*".equals(type)) return true;
+        }
+        return types.length == 0;
+    }
+
+    private boolean acceptsVideo(String[] types) {
+        for (String type : types) {
+            if (type.startsWith("video/") || "*/*".equals(type)) return true;
+        }
+        return false;
     }
 
     @Override
