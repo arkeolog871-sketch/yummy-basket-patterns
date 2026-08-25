@@ -4,7 +4,6 @@ import { listRestaurants, listCategories, getRestaurantBySlug } from "@/lib/cata
 export type HomeSearch = {
   kategori?: string | undefined;
   q?: string | undefined;
-  sim?: "reklam" | undefined;
 };
 export type RestoranSearch = { q?: string | undefined; kategori?: string | undefined };
 

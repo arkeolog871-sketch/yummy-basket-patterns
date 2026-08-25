@@ -6,7 +6,6 @@ import { RestaurantCard } from "@/components/restaurant/RestaurantCard";
 import { homeQuery, type HomeSearch } from "@/lib/catalog.queries";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { fetchPublicBanners } from "@/lib/advertisements";
-import { simulationBanners } from "@/lib/ad-simulation";
 import { HeroBannerSlider, legacySlidesToBanners } from "@/components/home/HeroBannerSlider";
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,6 @@ export const Route = createFileRoute("/")({
         ? search["kategori"]
         : undefined,
     q: typeof search["q"] === "string" && search["q"] ? search["q"] : undefined,
-    sim: search["sim"] === "reklam" ? "reklam" : undefined,
   }),
   loaderDeps: ({ search }) => search,
   loader: async ({ context, deps }) => {
@@ -73,14 +71,11 @@ function Index() {
   const [term, setTerm] = useState(search.q ?? "");
   const activeSector = search.kategori;
   const liveBanners = bannersQuery.data && bannersQuery.data.length > 0 ? bannersQuery.data : [];
-  const simMode = search.sim === "reklam" && liveBanners.length === 0;
   const bannerSlides = liveBanners.length
     ? liveBanners
-    : simMode
-      ? simulationBanners()
-      : settings.banner_url
-        ? legacySlidesToBanners([{ id: "banner", title: "", imageUrl: settings.banner_url, href: "/" }])
-        : [];
+    : settings.banner_url
+      ? legacySlidesToBanners([{ id: "banner", title: "", imageUrl: settings.banner_url, href: "/" }])
+      : [];
 
   useEffect(() => setTerm(search.q ?? ""), [search.q]);
 
@@ -92,7 +87,7 @@ function Index() {
         : "mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3";
 
   function apply(next: HomeSearch) {
-    navigate({ to: "/", search: { ...next, sim: search.sim } });
+    navigate({ to: "/", search: next });
   }
 
   return (
@@ -154,7 +149,7 @@ function Index() {
             </div>
             {bannerSlides.length > 0 ? (
               <div className="order-1 lg:order-2">
-                <HeroBannerSlider banners={bannerSlides} simulation={simMode} />
+                <HeroBannerSlider banners={bannerSlides} />
               </div>
             ) : null}
           </div>
