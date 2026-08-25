@@ -64,7 +64,8 @@ public class MainActivity extends Activity {
 
         CookieManager cookies = CookieManager.getInstance();
         cookies.setAcceptCookie(true);
-        cookies.setAcceptThirdPartyCookies(webView, false);
+        // Google OAuth `__Host-oauth_csrf` SameSite=None çerezi WebView'de tutulmalı.
+        cookies.setAcceptThirdPartyCookies(webView, true);
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -212,6 +213,11 @@ public class MainActivity extends Activity {
             }
             String hitUrl = view.getHitTestResult() != null ? view.getHitTestResult().getExtra() : null;
             if (hitUrl != null && !hitUrl.isEmpty()) {
+                Uri hitUri = Uri.parse(hitUrl);
+                if (isOAuthNavigation(hitUri) || isTrustedWebOrigin(hitUri)) {
+                    view.loadUrl(hitUrl);
+                    return false;
+                }
                 openExternalOrApp(hitUrl);
                 return false;
             }
@@ -219,6 +225,12 @@ public class MainActivity extends Activity {
             popup.setWebViewClient(new WebViewClient() {
                 private void intercept(WebView v, String url) {
                     if (url == null || url.startsWith("about:")) return;
+                    Uri uri = Uri.parse(url);
+                    if (isOAuthNavigation(uri) || isTrustedWebOrigin(uri)) {
+                        MainActivity.this.webView.loadUrl(url);
+                        v.stopLoading();
+                        return;
+                    }
                     openExternalOrApp(url);
                     v.stopLoading();
                 }
@@ -597,10 +609,39 @@ public class MainActivity extends Activity {
         String host = uri.getHost();
         if (host == null) return false;
         host = host.toLowerCase(java.util.Locale.ROOT);
+        if (isOAuthNavigation(uri)) return true;
         return APP_HOST.equals(host)
             || "uygulamamcebimde.online".equals(host)
             || "www.uygulamamcebimde.online".equals(host)
             || host.endsWith(".lovable.app");
+    }
+
+    /**
+     * Google / Lovable OAuth aynı WebView oturumunda kalsın.
+     * Chrome'a atılırsa `__Host-oauth_csrf` çerezi kaybolur ve
+     * auth.lovable.app "Durum doğrulama başarısız oldu" döner.
+     */
+    private boolean isOAuthNavigation(Uri uri) {
+        if (uri == null || !"https".equals(uri.getScheme())) return false;
+        String host = uri.getHost();
+        if (host == null) return false;
+        host = host.toLowerCase(java.util.Locale.ROOT);
+        String path = uri.getPath() == null ? "" : uri.getPath().toLowerCase(java.util.Locale.ROOT);
+        if ("oauth.lovable.app".equals(host) || "auth.lovable.app".equals(host)) return true;
+        if ("accounts.google.com".equals(host)
+                || "accounts.google.com.tr".equals(host)
+                || "accounts.youtube.com".equals(host)
+                || "oauth2.googleapis.com".equals(host)) {
+            return true;
+        }
+        if ("www.google.com".equals(host) || "google.com".equals(host)) {
+            return path.contains("/o/oauth2")
+                || path.contains("/signin")
+                || path.contains("/accountchooser");
+        }
+        if ("appleid.apple.com".equals(host)) return true;
+        if ("login.microsoftonline.com".equals(host) || "login.live.com".equals(host)) return true;
+        return false;
     }
 
     private void leaveWebView(WebView view, String url) {
@@ -619,7 +660,7 @@ public class MainActivity extends Activity {
             Uri uri = Uri.parse(rawUrl);
             String scheme = uri.getScheme();
             if ("about".equals(scheme)) return false;
-            if (isTrustedWebOrigin(uri)) return false;
+            if (isOAuthNavigation(uri) || isTrustedWebOrigin(uri)) return false;
 
             if ("intent".equalsIgnoreCase(scheme)) {
                 return openIntentUrl(rawUrl);

@@ -8,17 +8,23 @@ import { useServerFn } from "@tanstack/react-start";
 import { registerWithEmailCode } from "@/lib/otp.functions";
 import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { VendorPhoneLogin } from "@/components/auth/VendorPhoneLogin";
+import { humanizeOAuthError, isInAppBrowser, startGoogleOAuth } from "@/lib/google-oauth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-type AuthSearch = { redirect?: string };
+type AuthSearch = { redirect?: string; error?: string; error_description?: string };
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (search: Record<string, unknown>): AuthSearch =>
-    typeof search["redirect"] === "string" && search["redirect"]
-      ? { redirect: search["redirect"] }
-      : {},
+  validateSearch: (search: Record<string, unknown>): AuthSearch => {
+    const next: AuthSearch = {};
+    if (typeof search["redirect"] === "string" && search["redirect"]) next.redirect = search["redirect"];
+    if (typeof search["error"] === "string" && search["error"]) next.error = search["error"];
+    if (typeof search["error_description"] === "string" && search["error_description"]) {
+      next.error_description = search["error_description"];
+    }
+    return next;
+  },
   head: () => ({
     meta: [
       { title: "Giriş yap veya kayıt ol — SİLVAN CEBİMDE" },
@@ -37,7 +43,7 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
-  const { redirect } = Route.useSearch();
+  const { redirect, error: oauthError, error_description: oauthErrorDescription } = Route.useSearch();
   const { user } = useAuth();
   const access = useAccess();
   const navigate = useNavigate();
@@ -51,6 +57,11 @@ function AuthPage() {
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [pendingVerification, setPendingVerification] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!oauthError) return;
+    toast.error(humanizeOAuthError(oauthErrorDescription || oauthError));
+  }, [oauthError, oauthErrorDescription]);
 
   useEffect(() => {
     if (!user || access.loading) return;
@@ -95,11 +106,15 @@ function AuthPage() {
   }
 
   async function handleGoogle() {
+    if (isInAppBrowser()) {
+      toast.error(
+        "Google girişi Instagram / Facebook içi tarayıcıda çalışmaz. Bağlantıyı Chrome veya Safari ile açın.",
+      );
+      return;
+    }
     try {
-      const { lovable } = await import("@/integrations/lovable");
-      await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
-      });
+      const result = await startGoogleOAuth();
+      if (!result.ok) toast.error(result.error);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Google girişi başlatılamadı.");
     }
@@ -285,6 +300,10 @@ function AuthPage() {
           >
             Google ile devam et
           </Button>
+          <p className="mt-2 text-center text-xs text-muted-foreground">
+            Google penceresi aynı tarayıcıda açılmalıdır. Instagram veya Facebook içi tarayıcıda
+            çalışmaz.
+          </p>
         </>
       )}
 
