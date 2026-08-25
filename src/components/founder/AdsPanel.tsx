@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type FormEvent, type RefObject } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -9,9 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   deleteAdvertisement,
   listAdvertisements,
-  saveAdvertisement,
   setAdvertisementActive,
-  uploadAdvertisementMedia,
 } from "@/lib/advertisements.functions";
 import {
   emptyAdvertisementDraft,
@@ -30,7 +28,6 @@ import { AdMedia } from "@/components/home/AdMedia";
 import {
   adImageTooLargeMessage,
   adImageTypeRejectedMessage,
-  adStorageUploadErrorMessage,
   AD_MEDIA_ACCEPT,
   extensionForAdMediaFile,
   isAdMediaFile,
@@ -65,19 +62,6 @@ const ACTION_LABELS: Record<AdActionType, string> = {
 
 type Draft = ReturnType<typeof emptyAdvertisementDraft> & { id?: string };
 
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result ?? "");
-      const comma = result.indexOf(",");
-      resolve(comma >= 0 ? result.slice(comma + 1) : result);
-    };
-    reader.onerror = () => reject(new Error("Dosya okunamadı"));
-    reader.readAsDataURL(file);
-  });
-}
-
 function toDraft(ad?: Advertisement | null): Draft {
   if (!ad) return emptyAdvertisementDraft();
   const { id, title, client_name, client_phone, image_url, action_type, action_value, display_order, is_active, start_date, end_date } = ad;
@@ -100,16 +84,14 @@ export function AdsPanel() {
   const { isFounder } = useSiteSettings();
   const queryClient = useQueryClient();
   const listFn = useServerFn(listAdvertisements);
-  const saveFn = useServerFn(saveAdvertisement);
-  const uploadFn = useServerFn(uploadAdvertisementMedia);
   const toggleFn = useServerFn(setAdvertisementActive);
   const deleteFn = useServerFn(deleteAdvertisement);
   const fileRef = useRef<HTMLInputElement | null>(null);
-  const pendingFileRef = useRef<File | null>(null);
   const localPreviewRef = useRef("");
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(emptyAdvertisementDraft());
-  const [uploading, setUploading] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
   const [localPreview, setLocalPreview] = useState("");
   const [pickedName, setPickedName] = useState("");
 
@@ -134,32 +116,6 @@ export function AdsPanel() {
   });
 
   const items = query.data?.items ?? [];
-
-  const saveMutation = useMutation({
-    mutationFn: (values: Draft) =>
-      saveFn({
-        data: {
-          ...(values.id ? { id: values.id } : {}),
-          title: values.title,
-          client_name: values.client_name,
-          client_phone: values.client_phone,
-          image_url: values.image_url,
-          action_type: values.action_type,
-          action_value: values.action_value,
-          display_order: values.display_order,
-          is_active: values.is_active,
-          start_date: values.start_date,
-          end_date: values.end_date,
-        },
-      }),
-    onSuccess: () => {
-      toast.success("Reklam kaydedildi");
-      resetMedia();
-      setOpen(false);
-      void queryClient.invalidateQueries({ queryKey: ["founder-advertisements"] });
-      void queryClient.invalidateQueries({ queryKey: ["public-banners"] });
-    },
-  });
 
   const toggleMutation = useMutation({
     mutationFn: (input: { id: string; is_active: boolean }) => toggleFn({ data: input }),
@@ -187,21 +143,21 @@ export function AdsPanel() {
   }
 
   function resetMedia() {
-    pendingFileRef.current = null;
+    setFile(null);
     setPickedName("");
     clearLocalPreview();
   }
 
-  function onPickFile(file: File) {
-    if (!isAdMediaFile(file)) {
+  function onPickFile(next: File) {
+    if (!isAdMediaFile(next)) {
       toast.error(adImageTypeRejectedMessage());
       return;
     }
-    if (file.size > MAX_AD_MEDIA_BYTES) {
+    if (next.size > MAX_AD_MEDIA_BYTES) {
       toast.error(adImageTooLargeMessage());
       return;
     }
-    const extension = extensionForAdMediaFile(file);
+    const extension = extensionForAdMediaFile(next);
     if (!extension) {
       toast.error(adImageTypeRejectedMessage());
       return;
@@ -210,56 +166,73 @@ export function AdsPanel() {
       toast.message("HEIC bazı tarayıcılarda görünmez; mümkünse JPEG veya PNG seçin");
     }
     clearLocalPreview();
-    pendingFileRef.current = file;
-    setPickedName(file.name || "görsel");
-    const blobUrl = URL.createObjectURL(file);
+    setFile(next);
+    setPickedName(next.name || "görsel");
+    const blobUrl = URL.createObjectURL(next);
     localPreviewRef.current = blobUrl;
     setLocalPreview(blobUrl);
     setDraft((prev) => ({ ...prev, image_url: "" }));
   }
 
-  async function resolveImageUrl(): Promise<string> {
-    const existing = draft.image_url.trim();
-    if (existing && !pendingFileRef.current) return existing;
-    const pending = pendingFileRef.current;
-    if (!pending) return existing;
-    const base64 = await fileToBase64(pending);
-    const uploaded = await uploadFn({
-      data: {
-        fileName: pending.name || "reklam",
-        contentType: pending.type || "application/octet-stream",
-        base64,
-      },
-    });
-    pendingFileRef.current = null;
-    return uploaded.url;
-  }
+  const handleUpload = async (e: FormEvent) => {
+    e.preventDefault();
+    const title = draft.title.trim();
+    if (!file || !title) {
+      if (!title) toast.error("Başlık girin");
+      else if (!draft.image_url.trim()) toast.error("Galeriden bir görsel veya video seçin");
+      if (!title || (!file && !draft.image_url.trim())) return;
+    }
+    if (loading) return;
 
-  async function submitAd() {
-    if (saveMutation.isPending || uploading) return;
-    if (!draft.title.trim()) {
-      toast.error("Başlık girin");
-      return;
-    }
-    if (!draft.image_url.trim() && !pendingFileRef.current) {
-      toast.error("Galeriden bir görsel veya video seçin");
-      return;
-    }
-    setUploading(true);
+    setLoading(true);
     try {
-      const imageUrl = await resolveImageUrl();
-      if (!imageUrl) {
-        toast.error("Galeriden bir görsel veya video seçin");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        toast.error("Oturumunuz geçersiz veya süresi doldu. Lütfen yeniden giriş yapın.");
         return;
       }
-      setDraft((prev) => ({ ...prev, image_url: imageUrl }));
-      await saveMutation.mutateAsync({ ...draft, image_url: imageUrl });
+      const secure = window.location.protocol === "https:" ? "; Secure" : "";
+      document.cookie = `sb-access-token=${encodeURIComponent(token)}; Path=/; Max-Age=300; SameSite=Lax${secure}`;
+
+      const formData = new FormData();
+      if (file) formData.append("file", file);
+      formData.append("title", title);
+      if (draft.id) formData.append("id", draft.id);
+      formData.append("client_name", draft.client_name);
+      formData.append("client_phone", draft.client_phone);
+      formData.append("image_url", draft.image_url.trim());
+      formData.append("action_type", draft.action_type);
+      formData.append("action_value", draft.action_value);
+      formData.append("display_order", String(draft.display_order));
+      formData.append("is_active", draft.is_active ? "true" : "false");
+      formData.append("start_date", draft.start_date);
+      formData.append("end_date", draft.end_date);
+
+      const response = await fetch("/api/v1/banners", {
+        method: "POST",
+        body: formData,
+      });
+
+      const body: unknown = await response.json().catch(() => null);
+      if (!response.ok) {
+        const record = body && typeof body === "object" ? (body as Record<string, unknown>) : null;
+        const message =
+          typeof record?.["error"] === "string" ? record["error"] : "Yükleme başarısız";
+        throw new Error(message);
+      }
+
+      toast.success("Reklam kaydedildi");
+      resetMedia();
+      setOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ["founder-advertisements"] });
+      void queryClient.invalidateQueries({ queryKey: ["public-banners"] });
     } catch (error) {
-      toast.error(adStorageUploadErrorMessage(error));
+      toast.error(toPublicErrorMessage(error));
     } finally {
-      setUploading(false);
+      setLoading(false);
     }
-  }
+  };
 
   const tablePreview = useMemo(
     () =>
@@ -299,9 +272,9 @@ export function AdsPanel() {
               <h2 className="text-xl">Kayan reklam / banner</h2>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Galeriden seçilen görsel veya video `banners` kovasına yüklenir; Kaydet ile `advertisements`
-              tablosuna yazılır. Ana sayfa `get_active_banners` ile yayındaki slaytları gösterir.
-              En fazla {MAX_ADVERTISEMENTS} kayıt önerilir.
+              Galeriden seçilen görsel veya video Kaydet ile `/api/v1/banners` üzerinden `banners`
+              kovasına yüklenir ve `advertisements` tablosuna yazılır. Ana sayfa yayındaki slaytları
+              aynı uç noktadan okur. En fazla {MAX_ADVERTISEMENTS} kayıt önerilir.
             </p>
           </div>
           <Button
@@ -458,14 +431,11 @@ export function AdsPanel() {
             draft={draft}
             setDraft={setDraft}
             previewSrc={localPreview || draft.image_url}
-            uploading={uploading}
+            loading={loading}
             fileRef={fileRef}
             pickedName={pickedName}
             onPickFile={onPickFile}
-            onSubmit={() => {
-              void submitAd();
-            }}
-            pending={saveMutation.isPending}
+            onSubmit={handleUpload}
           />
         </DialogContent>
       </Dialog>
@@ -477,30 +447,27 @@ function AdForm({
   draft,
   setDraft,
   previewSrc,
-  uploading,
+  loading,
   fileRef,
   pickedName,
   onPickFile,
   onSubmit,
-  pending,
 }: {
   draft: Draft;
   setDraft: (next: Draft) => void;
   previewSrc: string;
-  uploading: boolean;
-  fileRef: React.RefObject<HTMLInputElement | null>;
+  loading: boolean;
+  fileRef: RefObject<HTMLInputElement | null>;
   pickedName: string;
   onPickFile: (file: File) => void;
-  onSubmit: () => void;
-  pending: boolean;
+  onSubmit: (e: FormEvent) => void | Promise<void>;
 }) {
   const patch = (partial: Partial<Draft>) => setDraft({ ...draft, ...partial });
   return (
     <form
       className="space-y-4"
       onSubmit={(event) => {
-        event.preventDefault();
-        onSubmit();
+        void onSubmit(event);
       }}
     >
       <div>
@@ -563,7 +530,7 @@ function AdForm({
             />
             <span className="pointer-events-none inline-flex items-center gap-2">
               <ImageUp className="size-4" />
-              {uploading ? "Yükleniyor…" : "Galeriden seç"}
+              {loading ? "Yükleniyor…" : "Galeriden seç"}
             </span>
           </label>
         </div>
@@ -648,7 +615,7 @@ function AdForm({
         </div>
       </div>
       <Button type="submit" className="w-full rounded-full">
-        {pending || uploading ? "Kaydediliyor…" : "Kaydet"}
+        {loading ? "Kaydediliyor…" : "Kaydet"}
       </Button>
     </form>
   );

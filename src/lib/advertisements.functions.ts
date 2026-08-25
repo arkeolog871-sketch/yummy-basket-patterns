@@ -158,28 +158,3 @@ export const deleteAdvertisement = createServerFn({ method: "POST" })
       );
     }),
   );
-
-const uploadMediaSchema = z.object({
-  fileName: z.string().trim().min(1).max(180),
-  contentType: z.string().trim().max(120).default("application/octet-stream"),
-  base64: z.string().min(16).max(42_000_000),
-});
-
-export const uploadAdvertisementMedia = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => uploadMediaSchema.parse(input))
-  .handler(async ({ data, context }) =>
-    runServerFn(async () => {
-      const { assertFounder } = await import("./founder.server");
-      await assertFounder(context.supabase, context.userId, context.claims as never);
-      const { uploadFounderBannerFile, bytesFromBase64 } = await import("./advertisements-upload.server");
-      const bytes = bytesFromBase64(data.base64);
-      if (bytes.byteLength === 0) throw new Error("Dosya okunamadı");
-      return uploadFounderBannerFile({
-        supabase: context.supabase,
-        bytes,
-        fileName: data.fileName,
-        contentType: data.contentType,
-      });
-    }),
-  );

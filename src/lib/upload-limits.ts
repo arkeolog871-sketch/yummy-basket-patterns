@@ -75,33 +75,6 @@ export function adImageTypeRejectedMessage(): string {
   return "Yalnızca görsel veya video yükleyin (PNG, JPEG, MP4, MOV, WEBM…)";
 }
 
-export function adStorageUploadErrorMessage(error: unknown): string {
-  const raw =
-    error instanceof Error
-      ? error.message
-      : typeof error === "object" && error != null && "message" in error
-        ? String((error as Record<string, unknown>)["message"] ?? "")
-        : String(error ?? "");
-  const lower = raw.toLowerCase();
-  if (
-    lower.includes("nosuchbucket") ||
-    lower.includes("bucket not found") ||
-    (lower.includes("bucket") && lower.includes("not found"))
-  ) {
-    return "banners kovası henüz yok. Kurulum SQL’sinin tamamını (storage.buckets satırları dahil) SQL Editor’da çalıştırın.";
-  }
-  if (lower.includes("row-level security") || lower.includes("403") || lower.includes("unauthorized")) {
-    return "Yükleme yetkisi yok. Kurucu hesabıyla giriş yapın; SQL’deki banners politikaları çalışmış olmalı.";
-  }
-  if (lower.includes("mime") || lower.includes("not allowed") || lower.includes("invalid content")) {
-    return "Bu dosya türü kovada izinli değil. JPEG, PNG, MP4, MOV veya WEBM deneyin.";
-  }
-  if (lower.includes("payload") || lower.includes("too large") || lower.includes("maximum")) {
-    return adImageTooLargeMessage();
-  }
-  return raw.trim() || "Dosya yüklenemedi";
-}
-
 export function isAdVideoMimeType(value: string): boolean {
   const normalized = value.trim().toLowerCase();
   return AD_VIDEO_MIME_ALIASES.includes(normalized);
