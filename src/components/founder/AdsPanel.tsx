@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Copy, ImageUp, Megaphone, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { ImageUp, Megaphone, Pencil, Plus, Trash2 } from "lucide-react";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,14 +19,13 @@ import {
   isAdExpired,
   isAdScheduled,
   MAX_ADVERTISEMENTS,
+  parsePublicBanner,
   toDatetimeLocalValue,
   type AdActionType,
   type Advertisement,
 } from "@/lib/advertisements";
 import { HeroBannerSlider } from "@/components/home/HeroBannerSlider";
 import { AdMedia } from "@/components/home/AdMedia";
-import { ADVERTISEMENTS_SETUP_SQL, ADVERTISEMENTS_VERIFY_SQL } from "@/lib/advertisements-setup-sql";
-import { getPublicSupabaseEnv } from "@/lib/public-env";
 import {
   adImageTooLargeMessage,
   adImageTypeRejectedMessage,
@@ -58,19 +57,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-function connectedSupabaseProject(): { ref: string; sqlUrl: string } {
-  try {
-    const host = new URL(getPublicSupabaseEnv().VITE_SUPABASE_URL).hostname;
-    const ref = host.split(".")[0] ?? "";
-    return {
-      ref,
-      sqlUrl: ref ? `https://supabase.com/dashboard/project/${ref}/sql/new` : "https://supabase.com/dashboard",
-    };
-  } catch {
-    return { ref: "", sqlUrl: "https://supabase.com/dashboard" };
-  }
-}
 
 const ACTION_LABELS: Record<AdActionType, string> = {
   phone: "Telefon",
@@ -119,9 +105,20 @@ export function AdsPanel() {
     retry: false,
   });
 
+  const liveBannersQuery = useQuery({
+    queryKey: ["public-banners"],
+    enabled: isFounder,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_active_banners");
+      if (error) throw new Error(error.message);
+      return (Array.isArray(data) ? data : [])
+        .map(parsePublicBanner)
+        .filter((item) => item != null);
+    },
+    retry: false,
+  });
+
   const items = query.data?.items ?? [];
-  const schemaMissing = query.data?.schemaMissing === true;
-  const supabaseProject = connectedSupabaseProject();
 
   const saveMutation = useMutation({
     mutationFn: (values: Draft) =>
@@ -218,7 +215,7 @@ export function AdsPanel() {
     }
   }
 
-  const livePreview = useMemo(
+  const tablePreview = useMemo(
     () =>
       items
         .filter((ad) => ad.is_active && !isAdExpired(ad) && !isAdScheduled(ad) && ad.image_url)
@@ -232,24 +229,8 @@ export function AdsPanel() {
         })),
     [items],
   );
-
-  async function copySql() {
-    try {
-      await navigator.clipboard.writeText(ADVERTISEMENTS_SETUP_SQL);
-      toast.success("SQL kopyalandı — SQL Editor’da Run; sonuç advertisements / true / true olmalı");
-    } catch {
-      toast.error("Kopyalanamadı; aşağıdaki kutudaki metni seçin");
-    }
-  }
-
-  async function copyVerifySql() {
-    try {
-      await navigator.clipboard.writeText(ADVERTISEMENTS_VERIFY_SQL);
-      toast.success("Doğrulama SQL’i kopyalandı");
-    } catch {
-      toast.error("Kopyalanamadı");
-    }
-  }
+  const livePreview =
+    liveBannersQuery.data && liveBannersQuery.data.length > 0 ? liveBannersQuery.data : tablePreview;
 
   if (!isFounder) {
     return (
@@ -264,56 +245,6 @@ export function AdsPanel() {
 
   return (
     <div className="space-y-6">
-      {schemaMissing ? (
-        <div className="rounded-3xl border border-dashed border-primary/40 bg-card p-6">
-          <h2 className="text-lg font-semibold">Tek seferlik kurulum SQL</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Bu kutu SQL’i kaydetmez.{" "}
-            <strong>SQL’i kopyala</strong> →{" "}
-            <a
-              href={supabaseProject.sqlUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-accent hover:underline"
-            >
-              {supabaseProject.ref || "bağlı proje"} SQL Editor
-            </a>
-            {" "}→ hiçbir satır seçmeden <strong>Run</strong>. Sonuç satırı şöyle olmalı:{" "}
-            <code className="rounded bg-muted px-1">advertisements</code> ·{" "}
-            <code className="rounded bg-muted px-1">true</code> ·{" "}
-            <code className="rounded bg-muted px-1">true</code>.
-            Sonra <strong>Tekrar kontrol et</strong>.
-          </p>
-          <textarea
-            readOnly
-            value={ADVERTISEMENTS_SETUP_SQL}
-            rows={12}
-            className="mt-3 w-full resize-y rounded-xl border border-border bg-muted/40 p-3 font-mono text-[11px] leading-relaxed"
-            onFocus={(event) => event.currentTarget.select()}
-            aria-label="Advertisements kurulum SQL"
-          />
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button type="button" variant="outline" className="rounded-full" onClick={() => void copySql()}>
-              <Copy className="size-4" />
-              SQL’i kopyala (tamamı)
-            </Button>
-            <Button type="button" variant="ghost" className="rounded-full" onClick={() => void copyVerifySql()}>
-              <Copy className="size-4" />
-              Doğrulama SQL
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="rounded-full"
-              onClick={() => void query.refetch()}
-            >
-              <RefreshCw className="size-4" />
-              Tekrar kontrol et
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
       <div className="rounded-3xl border border-border bg-card p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -323,7 +254,7 @@ export function AdsPanel() {
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               Galeriden seçilen görsel veya video `banners` kovasına yüklenir; Kaydet ile `advertisements`
-              tablosuna yazılır. Mobil `GET /api/v1/banners` yalnızca yayındaki slaytları döner.
+              tablosuna yazılır. Ana sayfa `get_active_banners` ile yayındaki slaytları gösterir.
               En fazla {MAX_ADVERTISEMENTS} kayıt önerilir.
             </p>
           </div>
@@ -372,7 +303,11 @@ export function AdsPanel() {
             {items.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
-                  {query.isLoading ? "Yükleniyor…" : "Henüz reklam yok."}
+                  {query.isLoading
+                    ? "Yükleniyor…"
+                    : query.isError
+                      ? toPublicErrorMessage(query.error)
+                      : "Henüz reklam yok."}
                 </TableCell>
               </TableRow>
             ) : (
@@ -481,6 +416,7 @@ export function AdsPanel() {
             fileRef={fileRef}
             onUpload={onUpload}
             onSubmit={() => {
+              if (saveMutation.isPending || uploading) return;
               if (!draft.title.trim() || !draft.image_url) {
                 toast.error("Başlık ve galeriden bir görsel/video seçin");
                 return;
@@ -557,18 +493,16 @@ function AdForm({
         </div>
       </div>
       <div>
-        <Label>Görsel veya video (PNG, JPEG, MP4, MOV, WEBM… en fazla {MAX_AD_IMAGE_MB} MB, 16:9 veya 3:1)</Label>
+        <Label htmlFor="ad-media-file">
+          Görsel veya video (PNG, JPEG, MP4, MOV, WEBM… en fazla {MAX_AD_IMAGE_MB} MB, 16:9 veya 3:1)
+        </Label>
         <div className="mt-1.5 flex items-center gap-3">
           <div className="h-16 w-28 overflow-hidden rounded-xl border bg-muted">
             {previewSrc ? <AdMedia src={previewSrc} className="size-full object-cover" active /> : null}
           </div>
           <label
             htmlFor="ad-media-file"
-            className={cn(
-              buttonVariants({ variant: "outline" }),
-              "relative cursor-pointer overflow-hidden rounded-full",
-              uploading && "pointer-events-none opacity-60",
-            )}
+            className={cn(buttonVariants({ variant: "default" }), "relative cursor-pointer rounded-full")}
           >
             <input
               ref={fileRef}
@@ -670,8 +604,8 @@ function AdForm({
           <Switch checked={draft.is_active} onCheckedChange={(is_active) => patch({ is_active })} />
         </div>
       </div>
-      <Button type="submit" className="w-full rounded-full" disabled={pending}>
-        {pending ? "Kaydediliyor…" : "Kaydet"}
+      <Button type="submit" className="w-full rounded-full">
+        {pending || uploading ? "Kaydediliyor…" : "Kaydet"}
       </Button>
     </form>
   );
