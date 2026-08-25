@@ -45,6 +45,37 @@ function iphoneProfileHeadersPlugin(): Plugin {
   };
 }
 
+function apkLinkRevPlugin(): Plugin {
+  const stamp = (html: string) =>
+    html.replace(/\/silvan-cebimde\.apk(?:\?v=[^"'\s]*)?/g, `/silvan-cebimde.apk?v=${encodeURIComponent(apkRev())}`);
+
+  return {
+    name: "apk-link-rev",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = req.url?.split("?")[0] ?? "";
+        if (url !== "/android.html") {
+          next();
+          return;
+        }
+        const file = path.resolve(import.meta.dirname, "public/android.html");
+        if (!existsSync(file)) {
+          next();
+          return;
+        }
+        const body = stamp(readFileSync(file, "utf8"));
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        res.end(body);
+      });
+    },
+    closeBundle() {
+      const file = path.resolve(".output/public/android.html");
+      if (!existsSync(file)) return;
+      writeFileSync(file, stamp(readFileSync(file, "utf8")));
+    },
+  };
+}
+
 function apkVersionName(): string {
   const gradle = path.resolve(import.meta.dirname, "android-wrapper/app/build.gradle.kts");
   if (!existsSync(gradle)) return "";
@@ -73,7 +104,7 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
-    plugins: [iphoneProfileHeadersPlugin()],
+    plugins: [iphoneProfileHeadersPlugin(), apkLinkRevPlugin()],
     resolve: {
       alias: {
         "entities/lib/decode.js": path.resolve(
