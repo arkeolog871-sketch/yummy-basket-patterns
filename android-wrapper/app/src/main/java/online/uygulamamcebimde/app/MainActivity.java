@@ -38,7 +38,6 @@ public class MainActivity extends Activity {
     private static final String APP_URL = "https://yummy-basket-patterns.lovable.app/";
     private static final String APP_HOST = "yummy-basket-patterns.lovable.app";
     private static final int FILE_CHOOSER_REQUEST = 1001;
-    private static final int STARTUP_PERMISSION_REQUEST = 1002;
     private static final int FILE_PERMISSION_REQUEST = 1003;
     private static final int LOCATION_PERMISSION_REQUEST = 1004;
 
@@ -54,7 +53,6 @@ public class MainActivity extends Activity {
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        requestStartupPermissions();
 
         webView = new WebView(this);
         setContentView(webView);
@@ -149,8 +147,7 @@ public class MainActivity extends Activity {
                 GeolocationPermissions.Callback callback
         ) {
             Uri uri = Uri.parse(origin);
-            boolean appHost = "https".equals(uri.getScheme()) && APP_HOST.equals(uri.getHost());
-            if (!appHost) {
+            if (!isTrustedWebOrigin(uri)) {
                 callback.invoke(origin, false, false);
                 return;
             }
@@ -181,11 +178,12 @@ public class MainActivity extends Activity {
             }
             fileChooserCallback = filePathCallback;
             pendingChooserParams = params;
-            ArrayList<String> needed = missingFilePermissions(params);
-            if (!needed.isEmpty()) {
+            // Galeri SAF / Photo Picker ile açılır; READ_MEDIA gerekmez ve istenirse kullanıcı reddedince seçici de kırılır.
+            // Kamera seçeneği için CAMERA bu anda sorulur.
+            if (!hasCameraPermission()) {
                 ActivityCompat.requestPermissions(
                         MainActivity.this,
-                        needed.toArray(new String[0]),
+                        new String[] { Manifest.permission.CAMERA },
                         FILE_PERMISSION_REQUEST
                 );
                 return true;
@@ -297,46 +295,9 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void requestStartupPermissions() {
-        ArrayList<String> needed = new ArrayList<>();
-        addIfMissing(needed, Manifest.permission.ACCESS_FINE_LOCATION);
-        addIfMissing(needed, Manifest.permission.ACCESS_COARSE_LOCATION);
-        addIfMissing(needed, Manifest.permission.CAMERA);
-        addIfMissing(needed, Manifest.permission.CALL_PHONE);
-        if (Build.VERSION.SDK_INT >= 33) {
-            addIfMissing(needed, Manifest.permission.READ_MEDIA_IMAGES);
-            addIfMissing(needed, Manifest.permission.READ_MEDIA_VIDEO);
-            addIfMissing(needed, Manifest.permission.READ_MEDIA_AUDIO);
-            addIfMissing(needed, Manifest.permission.POST_NOTIFICATIONS);
-        } else {
-            addIfMissing(needed, Manifest.permission.READ_EXTERNAL_STORAGE);
-            if (Build.VERSION.SDK_INT <= 28) {
-                addIfMissing(needed, Manifest.permission.WRITE_EXTERNAL_STORAGE);
-            }
-        }
-        if (!needed.isEmpty()) {
-            ActivityCompat.requestPermissions(this, needed.toArray(new String[0]), STARTUP_PERMISSION_REQUEST);
-        }
-    }
-
-    private ArrayList<String> missingFilePermissions(WebChromeClient.FileChooserParams params) {
-        ArrayList<String> needed = new ArrayList<>();
-        addIfMissing(needed, Manifest.permission.CAMERA);
-        if (Build.VERSION.SDK_INT >= 33) {
-            addIfMissing(needed, Manifest.permission.READ_MEDIA_IMAGES);
-            if (params == null || acceptsVideo(normalizeAcceptTypes(params.getAcceptTypes()))) {
-                addIfMissing(needed, Manifest.permission.READ_MEDIA_VIDEO);
-            }
-        } else {
-            addIfMissing(needed, Manifest.permission.READ_EXTERNAL_STORAGE);
-        }
-        return needed;
-    }
-
-    private void addIfMissing(ArrayList<String> needed, String permission) {
-        if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
-            needed.add(permission);
-        }
+    private boolean hasCameraPermission() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED;
     }
 
     private boolean hasLocationPermission() {
@@ -357,34 +318,27 @@ public class MainActivity extends Activity {
         boolean images = acceptsImage(acceptTypes);
         boolean videos = acceptsVideo(acceptTypes);
 
-        Intent content = new Intent(Intent.ACTION_GET_CONTENT);
-        content.addCategory(Intent.CATEGORY_OPENABLE);
-        content.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        if (acceptTypes.length == 1) {
-            content.setType(acceptTypes[0]);
-        } else {
-            content.setType("*/*");
-            content.putExtra(Intent.EXTRA_MIME_TYPES, acceptTypes);
-        }
-        content.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, allowMultiple);
-
+        Intent primary = buildGalleryIntent(acceptTypes, allowMultiple);
         ArrayList<Intent> extras = new ArrayList<>();
+
         Intent gallery = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         gallery.setType(videos && !images ? "video/*" : "image/*");
         gallery.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         extras.add(gallery);
 
-        if (images) {
-            Intent camera = buildCaptureIntent(MediaStore.ACTION_IMAGE_CAPTURE, "jpg", true);
-            if (camera != null) extras.add(camera);
-        }
-        if (videos || capture) {
-            Intent camcorder = buildCaptureIntent(MediaStore.ACTION_VIDEO_CAPTURE, "mp4", false);
-            if (camcorder != null) extras.add(camcorder);
+        if (hasCameraPermission()) {
+            if (images || capture) {
+                Intent camera = buildCaptureIntent(MediaStore.ACTION_IMAGE_CAPTURE, "jpg", true);
+                if (camera != null) extras.add(camera);
+            }
+            if (videos || capture) {
+                Intent camcorder = buildCaptureIntent(MediaStore.ACTION_VIDEO_CAPTURE, "mp4", false);
+                if (camcorder != null) extras.add(camcorder);
+            }
         }
 
         try {
-            Intent chooser = Intent.createChooser(content, "Galeriden seç veya çek");
+            Intent chooser = Intent.createChooser(primary, "Galeriden seç veya çek");
             if (!extras.isEmpty()) {
                 chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, extras.toArray(new Parcelable[0]));
             }
@@ -404,6 +358,33 @@ public class MainActivity extends Activity {
                 return false;
             }
         }
+    }
+
+    /** Android 13+ Photo Picker yalnızca görsel içindir; reklamlar image+video kabul ettiği için GET_CONTENT kullanılır. */
+    private Intent buildGalleryIntent(String[] acceptTypes, boolean allowMultiple) {
+        boolean imagesOnly = acceptsImage(acceptTypes) && !acceptsVideo(acceptTypes);
+        if (Build.VERSION.SDK_INT >= 33 && imagesOnly) {
+            try {
+                Intent picker = new Intent(MediaStore.ACTION_PICK_IMAGES);
+                if (allowMultiple) {
+                    picker.putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, Math.min(10, MediaStore.getPickImagesMaxLimit()));
+                }
+                return picker;
+            } catch (Exception ignored) {
+                // OEM Photo Picker yoksa GET_CONTENT.
+            }
+        }
+        Intent content = new Intent(Intent.ACTION_GET_CONTENT);
+        content.addCategory(Intent.CATEGORY_OPENABLE);
+        content.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        if (acceptTypes.length == 1) {
+            content.setType(acceptTypes[0]);
+        } else {
+            content.setType("*/*");
+            content.putExtra(Intent.EXTRA_MIME_TYPES, acceptTypes);
+        }
+        content.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, allowMultiple);
+        return content;
     }
 
     private Intent buildCaptureIntent(String action, String extension, boolean photo) {
@@ -492,10 +473,20 @@ public class MainActivity extends Activity {
     private boolean shouldLeaveWebView(String url) {
         if (url == null || url.isEmpty()) return false;
         Uri uri = Uri.parse(url);
-        String scheme = uri.getScheme();
-        if ("about".equals(scheme)) return false;
-        if ("https".equals(scheme) && APP_HOST.equals(uri.getHost())) return false;
+        if ("about".equals(uri.getScheme())) return false;
+        if (isTrustedWebOrigin(uri)) return false;
         return true;
+    }
+
+    private boolean isTrustedWebOrigin(Uri uri) {
+        if (uri == null || !"https".equals(uri.getScheme())) return false;
+        String host = uri.getHost();
+        if (host == null) return false;
+        host = host.toLowerCase(java.util.Locale.ROOT);
+        return APP_HOST.equals(host)
+            || "uygulamamcebimde.online".equals(host)
+            || "www.uygulamamcebimde.online".equals(host)
+            || host.endsWith(".lovable.app");
     }
 
     private void leaveWebView(WebView view, String url) {
@@ -514,7 +505,7 @@ public class MainActivity extends Activity {
             Uri uri = Uri.parse(rawUrl);
             String scheme = uri.getScheme();
             if ("about".equals(scheme)) return false;
-            if ("https".equals(scheme) && APP_HOST.equals(uri.getHost())) return false;
+            if (isTrustedWebOrigin(uri)) return false;
 
             if ("intent".equalsIgnoreCase(scheme)) {
                 return openIntentUrl(rawUrl);
