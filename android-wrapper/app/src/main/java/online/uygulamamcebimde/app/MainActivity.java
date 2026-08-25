@@ -7,6 +7,7 @@ import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Message;
 import android.webkit.CookieManager;
@@ -71,6 +72,11 @@ public class MainActivity extends Activity {
         settings.setDisplayZoomControls(false);
         settings.setMediaPlaybackRequiresUserGesture(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        String ua = settings.getUserAgentString();
+        if (ua == null) ua = "";
+        if (!ua.contains("SilvanCebimde")) {
+            settings.setUserAgentString(ua + " SilvanCebimde");
+        }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             settings.setSafeBrowsingEnabled(true);
         }
@@ -80,12 +86,19 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                return openAllowedUrlOrExternal(url);
+                return openMapsOrExternal(url);
             }
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, android.webkit.WebResourceRequest request) {
-                return openAllowedUrlOrExternal(request.getUrl().toString());
+                return openMapsOrExternal(request.getUrl().toString());
+            }
+
+            @Override
+            public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                if (shouldLeaveWebView(url)) {
+                    leaveWebView(view, url);
+                }
             }
 
             @Override
@@ -98,9 +111,14 @@ public class MainActivity extends Activity {
                 if (request == null || error == null || !request.isForMainFrame()) return;
                 if (error.getErrorCode() != WebViewClient.ERROR_UNSUPPORTED_SCHEME) return;
                 String failing = request.getUrl() != null ? request.getUrl().toString() : "";
-                if (openAllowedUrlOrExternal(failing) && view.canGoBack()) {
-                    view.goBack();
-                }
+                leaveWebView(view, failing);
+            }
+
+            @Override
+            @SuppressWarnings("deprecation")
+            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                if (errorCode != WebViewClient.ERROR_UNSUPPORTED_SCHEME) return;
+                leaveWebView(view, failingUrl);
             }
         });
         webView.setWebChromeClient(new WebChromeClient() {
@@ -162,17 +180,34 @@ public class MainActivity extends Activity {
                 if (resultMsg == null || !(resultMsg.obj instanceof WebView.WebViewTransport)) {
                     return false;
                 }
+                String hitUrl = view.getHitTestResult() != null ? view.getHitTestResult().getExtra() : null;
+                if (hitUrl != null && !hitUrl.isEmpty()) {
+                    openMapsOrExternal(hitUrl);
+                    return false;
+                }
+                // window.open ilk yüklemede shouldOverrideUrlLoading çağrılmaz; onPageStarted yakalar.
                 WebView popup = new WebView(view.getContext());
                 popup.setWebViewClient(new WebViewClient() {
+                    private void intercept(WebView v, String url) {
+                        if (url == null || url.startsWith("about:")) return;
+                        openMapsOrExternal(url);
+                        v.stopLoading();
+                    }
+
+                    @Override
+                    public void onPageStarted(WebView v, String url, Bitmap favicon) {
+                        intercept(v, url);
+                    }
+
                     @Override
                     public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest request) {
-                        openAllowedUrlOrExternal(request.getUrl().toString());
+                        intercept(v, request.getUrl().toString());
                         return true;
                     }
 
                     @Override
                     public boolean shouldOverrideUrlLoading(WebView v, String url) {
-                        openAllowedUrlOrExternal(url);
+                        intercept(v, url);
                         return true;
                     }
                 });
@@ -237,7 +272,77 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void openMaps(final String url) {
             if (!isExternalMapsUrl(url)) return;
-            runOnUiThread(() -> openAllowedUrlOrExternal(url));
+            runOnUiThread(() -> openMapsOrExternal(url));
+        }
+    }
+
+    private boolean shouldLeaveWebView(String url) {
+        if (url == null || url.isEmpty()) return false;
+        Uri uri = Uri.parse(url);
+        String scheme = uri.getScheme();
+        if ("about".equals(scheme)) return false;
+        if ("https".equals(scheme) && APP_HOST.equals(uri.getHost())) return false;
+        return true;
+    }
+
+    private void leaveWebView(WebView view, String url) {
+        if (view == null) return;
+        view.stopLoading();
+        openMapsOrExternal(url);
+        view.post(() -> {
+            if (view.canGoBack()) view.goBack();
+        });
+    }
+
+    private boolean openMapsOrExternal(String rawUrl) {
+        if (tryOpenGoogleMapsApp(rawUrl)) return true;
+        return openAllowedUrlOrExternal(rawUrl);
+    }
+
+    private boolean tryOpenGoogleMapsApp(String rawUrl) {
+        String geo = geoUriFromMapsUrl(rawUrl);
+        if (geo == null) return false;
+        try {
+            Intent maps = new Intent(Intent.ACTION_VIEW, Uri.parse(geo));
+            maps.setPackage("com.google.android.apps.maps");
+            maps.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(maps);
+            return true;
+        } catch (Exception ignored) {
+            try {
+                Intent any = new Intent(Intent.ACTION_VIEW, Uri.parse(geo));
+                any.addCategory(Intent.CATEGORY_BROWSABLE);
+                any.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(any);
+                return true;
+            } catch (Exception alsoIgnored) {
+                return false;
+            }
+        }
+    }
+
+    private String geoUriFromMapsUrl(String rawUrl) {
+        if (rawUrl == null || rawUrl.isEmpty()) return null;
+        String lower = rawUrl.trim().toLowerCase(java.util.Locale.ROOT);
+        if (lower.startsWith("geo:")) return rawUrl.trim();
+        try {
+            String toParse = rawUrl;
+            if (lower.startsWith("intent://")) {
+                String https = httpsFromIntentUrl(rawUrl);
+                if (https == null) return null;
+                toParse = https;
+            }
+            Uri uri = Uri.parse(toParse);
+            String dest = uri.getQueryParameter("destination");
+            if (dest == null) dest = uri.getQueryParameter("query");
+            if (dest == null) dest = uri.getQueryParameter("q");
+            if (dest == null) return null;
+            dest = dest.trim();
+            if (!dest.matches("-?\\d+(\\.\\d+)?\\s*,\\s*-?\\d+(\\.\\d+)?")) return null;
+            String compact = dest.replaceAll("\\s+", "");
+            return "geo:" + compact + "?q=" + Uri.encode(compact);
+        } catch (Exception ignored) {
+            return null;
         }
     }
 

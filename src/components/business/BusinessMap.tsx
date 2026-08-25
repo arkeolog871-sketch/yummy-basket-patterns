@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 import { MapPin, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-import { buildMapsUrl, openDirections, resolveBusinessCoords, type BusinessLocation } from "@/lib/maps";
+import { directionsLinkUrl, openDirections, resolveBusinessCoords, type BusinessLocation } from "@/lib/maps";
 import { LiveMapCanvas } from "@/components/business/LiveMapCanvas";
 
 export function BusinessMap({ business }: { business: BusinessLocation }) {
   const point = resolveBusinessCoords(business);
-  const directionsUrl = buildMapsUrl(business);
+  const directionsUrl = directionsLinkUrl(business);
   const latitude = point?.lat;
   const longitude = point?.lng;
   const markers = useMemo(
