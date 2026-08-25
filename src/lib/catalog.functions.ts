@@ -1,3 +1,4 @@
+import { ilikePattern } from "@/lib/catalog-search";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -6,18 +7,6 @@ const listSchema = z.object({
   category: z.string().trim().max(40).optional(),
   sector: z.string().trim().max(40).optional(),
 });
-
-/** PostgREST `or`/`ilike` için güvenli desen — virgül veya joker karakter aramayı bozmasın. */
-function ilikePattern(raw: string): string | null {
-  const escaped = raw
-    .replace(/\\/g, "\\\\")
-    .replace(/"/g, '\\"')
-    .replace(/[%_]/g, "")
-    .replace(/[,()]/g, " ")
-    .trim();
-  if (!escaped) return null;
-  return `"%${escaped}%"`;
-}
 
 export const listRestaurants = createServerFn({ method: "GET" })
   .validator((input: unknown) => listSchema.parse(input ?? {}))

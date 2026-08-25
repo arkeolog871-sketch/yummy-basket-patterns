@@ -108,13 +108,13 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
       enforceSensitiveRateLimit("vendor-code-verify", 12, 10 * 60 * 1000);
       const { findVendorUser } = await import("./vendor-auth.server");
       const { logAudit, tooManyRecentVendorAttempts } = await import("./audit.server");
-      const { isCompleteOtpCode, normalizeOtpCode } = await import("./otp");
+      const { OTP_LENGTH_MESSAGE, parseExactOtpCode } = await import("./otp");
       const { TERMS_ACCEPTANCE_REQUIRED } = await import("./legal");
       const {
         assertCanVerify,
         registerFailedAttempt,
         clearGuard,
-        inspectIssuedOtp,
+        consumeIssuedOtp,
         messageForOtpInspect,
         createVerifiedSession,
         recordTermsAcceptance,
@@ -128,11 +128,11 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
         return { ok: false as const, error: TERMS_ACCEPTANCE_REQUIRED };
       }
 
-      const token = normalizeOtpCode(data.code);
-      if (!isCompleteOtpCode(token)) {
+      const token = parseExactOtpCode(data.code);
+      if (!token) {
         return {
           ok: false as const,
-          error: "Lütfen e-postanıza gelen 6 haneli kodu eksiksiz girin.",
+          error: OTP_LENGTH_MESSAGE,
         };
       }
 
@@ -146,7 +146,7 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
         return { ok: false as const, error: allowed.error };
       }
 
-      const inspected = await inspectIssuedOtp(vendor.email, token);
+      const inspected = await consumeIssuedOtp(vendor.email, token);
       if (inspected !== "match") {
         if (inspected === "mismatch") await registerFailedAttempt(vendor.email);
         await logAudit({
@@ -163,7 +163,6 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
 
       const session = await createVerifiedSession(vendor.email);
       if (!session.ok) {
-        await registerFailedAttempt(vendor.email);
         await logAudit({
           actorId: vendor.userId,
           actorEmail: vendor.email,

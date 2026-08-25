@@ -140,6 +140,7 @@ export const listMyOrders = createServerFn({ method: "GET" })
         .select(
           "id, created_at, status, payment_status, total, restaurants(name, slug, cover_image_url)",
         )
+        .eq("user_id", context.userId)
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
       return data ?? [];

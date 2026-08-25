@@ -24,7 +24,7 @@ export const Route = createFileRoute("/odeme")({
     ],
   }),
   component: () => (
-    <RequireAuth>
+    <RequireAuth requireVerified>
       <CheckoutPage />
     </RequireAuth>
   ),

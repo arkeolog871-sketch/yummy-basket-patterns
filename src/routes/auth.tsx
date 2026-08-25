@@ -72,6 +72,7 @@ function AuthPage() {
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [pendingVerification, setPendingVerification] = useState<string | null>(null);
+  const [pendingCodeSent, setPendingCodeSent] = useState(false);
   const [googleCompleting, setGoogleCompleting] = useState(() =>
     typeof window === "undefined" ? false : isGoogleOAuthCallbackParams(),
   );
@@ -103,6 +104,11 @@ function AuthPage() {
 
   useEffect(() => {
     if (!user || access.loading) return;
+    if (!user.email_confirmed_at) {
+      setPendingVerification(user.email ?? null);
+      setPendingCodeSent(false);
+      return;
+    }
     if (access.isFounder) {
       navigate({ to: "/kurucu", replace: true });
       return;
@@ -130,10 +136,18 @@ function AuthPage() {
         });
         if (!result.ok) throw new Error(result.error);
         setPendingVerification(email.trim());
+        setPendingCodeSent(true);
         toast.success("Kayıt alındı. E-postanıza gönderilen 6 haneli kodu girin.");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        if (!data.user?.email_confirmed_at) {
+          await supabase.auth.signOut();
+          setPendingVerification(email.trim());
+          setPendingCodeSent(false);
+          toast.message("E-posta adresiniz henüz doğrulanmadı. 6 haneli kodu girin veya yeni kod isteyin.");
+          return;
+        }
         toast.success("Hoş geldiniz!");
       }
     } catch (error) {
@@ -179,6 +193,7 @@ function AuthPage() {
           <button
             key={value}
             type="button"
+            data-testid={`auth-portal-${value}`}
             onClick={() => {
               setPortal(value);
               if (value === "vendor") setMode("signin");
@@ -194,7 +209,7 @@ function AuthPage() {
         ))}
       </div>
 
-      <h1 className="mt-6 text-3xl">
+      <h1 className="mt-6 text-3xl" data-testid="auth-heading">
         {vendorPortal ? "İşletme girişi" : mode === "signin" ? "Giriş yap" : "Hesap oluştur"}
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
@@ -214,6 +229,7 @@ function AuthPage() {
             <button
               key={value}
               type="button"
+              data-testid={`auth-method-${value}`}
               onClick={() => setMethod(value)}
               className={`rounded-full px-3 py-2 transition ${
                 method === value
@@ -241,7 +257,7 @@ function AuthPage() {
             idPrefix="signup-otp"
             allowSignUp={false}
             initialEmail={pendingVerification}
-            startAtCode
+            startAtCode={pendingCodeSent}
             onVerified={() => {
               setPendingVerification(null);
               toast.success("E-postanız doğrulandı, hoş geldiniz!");
@@ -362,6 +378,7 @@ function AuthPage() {
       ) : (
         <button
           type="button"
+          data-testid="auth-toggle-mode"
           onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
           className="mt-5 w-full text-sm text-muted-foreground underline-offset-4 hover:underline"
         >
