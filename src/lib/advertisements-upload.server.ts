@@ -25,22 +25,11 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
-function tokenFromRequest(request: Request): string {
+function bearerToken(request: Request): string {
   const authHeader = request.headers.get("authorization") ?? "";
-  if (authHeader.startsWith("Bearer ")) {
-    const bearer = authHeader.slice("Bearer ".length).trim();
-    if (bearer && bearer.split(".").length === 3) return bearer;
-  }
-  const cookie = request.headers.get("cookie") ?? "";
-  const match = /(?:^|;\s*)sb-access-token=([^;]+)/.exec(cookie);
-  const raw = match?.[1];
-  if (!raw) return "";
-  try {
-    const token = decodeURIComponent(raw).trim();
-    return token.split(".").length === 3 ? token : "";
-  } catch {
-    return "";
-  }
+  if (!authHeader.startsWith("Bearer ")) return "";
+  const token = authHeader.slice("Bearer ".length).trim();
+  return token.split(".").length === 3 ? token : "";
 }
 
 export async function founderClientFromRequest(request: Request) {
@@ -50,10 +39,8 @@ export async function founderClientFromRequest(request: Request) {
     process.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
   if (!url || !key) throw new Error("Supabase ortam değişkenleri eksik");
 
-  const token = tokenFromRequest(request);
-  if (!token) {
-    throw new Error("Unauthorized: No authorization header provided");
-  }
+  const token = bearerToken(request);
+  if (!token) throw new Error("Unauthorized: No authorization header provided");
 
   const supabase = createClient<Database>(url, key, {
     global: {
@@ -101,8 +88,11 @@ function extensionOf(fileName: string, contentType: string): string {
   throw new Error("Yalnızca görsel veya video yükleyin (PNG, JPEG, MP4, MOV, WEBM…)");
 }
 
+export function bytesFromBase64(base64: string): Uint8Array {
+  return new Uint8Array(Buffer.from(base64, "base64"));
+}
+
 export async function uploadFounderBannerFile(input: {
-  supabase: ReturnType<typeof createClient<Database>>;
   bytes: Uint8Array;
   fileName: string;
   contentType: string;
@@ -113,30 +103,20 @@ export async function uploadFounderBannerFile(input: {
   }
   const extension = extensionOf(input.fileName, input.contentType);
   const path = `ads/${randomUUID()}.${extension}`;
-  const contentType = input.contentType || contentTypeForBrandPath(path);
+  const contentType = contentTypeForBrandPath(path);
 
-  const serviceKey = process.env["SUPABASE_SERVICE_ROLE_KEY"];
-  if (serviceKey) {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.storage.from(BANNERS_BUCKET).upload(path, input.bytes, {
-      cacheControl: "3600",
-      upsert: false,
-      contentType,
-    });
-    if (error) throw new Error(storageUploadMessage(error.message));
-    const published = supabaseAdmin.storage.from(BANNERS_BUCKET).getPublicUrl(path);
-    const url = published.data.publicUrl;
-    if (!url) throw new Error("Görsel adresi alınamadı");
-    return { url, path };
-  }
-
-  const { error } = await input.supabase.storage.from(BANNERS_BUCKET).upload(path, input.bytes, {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const body = Buffer.from(input.bytes);
+  const { error } = await supabaseAdmin.storage.from(BANNERS_BUCKET).upload(path, body, {
     cacheControl: "3600",
-    upsert: false,
+    upsert: true,
     contentType,
   });
-  if (error) throw new Error(storageUploadMessage(error.message));
-  const published = input.supabase.storage.from(BANNERS_BUCKET).getPublicUrl(path);
+  if (error) {
+    console.error("[banners.upload]", error.message);
+    throw new Error(storageUploadMessage(error.message));
+  }
+  const published = supabaseAdmin.storage.from(BANNERS_BUCKET).getPublicUrl(path);
   const url = published.data.publicUrl;
   if (!url) throw new Error("Görsel adresi alınamadı");
   return { url, path };
@@ -180,33 +160,86 @@ function formInt(form: FormData, key: string, fallback: number): number {
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export async function uploadAndSaveFounderBanner(request: Request): Promise<{
-  url: string;
-  path: string;
-  id: string | null;
-}> {
-  const { supabase, userId, email } = await founderClientFromRequest(request);
-  const form = await request.formData();
+export type AdvertisementSaveFields = {
+  id?: string;
+  title: string;
+  client_name: string;
+  client_phone: string;
+  image_url: string;
+  action_type: AdActionType;
+  action_value: string;
+  display_order: number;
+  is_active: boolean;
+  start_date: string;
+  end_date: string;
+};
 
-  let imageUrl = formText(form, "image_url");
+export async function persistFounderAdvertisement(input: {
+  userId: string;
+  email: string | null;
+  fields: AdvertisementSaveFields;
+  file?: { bytes: Uint8Array; fileName: string; contentType: string };
+}): Promise<{ url: string; path: string; id: string | null }> {
+  let imageUrl = input.fields.image_url.trim();
   let path = "";
-  const file = form.get("file");
-  if (file instanceof Blob && file.size > 0) {
-    const named = file as Blob & { name?: string };
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    const uploaded = await uploadFounderBannerFile({
-      supabase,
-      bytes,
-      fileName: typeof named.name === "string" ? named.name : "reklam",
-      contentType: file.type || "application/octet-stream",
-    });
+  if (input.file) {
+    const uploaded = await uploadFounderBannerFile(input.file);
     imageUrl = uploaded.url;
     path = uploaded.path;
   }
+  if (!imageUrl) throw new Error("Galeriden bir görsel veya video seçin");
 
+  const values = {
+    title: input.fields.title,
+    client_name: input.fields.client_name,
+    client_phone: input.fields.client_phone,
+    image_url: imageUrl.slice(0, 500),
+    action_type: input.fields.action_type,
+    action_value: input.fields.action_value,
+    display_order: input.fields.display_order,
+    is_active: input.fields.is_active,
+    start_date: input.fields.start_date,
+    end_date: input.fields.end_date,
+  };
+  const id = input.fields.id ?? "";
+
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { audited } = await import("@/lib/audit.server");
+  return audited(
+    {
+      actorId: input.userId,
+      actorEmail: input.email,
+      action: id ? "advertisement.update" : "advertisement.create",
+      entity: "advertisements",
+      entityId: id || null,
+      detail: { title: values.title, action_type: values.action_type },
+    },
+    async () => {
+      if (id) {
+        const { error } = await supabaseAdmin.from("advertisements").update(values).eq("id", id);
+        if (error) throw new Error(error.message);
+        return { url: imageUrl, path, id };
+      }
+      const { data: inserted, error } = await supabaseAdmin
+        .from("advertisements")
+        .insert(values)
+        .select("id")
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      const insertedId = inserted && typeof inserted["id"] === "string" ? inserted["id"] : null;
+      return { url: imageUrl, path, id: insertedId };
+    },
+  );
+}
+
+function isUploadBlob(value: FormDataEntryValue | null): value is File {
+  if (value == null || typeof value === "string") return false;
+  return typeof value.arrayBuffer === "function" && value.size > 0;
+}
+
+function fieldsFromForm(form: FormData, imageUrl: string): AdvertisementSaveFields {
   const title = formText(form, "title").slice(0, 120);
   if (!title) throw new Error("Başlık girin");
-  if (!imageUrl) throw new Error("Galeriden bir görsel veya video seçin");
 
   const actionType = parseActionType(formText(form, "action_type") || "internal_route") as AdActionType;
   const actionValue =
@@ -229,8 +262,9 @@ export async function uploadAndSaveFounderBanner(request: Request): Promise<{
   }
 
   const idRaw = formText(form, "id");
-  const id = UUID_RE.test(idRaw) ? idRaw : "";
-  const values = {
+  const id = UUID_RE.test(idRaw) ? idRaw : undefined;
+  return {
+    ...(id ? { id } : {}),
     title,
     client_name: formText(form, "client_name").slice(0, 80),
     client_phone: clientPhone,
@@ -242,35 +276,27 @@ export async function uploadAndSaveFounderBanner(request: Request): Promise<{
     start_date: start.toISOString(),
     end_date: end.toISOString(),
   };
+}
 
-  const writer = process.env["SUPABASE_SERVICE_ROLE_KEY"]
-    ? (await import("@/integrations/supabase/client.server")).supabaseAdmin
-    : supabase;
-
-  const { audited } = await import("@/lib/audit.server");
-  return audited(
-    {
-      actorId: userId,
-      actorEmail: email,
-      action: id ? "advertisement.update" : "advertisement.create",
-      entity: "advertisements",
-      entityId: id || null,
-      detail: { title: values.title, action_type: values.action_type },
-    },
-    async () => {
-      if (id) {
-        const { error } = await writer.from("advertisements").update(values).eq("id", id);
-        if (error) throw new Error(error.message);
-        return { url: imageUrl, path, id };
-      }
-      const { data: inserted, error } = await writer
-        .from("advertisements")
-        .insert(values)
-        .select("id")
-        .maybeSingle();
-      if (error) throw new Error(error.message);
-      const insertedId = inserted && typeof inserted["id"] === "string" ? inserted["id"] : null;
-      return { url: imageUrl, path, id: insertedId };
-    },
-  );
+export async function uploadAndSaveFounderBanner(request: Request): Promise<{
+  url: string;
+  path: string;
+  id: string | null;
+}> {
+  const { userId, email } = await founderClientFromRequest(request);
+  const form = await request.formData();
+  const uploaded = form.get("file");
+  let file:
+    | { bytes: Uint8Array; fileName: string; contentType: string }
+    | undefined;
+  if (isUploadBlob(uploaded)) {
+    const bytes = new Uint8Array(await uploaded.arrayBuffer());
+    file = {
+      bytes,
+      fileName: typeof uploaded.name === "string" ? uploaded.name : "reklam",
+      contentType: uploaded.type || "application/octet-stream",
+    };
+  }
+  const fields = fieldsFromForm(form, formText(form, "image_url"));
+  return persistFounderAdvertisement({ userId, email, fields, ...(file ? { file } : {}) });
 }

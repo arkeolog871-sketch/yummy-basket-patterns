@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   deleteAdvertisement,
   listAdvertisements,
+  saveAdvertisement,
   setAdvertisementActive,
 } from "@/lib/advertisements.functions";
 import {
@@ -62,6 +63,19 @@ const ACTION_LABELS: Record<AdActionType, string> = {
 
 type Draft = ReturnType<typeof emptyAdvertisementDraft> & { id?: string };
 
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result ?? "");
+      const comma = result.indexOf(",");
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(new Error("Dosya okunamadı"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function toDraft(ad?: Advertisement | null): Draft {
   if (!ad) return emptyAdvertisementDraft();
   const { id, title, client_name, client_phone, image_url, action_type, action_value, display_order, is_active, start_date, end_date } = ad;
@@ -84,6 +98,7 @@ export function AdsPanel() {
   const { isFounder } = useSiteSettings();
   const queryClient = useQueryClient();
   const listFn = useServerFn(listAdvertisements);
+  const saveFn = useServerFn(saveAdvertisement);
   const toggleFn = useServerFn(setAdvertisementActive);
   const deleteFn = useServerFn(deleteAdvertisement);
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -177,51 +192,41 @@ export function AdsPanel() {
   const handleUpload = async (e: FormEvent) => {
     e.preventDefault();
     const title = draft.title.trim();
-    if (!file || !title) {
-      if (!title) toast.error("Başlık girin");
-      else if (!draft.image_url.trim()) toast.error("Galeriden bir görsel veya video seçin");
-      if (!title || (!file && !draft.image_url.trim())) return;
+    if (!title) {
+      toast.error("Başlık girin");
+      return;
+    }
+    if (!file && !draft.image_url.trim()) {
+      toast.error("Galeriden bir görsel veya video seçin");
+      return;
     }
     if (loading) return;
 
     setLoading(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      if (!token) {
-        toast.error("Oturumunuz geçersiz veya süresi doldu. Lütfen yeniden giriş yapın.");
-        return;
-      }
-      const secure = window.location.protocol === "https:" ? "; Secure" : "";
-      document.cookie = `sb-access-token=${encodeURIComponent(token)}; Path=/; Max-Age=300; SameSite=Lax${secure}`;
-
-      const formData = new FormData();
-      if (file) formData.append("file", file);
-      formData.append("title", title);
-      if (draft.id) formData.append("id", draft.id);
-      formData.append("client_name", draft.client_name);
-      formData.append("client_phone", draft.client_phone);
-      formData.append("image_url", draft.image_url.trim());
-      formData.append("action_type", draft.action_type);
-      formData.append("action_value", draft.action_value);
-      formData.append("display_order", String(draft.display_order));
-      formData.append("is_active", draft.is_active ? "true" : "false");
-      formData.append("start_date", draft.start_date);
-      formData.append("end_date", draft.end_date);
-
-      const response = await fetch("/api/v1/banners", {
-        method: "POST",
-        body: formData,
+      const base64 = file ? await fileToBase64(file) : undefined;
+      await saveFn({
+        data: {
+          ...(draft.id ? { id: draft.id } : {}),
+          title,
+          client_name: draft.client_name,
+          client_phone: draft.client_phone,
+          image_url: draft.image_url.trim(),
+          action_type: draft.action_type,
+          action_value: draft.action_value,
+          display_order: draft.display_order,
+          is_active: draft.is_active,
+          start_date: draft.start_date,
+          end_date: draft.end_date,
+          ...(file && base64
+            ? {
+                fileName: file.name || "reklam",
+                contentType: file.type || "application/octet-stream",
+                base64,
+              }
+            : {}),
+        },
       });
-
-      const body: unknown = await response.json().catch(() => null);
-      if (!response.ok) {
-        const record = body && typeof body === "object" ? (body as Record<string, unknown>) : null;
-        const message =
-          typeof record?.["error"] === "string" ? record["error"] : "Yükleme başarısız";
-        throw new Error(message);
-      }
-
       toast.success("Reklam kaydedildi");
       resetMedia();
       setOpen(false);
@@ -272,9 +277,8 @@ export function AdsPanel() {
               <h2 className="text-xl">Kayan reklam / banner</h2>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Galeriden seçilen görsel veya video Kaydet ile `/api/v1/banners` üzerinden `banners`
-              kovasına yüklenir ve `advertisements` tablosuna yazılır. Ana sayfa yayındaki slaytları
-              aynı uç noktadan okur. En fazla {MAX_ADVERTISEMENTS} kayıt önerilir.
+              Galeriden seçilen görsel veya video `banners` kovasına yüklenir ve reklam kaydı yazılır.
+              Ana sayfa yayındaki slaytları gösterir. En fazla {MAX_ADVERTISEMENTS} kayıt önerilir.
             </p>
           </div>
           <Button
