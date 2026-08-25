@@ -1,1 +1,6 @@
 project_id = "wxkyhwkcuiqxxxpawcid"
+
+# Hosted GoTrue varsayılanı 8 hane olabiliyor; yerel/CLI ve senkronize config 6 hane + 10 dk.
+[auth.email]
+otp_length = 6
+otp_expiry = 600

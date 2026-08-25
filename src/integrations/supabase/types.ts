@@ -267,7 +267,9 @@ export type Database = {
       }
       email_otp_guard: {
         Row: {
+          code_hash: string | null
           email_hash: string
+          expires_at: string | null
           failed_attempts: number
           last_sent_at: string | null
           locked_until: string | null
@@ -276,7 +278,9 @@ export type Database = {
           window_started_at: string
         }
         Insert: {
+          code_hash?: string | null
           email_hash: string
+          expires_at?: string | null
           failed_attempts?: number
           last_sent_at?: string | null
           locked_until?: string | null
@@ -285,7 +289,9 @@ export type Database = {
           window_started_at?: string
         }
         Update: {
+          code_hash?: string | null
           email_hash?: string
+          expires_at?: string | null
           failed_attempts?: number
           last_sent_at?: string | null
           locked_until?: string | null

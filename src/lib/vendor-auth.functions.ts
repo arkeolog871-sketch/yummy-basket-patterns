@@ -12,7 +12,7 @@ const identifierSchema = z.object({
 
 const GENERIC_SEND_ERROR =
   "Kod e-postası şu anda gönderilemedi. Lütfen birkaç saniye sonra tekrar deneyin.";
-const GENERIC_VERIFY_ERROR = "Kod geçersiz veya süresi dolmuş.";
+const GENERIC_VERIFY_ERROR = "Girdiğiniz kod hatalı veya süresi dolmuş";
 const GENERIC_RATE_ERROR = "Çok fazla deneme yaptınız. Lütfen kısa süre sonra tekrar deneyin.";
 
 /** İşletme telefonu veya e-postasına karşılık gelen hesaba tek kullanımlık kod gönderir. */
@@ -24,19 +24,19 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
       enforceSensitiveRateLimit("vendor-code-send", 8, 10 * 60 * 1000);
       const { findVendorUser, maskEmail } = await import("./vendor-auth.server");
       const { logAudit, tooManyRecentVendorAttempts } = await import("./audit.server");
-      const { reserveSend, hashEmail, createServerAuthClient } = await import("./otp.server");
+      const { reserveSend, hashEmail, sendSixDigitOtp, RESEND_COOLDOWN_SECONDS } =
+        await import("./otp.server");
 
       if (await tooManyRecentVendorAttempts()) {
         return { ok: false as const, error: GENERIC_RATE_ERROR };
       }
 
       const vendor = await findVendorUser(data.identifier);
-      const rate = await reserveSend(vendor?.email ?? `${hashEmail(data.identifier)}@guard.local`);
-      if (!rate.ok) {
-        return { ok: false as const, error: rate.error };
-      }
-
       if (!vendor) {
+        const rate = await reserveSend(`${hashEmail(data.identifier)}@guard.local`);
+        if (!rate.ok) {
+          return { ok: false as const, error: rate.error, retryAfterSeconds: rate.retryAfterSeconds };
+        }
         await logAudit({
           actorId: null,
           actorEmail: null,
@@ -45,22 +45,16 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
           status: "denied",
           detail: { reason: "Telefon/e-postaya bağlı işletme hesabı yok" },
         });
-        return { ok: true as const, maskedEmail: "kayıtlı e-posta" };
+        return {
+          ok: true as const,
+          maskedEmail: "kayıtlı e-posta",
+          cooldownSeconds: RESEND_COOLDOWN_SECONDS,
+        };
       }
 
-      const supabase = createServerAuthClient();
-      let error: { message: string } | null = null;
-      try {
-        const result = await supabase.auth.signInWithOtp({
-          email: vendor.email,
-          options: { shouldCreateUser: false },
-        });
-        error = result.error ? { message: result.error.message } : null;
-      } catch (thrown) {
-        error = { message: thrown instanceof Error ? thrown.message : String(thrown) };
-      }
-      if (error) {
-        console.error("[vendor-login] kod gönderilemedi", { message: error.message });
+      const sent = await sendSixDigitOtp(vendor.email, "login");
+      if (!sent.ok) {
+        console.error("[vendor-login] kod gönderilemedi", { message: sent.error });
         await logAudit({
           actorId: vendor.userId,
           actorEmail: vendor.email,
@@ -68,12 +62,15 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
           entity: "vendor_assignments",
           entityId: vendor.userId,
           status: "denied",
-          detail: { reason: error.message },
+          detail: { reason: sent.error },
         });
         return {
           ok: false as const,
           error:
-            "Kod e-postası şu anda gönderilemedi (e-posta servisi yanıt vermedi). Lütfen birkaç saniye sonra tekrar deneyin.",
+            sent.retryAfterSeconds != null
+              ? sent.error
+              : "Kod e-postası şu anda gönderilemedi (e-posta servisi yanıt vermedi). Lütfen birkaç saniye sonra tekrar deneyin.",
+          retryAfterSeconds: sent.retryAfterSeconds,
         };
       }
 
@@ -85,7 +82,11 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
         entityId: vendor.userId,
       });
 
-      return { ok: true as const, maskedEmail: maskEmail(vendor.email) };
+      return {
+        ok: true as const,
+        maskedEmail: maskEmail(vendor.email),
+        cooldownSeconds: RESEND_COOLDOWN_SECONDS,
+      };
     } catch (error) {
       console.error("[vendor-login] kod isteği başarısız", error);
       return { ok: false as const, error: GENERIC_SEND_ERROR };
@@ -95,7 +96,7 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
 /** Kodu doğrular ve tarayıcıda oturum kurmak için jetonları döner. */
 export const verifyVendorLoginCode = createServerFn({ method: "POST" })
   .validator((input: unknown) =>
-    identifierSchema.extend({ code: z.string().trim().max(20) }).parse(input),
+    identifierSchema.extend({ code: z.union([z.string(), z.number()]).transform((value) => String(value)) }).parse(input),
   )
   .handler(async ({ data }) => {
     try {
@@ -103,15 +104,21 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
       enforceSensitiveRateLimit("vendor-code-verify", 12, 10 * 60 * 1000);
       const { findVendorUser } = await import("./vendor-auth.server");
       const { logAudit, tooManyRecentVendorAttempts } = await import("./audit.server");
-      const { assertCanVerify, registerFailedAttempt, clearGuard, createServerAuthClient } =
-        await import("./otp.server");
+      const { isCompleteOtpCode, normalizeOtpCode } = await import("./otp");
+      const {
+        assertCanVerify,
+        registerFailedAttempt,
+        clearGuard,
+        matchIssuedOtp,
+        createVerifiedSession,
+      } = await import("./otp.server");
 
       if (await tooManyRecentVendorAttempts()) {
         return { ok: false as const, error: GENERIC_RATE_ERROR };
       }
 
-      const token = data.code.replace(/\D/g, "");
-      if (token.length !== 6) {
+      const token = normalizeOtpCode(data.code);
+      if (!isCompleteOtpCode(token)) {
         return {
           ok: false as const,
           error: "Lütfen e-postanıza gelen 6 haneli kodu eksiksiz girin.",
@@ -128,23 +135,8 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
         return { ok: false as const, error: allowed.error };
       }
 
-      const supabase = createServerAuthClient();
-      let verified: { session: { access_token: string; refresh_token: string } | null } | null =
-        null;
-      let error: { message: string } | null = null;
-      try {
-        const result = await supabase.auth.verifyOtp({
-          email: vendor.email,
-          token,
-          type: "email",
-        });
-        verified = result.data;
-        error = result.error ? { message: result.error.message } : null;
-      } catch (thrown) {
-        error = { message: thrown instanceof Error ? thrown.message : String(thrown) };
-      }
-
-      if (error || !verified?.session) {
+      const matched = await matchIssuedOtp(vendor.email, token);
+      if (!matched) {
         await registerFailedAttempt(vendor.email);
         await logAudit({
           actorId: vendor.userId,
@@ -153,7 +145,22 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
           entity: "vendor_assignments",
           entityId: vendor.userId,
           status: "denied",
-          detail: { reason: error?.message ?? "Oturum oluşturulamadı" },
+          detail: { reason: "Kod eşleşmedi veya süresi doldu" },
+        });
+        return { ok: false as const, error: GENERIC_VERIFY_ERROR };
+      }
+
+      const session = await createVerifiedSession(vendor.email);
+      if (!session.ok) {
+        await registerFailedAttempt(vendor.email);
+        await logAudit({
+          actorId: vendor.userId,
+          actorEmail: vendor.email,
+          action: "vendor.login.code_verify",
+          entity: "vendor_assignments",
+          entityId: vendor.userId,
+          status: "denied",
+          detail: { reason: "Oturum oluşturulamadı" },
         });
         return { ok: false as const, error: GENERIC_VERIFY_ERROR };
       }
@@ -170,8 +177,8 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
 
       return {
         ok: true as const,
-        accessToken: verified.session.access_token,
-        refreshToken: verified.session.refresh_token,
+        accessToken: session.accessToken,
+        refreshToken: session.refreshToken,
       };
     } catch (error) {
       console.error("[vendor-login] kod doğrulama başarısız", error);

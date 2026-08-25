@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { KeyRound, Smartphone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { requestVendorLoginCode, verifyVendorLoginCode } from "@/lib/vendor-auth.functions";
+import { OTP_RESEND_COOLDOWN_SECONDS, isCompleteOtpCode, normalizeOtpCode } from "@/lib/otp";
+import { OtpCodeInput } from "@/components/auth/OtpCodeInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,58 +18,77 @@ export function VendorPhoneLogin() {
   const [code, setCode] = useState("");
   const [maskedEmail, setMaskedEmail] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
+  const submittingRef = useRef(false);
 
-  async function send(event: React.FormEvent) {
-    event.preventDefault();
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown((value) => value - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
+  async function send(event?: React.FormEvent) {
+    event?.preventDefault();
     setBusy(true);
+    setError(null);
     try {
       const result = await requestCode({ data: { identifier } });
       if (!result.ok) {
+        setError(result.error);
         toast.error(result.error);
+        if (result.retryAfterSeconds) setCooldown(result.retryAfterSeconds);
         return;
       }
       setMaskedEmail(result.maskedEmail);
-      toast.success("Tek kullanımlık kod gönderildi.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Kod gönderilemedi.");
+      setCode("");
+      setCooldown(result.cooldownSeconds ?? OTP_RESEND_COOLDOWN_SECONDS);
+      toast.success("6 haneli doğrulama kodu e-postanıza gönderildi.");
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "Kod gönderilemedi.";
+      setError(message);
+      toast.error(message);
     } finally {
       setBusy(false);
     }
   }
 
-  async function verify(event: React.FormEvent) {
-    event.preventDefault();
+  async function verify(rawCode?: string) {
+    const digits = normalizeOtpCode(rawCode ?? code);
+    if (!isCompleteOtpCode(digits) || submittingRef.current) return;
+    submittingRef.current = true;
     setBusy(true);
+    setError(null);
     try {
-      const tokens = await verifyVendorSession();
-      if (tokens) toast.success("Giriş başarılı!");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Kod doğrulanamadı.");
+      const tokens = await verifyCode({ data: { identifier, code: digits } });
+      if (!tokens.ok) {
+        throw new Error(tokens.error);
+      }
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: tokens.accessToken,
+        refresh_token: tokens.refreshToken,
+      });
+      if (sessionError) throw new Error(sessionError.message);
+      toast.success("Giriş başarılı!");
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "Kod doğrulanamadı.";
+      setError(message);
+      toast.error(message);
       setCode("");
     } finally {
+      submittingRef.current = false;
       setBusy(false);
     }
   }
 
-  async function verifyVendorSession() {
-    const digits = code.replace(/\D/g, "");
-    if (digits.length < 4) throw new Error("Lütfen e-postanıza gelen 6 haneli kodu girin.");
-    const tokens = await verifyCode({ data: { identifier, code: digits } });
-
-    if (!tokens.ok) {
-      throw new Error(tokens.error);
-    }
-    const { error } = await supabase.auth.setSession({
-      access_token: tokens.accessToken,
-      refresh_token: tokens.refreshToken,
-    });
-    if (error) throw new Error(error.message);
-    return tokens;
-  }
+  const canVerify = isCompleteOtpCode(code);
 
   return (
     <form
-      onSubmit={(event) => void (maskedEmail ? verify(event) : send(event))}
+      onSubmit={(event) => {
+        event.preventDefault();
+        void (maskedEmail ? verify() : send());
+      }}
       className="space-y-4"
     >
       <div className="space-y-2">
@@ -92,32 +113,39 @@ export function VendorPhoneLogin() {
 
       {maskedEmail ? (
         <div className="space-y-2">
-          <Label htmlFor="vendor-code">Tek kullanımlık şifre</Label>
-          <Input
+          <Label htmlFor="vendor-code">E-posta doğrulama kodu</Label>
+          <OtpCodeInput
             id="vendor-code"
-            name="one-time-code"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            placeholder="123456"
             value={code}
-            onChange={(event) => setCode(event.target.value)}
-            required
-            className="rounded-xl tracking-widest"
+            disabled={busy}
+            autoFocus
+            onChange={(next) => {
+              setCode(next);
+              setError(null);
+            }}
+            onComplete={(next) => void verify(next)}
           />
-          <p className="text-xs text-muted-foreground">
-            Kod, işletme hesabınızın kayıtlı e-posta adresine ({maskedEmail}) gönderildi. Kod 6
-            hanelidir ve kısa süre geçerlidir.
-          </p>
+          {error ? (
+            <p className="text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Kod, işletme hesabınızın kayıtlı e-posta adresine ({maskedEmail}) gönderildi. 6 haneyi
+              yazın veya yapıştırın; yalnızca rakam kabul edilir.
+            </p>
+          )}
         </div>
       ) : null}
 
-      <Button type="submit" size="lg" disabled={busy} className="w-full rounded-full">
+      <Button
+        type="submit"
+        size="lg"
+        disabled={busy || (Boolean(maskedEmail) && !canVerify)}
+        className="w-full rounded-full"
+      >
         {maskedEmail ? <KeyRound className="size-4" /> : <Smartphone className="size-4" />}
-        {busy
-          ? "İşleniyor…"
-          : maskedEmail
-            ? "Kodu doğrula ve giriş yap"
-            : "Tek kullanımlık şifre gönder"}
+        {busy ? "İşleniyor…" : maskedEmail ? "Doğrula" : "Doğrulama kodu gönder"}
       </Button>
 
       {maskedEmail ? (
@@ -128,17 +156,18 @@ export function VendorPhoneLogin() {
             onClick={() => {
               setMaskedEmail(null);
               setCode("");
+              setError(null);
             }}
           >
             Bilgiyi değiştir
           </button>
           <button
             type="button"
-            className="text-muted-foreground underline-offset-4 hover:underline"
-            disabled={busy}
-            onClick={(event) => void send(event)}
+            className="text-muted-foreground underline-offset-4 hover:underline disabled:opacity-50"
+            disabled={busy || cooldown > 0}
+            onClick={() => void send()}
           >
-            Kodu yeniden gönder
+            {cooldown > 0 ? `Kodu Tekrar Gönder (${cooldown}s)` : "Kodu Tekrar Gönder"}
           </button>
         </div>
       ) : null}
