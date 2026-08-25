@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Copy, ImageUp, Megaphone, Pencil, Plus, Trash2 } from "lucide-react";
+import { Copy, ImageUp, Megaphone, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +26,7 @@ import {
 import { HeroBannerSlider } from "@/components/home/HeroBannerSlider";
 import { AdMedia } from "@/components/home/AdMedia";
 import { ADVERTISEMENTS_SETUP_SQL } from "@/lib/advertisements-setup-sql";
+import { getPublicSupabaseEnv } from "@/lib/public-env";
 import {
   adImageTooLargeMessage,
   adImageTypeRejectedMessage,
@@ -56,6 +57,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
+function connectedSupabaseProject(): { ref: string; sqlUrl: string } {
+  try {
+    const host = new URL(getPublicSupabaseEnv().VITE_SUPABASE_URL).hostname;
+    const ref = host.split(".")[0] ?? "";
+    return {
+      ref,
+      sqlUrl: ref ? `https://supabase.com/dashboard/project/${ref}/sql/new` : "https://supabase.com/dashboard",
+    };
+  } catch {
+    return { ref: "", sqlUrl: "https://supabase.com/dashboard" };
+  }
+}
 
 const ACTION_LABELS: Record<AdActionType, string> = {
   phone: "Telefon",
@@ -106,6 +120,7 @@ export function AdsPanel() {
 
   const items = query.data?.items ?? [];
   const schemaMissing = query.data?.schemaMissing === true;
+  const supabaseProject = connectedSupabaseProject();
 
   const saveMutation = useMutation({
     mutationFn: (values: Draft) =>
@@ -238,13 +253,23 @@ export function AdsPanel() {
     <div className="space-y-6">
       {schemaMissing ? (
         <div className="rounded-3xl border border-dashed border-primary/40 bg-card p-6">
-          <h2 className="text-lg font-semibold">Şema SQL’si (bir kez)</h2>
+          <h2 className="text-lg font-semibold">Şema bu uygulamada yok</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            `banners` kovası yetmez. `advertisements` tablosu ve `get_active_banners` fonksiyonu bu projede yok.
-            Supabase → SQL Editor’da aşağıdaki metnin tamamını yapıştırıp çalıştırın. Token gerekmez. Sonda{" "}
-            <code className="rounded bg-muted px-1">NOTIFY pgrst, 'reload schema'</code> önbelleği yeniler. Sonra bu
-            sekmeyi yenileyin.
+            SQL’i çalıştırdığınızı söyleseniz bile bu site hâlâ{" "}
+            <code className="rounded bg-muted px-1">{supabaseProject.ref || "bağlı Supabase"}</code>{" "}
+            projesinde <code className="rounded bg-muted px-1">public.advertisements</code> tablosunu görmüyor.
+            Kova açmak veya kutunun yalnızca ilk satırlarını (CREATE TYPE) çalıştırmak yetmez.{" "}
+            <strong>SQL’i kopyala</strong> ile metnin tamamını alın, aynı projenin SQL Editor’ında Run’a basın, sonda{" "}
+            <code className="rounded bg-muted px-1">NOTIFY pgrst, 'reload schema'</code> olsun.
           </p>
+          <a
+            href={supabaseProject.sqlUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 inline-flex text-sm font-medium text-accent hover:underline"
+          >
+            Bu projenin SQL Editor’ını aç
+          </a>
           <textarea
             readOnly
             value={ADVERTISEMENTS_SETUP_SQL}
@@ -253,10 +278,21 @@ export function AdsPanel() {
             onFocus={(event) => event.currentTarget.select()}
             aria-label="Advertisements kurulum SQL"
           />
-          <Button type="button" variant="outline" className="mt-3 rounded-full" onClick={() => void copySql()}>
-            <Copy className="size-4" />
-            SQL’i kopyala
-          </Button>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button type="button" variant="outline" className="rounded-full" onClick={() => void copySql()}>
+              <Copy className="size-4" />
+              SQL’i kopyala (tamamı)
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-full"
+              onClick={() => void query.refetch()}
+            >
+              <RefreshCw className="size-4" />
+              Tekrar kontrol et
+            </Button>
+          </div>
         </div>
       ) : null}
 

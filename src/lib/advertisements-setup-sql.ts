@@ -2,7 +2,10 @@ import advertisementsSql from "../../supabase/migrations/20260824160000_advertis
 import bannersSql from "../../supabase/migrations/20260824223000_banners_storage.sql?raw";
 
 /** Supabase SQL Editor’a tek parça yapıştırılır: tablo, RPC ve banners kovası. */
-export const ADVERTISEMENTS_SETUP_SQL = `${advertisementsSql.trim()}
+export const ADVERTISEMENTS_SETUP_SQL = `-- TAMAMINI çalıştırın. Ekranda görünen ilk satırlar (yalnızca CREATE TYPE) yetmez.
+-- Run sonrası Success görünmeli. Sonda NOTIFY pgrst, 'reload schema' vardır.
+
+${advertisementsSql.trim()}
 
 ${bannersSql.trim()}
 `;
