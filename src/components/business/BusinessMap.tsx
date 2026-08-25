@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { MapPin, ExternalLink } from "lucide-react";
-import { buildMapsUrl, resolveBusinessCoords, type BusinessLocation } from "@/lib/maps";
+import { toast } from "sonner";
+import { buildMapsUrl, openDirections, resolveBusinessCoords, type BusinessLocation } from "@/lib/maps";
 import { LiveMapCanvas } from "@/components/business/LiveMapCanvas";
 
 export function BusinessMap({ business }: { business: BusinessLocation }) {
@@ -37,6 +38,10 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
             href={directionsUrl}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={(event) => {
+              event.preventDefault();
+              if (!openDirections(business)) toast.error("Bu işletme için konum bilgisi bulunamadı.");
+            }}
             className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
           >
             <ExternalLink className="size-3.5" /> Yol tarifi al
@@ -57,6 +62,10 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
           href={directionsUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={(event) => {
+            event.preventDefault();
+            if (!openDirections(business)) toast.error("Bu işletme için konum bilgisi bulunamadı.");
+          }}
           className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
         >
           <ExternalLink className="size-3.5" /> Yol tarifi al
