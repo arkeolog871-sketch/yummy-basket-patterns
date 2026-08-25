@@ -19,7 +19,7 @@ function json(data: unknown, status = 200, extra?: Record<string, string>) {
 async function handleSave(request: Request) {
   const { uploadAndSaveFounderBanner } = await import("@/lib/advertisements-upload.server");
   const saved = await uploadAndSaveFounderBanner(request);
-  return json({ url: saved.url, path: saved.path, id: saved.id });
+  return json({ url: saved.url, publicUrl: saved.url, path: saved.path, id: saved.id });
 }
 
 export const Route = createFileRoute("/api/v1/banners")({
