@@ -43,27 +43,27 @@ function SlideVisual({ banner, priority, active }: { banner: PublicBanner; prior
 export function HeroBannerSlider({
   banners,
   className,
-  simulation = false,
+  preview = false,
   onActivate,
 }: {
   banners: PublicBanner[];
   className?: string;
-  /** Preview only: no tracking, no tel/navigation. */
-  simulation?: boolean;
+  /** Kurucu önizleme: tıklama takibi ve tel/navigasyon yok. */
+  preview?: boolean;
   onActivate?: (banner: PublicBanner) => void;
 }) {
   const navigate = useNavigate();
 
   const trigger = useCallback(
     (banner: PublicBanner) => {
-      if (simulation) {
+      if (preview) {
         onActivate?.(banner);
         return;
       }
       onActivate?.(banner);
       activateBanner(banner, navigate);
     },
-    [simulation, onActivate, navigate],
+    [preview, onActivate, navigate],
   );
   const count = banners.length;
   const [emblaRef, emblaApi] = useEmblaCarousel({
@@ -103,13 +103,13 @@ export function HeroBannerSlider({
 
   const current = banners[index];
   useEffect(() => {
-    if (simulation || !current?.id || seen.current.has(current.id)) return;
+    if (preview || !current?.id || seen.current.has(current.id)) return;
     const timer = window.setTimeout(() => {
       seen.current.add(current.id);
       trackBanner(current.id, "impression");
     }, BANNER_IMPRESSION_MS);
     return () => window.clearTimeout(timer);
-  }, [current?.id, simulation]);
+  }, [current?.id, preview]);
 
   const hold = useCallback((down: boolean) => {
     holding.current = down;
@@ -126,8 +126,7 @@ export function HeroBannerSlider({
       )}
       role="region"
       aria-roledescription="carousel"
-      aria-label={simulation ? "Kayan reklam panosu simülasyonu" : "Kayan reklam panosu"}
-      data-ad-simulation={simulation ? "true" : undefined}
+      aria-label="Kayan reklam panosu"
       tabIndex={0}
       onPointerDown={() => hold(true)}
       onPointerUp={() => hold(false)}
@@ -170,12 +169,6 @@ export function HeroBannerSlider({
           ))}
         </div>
       </div>
-
-      {simulation ? (
-        <span className="pointer-events-none absolute left-3 top-3 z-10 rounded-full bg-background/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-foreground shadow-sm">
-          Simülasyon
-        </span>
-      ) : null}
 
       {count > 1 ? (
         <>

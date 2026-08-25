@@ -66,7 +66,8 @@ function Index() {
     queryKey: ["public-banners"],
     queryFn: fetchPublicBanners,
     retry: false,
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
   const [term, setTerm] = useState(search.q ?? "");
   const activeSector = search.kategori;

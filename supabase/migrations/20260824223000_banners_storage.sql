@@ -18,6 +18,8 @@ VALUES (
     'image/svg+xml',
     'image/x-icon',
     'image/vnd.microsoft.icon',
+    'image/heic',
+    'image/heif',
     'video/mp4',
     'video/webm',
     'video/quicktime'
@@ -67,3 +69,5 @@ CREATE POLICY "banners_founder_delete" ON storage.objects
     bucket_id = 'banners'
     AND public.has_role(auth.uid(), 'founder')
   );
+
+NOTIFY pgrst, 'reload schema';

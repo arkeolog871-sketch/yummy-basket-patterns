@@ -8,7 +8,7 @@ function json(data: unknown, status = 200, extra?: Record<string, string>) {
       status,
       headers: {
         "content-type": "application/json; charset=utf-8",
-        "cache-control": status === 200 ? "public, max-age=30" : "no-store",
+        "cache-control": "no-store",
         ...extra,
       },
     }),
@@ -22,7 +22,10 @@ export const Route = createFileRoute("/api/v1/banners")({
         try {
           const { createPublicClient } = await import("@/lib/catalog.server");
           const supabase = createPublicClient();
-          await supabase.rpc("expire_stale_advertisements");
+          const expired = await supabase.rpc("expire_stale_advertisements");
+          if (expired.error && !isMissingAdvertisementsSchema(expired.error)) {
+            console.error("[banners.expire]", expired.error.message);
+          }
           const { data, error } = await supabase.rpc("get_active_banners");
           if (error) {
             if (isMissingAdvertisementsSchema(error)) return json([]);

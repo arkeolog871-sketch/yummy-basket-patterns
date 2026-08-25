@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { runServerFn } from "./public-error";
 import {
   isMissingAdvertisementsSchema,
+  isMissingAdvertisementsTable,
   parseActionType,
   parseAdvertisement,
   sanitizeActionValue,
@@ -38,16 +39,18 @@ export const listAdvertisements = createServerFn({ method: "GET" })
     runServerFn(async () => {
       const { assertFounder } = await import("./founder.server");
       await assertFounder(context.supabase, context.userId, context.claims as never);
-      await context.supabase.rpc("expire_stale_advertisements");
       const { data, error } = await context.supabase
         .from("advertisements")
         .select("*")
         .order("display_order", { ascending: true })
         .order("created_at", { ascending: true });
       if (error) {
-        if (isMissingAdvertisementsSchema(error)) return { items: [], schemaMissing: true as const };
+        if (isMissingAdvertisementsTable(error) || isMissingAdvertisementsSchema(error)) {
+          return { items: [], schemaMissing: true as const };
+        }
         throw new Error(error.message);
       }
+      await context.supabase.rpc("expire_stale_advertisements");
       const items = (data ?? [])
         .map((row) => parseAdvertisement(row))
         .filter((row) => row != null);

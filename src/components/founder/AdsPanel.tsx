@@ -25,11 +25,12 @@ import {
 } from "@/lib/advertisements";
 import { HeroBannerSlider } from "@/components/home/HeroBannerSlider";
 import { AdMedia } from "@/components/home/AdMedia";
-import { ADVERTISEMENTS_SETUP_SQL } from "@/lib/advertisements-setup-sql";
+import { ADVERTISEMENTS_SETUP_SQL, ADVERTISEMENTS_VERIFY_SQL } from "@/lib/advertisements-setup-sql";
 import { getPublicSupabaseEnv } from "@/lib/public-env";
 import {
   adImageTooLargeMessage,
   adImageTypeRejectedMessage,
+  adStorageUploadErrorMessage,
   AD_MEDIA_ACCEPT,
   BANNERS_BUCKET,
   contentTypeForBrandPath,
@@ -187,6 +188,9 @@ export function AdsPanel() {
       toast.error(adImageTypeRejectedMessage());
       return;
     }
+    if (extension === "heic" || extension === "heif") {
+      toast.message("HEIC bazı tarayıcılarda görünmez; mümkünse JPEG veya PNG seçin");
+    }
     clearLocalPreview();
     const blobUrl = URL.createObjectURL(file);
     localPreviewRef.current = blobUrl;
@@ -208,7 +212,7 @@ export function AdsPanel() {
       clearLocalPreview();
       toast.success("Dosya banners kovasına yüklendi");
     } catch (error) {
-      toast.error(toPublicErrorMessage(error));
+      toast.error(adStorageUploadErrorMessage(error));
     } finally {
       setUploading(false);
     }
@@ -238,6 +242,15 @@ export function AdsPanel() {
     }
   }
 
+  async function copyVerifySql() {
+    try {
+      await navigator.clipboard.writeText(ADVERTISEMENTS_VERIFY_SQL);
+      toast.success("Doğrulama SQL’i kopyalandı");
+    } catch {
+      toast.error("Kopyalanamadı");
+    }
+  }
+
   if (!isFounder) {
     return (
       <div className="rounded-3xl border border-border bg-card p-6">
@@ -253,14 +266,14 @@ export function AdsPanel() {
     <div className="space-y-6">
       {schemaMissing ? (
         <div className="rounded-3xl border border-dashed border-primary/40 bg-card p-6">
-          <h2 className="text-lg font-semibold">Şema bu uygulamada yok</h2>
+          <h2 className="text-lg font-semibold">Tablo ve kova bu uygulamada yok</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            SQL’i çalıştırdığınızı söyleseniz bile bu site hâlâ{" "}
+            Bu kutuya yapıştırmak SQL’i kaydetmez. Canlı site{" "}
             <code className="rounded bg-muted px-1">{supabaseProject.ref || "bağlı Supabase"}</code>{" "}
-            projesinde <code className="rounded bg-muted px-1">public.advertisements</code> tablosunu görmüyor.
-            Kova açmak veya kutunun yalnızca ilk satırlarını (CREATE TYPE) çalıştırmak yetmez.{" "}
-            <strong>SQL’i kopyala</strong> ile metnin tamamını alın, aynı projenin SQL Editor’ında Run’a basın, sonda{" "}
-            <code className="rounded bg-muted px-1">NOTIFY pgrst, 'reload schema'</code> olsun.
+            projesinde <code className="rounded bg-muted px-1">public.advertisements</code> tablosunu ve{" "}
+            <code className="rounded bg-muted px-1">banners</code> kovasını görmüyor.{" "}
+            <strong>SQL’i kopyala</strong> → aynı projenin SQL Editor’ında Run → Success. Sonra{" "}
+            <strong>Tekrar kontrol et</strong>. Reel deneme: Reklam ekle → Galeriden seç → Kaydet → ana sayfa.
           </p>
           <a
             href={supabaseProject.sqlUrl}
@@ -282,6 +295,10 @@ export function AdsPanel() {
             <Button type="button" variant="outline" className="rounded-full" onClick={() => void copySql()}>
               <Copy className="size-4" />
               SQL’i kopyala (tamamı)
+            </Button>
+            <Button type="button" variant="ghost" className="rounded-full" onClick={() => void copyVerifySql()}>
+              <Copy className="size-4" />
+              Doğrulama SQL
             </Button>
             <Button
               type="button"
@@ -326,7 +343,7 @@ export function AdsPanel() {
         {livePreview.length > 0 ? (
           <div className="mt-5">
             <p className="mb-2 text-sm font-medium">Canlı önizleme (yayındaki slaytlar)</p>
-            <HeroBannerSlider banners={livePreview} />
+            <HeroBannerSlider banners={livePreview} preview />
           </div>
         ) : (
           <p className="mt-5 rounded-2xl border border-dashed border-border p-4 text-sm text-muted-foreground">

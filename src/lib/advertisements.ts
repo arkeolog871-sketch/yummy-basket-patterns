@@ -57,6 +57,19 @@ export function isMissingAdvertisementsSchema(error: { message?: string; code?: 
   );
 }
 
+/** Listeleme duvarı: yalnızca tablo yoksa. RPC 404 paneli kilitlemesin. */
+export function isMissingAdvertisementsTable(error: { message?: string; code?: string } | null | undefined): boolean {
+  if (!error) return false;
+  const msg = `${error.code ?? ""} ${error.message ?? ""}`.toLowerCase();
+  return (
+    msg.includes("advertisements") &&
+    (error.code === "PGRST205" ||
+      error.code === "42P01" ||
+      msg.includes("could not find the table") ||
+      (msg.includes("relation") && msg.includes("does not exist")))
+  );
+}
+
 function str(value: unknown, fallback: string, max: number): string {
   if (typeof value !== "string") return fallback;
   const trimmed = value.trim();

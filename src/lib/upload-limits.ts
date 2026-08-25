@@ -31,6 +31,8 @@ const AD_EXT_BY_MIME: Record<string, string> = {
   "image/svg+xml": "svg",
   "image/x-icon": "ico",
   "image/vnd.microsoft.icon": "ico",
+  "image/heic": "heic",
+  "image/heif": "heif",
   "video/mp4": "mp4",
   "video/webm": "webm",
   "video/quicktime": "mov",
@@ -38,7 +40,22 @@ const AD_EXT_BY_MIME: Record<string, string> = {
   "video/x-m4v": "mp4",
 };
 
-const AD_ALLOWED_EXT = new Set(["png", "jpg", "jpeg", "webp", "gif", "avif", "bmp", "svg", "ico", "mp4", "mov", "webm"]);
+const AD_ALLOWED_EXT = new Set([
+  "png",
+  "jpg",
+  "jpeg",
+  "webp",
+  "gif",
+  "avif",
+  "bmp",
+  "svg",
+  "ico",
+  "heic",
+  "heif",
+  "mp4",
+  "mov",
+  "webm",
+]);
 
 /** Gallery file → storage object extension. */
 export function extensionForAdMediaFile(file: File): string | null {
@@ -56,6 +73,33 @@ export function adImageTooLargeMessage(): string {
 
 export function adImageTypeRejectedMessage(): string {
   return "Yalnızca görsel veya video yükleyin (PNG, JPEG, MP4, MOV, WEBM…)";
+}
+
+export function adStorageUploadErrorMessage(error: unknown): string {
+  const raw =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error != null && "message" in error
+        ? String((error as Record<string, unknown>)["message"] ?? "")
+        : String(error ?? "");
+  const lower = raw.toLowerCase();
+  if (
+    lower.includes("nosuchbucket") ||
+    lower.includes("bucket not found") ||
+    (lower.includes("bucket") && lower.includes("not found"))
+  ) {
+    return "banners kovası henüz yok. Kurulum SQL’sinin tamamını (storage.buckets satırları dahil) SQL Editor’da çalıştırın.";
+  }
+  if (lower.includes("row-level security") || lower.includes("403") || lower.includes("unauthorized")) {
+    return "Yükleme yetkisi yok. Kurucu hesabıyla giriş yapın; SQL’deki banners politikaları çalışmış olmalı.";
+  }
+  if (lower.includes("mime") || lower.includes("not allowed") || lower.includes("invalid content")) {
+    return "Bu dosya türü kovada izinli değil. JPEG, PNG, MP4, MOV veya WEBM deneyin.";
+  }
+  if (lower.includes("payload") || lower.includes("too large") || lower.includes("maximum")) {
+    return adImageTooLargeMessage();
+  }
+  return raw.trim() || "Dosya yüklenemedi";
 }
 
 export function isAdVideoMimeType(value: string): boolean {
@@ -100,5 +144,7 @@ export function contentTypeForBrandPath(path: string, fallback = "application/oc
   if (ext === "bmp") return "image/bmp";
   if (ext === "svg") return "image/svg+xml";
   if (ext === "ico") return "image/x-icon";
+  if (ext === "heic") return "image/heic";
+  if (ext === "heif") return "image/heif";
   return fallback;
 }
