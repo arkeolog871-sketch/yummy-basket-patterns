@@ -96,7 +96,12 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
 /** Kodu doğrular ve tarayıcıda oturum kurmak için jetonları döner. */
 export const verifyVendorLoginCode = createServerFn({ method: "POST" })
   .validator((input: unknown) =>
-    identifierSchema.extend({ code: z.union([z.string(), z.number()]).transform((value) => String(value)) }).parse(input),
+    identifierSchema
+      .extend({
+        code: z.union([z.string(), z.number()]).transform((value) => String(value)),
+        termsAccepted: z.boolean().optional().default(false),
+      })
+      .parse(input),
   )
   .handler(async ({ data }) => {
     try {
@@ -105,16 +110,22 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
       const { findVendorUser } = await import("./vendor-auth.server");
       const { logAudit, tooManyRecentVendorAttempts } = await import("./audit.server");
       const { isCompleteOtpCode, normalizeOtpCode } = await import("./otp");
+      const { TERMS_ACCEPTANCE_REQUIRED } = await import("./legal");
       const {
         assertCanVerify,
         registerFailedAttempt,
         clearGuard,
         matchIssuedOtp,
         createVerifiedSession,
+        recordTermsAcceptance,
       } = await import("./otp.server");
 
       if (await tooManyRecentVendorAttempts()) {
         return { ok: false as const, error: GENERIC_RATE_ERROR };
+      }
+
+      if (data.termsAccepted !== true) {
+        return { ok: false as const, error: TERMS_ACCEPTANCE_REQUIRED };
       }
 
       const token = normalizeOtpCode(data.code);
@@ -164,6 +175,9 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
         });
         return { ok: false as const, error: GENERIC_VERIFY_ERROR };
       }
+
+      const terms = await recordTermsAcceptance(session.userId);
+      if (!terms.ok) return { ok: false as const, error: terms.error };
 
       await clearGuard(vendor.email);
 

@@ -26,6 +26,7 @@ import { AppErrorBoundary } from "@/components/system/AppErrorBoundary";
 import { publicEnvInlineScript } from "@/lib/public-env";
 import { TextPrefsProvider } from "@/hooks/useTextPrefs";
 import { installMapsSchemeGuard } from "@/lib/maps";
+import { installTelSchemeGuard } from "@/lib/ios";
 
 function NotFoundComponent() {
   return (
@@ -100,6 +101,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },
       { name: "apple-mobile-web-app-title", content: "Cebimde" },
+      { name: "format-detection", content: "telephone=yes" },
       { property: "og:title", content: "SİLVAN CEBİMDE — Yemek siparişi" },
       {
         property: "og:description",
@@ -192,7 +194,14 @@ function RootComponent() {
     }
   }, [router, queryClient]);
 
-  useEffect(() => installMapsSchemeGuard(), []);
+  useEffect(() => {
+    const stopMaps = installMapsSchemeGuard();
+    const stopTel = installTelSchemeGuard();
+    return () => {
+      stopMaps();
+      stopTel();
+    };
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

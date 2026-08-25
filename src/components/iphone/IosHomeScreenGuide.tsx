@@ -60,7 +60,8 @@ export function IosHomeScreenGuide() {
           </li>
         </ol>
         <p className="mt-4 text-center text-[11px] text-[#17120e]/50">
-          Ana ekrandaki SİLVAN CEBİMDE simgesi uygulamayı tam ekran açar.
+          Ana ekrandaki SİLVAN CEBİMDE simgesi uygulamayı tam ekran açar. İşletme
+          Ara düğmesi iPhone’da telefon uygulamasını açar.
         </p>
         <div className="mt-3 flex justify-center" aria-hidden>
           <span className="h-1.5 w-24 rounded-full bg-[#17120e]/80" />

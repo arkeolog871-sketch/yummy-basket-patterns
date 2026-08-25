@@ -113,6 +113,11 @@ function createSupabaseClient(): SupabaseClient<Database> {
       storage: brokeredPreviewStorage(),
       persistSession: true,
       autoRefreshToken: true,
+      // Google PKCE `?code&state=sc1.` Supabase oturum kodu değildir; karıştırmayı.
+      detectSessionInUrl:
+        typeof window === "undefined"
+          ? true
+          : !(new URLSearchParams(window.location.search).get("state") || "").startsWith("sc1."),
     },
   });
 }

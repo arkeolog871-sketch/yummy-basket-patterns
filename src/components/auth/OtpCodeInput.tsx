@@ -25,6 +25,7 @@ export function OtpCodeInput({ id, value, disabled, autoFocus, onChange, onCompl
       autoCapitalize="none"
       autoCorrect="off"
       spellCheck={false}
+      enterKeyHint="done"
       aria-label="6 haneli e-posta doğrulama kodu"
       autoFocus={autoFocus}
       disabled={disabled}
@@ -32,15 +33,16 @@ export function OtpCodeInput({ id, value, disabled, autoFocus, onChange, onCompl
       pasteTransformer={(pasted) => normalizeOtpCode(pasted)}
       onChange={(next) => onChange(normalizeOtpCode(next))}
       onComplete={(next) => onComplete?.(normalizeOtpCode(next))}
-      containerClassName="flex justify-center gap-1.5 sm:gap-2"
+      className="text-[16px]"
+      containerClassName="flex w-full justify-center gap-1.5 sm:gap-2"
     >
-      <InputOTPGroup className="gap-1.5 sm:gap-2">
+      <InputOTPGroup className="w-full max-w-sm justify-center gap-1.5 sm:gap-2">
         {Array.from({ length: OTP_CODE_LENGTH }, (_, index) => (
           <InputOTPSlot
             key={index}
             index={index}
             className={cn(
-              "h-11 w-10 rounded-md border border-input text-base first:rounded-md last:rounded-md sm:h-12 sm:w-11",
+              "h-12 min-h-12 w-9 min-w-0 flex-1 rounded-md border border-input text-[16px] font-semibold tabular-nums first:rounded-md last:rounded-md sm:h-12 sm:max-w-11 sm:flex-none sm:w-11",
             )}
           />
         ))}

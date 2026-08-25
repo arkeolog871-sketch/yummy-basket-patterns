@@ -12,9 +12,11 @@ import {
   normalizeOtpCode,
 } from "@/lib/otp";
 import { OtpCodeInput } from "@/components/auth/OtpCodeInput";
+import { LegalConsentCheckbox } from "@/components/legal/LegalConsentCheckbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TERMS_ACCEPTANCE_REQUIRED } from "@/lib/legal";
 
 type Props = {
   /** Yeni kullanıcı oluşturulmasına izin verilsin mi (kurucu girişinde kapalı). */
@@ -45,6 +47,8 @@ export function EmailCodeLogin({
   const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(startAtCode ? OTP_RESEND_COOLDOWN_SECONDS : 0);
   const submittingRef = useRef(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const termsAcceptedRef = useRef(false);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -88,12 +92,16 @@ export function EmailCodeLogin({
   async function verify(rawCode?: string) {
     const token = normalizeOtpCode(rawCode ?? code);
     if (!isCompleteOtpCode(token) || submittingRef.current) return;
+    if (!termsAcceptedRef.current) {
+      setError(TERMS_ACCEPTANCE_REQUIRED);
+      return;
+    }
     submittingRef.current = true;
     setBusy(true);
     setError(null);
     try {
       const result = await verifyServerCode({
-        data: { email: email.trim(), code: token },
+        data: { email: email.trim(), code: token, termsAccepted: true },
       });
       if (!result.ok) {
         onFailed?.(email.trim(), result.error);
@@ -120,7 +128,7 @@ export function EmailCodeLogin({
     }
   }
 
-  const canVerify = isCompleteOtpCode(code);
+  const canVerify = isCompleteOtpCode(code) && termsAccepted;
 
   return (
     <form
@@ -137,6 +145,10 @@ export function EmailCodeLogin({
           name="email"
           type="email"
           autoComplete="email"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          inputMode="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           disabled={sent}
@@ -157,7 +169,21 @@ export function EmailCodeLogin({
               setCode(next);
               setError(null);
             }}
-            onComplete={(next) => void verify(next)}
+            onComplete={(next) => {
+              if (!termsAcceptedRef.current) return;
+              void verify(next);
+            }}
+          />
+          <LegalConsentCheckbox
+            id={`${idPrefix}-terms`}
+            checked={termsAccepted}
+            disabled={busy}
+            onCheckedChange={(next) => {
+              setTermsAccepted(next);
+              termsAcceptedRef.current = next;
+              setError(null);
+              if (next && isCompleteOtpCode(code)) void verify(code);
+            }}
           />
           {error ? (
             <p className="text-sm text-destructive" role="alert">
@@ -191,6 +217,8 @@ export function EmailCodeLogin({
               setSent(false);
               setCode("");
               setError(null);
+              setTermsAccepted(false);
+              termsAcceptedRef.current = false;
             }}
           >
             E-postayı değiştir

@@ -14,10 +14,13 @@ import { Route as SplatRouteImport } from './routes/$'
 import { Route as AdreslerimRouteImport } from './routes/adreslerim'
 import { Route as AndroidRouteImport } from './routes/android'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as GizlilikPolitikasiRouteImport } from './routes/gizlilik-politikasi'
 import { Route as IndirRouteImport } from './routes/indir'
 import { Route as IphoneRouteImport } from './routes/iphone'
+import { Route as KullanimKosullariRouteImport } from './routes/kullanim-kosullari'
 import { Route as KurucuRouteImport } from './routes/kurucu'
 import { Route as KurucuGirisRouteImport } from './routes/kurucu-giris'
+import { Route as KvkkRouteImport } from './routes/kvkk'
 import { Route as MobilRouteImport } from './routes/mobil'
 import { Route as OdemeRouteImport } from './routes/odeme'
 import { Route as RestoranlarRouteImport } from './routes/restoranlar'
@@ -62,6 +65,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GizlilikPolitikasiRoute = GizlilikPolitikasiRouteImport.update({
+  id: '/gizlilik-politikasi',
+  path: '/gizlilik-politikasi',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndirRoute = IndirRouteImport.update({
   id: '/indir',
   path: '/indir',
@@ -72,6 +80,11 @@ const IphoneRoute = IphoneRouteImport.update({
   path: '/iphone',
   getParentRoute: () => rootRouteImport,
 } as any)
+const KullanimKosullariRoute = KullanimKosullariRouteImport.update({
+  id: '/kullanim-kosullari',
+  path: '/kullanim-kosullari',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const KurucuRoute = KurucuRouteImport.update({
   id: '/kurucu',
   path: '/kurucu',
@@ -80,6 +93,11 @@ const KurucuRoute = KurucuRouteImport.update({
 const KurucuGirisRoute = KurucuGirisRouteImport.update({
   id: '/kurucu-giris',
   path: '/kurucu-giris',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KvkkRoute = KvkkRouteImport.update({
+  id: '/kvkk',
+  path: '/kvkk',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MobilRoute = MobilRouteImport.update({
@@ -179,10 +197,13 @@ export interface FileRoutesByFullPath {
   '/adreslerim': typeof AdreslerimRoute
   '/android': typeof AndroidRoute
   '/auth': typeof AuthRoute
+  '/gizlilik-politikasi': typeof GizlilikPolitikasiRoute
   '/indir': typeof IndirRoute
   '/iphone': typeof IphoneRoute
+  '/kullanim-kosullari': typeof KullanimKosullariRoute
   '/kurucu': typeof KurucuRoute
   '/kurucu-giris': typeof KurucuGirisRoute
+  '/kvkk': typeof KvkkRoute
   '/mobil': typeof MobilRoute
   '/odeme': typeof OdemeRoute
   '/restoranlar': typeof RestoranlarRoute
@@ -208,10 +229,13 @@ export interface FileRoutesByTo {
   '/adreslerim': typeof AdreslerimRoute
   '/android': typeof AndroidRoute
   '/auth': typeof AuthRoute
+  '/gizlilik-politikasi': typeof GizlilikPolitikasiRoute
   '/indir': typeof IndirRoute
   '/iphone': typeof IphoneRoute
+  '/kullanim-kosullari': typeof KullanimKosullariRoute
   '/kurucu': typeof KurucuRoute
   '/kurucu-giris': typeof KurucuGirisRoute
+  '/kvkk': typeof KvkkRoute
   '/mobil': typeof MobilRoute
   '/odeme': typeof OdemeRoute
   '/restoranlar': typeof RestoranlarRoute
@@ -238,10 +262,13 @@ export interface FileRoutesById {
   '/adreslerim': typeof AdreslerimRoute
   '/android': typeof AndroidRoute
   '/auth': typeof AuthRoute
+  '/gizlilik-politikasi': typeof GizlilikPolitikasiRoute
   '/indir': typeof IndirRoute
   '/iphone': typeof IphoneRoute
+  '/kullanim-kosullari': typeof KullanimKosullariRoute
   '/kurucu': typeof KurucuRoute
   '/kurucu-giris': typeof KurucuGirisRoute
+  '/kvkk': typeof KvkkRoute
   '/mobil': typeof MobilRoute
   '/odeme': typeof OdemeRoute
   '/restoranlar': typeof RestoranlarRoute
@@ -269,10 +296,13 @@ export interface FileRouteTypes {
     | '/adreslerim'
     | '/android'
     | '/auth'
+    | '/gizlilik-politikasi'
     | '/indir'
     | '/iphone'
+    | '/kullanim-kosullari'
     | '/kurucu'
     | '/kurucu-giris'
+    | '/kvkk'
     | '/mobil'
     | '/odeme'
     | '/restoranlar'
@@ -298,10 +328,13 @@ export interface FileRouteTypes {
     | '/adreslerim'
     | '/android'
     | '/auth'
+    | '/gizlilik-politikasi'
     | '/indir'
     | '/iphone'
+    | '/kullanim-kosullari'
     | '/kurucu'
     | '/kurucu-giris'
+    | '/kvkk'
     | '/mobil'
     | '/odeme'
     | '/restoranlar'
@@ -327,10 +360,13 @@ export interface FileRouteTypes {
     | '/adreslerim'
     | '/android'
     | '/auth'
+    | '/gizlilik-politikasi'
     | '/indir'
     | '/iphone'
+    | '/kullanim-kosullari'
     | '/kurucu'
     | '/kurucu-giris'
+    | '/kvkk'
     | '/mobil'
     | '/odeme'
     | '/restoranlar'
@@ -357,10 +393,13 @@ export interface RootRouteChildren {
   AdreslerimRoute: typeof AdreslerimRoute
   AndroidRoute: typeof AndroidRoute
   AuthRoute: typeof AuthRoute
+  GizlilikPolitikasiRoute: typeof GizlilikPolitikasiRoute
   IndirRoute: typeof IndirRoute
   IphoneRoute: typeof IphoneRoute
+  KullanimKosullariRoute: typeof KullanimKosullariRoute
   KurucuRoute: typeof KurucuRoute
   KurucuGirisRoute: typeof KurucuGirisRoute
+  KvkkRoute: typeof KvkkRoute
   MobilRoute: typeof MobilRoute
   OdemeRoute: typeof OdemeRoute
   RestoranlarRoute: typeof RestoranlarRoute
@@ -417,6 +456,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/gizlilik-politikasi': {
+      id: '/gizlilik-politikasi'
+      path: '/gizlilik-politikasi'
+      fullPath: '/gizlilik-politikasi'
+      preLoaderRoute: typeof GizlilikPolitikasiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/indir': {
       id: '/indir'
       path: '/indir'
@@ -431,6 +477,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IphoneRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/kullanim-kosullari': {
+      id: '/kullanim-kosullari'
+      path: '/kullanim-kosullari'
+      fullPath: '/kullanim-kosullari'
+      preLoaderRoute: typeof KullanimKosullariRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/kurucu': {
       id: '/kurucu'
       path: '/kurucu'
@@ -443,6 +496,13 @@ declare module '@tanstack/react-router' {
       path: '/kurucu-giris'
       fullPath: '/kurucu-giris'
       preLoaderRoute: typeof KurucuGirisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kvkk': {
+      id: '/kvkk'
+      path: '/kvkk'
+      fullPath: '/kvkk'
+      preLoaderRoute: typeof KvkkRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mobil': {
@@ -592,10 +652,13 @@ const rootRouteChildren: RootRouteChildren = {
   AdreslerimRoute: AdreslerimRoute,
   AndroidRoute: AndroidRoute,
   AuthRoute: AuthRoute,
+  GizlilikPolitikasiRoute: GizlilikPolitikasiRoute,
   IndirRoute: IndirRoute,
   IphoneRoute: IphoneRoute,
+  KullanimKosullariRoute: KullanimKosullariRoute,
   KurucuRoute: KurucuRoute,
   KurucuGirisRoute: KurucuGirisRoute,
+  KvkkRoute: KvkkRoute,
   MobilRoute: MobilRoute,
   OdemeRoute: OdemeRoute,
   RestoranlarRoute: RestoranlarRoute,

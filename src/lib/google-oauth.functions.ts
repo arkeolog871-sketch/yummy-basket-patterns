@@ -1,0 +1,107 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+
+const sealSchema = z.object({
+  nonce: z.string().min(8).max(128),
+  verifier: z.string().min(43).max(128),
+  redirectUri: z.string().url().max(500),
+});
+
+const exchangeSchema = z.object({
+  code: z.string().min(8).max(2048),
+  state: z.string().min(8).max(4096),
+  storedNonce: z.string().min(8).max(128).optional(),
+  storedVerifier: z.string().min(43).max(128).optional(),
+  storedRedirectUri: z.string().url().max(500).optional(),
+});
+
+export const sealGoogleOAuthState = createServerFn({ method: "POST" })
+  .validator((input: unknown) => sealSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
+    enforceSensitiveRateLimit("google-oauth-seal", 20, 10 * 60 * 1000);
+    const {
+      isAllowedGoogleRedirectUri,
+      sealGoogleOAuthStatePayload,
+      googleOAuthClientId,
+    } = await import("./google-oauth.server");
+
+    if (!googleOAuthClientId()) {
+      return {
+        ok: false as const,
+        error: "Google OAuth istemci kimliği eksik. VITE_GOOGLE_OAUTH_CLIENT_ID tanımlayın.",
+      };
+    }
+    if (!isAllowedGoogleRedirectUri(data.redirectUri)) {
+      return { ok: false as const, error: "Google dönüş adresi bu uygulama için kayıtlı değil." };
+    }
+
+    return {
+      ok: true as const,
+      state: sealGoogleOAuthStatePayload({
+        n: data.nonce,
+        v: data.verifier,
+        r: data.redirectUri,
+        t: Date.now(),
+      }),
+    };
+  });
+
+export const exchangeGoogleOAuthCode = createServerFn({ method: "POST" })
+  .validator((input: unknown) => exchangeSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
+    enforceSensitiveRateLimit("google-oauth-exchange", 12, 10 * 60 * 1000);
+    const {
+      GOOGLE_OAUTH_STATE_PREFIX,
+      exchangeGoogleAuthorizationCode,
+      unsealGoogleOAuthStatePayload,
+    } = await import("./google-oauth.server");
+
+    let nonce = "";
+    let verifier = "";
+    let redirectUri = "";
+
+    if (data.state.startsWith(`${GOOGLE_OAUTH_STATE_PREFIX}.`)) {
+      try {
+        const payload = unsealGoogleOAuthStatePayload(data.state);
+        nonce = payload.n;
+        verifier = payload.v;
+        redirectUri = payload.r;
+      } catch (error) {
+        return {
+          ok: false as const,
+          error: error instanceof Error ? error.message : "Durum doğrulama başarısız oldu.",
+        };
+      }
+    } else if (
+      data.storedNonce &&
+      data.storedVerifier &&
+      data.storedRedirectUri &&
+      data.state === data.storedNonce
+    ) {
+      nonce = data.storedNonce;
+      verifier = data.storedVerifier;
+      redirectUri = data.storedRedirectUri;
+    } else {
+      return {
+        ok: false as const,
+        error: "Durum doğrulama başarısız oldu. Google girişini aynı tarayıcıda yeniden başlatın.",
+      };
+    }
+
+    if (data.storedNonce && data.storedNonce !== nonce) {
+      return {
+        ok: false as const,
+        error: "Durum doğrulama başarısız oldu. Saklanan state değeri eşleşmiyor.",
+      };
+    }
+
+    const exchanged = await exchangeGoogleAuthorizationCode({
+      code: data.code,
+      redirectUri,
+      verifier,
+    });
+    if (!exchanged.ok) return exchanged;
+    return { ok: true as const, idToken: exchanged.idToken, accessToken: exchanged.accessToken };
+  });

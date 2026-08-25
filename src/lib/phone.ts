@@ -20,6 +20,8 @@ export function toTelNumber(raw: string | null | undefined): string | null {
   return href ? href.slice("tel:".length) : null;
 }
 
+export { openTelHref } from "@/lib/ios";
+
 /** Ekranda gösterilecek Türkiye formatı; uymuyorsa orijinal metin. */
 export function formatPhoneDisplay(raw: string): string {
   const trimmed = raw.trim();

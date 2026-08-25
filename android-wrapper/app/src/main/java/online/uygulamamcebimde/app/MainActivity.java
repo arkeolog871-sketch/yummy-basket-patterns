@@ -30,6 +30,8 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
+import androidx.browser.customtabs.CustomTabsClient;
+import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
@@ -38,8 +40,8 @@ import java.io.File;
 import java.util.ArrayList;
 
 public class MainActivity extends Activity {
-    private static final String APP_URL = "https://yummy-basket-patterns.lovable.app/";
-    private static final String APP_HOST = "yummy-basket-patterns.lovable.app";
+    private static final String APP_URL = "https://uygulamamcebimde.online/";
+    private static final String APP_HOST = "uygulamamcebimde.online";
     private static final int FILE_CHOOSER_REQUEST = 1001;
     private static final int CAMERA_PERMISSION_REQUEST = 1003;
     private static final int LOCATION_PERMISSION_REQUEST = 1004;
@@ -64,7 +66,7 @@ public class MainActivity extends Activity {
 
         CookieManager cookies = CookieManager.getInstance();
         cookies.setAcceptCookie(true);
-        cookies.setAcceptThirdPartyCookies(webView, false);
+        cookies.setAcceptThirdPartyCookies(webView, true);
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -88,8 +90,9 @@ public class MainActivity extends Activity {
         String ua = settings.getUserAgentString();
         if (ua == null) ua = "";
         if (!ua.contains("SilvanCebimde")) {
-            settings.setUserAgentString(ua + " SilvanCebimde");
+            ua = ua + " SilvanCebimde";
         }
+        settings.setUserAgentString(ua);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             settings.setSafeBrowsingEnabled(true);
         }
@@ -100,10 +103,19 @@ public class MainActivity extends Activity {
         webView.setWebChromeClient(new SilvanWebChromeClient());
 
         if (savedInstanceState == null) {
-            webView.loadUrl(APP_URL);
+            if (!loadIncomingOAuthIntent(getIntent())) {
+                webView.loadUrl(APP_URL);
+            }
         } else {
             webView.restoreState(savedInstanceState);
         }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        loadIncomingOAuthIntent(intent);
     }
 
     private final class SilvanWebViewClient extends WebViewClient {
@@ -119,9 +131,25 @@ public class MainActivity extends Activity {
 
         @Override
         public void onPageStarted(WebView view, String url, Bitmap favicon) {
+            if (url != null && url.toLowerCase(java.util.Locale.ROOT).startsWith("intent:")) {
+                if (keepOAuthIntentInWebView(url)) return;
+            }
+            if (url != null && isGoogleAuthorizeUrl(Uri.parse(url))) {
+                view.stopLoading();
+                openOAuthInCustomTab(url);
+                view.post(() -> {
+                    if (view.canGoBack()) view.goBack();
+                });
+                return;
+            }
             if (shouldLeaveWebView(url)) {
                 leaveWebView(view, url);
             }
+        }
+
+        @Override
+        public void onPageFinished(WebView view, String url) {
+            CookieManager.getInstance().flush();
         }
 
         @Override
@@ -134,6 +162,7 @@ public class MainActivity extends Activity {
             if (request == null || error == null || !request.isForMainFrame()) return;
             if (error.getErrorCode() != WebViewClient.ERROR_UNSUPPORTED_SCHEME) return;
             String failing = request.getUrl() != null ? request.getUrl().toString() : "";
+            if (keepOAuthIntentInWebView(failing)) return;
             leaveWebView(view, failing);
         }
 
@@ -141,6 +170,7 @@ public class MainActivity extends Activity {
         @SuppressWarnings("deprecation")
         public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
             if (errorCode != WebViewClient.ERROR_UNSUPPORTED_SCHEME) return;
+            if (keepOAuthIntentInWebView(failingUrl)) return;
             leaveWebView(view, failingUrl);
         }
     }
@@ -212,6 +242,15 @@ public class MainActivity extends Activity {
             }
             String hitUrl = view.getHitTestResult() != null ? view.getHitTestResult().getExtra() : null;
             if (hitUrl != null && !hitUrl.isEmpty()) {
+                Uri hitUri = Uri.parse(hitUrl);
+                if (isGoogleAuthorizeUrl(hitUri)) {
+                    openOAuthInCustomTab(hitUrl);
+                    return false;
+                }
+                if (isTrustedWebOrigin(hitUri)) {
+                    view.loadUrl(hitUrl);
+                    return false;
+                }
                 openExternalOrApp(hitUrl);
                 return false;
             }
@@ -219,6 +258,17 @@ public class MainActivity extends Activity {
             popup.setWebViewClient(new WebViewClient() {
                 private void intercept(WebView v, String url) {
                     if (url == null || url.startsWith("about:")) return;
+                    Uri uri = Uri.parse(url);
+                    if (isGoogleAuthorizeUrl(uri)) {
+                        openOAuthInCustomTab(url);
+                        v.stopLoading();
+                        return;
+                    }
+                    if (isTrustedWebOrigin(uri)) {
+                        MainActivity.this.webView.loadUrl(url);
+                        v.stopLoading();
+                        return;
+                    }
                     openExternalOrApp(url);
                     v.stopLoading();
                 }
@@ -582,12 +632,75 @@ public class MainActivity extends Activity {
             if (!isExternalMapsUrl(url)) return;
             runOnUiThread(() -> openExternalOrApp(url));
         }
+
+        @JavascriptInterface
+        public void openOAuth(final String url) {
+            if (!isGoogleAuthorizeUrl(Uri.parse(url))) return;
+            runOnUiThread(() -> openOAuthInCustomTab(url));
+        }
+    }
+
+    private boolean loadIncomingOAuthIntent(Intent intent) {
+        if (intent == null || webView == null) return false;
+        String https = httpsUrlForOAuthCallback(intent.getData());
+        if (https == null) return false;
+        webView.loadUrl(https);
+        return true;
+    }
+
+    private String httpsUrlForOAuthCallback(Uri uri) {
+        if (uri == null) return null;
+        String scheme = uri.getScheme();
+        if ("silvancebimde".equalsIgnoreCase(scheme) && "oauth".equalsIgnoreCase(uri.getHost())) {
+            StringBuilder next = new StringBuilder("https://uygulamamcebimde.online/auth");
+            if (uri.getEncodedQuery() != null && !uri.getEncodedQuery().isEmpty()) {
+                next.append('?').append(uri.getEncodedQuery());
+            }
+            return next.toString();
+        }
+        if ("https".equalsIgnoreCase(scheme) && isTrustedWebOrigin(uri)) {
+            String path = uri.getPath();
+            if (path != null && path.startsWith("/auth")) return uri.toString();
+        }
+        return null;
+    }
+
+    private long lastOAuthLaunchAt;
+    private String lastOAuthUrl;
+
+    private void openOAuthInCustomTab(String url) {
+        if (url == null || url.isEmpty()) return;
+        long now = System.currentTimeMillis();
+        if (url.equals(lastOAuthUrl) && now - lastOAuthLaunchAt < 1500) return;
+        lastOAuthUrl = url;
+        lastOAuthLaunchAt = now;
+        try {
+            CustomTabsIntent.Builder builder = new CustomTabsIntent.Builder();
+            builder.setShowTitle(true);
+            builder.setShareState(CustomTabsIntent.SHARE_STATE_OFF);
+            CustomTabsIntent intent = builder.build();
+            String customTabsPackage = CustomTabsClient.getPackageName(this, null);
+            if (customTabsPackage != null) {
+                intent.intent.setPackage(customTabsPackage);
+            }
+            intent.launchUrl(this, Uri.parse(url));
+        } catch (Exception ignored) {
+            try {
+                Intent view = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                view.addCategory(Intent.CATEGORY_BROWSABLE);
+                view.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(view);
+            } catch (Exception alsoIgnored) {
+                Toast.makeText(this, "Google girişi için tarayıcı açılamadı.", Toast.LENGTH_LONG).show();
+            }
+        }
     }
 
     private boolean shouldLeaveWebView(String url) {
         if (url == null || url.isEmpty()) return false;
         Uri uri = Uri.parse(url);
         if ("about".equals(uri.getScheme())) return false;
+        if (isGoogleAuthorizeUrl(uri)) return true;
         if (isTrustedWebOrigin(uri)) return false;
         return true;
     }
@@ -601,6 +714,28 @@ public class MainActivity extends Activity {
             || "uygulamamcebimde.online".equals(host)
             || "www.uygulamamcebimde.online".equals(host)
             || host.endsWith(".lovable.app");
+    }
+
+    /** Google hesap seçici ve OAuth, SameSite çerezi için Chrome Custom Tabs’ta açılır. */
+    private boolean isGoogleAuthorizeUrl(Uri uri) {
+        if (uri == null || !"https".equalsIgnoreCase(uri.getScheme())) return false;
+        String host = uri.getHost();
+        if (host == null) return false;
+        host = host.toLowerCase(java.util.Locale.ROOT);
+        String path = uri.getPath() == null ? "" : uri.getPath().toLowerCase(java.util.Locale.ROOT);
+        if (host.equals("accounts.google.com")
+                || host.endsWith(".accounts.google.com")
+                || host.equals("accounts.google.com.tr")
+                || host.equals("accounts.youtube.com")
+                || host.equals("signin.google.com")) {
+            return true;
+        }
+        if ("www.google.com".equals(host) || "google.com".equals(host)) {
+            return path.contains("/o/oauth2")
+                || path.contains("/signin")
+                || path.contains("/accountchooser");
+        }
+        return false;
     }
 
     private void leaveWebView(WebView view, String url) {
@@ -619,9 +754,21 @@ public class MainActivity extends Activity {
             Uri uri = Uri.parse(rawUrl);
             String scheme = uri.getScheme();
             if ("about".equals(scheme)) return false;
+            if ("silvancebimde".equalsIgnoreCase(scheme)) {
+                String https = httpsUrlForOAuthCallback(uri);
+                if (https != null) {
+                    webView.loadUrl(https);
+                    return true;
+                }
+            }
+            if (isGoogleAuthorizeUrl(uri)) {
+                openOAuthInCustomTab(rawUrl);
+                return true;
+            }
             if (isTrustedWebOrigin(uri)) return false;
 
             if ("intent".equalsIgnoreCase(scheme)) {
+                if (keepOAuthIntentInWebView(rawUrl)) return true;
                 return openIntentUrl(rawUrl);
             }
             if (tryOpenGoogleMapsApp(rawUrl)) return true;
@@ -724,6 +871,27 @@ public class MainActivity extends Activity {
         } catch (Exception ignored) {
             return false;
         }
+    }
+
+    /**
+     * Google hesap seçici sıkça {@code intent://…;package=com.android.chrome} üretir.
+     * HTTPS yedeğini Chrome Custom Tabs’ta aç.
+     */
+    private boolean keepOAuthIntentInWebView(String rawUrl) {
+        if (rawUrl == null) return false;
+        String https = httpsFromIntentUrl(rawUrl);
+        if (https != null && isGoogleAuthorizeUrl(Uri.parse(https))) {
+            webView.stopLoading();
+            openOAuthInCustomTab(https);
+            return true;
+        }
+        String lower = rawUrl.toLowerCase(java.util.Locale.ROOT);
+        boolean oauthIntent =
+            lower.contains("accounts.google")
+                || lower.contains("signin.google")
+                || lower.contains("com.google.android.gms")
+                || lower.contains("com.google.android.googlequicksearchbox");
+        return oauthIntent;
     }
 
     private boolean openIntentUrl(String rawUrl) {

@@ -295,6 +295,25 @@ export async function createVerifiedSession(email: string): Promise<
   };
 }
 
+/** OTP sonrası yasal onay kaydı (Kullanım Koşulları / Gizlilik / KVKK). */
+export async function recordTermsAcceptance(userId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const acceptedAt = new Date().toISOString();
+  const { error } = await supabaseAdmin.from("profiles").upsert(
+    {
+      id: userId,
+      terms_accepted: true,
+      terms_accepted_at: acceptedAt,
+    },
+    { onConflict: "id" },
+  );
+  if (error) {
+    console.error("[legal] yasal onay kaydedilemedi", { message: error.message });
+    return { ok: false, error: "Yasal onay kaydedilemedi. Lütfen tekrar deneyin." };
+  }
+  return { ok: true };
+}
+
 /** E-postaya bağlı auth kullanıcısı var mı? Yeni hesap açmaz. */
 export async function findAuthUserIdByEmail(email: string): Promise<string | null> {
   const url = process.env["SUPABASE_URL"];

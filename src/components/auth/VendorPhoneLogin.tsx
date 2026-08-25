@@ -5,7 +5,9 @@ import { KeyRound, Smartphone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { requestVendorLoginCode, verifyVendorLoginCode } from "@/lib/vendor-auth.functions";
 import { OTP_RESEND_COOLDOWN_SECONDS, isCompleteOtpCode, normalizeOtpCode } from "@/lib/otp";
+import { TERMS_ACCEPTANCE_REQUIRED } from "@/lib/legal";
 import { OtpCodeInput } from "@/components/auth/OtpCodeInput";
+import { LegalConsentCheckbox } from "@/components/legal/LegalConsentCheckbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +23,8 @@ export function VendorPhoneLogin() {
   const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const submittingRef = useRef(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const termsAcceptedRef = useRef(false);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -56,11 +60,15 @@ export function VendorPhoneLogin() {
   async function verify(rawCode?: string) {
     const digits = normalizeOtpCode(rawCode ?? code);
     if (!isCompleteOtpCode(digits) || submittingRef.current) return;
+    if (!termsAcceptedRef.current) {
+      setError(TERMS_ACCEPTANCE_REQUIRED);
+      return;
+    }
     submittingRef.current = true;
     setBusy(true);
     setError(null);
     try {
-      const tokens = await verifyCode({ data: { identifier, code: digits } });
+      const tokens = await verifyCode({ data: { identifier, code: digits, termsAccepted: true } });
       if (!tokens.ok) {
         throw new Error(tokens.error);
       }
@@ -81,7 +89,7 @@ export function VendorPhoneLogin() {
     }
   }
 
-  const canVerify = isCompleteOtpCode(code);
+  const canVerify = isCompleteOtpCode(code) && termsAccepted;
 
   return (
     <form
@@ -123,7 +131,21 @@ export function VendorPhoneLogin() {
               setCode(next);
               setError(null);
             }}
-            onComplete={(next) => void verify(next)}
+            onComplete={(next) => {
+              if (!termsAcceptedRef.current) return;
+              void verify(next);
+            }}
+          />
+          <LegalConsentCheckbox
+            id="vendor-terms"
+            checked={termsAccepted}
+            disabled={busy}
+            onCheckedChange={(next) => {
+              setTermsAccepted(next);
+              termsAcceptedRef.current = next;
+              setError(null);
+              if (next && isCompleteOtpCode(code)) void verify(code);
+            }}
           />
           {error ? (
             <p className="text-sm text-destructive" role="alert">
@@ -157,6 +179,8 @@ export function VendorPhoneLogin() {
               setMaskedEmail(null);
               setCode("");
               setError(null);
+              setTermsAccepted(false);
+              termsAcceptedRef.current = false;
             }}
           >
             Bilgiyi değiştir

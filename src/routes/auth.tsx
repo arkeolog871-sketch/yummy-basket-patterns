@@ -8,17 +8,38 @@ import { useServerFn } from "@tanstack/react-start";
 import { registerWithEmailCode } from "@/lib/otp.functions";
 import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { VendorPhoneLogin } from "@/components/auth/VendorPhoneLogin";
+import {
+  completeGoogleOAuthFromCallback,
+  humanizeOAuthError,
+  isGoogleOAuthCallbackParams,
+  isInAppBrowser,
+  startGoogleOAuth,
+  stripOAuthCallbackFromUrl,
+} from "@/lib/google-oauth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-type AuthSearch = { redirect?: string };
+type AuthSearch = {
+  redirect?: string;
+  error?: string;
+  error_description?: string;
+  code?: string;
+  state?: string;
+};
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (search: Record<string, unknown>): AuthSearch =>
-    typeof search["redirect"] === "string" && search["redirect"]
-      ? { redirect: search["redirect"] }
-      : {},
+  validateSearch: (search: Record<string, unknown>): AuthSearch => {
+    const next: AuthSearch = {};
+    if (typeof search["redirect"] === "string" && search["redirect"]) next.redirect = search["redirect"];
+    if (typeof search["error"] === "string" && search["error"]) next.error = search["error"];
+    if (typeof search["error_description"] === "string" && search["error_description"]) {
+      next.error_description = search["error_description"];
+    }
+    if (typeof search["code"] === "string" && search["code"]) next.code = search["code"];
+    if (typeof search["state"] === "string" && search["state"]) next.state = search["state"];
+    return next;
+  },
   head: () => ({
     meta: [
       { title: "Giriş yap veya kayıt ol — SİLVAN CEBİMDE" },
@@ -37,7 +58,7 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
-  const { redirect } = Route.useSearch();
+  const { redirect, error: oauthError, error_description: oauthErrorDescription } = Route.useSearch();
   const { user } = useAuth();
   const access = useAccess();
   const navigate = useNavigate();
@@ -51,6 +72,34 @@ function AuthPage() {
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [pendingVerification, setPendingVerification] = useState<string | null>(null);
+  const [googleCompleting, setGoogleCompleting] = useState(() =>
+    typeof window === "undefined" ? false : isGoogleOAuthCallbackParams(),
+  );
+
+  useEffect(() => {
+    if (!oauthError) return;
+    if (isGoogleOAuthCallbackParams()) return;
+    toast.error(humanizeOAuthError(oauthErrorDescription || oauthError));
+  }, [oauthError, oauthErrorDescription]);
+
+  useEffect(() => {
+    if (!isGoogleOAuthCallbackParams()) return;
+    let cancelled = false;
+    setGoogleCompleting(true);
+    void completeGoogleOAuthFromCallback().then((result) => {
+      if (cancelled) return;
+      stripOAuthCallbackFromUrl();
+      if (result?.ok === false) {
+        toast.error(result.error);
+        setGoogleCompleting(false);
+        return;
+      }
+      setGoogleCompleting(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!user || access.loading) return;
@@ -95,14 +144,27 @@ function AuthPage() {
   }
 
   async function handleGoogle() {
+    if (isInAppBrowser()) {
+      toast.error(
+        "Google girişi WhatsApp / Instagram / Facebook içi tarayıcıda çalışmaz. Bağlantıyı Chrome veya Safari ile açın.",
+      );
+      return;
+    }
     try {
-      const { lovable } = await import("@/integrations/lovable");
-      await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
-      });
+      const result = await startGoogleOAuth();
+      if (!result.ok) toast.error(result.error);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Google girişi başlatılamadı.");
     }
+  }
+
+  if (googleCompleting) {
+    return (
+      <div className="mx-auto w-full max-w-md px-4 py-16">
+        <h1 className="text-3xl">Google ile giriş</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Yetkilendirme tamamlanıyor, lütfen bekleyin…</p>
+      </div>
+    );
   }
 
   return (
@@ -166,11 +228,11 @@ function AuthPage() {
       ) : null}
 
       {vendorPortal ? (
-        <div className="mt-8 rounded-3xl border border-border/70 bg-card p-6 shadow-card">
+        <div className="mt-8 rounded-3xl border border-border/70 bg-card p-4 shadow-card sm:p-6">
           <VendorPhoneLogin />
         </div>
       ) : pendingVerification ? (
-        <div className="mt-6 space-y-4 rounded-3xl border border-border/70 bg-card p-6 shadow-card">
+        <div className="mt-6 space-y-4 rounded-3xl border border-border/70 bg-card p-4 shadow-card sm:p-6">
           <p className="text-sm text-muted-foreground">
             Hesabınız oluşturuldu ancak <strong>e-posta doğrulanmadı</strong>. {pendingVerification}{" "}
             adresine gönderilen 6 haneli kodu girerek hesabınızı aktif edin.
@@ -187,7 +249,7 @@ function AuthPage() {
           />
         </div>
       ) : mode === "signin" && method === "code" ? (
-        <div className="mt-6 rounded-3xl border border-border/70 bg-card p-6 shadow-card">
+        <div className="mt-6 rounded-3xl border border-border/70 bg-card p-4 shadow-card sm:p-6">
           <EmailCodeLogin
             idPrefix="user-otp"
             initialEmail={email}
@@ -199,7 +261,7 @@ function AuthPage() {
       ) : (
         <form
           onSubmit={(event) => void handleSubmit(event)}
-          className="mt-8 space-y-4 rounded-3xl border border-border/70 bg-card p-6 shadow-card"
+          className="mt-8 space-y-4 rounded-3xl border border-border/70 bg-card p-4 shadow-card sm:p-6"
         >
           {mode === "signup" ? (
             <div className="space-y-2">
@@ -285,6 +347,11 @@ function AuthPage() {
           >
             Google ile devam et
           </Button>
+          <p className="mt-2 text-center text-xs text-muted-foreground">
+            Google, uygulamanın kendi alan adına döner. Android uygulamasında sistem tarayıcısı
+            (Chrome) açılır. WhatsApp, Instagram veya Facebook içi tarayıcıda çalışmaz. E-posta
+            kodu ile giriş her zaman kullanılabilir.
+          </p>
         </>
       )}
 
