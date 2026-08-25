@@ -753,16 +753,12 @@ export const createStaffUser = createServerFn({ method: "POST" })
           .upsert({ user_id: newId, role: data.role }, { onConflict: "user_id,role" });
         if (roleError) throw new Error(roleError.message);
 
-        // Müşteri girişindeki ile aynı doğrulama akışı: e-postaya tek kullanımlık kod gönderilir.
+        // Müşteri girişindeki ile aynı doğrulama akışı: e-postaya 6 haneli kod gönderilir.
         let verificationSent = false;
         if (data.verifyEmail) {
-          const { createServerPublicClient } = await import("./vendor-auth.server");
-          const publicClient = createServerPublicClient();
-          const { error: otpError } = await publicClient.auth.signInWithOtp({
-            email: data.email,
-            options: { shouldCreateUser: false },
-          });
-          verificationSent = !otpError;
+          const { sendSixDigitOtp } = await import("./otp.server");
+          const sent = await sendSixDigitOtp(data.email, "signup");
+          verificationSent = sent.ok;
         }
         return { ok: true, userId: newId, verificationSent };
       },

@@ -2,6 +2,8 @@ import * as React from "react";
 
 import { Body, Container, Head, Heading, Hr, Html, Link, Text } from "@react-email/components";
 
+import { formatOtpToken } from "@/lib/otp";
+
 export const brand = {
   primary: "#f0913f",
   primaryDark: "#c96a1c",
@@ -96,13 +98,18 @@ export const EmailShell = ({
 );
 
 /** 6 haneli doğrulama kodunu gösterir; kod yoksa hiçbir şey basmaz. */
-export const CodeBox = ({ token }: { token?: string | undefined }) =>
-  token ? (
+export const CodeBox = ({ token }: { token?: string | undefined }) => {
+  const digits = formatOtpToken(token);
+  if (!digits) return null;
+  return (
     <>
       <Text style={styles.text}>Doğrulama kodunuz:</Text>
-      <Text style={styles.code}>{token}</Text>
+      <Text style={{ ...styles.code, letterSpacing: digits.length > 6 ? "4px" : "8px" }}>
+        {digits}
+      </Text>
     </>
-  ) : null;
+  );
+};
 
 export const FallbackLink = ({ url }: { url: string }) => (
   <Text style={{ ...styles.text, fontSize: "12px", wordBreak: "break-all" as const }}>

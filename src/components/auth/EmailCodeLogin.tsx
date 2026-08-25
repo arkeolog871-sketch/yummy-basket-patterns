@@ -1,9 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { KeyRound, MailCheck } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { sendEmailVerificationCode, verifyEmailVerificationCode } from "@/lib/otp.functions";
+import {
+  OTP_CODE_LENGTH,
+  OTP_RESEND_COOLDOWN_SECONDS,
+  OTP_TTL_MINUTES,
+  isCompleteOtpCode,
+  normalizeOtpCode,
+} from "@/lib/otp";
+import { OtpCodeInput } from "@/components/auth/OtpCodeInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,7 +42,9 @@ export function EmailCodeLogin({
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(startAtCode);
   const [busy, setBusy] = useState(false);
-  const [cooldown, setCooldown] = useState(startAtCode ? 60 : 0);
+  const [error, setError] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(startAtCode ? OTP_RESEND_COOLDOWN_SECONDS : 0);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -45,58 +55,81 @@ export function EmailCodeLogin({
   async function sendCode(event?: React.FormEvent) {
     event?.preventDefault();
     setBusy(true);
+    setError(null);
     try {
       const result = await requestCode({
-        data: { email: email.trim(), allowSignUp },
+        data: {
+          email: email.trim(),
+          allowSignUp,
+          purpose: startAtCode ? "signup" : "login",
+        },
       });
       if (!result.ok) {
         onFailed?.(email.trim(), result.error);
+        setError(result.error);
         toast.error(result.error);
+        if (result.retryAfterSeconds) setCooldown(result.retryAfterSeconds);
         return;
       }
       setSent(true);
+      setCode("");
       setCooldown(result.cooldownSeconds);
       toast.success("6 haneli doğrulama kodu e-postanıza gönderildi.");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Kod gönderilemedi.";
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "Kod gönderilemedi.";
       onFailed?.(email.trim(), message);
+      setError(message);
       toast.error(message);
     } finally {
       setBusy(false);
     }
   }
 
-  async function verify(event: React.FormEvent) {
-    event.preventDefault();
+  async function verify(rawCode?: string) {
+    const token = normalizeOtpCode(rawCode ?? code);
+    if (!isCompleteOtpCode(token) || submittingRef.current) return;
+    submittingRef.current = true;
     setBusy(true);
+    setError(null);
     try {
       const result = await verifyServerCode({
-        data: { email: email.trim(), code },
+        data: { email: email.trim(), code: token },
       });
       if (!result.ok) {
         onFailed?.(email.trim(), result.error);
+        setError(result.error);
         toast.error(result.error);
         setCode("");
         return;
       }
-      const { error } = await supabase.auth.setSession({
+      const { error: sessionError } = await supabase.auth.setSession({
         access_token: result.accessToken,
         refresh_token: result.refreshToken,
       });
-      if (error) throw new Error(error.message);
+      if (sessionError) throw new Error(sessionError.message);
       await onVerified?.(result.userId, email.trim());
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Kod doğrulanamadı.";
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "Kod doğrulanamadı.";
       onFailed?.(email.trim(), message);
+      setError(message);
       toast.error(message);
       setCode("");
     } finally {
+      submittingRef.current = false;
       setBusy(false);
     }
   }
 
+  const canVerify = isCompleteOtpCode(code);
+
   return (
-    <form onSubmit={(event) => void (sent ? verify(event) : sendCode(event))} className="space-y-4">
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        void (sent ? verify() : sendCode());
+      }}
+      className="space-y-4"
+    >
       <div className="space-y-2">
         <Label htmlFor={`${idPrefix}-email`}>E-posta</Label>
         <Input
@@ -115,28 +148,38 @@ export function EmailCodeLogin({
       {sent ? (
         <div className="space-y-2">
           <Label htmlFor={`${idPrefix}-code`}>E-posta doğrulama kodu</Label>
-          <Input
+          <OtpCodeInput
             id={`${idPrefix}-code`}
-            name="one-time-code"
-            inputMode="numeric"
-            maxLength={6}
-            autoComplete="one-time-code"
             value={code}
-            onChange={(event) => setCode(event.target.value)}
-            placeholder="123456"
-            required
-            className="rounded-xl tracking-widest"
+            disabled={busy}
+            autoFocus
+            onChange={(next) => {
+              setCode(next);
+              setError(null);
+            }}
+            onComplete={(next) => void verify(next)}
           />
-          <p className="text-xs text-muted-foreground">
-            Kod 6 hanelidir ve 10 dakika geçerlidir. 5 hatalı denemeden sonra yeni kod istemeniz
-            gerekir.
-          </p>
+          {error ? (
+            <p className="text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Kod {OTP_CODE_LENGTH} hanelidir ve {OTP_TTL_MINUTES} dakika geçerlidir. Yapıştırabilirsiniz;
+              yalnızca rakam kabul edilir. {OTP_CODE_LENGTH} hane dolunca otomatik doğrulanır.
+            </p>
+          )}
         </div>
       ) : null}
 
-      <Button type="submit" size="lg" disabled={busy} className="w-full rounded-full">
+      <Button
+        type="submit"
+        size="lg"
+        disabled={busy || (sent && !canVerify)}
+        className="w-full rounded-full"
+      >
         {sent ? <KeyRound className="size-4" /> : <MailCheck className="size-4" />}
-        {busy ? "İşleniyor…" : sent ? "Kodu doğrula ve giriş yap" : "Doğrulama kodu gönder"}
+        {busy ? "İşleniyor…" : sent ? "Doğrula" : "Doğrulama kodu gönder"}
       </Button>
 
       {sent ? (
@@ -147,6 +190,7 @@ export function EmailCodeLogin({
             onClick={() => {
               setSent(false);
               setCode("");
+              setError(null);
             }}
           >
             E-postayı değiştir
@@ -157,7 +201,7 @@ export function EmailCodeLogin({
             disabled={busy || cooldown > 0}
             onClick={() => void sendCode()}
           >
-            {cooldown > 0 ? `Yeni kod gönder (${cooldown}s)` : "Yeni kod gönder"}
+            {cooldown > 0 ? `Kodu Tekrar Gönder (${cooldown}s)` : "Kodu Tekrar Gönder"}
           </button>
         </div>
       ) : null}
