@@ -1,12 +1,3 @@
-/** Veri yoksa işletme detayında gösterilecek örnek numara. */
-export const DEMO_BUSINESS_PHONE = "0555 555 55 55";
-
-/** Kayıtlı numara geçersizse örnek numarayı kullanır. */
-export function resolveBusinessPhone(raw: string | null | undefined): string {
-  if (raw && toTelHref(raw)) return raw.trim();
-  return DEMO_BUSINESS_PHONE;
-}
-
 /** İşletme telefonunu `tel:` bağlantısına çevirir. Geçersizse null. */
 export function toTelHref(raw: string | null | undefined): string | null {
   if (!raw) return null;
@@ -21,6 +12,12 @@ export function toTelHref(raw: string | null | undefined): string | null {
   if (digits.length === 11 && digits.startsWith("0")) return `tel:+90${digits.slice(1)}`;
   if (digits.length === 10) return `tel:+90${digits}`;
   return `tel:+${digits}`;
+}
+
+/** `tel:` içine konacak rakamlar (+ dahil). */
+export function toTelNumber(raw: string | null | undefined): string | null {
+  const href = toTelHref(raw);
+  return href ? href.slice("tel:".length) : null;
 }
 
 /** Ekranda gösterilecek Türkiye formatı; uymuyorsa orijinal metin. */
