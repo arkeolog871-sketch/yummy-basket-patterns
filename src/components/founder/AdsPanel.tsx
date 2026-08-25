@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Copy, ImageUp, Megaphone, Pencil, Plus, Trash2 } from "lucide-react";
+import { ImageUp, Megaphone, Pencil, Plus, Trash2 } from "lucide-react";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,16 +19,17 @@ import {
   isAdExpired,
   isAdScheduled,
   MAX_ADVERTISEMENTS,
+  parsePublicBanner,
   toDatetimeLocalValue,
   type AdActionType,
   type Advertisement,
 } from "@/lib/advertisements";
 import { HeroBannerSlider } from "@/components/home/HeroBannerSlider";
 import { AdMedia } from "@/components/home/AdMedia";
-import { ADVERTISEMENTS_SETUP_SQL } from "@/lib/advertisements-setup-sql";
 import {
   adImageTooLargeMessage,
   adImageTypeRejectedMessage,
+  adStorageUploadErrorMessage,
   AD_MEDIA_ACCEPT,
   BANNERS_BUCKET,
   contentTypeForBrandPath,
@@ -104,8 +105,20 @@ export function AdsPanel() {
     retry: false,
   });
 
+  const liveBannersQuery = useQuery({
+    queryKey: ["public-banners"],
+    enabled: isFounder,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_active_banners");
+      if (error) throw new Error(error.message);
+      return (Array.isArray(data) ? data : [])
+        .map(parsePublicBanner)
+        .filter((item) => item != null);
+    },
+    retry: false,
+  });
+
   const items = query.data?.items ?? [];
-  const schemaMissing = query.data?.schemaMissing === true;
 
   const saveMutation = useMutation({
     mutationFn: (values: Draft) =>
@@ -172,6 +185,9 @@ export function AdsPanel() {
       toast.error(adImageTypeRejectedMessage());
       return;
     }
+    if (extension === "heic" || extension === "heif") {
+      toast.message("HEIC bazı tarayıcılarda görünmez; mümkünse JPEG veya PNG seçin");
+    }
     clearLocalPreview();
     const blobUrl = URL.createObjectURL(file);
     localPreviewRef.current = blobUrl;
@@ -193,13 +209,13 @@ export function AdsPanel() {
       clearLocalPreview();
       toast.success("Dosya banners kovasına yüklendi");
     } catch (error) {
-      toast.error(toPublicErrorMessage(error));
+      toast.error(adStorageUploadErrorMessage(error));
     } finally {
       setUploading(false);
     }
   }
 
-  const livePreview = useMemo(
+  const tablePreview = useMemo(
     () =>
       items
         .filter((ad) => ad.is_active && !isAdExpired(ad) && !isAdScheduled(ad) && ad.image_url)
@@ -213,15 +229,8 @@ export function AdsPanel() {
         })),
     [items],
   );
-
-  async function copySql() {
-    try {
-      await navigator.clipboard.writeText(ADVERTISEMENTS_SETUP_SQL);
-      toast.success("SQL kopyalandı — SQL Editor’a yapıştırıp çalıştırın");
-    } catch {
-      toast.error("Kopyalanamadı; aşağıdaki kutudaki metni seçin");
-    }
-  }
+  const livePreview =
+    liveBannersQuery.data && liveBannersQuery.data.length > 0 ? liveBannersQuery.data : tablePreview;
 
   if (!isFounder) {
     return (
@@ -236,30 +245,6 @@ export function AdsPanel() {
 
   return (
     <div className="space-y-6">
-      {schemaMissing ? (
-        <div className="rounded-3xl border border-dashed border-primary/40 bg-card p-6">
-          <h2 className="text-lg font-semibold">Şema SQL’si (bir kez)</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            `banners` kovası yetmez. `advertisements` tablosu ve `get_active_banners` fonksiyonu bu projede yok.
-            Supabase → SQL Editor’da aşağıdaki metnin tamamını yapıştırıp çalıştırın. Token gerekmez. Sonda{" "}
-            <code className="rounded bg-muted px-1">NOTIFY pgrst, 'reload schema'</code> önbelleği yeniler. Sonra bu
-            sekmeyi yenileyin.
-          </p>
-          <textarea
-            readOnly
-            value={ADVERTISEMENTS_SETUP_SQL}
-            rows={12}
-            className="mt-3 w-full resize-y rounded-xl border border-border bg-muted/40 p-3 font-mono text-[11px] leading-relaxed"
-            onFocus={(event) => event.currentTarget.select()}
-            aria-label="Advertisements kurulum SQL"
-          />
-          <Button type="button" variant="outline" className="mt-3 rounded-full" onClick={() => void copySql()}>
-            <Copy className="size-4" />
-            SQL’i kopyala
-          </Button>
-        </div>
-      ) : null}
-
       <div className="rounded-3xl border border-border bg-card p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -269,7 +254,7 @@ export function AdsPanel() {
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               Galeriden seçilen görsel veya video `banners` kovasına yüklenir; Kaydet ile `advertisements`
-              tablosuna yazılır. Mobil `GET /api/v1/banners` yalnızca yayındaki slaytları döner.
+              tablosuna yazılır. Ana sayfa `get_active_banners` ile yayındaki slaytları gösterir.
               En fazla {MAX_ADVERTISEMENTS} kayıt önerilir.
             </p>
           </div>
@@ -290,7 +275,7 @@ export function AdsPanel() {
         {livePreview.length > 0 ? (
           <div className="mt-5">
             <p className="mb-2 text-sm font-medium">Canlı önizleme (yayındaki slaytlar)</p>
-            <HeroBannerSlider banners={livePreview} />
+            <HeroBannerSlider banners={livePreview} preview />
           </div>
         ) : (
           <p className="mt-5 rounded-2xl border border-dashed border-border p-4 text-sm text-muted-foreground">
@@ -318,7 +303,11 @@ export function AdsPanel() {
             {items.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
-                  {query.isLoading ? "Yükleniyor…" : "Henüz reklam yok."}
+                  {query.isLoading
+                    ? "Yükleniyor…"
+                    : query.isError
+                      ? toPublicErrorMessage(query.error)
+                      : "Henüz reklam yok."}
                 </TableCell>
               </TableRow>
             ) : (
@@ -427,6 +416,7 @@ export function AdsPanel() {
             fileRef={fileRef}
             onUpload={onUpload}
             onSubmit={() => {
+              if (saveMutation.isPending || uploading) return;
               if (!draft.title.trim() || !draft.image_url) {
                 toast.error("Başlık ve galeriden bir görsel/video seçin");
                 return;
@@ -503,18 +493,16 @@ function AdForm({
         </div>
       </div>
       <div>
-        <Label>Görsel veya video (PNG, JPEG, MP4, MOV, WEBM… en fazla {MAX_AD_IMAGE_MB} MB, 16:9 veya 3:1)</Label>
+        <Label htmlFor="ad-media-file">
+          Görsel veya video (PNG, JPEG, MP4, MOV, WEBM… en fazla {MAX_AD_IMAGE_MB} MB, 16:9 veya 3:1)
+        </Label>
         <div className="mt-1.5 flex items-center gap-3">
           <div className="h-16 w-28 overflow-hidden rounded-xl border bg-muted">
             {previewSrc ? <AdMedia src={previewSrc} className="size-full object-cover" active /> : null}
           </div>
           <label
             htmlFor="ad-media-file"
-            className={cn(
-              buttonVariants({ variant: "outline" }),
-              "relative cursor-pointer overflow-hidden rounded-full",
-              uploading && "pointer-events-none opacity-60",
-            )}
+            className={cn(buttonVariants({ variant: "default" }), "relative cursor-pointer rounded-full")}
           >
             <input
               ref={fileRef}
@@ -616,8 +604,8 @@ function AdForm({
           <Switch checked={draft.is_active} onCheckedChange={(is_active) => patch({ is_active })} />
         </div>
       </div>
-      <Button type="submit" className="w-full rounded-full" disabled={pending}>
-        {pending ? "Kaydediliyor…" : "Kaydet"}
+      <Button type="submit" className="w-full rounded-full">
+        {pending || uploading ? "Kaydediliyor…" : "Kaydet"}
       </Button>
     </form>
   );

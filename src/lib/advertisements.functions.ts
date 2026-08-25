@@ -3,15 +3,11 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { runServerFn } from "./public-error";
 import {
-  isMissingAdvertisementsSchema,
   parseActionType,
   parseAdvertisement,
   sanitizeActionValue,
   type AdActionType,
 } from "@/lib/advertisements";
-
-const MISSING =
-  "advertisements tablosu henüz yok. Kurucu Paneli’ndeki SQL’i Supabase SQL Editor’da bir kez çalıştırın.";
 
 const saveSchema = z.object({
   id: z.string().uuid().optional(),
@@ -44,14 +40,11 @@ export const listAdvertisements = createServerFn({ method: "GET" })
         .select("*")
         .order("display_order", { ascending: true })
         .order("created_at", { ascending: true });
-      if (error) {
-        if (isMissingAdvertisementsSchema(error)) return { items: [], schemaMissing: true as const };
-        throw new Error(error.message);
-      }
+      if (error) throw new Error(error.message);
       const items = (data ?? [])
         .map((row) => parseAdvertisement(row))
         .filter((row) => row != null);
-      return { items, schemaMissing: false as const };
+      return { items };
     }),
   );
 
@@ -95,10 +88,7 @@ export const saveAdvertisement = createServerFn({ method: "POST" })
         async () => {
           if (id) {
             const { error } = await context.supabase.from("advertisements").update(values).eq("id", id);
-            if (error) {
-              if (isMissingAdvertisementsSchema(error)) throw new Error(MISSING);
-              throw new Error(error.message);
-            }
+            if (error) throw new Error(error.message);
             return { ok: true, id };
           }
           const { data: inserted, error } = await context.supabase
@@ -106,10 +96,7 @@ export const saveAdvertisement = createServerFn({ method: "POST" })
             .insert(values)
             .select("id")
             .maybeSingle();
-          if (error) {
-            if (isMissingAdvertisementsSchema(error)) throw new Error(MISSING);
-            throw new Error(error.message);
-          }
+          if (error) throw new Error(error.message);
           return { ok: true, id: inserted?.["id"] ?? null };
         },
       );
@@ -140,10 +127,7 @@ export const setAdvertisementActive = createServerFn({ method: "POST" })
             .from("advertisements")
             .update({ is_active: data.is_active })
             .eq("id", data.id);
-          if (error) {
-            if (isMissingAdvertisementsSchema(error)) throw new Error(MISSING);
-            throw new Error(error.message);
-          }
+          if (error) throw new Error(error.message);
           return { ok: true };
         },
       );
@@ -168,10 +152,7 @@ export const deleteAdvertisement = createServerFn({ method: "POST" })
         },
         async () => {
           const { error } = await context.supabase.from("advertisements").delete().eq("id", data.id);
-          if (error) {
-            if (isMissingAdvertisementsSchema(error)) throw new Error(MISSING);
-            throw new Error(error.message);
-          }
+          if (error) throw new Error(error.message);
           return { ok: true };
         },
       );

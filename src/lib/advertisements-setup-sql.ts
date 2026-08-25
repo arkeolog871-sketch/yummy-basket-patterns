@@ -1,8 +1,15 @@
-import advertisementsSql from "../../supabase/migrations/20260824160000_advertisements.sql?raw";
-import bannersSql from "../../supabase/migrations/20260824223000_banners_storage.sql?raw";
+import oneshotSql from "../../supabase/sql/advertisements_oneshot.sql?raw";
 
-/** Supabase SQL Editor’a tek parça yapıştırılır: tablo, RPC ve banners kovası. */
-export const ADVERTISEMENTS_SETUP_SQL = `${advertisementsSql.trim()}
+/** SQL uygulandı mı? Sonuç satırı: advertisements / true / true. */
+export const ADVERTISEMENTS_VERIFY_SQL = `SELECT
+  to_regclass('public.advertisements')::text AS advertisements_table,
+  EXISTS (
+    SELECT 1 FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'get_active_banners'
+  ) AS get_active_banners,
+  EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'banners') AS banners_bucket;
+NOTIFY pgrst, 'reload schema';`;
 
-${bannersSql.trim()}
-`;
+/** SQL Editor’a tek parça: tablo, RPC, görünüm, banners kovası. Sonda sonuç satırı gelir. */
+export const ADVERTISEMENTS_SETUP_SQL = oneshotSql.trim();
