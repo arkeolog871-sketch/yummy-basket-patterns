@@ -17,9 +17,12 @@ const addressSchema = z.object({
 export const listAddresses = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const { assertVerifiedEmail } = await import("./otp.server");
+    await assertVerifiedEmail(context.userId);
     const { data, error } = await context.supabase
       .from("addresses")
       .select("*")
+      .eq("user_id", context.userId)
       .order("is_default", { ascending: false })
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
@@ -30,6 +33,8 @@ export const saveAddress = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => addressSchema.parse(input))
   .handler(async ({ data, context }) => {
+    const { assertVerifiedEmail } = await import("./otp.server");
+    await assertVerifiedEmail(context.userId);
     const { supabase, userId } = context;
     const payload = {
       label: data.label,
@@ -82,6 +87,8 @@ export const deleteAddress = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
+    const { assertVerifiedEmail } = await import("./otp.server");
+    await assertVerifiedEmail(context.userId);
     const { data: deleted, error } = await context.supabase
       .from("addresses")
       .delete()

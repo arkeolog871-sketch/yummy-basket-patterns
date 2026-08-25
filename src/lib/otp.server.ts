@@ -1,53 +1,52 @@
-import { createHash, randomInt, timingSafeEqual } from "crypto";
+import { randomInt } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import {
   OTP_CODE_LENGTH,
   OTP_EXPIRED_MESSAGE,
   OTP_INVALID_MESSAGE,
-  OTP_RESEND_COOLDOWN_SECONDS,
-  OTP_TTL_MINUTES,
   OTP_WRONG_MESSAGE,
   EMAIL_SEND_FAILED_MESSAGE,
-  isCompleteOtpCode,
-  normalizeOtpCode,
+  parseExactOtpCode,
   type OtpEmailPurpose,
 } from "@/lib/otp";
+import {
+  CODE_TTL_MINUTES,
+  MAX_FAILED_ATTEMPTS,
+  MAX_SENDS_PER_HOUR,
+  RESEND_COOLDOWN_SECONDS,
+  evaluateCanVerify,
+  evaluateSendLimit,
+  hashEmail,
+  hashOtpCode,
+  inspectGuard,
+  invalidateUndeliveredCode,
+  issuedGuardRow,
+  messageForOtpInspect,
+  nextAfterFailedAttempt,
+  type GuardSnapshot,
+  type OtpInspectResult,
+} from "@/lib/otp-guard";
 
-/** Yeniden gönderim için minimum bekleme (saniye). */
-export const RESEND_COOLDOWN_SECONDS = OTP_RESEND_COOLDOWN_SECONDS;
-/** Saatlik en fazla kod gönderimi. */
-export const MAX_SENDS_PER_HOUR = 5;
-/** Bu sayıda hatalı denemeden sonra mevcut kod geçersiz sayılır. */
-export const MAX_FAILED_ATTEMPTS = 5;
-/** Kodun geçerlilik süresi (dakika). */
-export const CODE_TTL_MINUTES = OTP_TTL_MINUTES;
-export { OTP_CODE_LENGTH, OTP_INVALID_MESSAGE, OTP_WRONG_MESSAGE, OTP_EXPIRED_MESSAGE, EMAIL_SEND_FAILED_MESSAGE };
-
-/** E-posta adresi düz metin saklanmaz; yalnızca tek yönlü özeti tutulur. */
-export function hashEmail(email: string): string {
-  return createHash("sha256").update(email.trim().toLowerCase()).digest("hex");
-}
+export {
+  RESEND_COOLDOWN_SECONDS,
+  MAX_SENDS_PER_HOUR,
+  MAX_FAILED_ATTEMPTS,
+  CODE_TTL_MINUTES,
+  OTP_CODE_LENGTH,
+  OTP_INVALID_MESSAGE,
+  OTP_WRONG_MESSAGE,
+  OTP_EXPIRED_MESSAGE,
+  EMAIL_SEND_FAILED_MESSAGE,
+  hashEmail,
+  messageForOtpInspect,
+};
+export type { OtpInspectResult };
 
 function generateOtpCode(): string {
   return randomInt(0, 10 ** OTP_CODE_LENGTH)
     .toString()
     .padStart(OTP_CODE_LENGTH, "0");
-}
-
-function hashOtpCode(email: string, code: string): string {
-  return createHash("sha256").update(`${hashEmail(email)}:${code}`).digest("hex");
-}
-
-function hashesEqual(left: string, right: string): boolean {
-  try {
-    const a = Buffer.from(left, "hex");
-    const b = Buffer.from(right, "hex");
-    if (a.length === 0 || a.length !== b.length) return false;
-    return timingSafeEqual(a, b);
-  } catch {
-    return false;
-  }
 }
 
 /** Kod e-postası göndermek ve doğrulamak için oturum saklamayan sunucu istemcisi. */
@@ -80,6 +79,32 @@ type GuardRow = {
   expires_at: string | null;
 };
 
+function toSnapshot(row: GuardRow): GuardSnapshot {
+  return {
+    lastSentAtMs: row.last_sent_at ? new Date(row.last_sent_at).getTime() : null,
+    windowStartedAtMs: new Date(row.window_started_at).getTime(),
+    sendsInWindow: row.sends_in_window,
+    failedAttempts: row.failed_attempts,
+    lockedUntilMs: row.locked_until ? new Date(row.locked_until).getTime() : null,
+    codeHash: row.code_hash,
+    expiresAtMs: row.expires_at ? new Date(row.expires_at).getTime() : null,
+  };
+}
+
+function toRow(emailHash: string, snapshot: GuardSnapshot, nowIso: string): GuardRow & { updated_at: string } {
+  return {
+    email_hash: emailHash,
+    last_sent_at: snapshot.lastSentAtMs != null ? new Date(snapshot.lastSentAtMs).toISOString() : null,
+    window_started_at: new Date(snapshot.windowStartedAtMs).toISOString(),
+    sends_in_window: snapshot.sendsInWindow,
+    failed_attempts: snapshot.failedAttempts,
+    locked_until: snapshot.lockedUntilMs != null ? new Date(snapshot.lockedUntilMs).toISOString() : null,
+    code_hash: snapshot.codeHash,
+    expires_at: snapshot.expiresAtMs != null ? new Date(snapshot.expiresAtMs).toISOString() : null,
+    updated_at: nowIso,
+  };
+}
+
 async function loadGuard(emailHash: string): Promise<GuardRow | null> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data, error } = await supabaseAdmin
@@ -93,6 +118,14 @@ async function loadGuard(emailHash: string): Promise<GuardRow | null> {
   return (data as GuardRow | null) ?? null;
 }
 
+async function saveGuard(emailHash: string, snapshot: GuardSnapshot): Promise<void> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { error } = await supabaseAdmin.from("email_otp_guard").upsert(toRow(emailHash, snapshot, new Date().toISOString()), {
+    onConflict: "email_hash",
+  });
+  if (error) throw new Error(error.message);
+}
+
 /** Gönderim limitlerini denetler; uygunsa 6 haneli kodu üretir ve özetini kaydeder. */
 export async function issueSixDigitCode(
   email: string,
@@ -100,42 +133,12 @@ export async function issueSixDigitCode(
   const emailHash = hashEmail(email);
   const now = Date.now();
   const row = await loadGuard(emailHash);
-
-  if (row?.last_sent_at) {
-    const elapsed = (now - new Date(row.last_sent_at).getTime()) / 1000;
-    if (elapsed < RESEND_COOLDOWN_SECONDS) {
-      const wait = Math.ceil(RESEND_COOLDOWN_SECONDS - elapsed);
-      return { ok: false, error: `Yeni kod için ${wait} saniye bekleyin.`, retryAfterSeconds: wait };
-    }
-  }
-
-  const windowStart = row ? new Date(row.window_started_at).getTime() : now;
-  const windowExpired = now - windowStart >= 60 * 60 * 1000;
-  const sends = windowExpired ? 0 : (row?.sends_in_window ?? 0);
-  if (sends >= MAX_SENDS_PER_HOUR) {
-    return {
-      ok: false,
-      error: "Saatlik kod gönderim sınırına ulaşıldı. Lütfen bir saat sonra tekrar deneyin.",
-    };
-  }
+  const snapshot = row ? toSnapshot(row) : null;
+  const limit = evaluateSendLimit(snapshot, now);
+  if (!limit.ok) return limit;
 
   const code = generateOtpCode();
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { error } = await supabaseAdmin.from("email_otp_guard").upsert(
-    {
-      email_hash: emailHash,
-      last_sent_at: new Date(now).toISOString(),
-      window_started_at: new Date(windowExpired || !row ? now : windowStart).toISOString(),
-      sends_in_window: sends + 1,
-      failed_attempts: 0,
-      locked_until: null,
-      code_hash: hashOtpCode(email, code),
-      expires_at: new Date(now + CODE_TTL_MINUTES * 60 * 1000).toISOString(),
-      updated_at: new Date(now).toISOString(),
-    },
-    { onConflict: "email_hash" },
-  );
-  if (error) throw new Error(error.message);
+  await saveGuard(emailHash, issuedGuardRow(snapshot, now, hashOtpCode(email, code)));
   return { ok: true, code };
 }
 
@@ -164,6 +167,10 @@ export async function sendSixDigitOtp(
       purpose,
       message: sent.error,
     });
+    const row = await loadGuard(hashEmail(email));
+    if (row) {
+      await saveGuard(hashEmail(email), invalidateUndeliveredCode(toSnapshot(row)));
+    }
     return { ok: false, error: EMAIL_SEND_FAILED_MESSAGE };
   }
   return { ok: true };
@@ -174,27 +181,7 @@ export async function assertCanVerify(
   email: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const row = await loadGuard(hashEmail(email));
-  if (!row) return { ok: true };
-  const locked = row.locked_until ? new Date(row.locked_until).getTime() > Date.now() : false;
-  if (locked || row.failed_attempts >= MAX_FAILED_ATTEMPTS) {
-    return {
-      ok: false,
-      error: "Çok fazla hatalı deneme yaptınız. Mevcut kod geçersiz — yeni kod isteyin.",
-    };
-  }
-  if (isGuardExpired(row)) {
-    return { ok: false, error: OTP_EXPIRED_MESSAGE };
-  }
-  return { ok: true };
-}
-
-function isGuardExpired(row: GuardRow): boolean {
-  if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) return true;
-  if (!row.expires_at && row.last_sent_at) {
-    const ageMinutes = (Date.now() - new Date(row.last_sent_at).getTime()) / 60000;
-    if (ageMinutes > CODE_TTL_MINUTES) return true;
-  }
-  return false;
+  return evaluateCanVerify(row ? toSnapshot(row) : null, Date.now());
 }
 
 /** Saklanan özet ve TTL ile kodu doğrular. */
@@ -202,48 +189,55 @@ export async function matchIssuedOtp(email: string, rawCode: unknown): Promise<b
   return (await inspectIssuedOtp(email, rawCode)) === "match";
 }
 
-export type OtpInspectResult = "match" | "expired" | "mismatch" | "missing";
-
 /** Yanlış kod ile süresi dolmuş kodu ayırır; düz metin kod loglanmaz. */
 export async function inspectIssuedOtp(email: string, rawCode: unknown): Promise<OtpInspectResult> {
-  const token = normalizeOtpCode(rawCode);
-  if (!isCompleteOtpCode(token)) return "mismatch";
+  const token = parseExactOtpCode(rawCode);
+  if (!token) return "mismatch";
   const row = await loadGuard(hashEmail(email));
-  if (!row?.code_hash) return "missing";
-  if (isGuardExpired(row)) return "expired";
-  return hashesEqual(row.code_hash, hashOtpCode(email, token)) ? "match" : "mismatch";
+  return inspectGuard(row ? toSnapshot(row) : null, token, hashOtpCode(email, token), Date.now());
 }
 
-export function messageForOtpInspect(result: OtpInspectResult): string {
-  if (result === "expired") return OTP_EXPIRED_MESSAGE;
-  if (result === "match") return "";
-  if (result === "missing") return OTP_EXPIRED_MESSAGE;
-  return OTP_WRONG_MESSAGE;
+/**
+ * Doğru kodu tek kullanımlık tüketir. Eşzamanlı tekrar kullanım 0 satır günceller.
+ * Süre dolumu ve hash karşılaştırması satır kilidiyle birlikte yapılır.
+ */
+export async function consumeIssuedOtp(email: string, rawCode: unknown): Promise<OtpInspectResult> {
+  const token = parseExactOtpCode(rawCode);
+  if (!token) return "mismatch";
+  const emailHash = hashEmail(email);
+  const expectedHash = hashOtpCode(email, token);
+  const row = await loadGuard(emailHash);
+  const inspected = inspectGuard(row ? toSnapshot(row) : null, token, expectedHash, Date.now());
+  if (inspected !== "match" || !row) return inspected;
+
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const nowIso = new Date().toISOString();
+  const { data, error } = await supabaseAdmin
+    .from("email_otp_guard")
+    .update({
+      code_hash: null,
+      expires_at: null,
+      failed_attempts: 0,
+      locked_until: null,
+      updated_at: nowIso,
+    })
+    .eq("email_hash", emailHash)
+    .eq("code_hash", expectedHash)
+    .gt("expires_at", nowIso)
+    .select("email_hash")
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return "missing";
+  return "match";
 }
 
 /** Hatalı denemeyi sayar; sınır aşılırsa mevcut kodu geçersiz kılar. */
 export async function registerFailedAttempt(email: string): Promise<number> {
   const emailHash = hashEmail(email);
   const row = await loadGuard(emailHash);
-  const attempts = (row?.failed_attempts ?? 0) + 1;
-  const locked = attempts >= MAX_FAILED_ATTEMPTS;
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { error } = await supabaseAdmin.from("email_otp_guard").upsert(
-    {
-      email_hash: emailHash,
-      window_started_at: row?.window_started_at ?? new Date().toISOString(),
-      sends_in_window: row?.sends_in_window ?? 0,
-      last_sent_at: row?.last_sent_at ?? null,
-      failed_attempts: attempts,
-      locked_until: locked ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null,
-      code_hash: locked ? null : (row?.code_hash ?? null),
-      expires_at: locked ? null : (row?.expires_at ?? null),
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "email_hash" },
-  );
-  if (error) throw new Error(error.message);
-  return attempts;
+  const next = nextAfterFailedAttempt(row ? toSnapshot(row) : null, Date.now());
+  await saveGuard(emailHash, next);
+  return next.failedAttempts;
 }
 
 /** Başarılı doğrulamada sayaçları temizler. */

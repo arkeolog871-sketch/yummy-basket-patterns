@@ -1,25 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { OTP_INVALID_MESSAGE, isCompleteOtpCode, normalizeOtpCode } from "@/lib/otp";
-
-const sendSchema = z.object({
-  email: z.string().trim().email("Geçerli bir e-posta adresi girin").max(255),
-  allowSignUp: z.boolean().optional(),
-  purpose: z.enum(["login", "signup"]).optional(),
-});
-
-const verifySchema = z.object({
-  email: z.string().trim().email("Geçerli bir e-posta adresi girin").max(255),
-  code: z.union([z.string(), z.number()]),
-  termsAccepted: z.boolean().optional().default(false),
-});
+import { OTP_INVALID_MESSAGE, OTP_LENGTH_MESSAGE, parseExactOtpCode } from "@/lib/otp";
+import { registerSchema, sendOtpSchema, verifyOtpSchema } from "@/lib/otp-schemas";
 
 /**
  * E-posta adresine 6 haneli sayısal doğrulama kodu gönderir.
  * Kod sunucuda üretilip özetlenerek saklanır; istemciye veya cevaba yazılmaz.
  */
 export const sendEmailVerificationCode = createServerFn({ method: "POST" })
-  .validator((input: unknown) => sendSchema.parse(input))
+  .validator((input: unknown) => sendOtpSchema.parse(input))
   .handler(async ({ data }) => {
     const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
     enforceSensitiveRateLimit("otp-send", 8, 10 * 60 * 1000);
@@ -45,7 +33,7 @@ export const sendEmailVerificationCode = createServerFn({ method: "POST" })
  * Kod yanlışsa hesap doğrulanmaz; 5 hatalı denemede mevcut kod geçersiz olur.
  */
 export const verifyEmailVerificationCode = createServerFn({ method: "POST" })
-  .validator((input: unknown) => verifySchema.parse(input))
+  .validator((input: unknown) => verifyOtpSchema.parse(input))
   .handler(async ({ data }) => {
     const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
     enforceSensitiveRateLimit("otp-verify", 12, 10 * 60 * 1000);
@@ -54,7 +42,7 @@ export const verifyEmailVerificationCode = createServerFn({ method: "POST" })
       assertCanVerify,
       registerFailedAttempt,
       clearGuard,
-      inspectIssuedOtp,
+      consumeIssuedOtp,
       messageForOtpInspect,
       createVerifiedSession,
       recordTermsAcceptance,
@@ -65,15 +53,15 @@ export const verifyEmailVerificationCode = createServerFn({ method: "POST" })
       return { ok: false as const, error: TERMS_ACCEPTANCE_REQUIRED };
     }
 
-    const token = normalizeOtpCode(data.code);
-    if (!isCompleteOtpCode(token)) {
-      return { ok: false as const, error: "Doğrulama kodu 6 haneli olmalıdır." };
+    const token = parseExactOtpCode(data.code);
+    if (!token) {
+      return { ok: false as const, error: OTP_LENGTH_MESSAGE };
     }
 
     const allowed = await assertCanVerify(data.email);
     if (!allowed.ok) return { ok: false as const, error: allowed.error };
 
-    const inspected = await inspectIssuedOtp(data.email, token);
+    const inspected = await consumeIssuedOtp(data.email, token);
     if (inspected !== "match") {
       if (inspected === "mismatch") {
         const attempts = await registerFailedAttempt(data.email);
@@ -104,13 +92,6 @@ export const verifyEmailVerificationCode = createServerFn({ method: "POST" })
       userId: session.userId,
     };
   });
-
-const registerSchema = z.object({
-  email: z.string().trim().email("Geçerli bir e-posta adresi girin").max(255),
-  password: z.string().min(6, "Şifre en az 6 karakter olmalı").max(72),
-  fullName: z.string().trim().min(2, "Ad soyad girin").max(120),
-  phone: z.string().trim().min(10, "Telefon numarası en az 10 haneli olmalı").max(20),
-});
 
 /**
  * Kayıt: hesap doğrulanmamış olarak oluşturulur ve TEK doğrulama akışı olan

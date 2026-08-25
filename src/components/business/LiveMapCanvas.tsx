@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMapsBrowserConfig } from "@/lib/maps.functions";
 import { isAndroidWebView } from "@/lib/maps";
+import { escapeHtml } from "@/lib/escape-html";
 import type { GoogleInfoWindow, GoogleMap, GoogleMarker } from "@/lib/google-maps-types";
 
 export type LiveMapMarker = {
@@ -33,15 +34,6 @@ function isLovableDomain() {
   if (typeof window === "undefined") return false;
   const host = window.location.hostname;
   return host.endsWith(".lovable.app") || host.endsWith(".lovableproject.com");
-}
-
-function escapeHtml(text: string) {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
 }
 
 function markerPopup(marker: LiveMapMarker) {

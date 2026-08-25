@@ -72,6 +72,7 @@ function AuthPage() {
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [pendingVerification, setPendingVerification] = useState<string | null>(null);
+  const [pendingCodeSent, setPendingCodeSent] = useState(false);
   const [googleCompleting, setGoogleCompleting] = useState(() =>
     typeof window === "undefined" ? false : isGoogleOAuthCallbackParams(),
   );
@@ -103,6 +104,11 @@ function AuthPage() {
 
   useEffect(() => {
     if (!user || access.loading) return;
+    if (!user.email_confirmed_at) {
+      setPendingVerification(user.email ?? null);
+      setPendingCodeSent(false);
+      return;
+    }
     if (access.isFounder) {
       navigate({ to: "/kurucu", replace: true });
       return;
@@ -130,10 +136,18 @@ function AuthPage() {
         });
         if (!result.ok) throw new Error(result.error);
         setPendingVerification(email.trim());
+        setPendingCodeSent(true);
         toast.success("Kayıt alındı. E-postanıza gönderilen 6 haneli kodu girin.");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        if (!data.user?.email_confirmed_at) {
+          await supabase.auth.signOut();
+          setPendingVerification(email.trim());
+          setPendingCodeSent(false);
+          toast.message("E-posta adresiniz henüz doğrulanmadı. 6 haneli kodu girin veya yeni kod isteyin.");
+          return;
+        }
         toast.success("Hoş geldiniz!");
       }
     } catch (error) {
@@ -241,7 +255,7 @@ function AuthPage() {
             idPrefix="signup-otp"
             allowSignUp={false}
             initialEmail={pendingVerification}
-            startAtCode
+            startAtCode={pendingCodeSent}
             onVerified={() => {
               setPendingVerification(null);
               toast.success("E-postanız doğrulandı, hoş geldiniz!");
