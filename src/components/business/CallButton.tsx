@@ -17,7 +17,7 @@ export function CallButton({
   const display = formatPhoneDisplay(phone);
 
   return (
-    <Button asChild className={cn("rounded-full shadow-glow", className)}>
+    <Button asChild size="lg" className={cn("rounded-full shadow-glow", className)}>
       <a href={href} aria-label={`${businessName} işletmesini ara: ${display}`}>
         <Phone className="size-4" />
         Ara
