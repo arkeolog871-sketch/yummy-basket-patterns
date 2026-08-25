@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.SslErrorHandler;
@@ -19,7 +20,9 @@ import android.webkit.WebViewClient;
 public class MainActivity extends Activity {
     private static final String APP_URL = "https://uygulamamcebimde.online/";
     private static final String APP_HOST = "uygulamamcebimde.online";
+    private static final int FILE_CHOOSER_REQUEST = 1001;
     private WebView webView;
+    private ValueCallback<Uri[]> fileChooserCallback;
 
     @Override
     @SuppressLint("SetJavaScriptEnabled")
