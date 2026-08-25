@@ -145,6 +145,10 @@ export function EmailCodeLogin({
           name="email"
           type="email"
           autoComplete="email"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          inputMode="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           disabled={sent}

@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "security:test": "node scripts/security-smoke.mjs"
+    "security:test": "node scripts/security-smoke.mjs",
+    "ios:prepare": "node scripts/prepare-ios-pwa.mjs",
+    "build:ios": "node scripts/prepare-ios-pwa.mjs && vite build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

@@ -8,7 +8,7 @@ export function Footer() {
   const { settings } = useSiteSettings();
   const areaText = areas.length > 0 ? areas.map(areaLabel).join(" · ") : "Bölgeler yakında";
   return (
-    <footer className="mt-20 border-t border-border/70 bg-secondary/60">
+    <footer className="mt-20 border-t border-border/70 bg-secondary/60 pb-[env(safe-area-inset-bottom)]">
       <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-12 sm:grid-cols-3">
         <div>
           <p className="font-display text-lg font-semibold">{settings.brand_name}</p>

@@ -166,11 +166,11 @@ function AuthPage() {
       ) : null}
 
       {vendorPortal ? (
-        <div className="mt-8 rounded-3xl border border-border/70 bg-card p-6 shadow-card">
+        <div className="mt-8 rounded-3xl border border-border/70 bg-card p-4 shadow-card sm:p-6">
           <VendorPhoneLogin />
         </div>
       ) : pendingVerification ? (
-        <div className="mt-6 space-y-4 rounded-3xl border border-border/70 bg-card p-6 shadow-card">
+        <div className="mt-6 space-y-4 rounded-3xl border border-border/70 bg-card p-4 shadow-card sm:p-6">
           <p className="text-sm text-muted-foreground">
             Hesabınız oluşturuldu ancak <strong>e-posta doğrulanmadı</strong>. {pendingVerification}{" "}
             adresine gönderilen 6 haneli kodu girerek hesabınızı aktif edin.
@@ -187,7 +187,7 @@ function AuthPage() {
           />
         </div>
       ) : mode === "signin" && method === "code" ? (
-        <div className="mt-6 rounded-3xl border border-border/70 bg-card p-6 shadow-card">
+        <div className="mt-6 rounded-3xl border border-border/70 bg-card p-4 shadow-card sm:p-6">
           <EmailCodeLogin
             idPrefix="user-otp"
             initialEmail={email}
@@ -199,7 +199,7 @@ function AuthPage() {
       ) : (
         <form
           onSubmit={(event) => void handleSubmit(event)}
-          className="mt-8 space-y-4 rounded-3xl border border-border/70 bg-card p-6 shadow-card"
+          className="mt-8 space-y-4 rounded-3xl border border-border/70 bg-card p-4 shadow-card sm:p-6"
         >
           {mode === "signup" ? (
             <div className="space-y-2">

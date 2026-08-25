@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { AdMedia } from "@/components/home/AdMedia";
 import { openExternalUrl } from "@/lib/maps";
+import { openTelHref, toTelHref } from "@/lib/phone";
 
 function activateBanner(banner: PublicBanner, navigate: ReturnType<typeof useNavigate>) {
   trackBanner(banner.id, "click");
@@ -18,7 +19,8 @@ function activateBanner(banner: PublicBanner, navigate: ReturnType<typeof useNav
   if (!value) return;
   try {
     if (banner.action_type === "phone") {
-      window.location.href = `tel:${value}`;
+      const href = toTelHref(value) ?? (value.startsWith("tel:") ? value : `tel:${value}`);
+      if (href) openTelHref(href);
       return;
     }
     if (banner.action_type === "external_link") {
