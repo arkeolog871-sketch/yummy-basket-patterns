@@ -12,6 +12,7 @@ import { cleanMapStyle } from "@/lib/mapStyle";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMapsBrowserConfig } from "@/lib/maps.functions";
+import { isAndroidWebView } from "@/lib/maps";
 import type { GoogleInfoWindow, GoogleMap, GoogleMarker } from "@/lib/google-maps-types";
 
 export type LiveMapMarker = {
@@ -32,13 +33,6 @@ function isLovableDomain() {
   if (typeof window === "undefined") return false;
   const host = window.location.hostname;
   return host.endsWith(".lovable.app") || host.endsWith(".lovableproject.com");
-}
-
-/** Android WebView (uygulama APK). Google Maps JS burada genelde hatasız boş kalır. */
-function isAndroidWebView() {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent;
-  return /Android/i.test(ua) && (/; wv\)/i.test(ua) || /Version\/4\.0/i.test(ua));
 }
 
 function escapeHtml(text: string) {
