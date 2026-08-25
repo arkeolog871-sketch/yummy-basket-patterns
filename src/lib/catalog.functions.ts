@@ -70,15 +70,32 @@ export const getRestaurantBySlug = createServerFn({ method: "GET" })
     const { createPublicClient } = await import("./catalog.server");
     const supabase = createPublicClient();
 
-    const { data: restaurant, error } = await supabase
+    const detailColumns =
+      "id, slug, name, tagline, category, sector, cuisines, rating, review_count, delivery_fee, delivery_minutes, min_order, cover_image_url, is_active, address, district, city, latitude, longitude, maps_url, opens_at, closes_at, is_open_manual, created_at, updated_at";
+    const withPhone = `${detailColumns}, contact_phone`;
+
+    let { data: restaurant, error } = await supabase
       .from("restaurants")
-      .select(
-        "id, slug, name, tagline, category, sector, cuisines, rating, review_count, delivery_fee, delivery_minutes, min_order, cover_image_url, is_active, address, district, city, latitude, longitude, maps_url, opens_at, closes_at, is_open_manual, created_at, updated_at",
-      )
+      .select(withPhone)
       .eq("slug", data.slug)
       .eq("is_active", true)
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) {
+      const permissionDenied =
+        error.code === "42501" ||
+        /contact_phone|permission denied|42501/i.test(error.message);
+      if (!permissionDenied) throw new Error(error.message);
+      const fallback = await supabase
+        .from("restaurants")
+        .select(detailColumns)
+        .eq("slug", data.slug)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (fallback.error) throw new Error(fallback.error.message);
+      restaurant = fallback.data
+        ? { ...fallback.data, contact_phone: null }
+        : null;
+    }
     if (!restaurant) return null;
 
     const [{ data: categories }, { data: items }] = await Promise.all([

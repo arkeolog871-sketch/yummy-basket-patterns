@@ -4,6 +4,7 @@ import { Star, Clock, Bike, Plus, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { restaurantDetailQuery } from "@/lib/catalog.queries";
 import { LocationButton } from "@/components/business/LocationButton";
+import { CallButton } from "@/components/business/CallButton";
 import { BusinessMap } from "@/components/business/BusinessMap";
 import { useCart } from "@/hooks/useCart";
 import { formatPrice } from "@/lib/format";
@@ -165,6 +166,11 @@ function RestaurantDetail() {
             {open ? "Şu An Açık" : "Şu An Kapalı"}
           </span>
           <LocationButton business={restaurant} className="text-muted-foreground" />
+          <CallButton
+            phone={restaurant.contact_phone}
+            businessName={restaurant.name}
+            className="w-full sm:w-auto"
+          />
         </div>
 
         {open ? null : (
