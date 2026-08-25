@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.SslErrorHandler;
@@ -19,7 +20,9 @@ import android.webkit.WebViewClient;
 public class MainActivity extends Activity {
     private static final String APP_URL = "https://uygulamamcebimde.online/";
     private static final String APP_HOST = "uygulamamcebimde.online";
+    private static final int FILE_CHOOSER_REQUEST = 1001;
     private WebView webView;
+    private ValueCallback<Uri[]> fileChooserCallback;
 
     @Override
     @SuppressLint("SetJavaScriptEnabled")
@@ -92,6 +95,46 @@ public class MainActivity extends Activity {
                 boolean allowed = "https".equals(uri.getScheme()) && APP_HOST.equals(uri.getHost());
                 callback.invoke(origin, allowed, false);
             }
+
+            @Override
+            public boolean onShowFileChooser(
+                    WebView view,
+                    ValueCallback<Uri[]> filePathCallback,
+                    FileChooserParams params
+            ) {
+                if (fileChooserCallback != null) {
+                    fileChooserCallback.onReceiveValue(null);
+                }
+                fileChooserCallback = filePathCallback;
+
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("*/*");
+                String[] acceptTypes = params.getAcceptTypes();
+                if (acceptTypes != null && acceptTypes.length > 0 && !acceptTypes[0].isEmpty()) {
+                    intent.setType(acceptTypes[0]);
+                    if (acceptTypes.length > 1) {
+                        intent.putExtra(Intent.EXTRA_MIME_TYPES, acceptTypes);
+                    }
+                } else {
+                    intent.setType("image/*");
+                }
+                intent.putExtra(
+                        Intent.EXTRA_ALLOW_MULTIPLE,
+                        params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE
+                );
+
+                try {
+                    startActivityForResult(
+                            Intent.createChooser(intent, "Dosya seç"),
+                            FILE_CHOOSER_REQUEST
+                    );
+                } catch (Exception ignored) {
+                    fileChooserCallback = null;
+                    return false;
+                }
+                return true;
+            }
         });
 
         if (savedInstanceState == null) {
@@ -99,6 +142,31 @@ public class MainActivity extends Activity {
         } else {
             webView.restoreState(savedInstanceState);
         }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode != FILE_CHOOSER_REQUEST) {
+            super.onActivityResult(requestCode, resultCode, data);
+            return;
+        }
+        if (fileChooserCallback == null) {
+            return;
+        }
+        Uri[] results = null;
+        if (resultCode == RESULT_OK && data != null) {
+            if (data.getClipData() != null) {
+                int count = data.getClipData().getItemCount();
+                results = new Uri[count];
+                for (int i = 0; i < count; i++) {
+                    results[i] = data.getClipData().getItemAt(i).getUri();
+                }
+            } else if (data.getData() != null) {
+                results = new Uri[] { data.getData() };
+            }
+        }
+        fileChooserCallback.onReceiveValue(results);
+        fileChooserCallback = null;
     }
 
     @Override
