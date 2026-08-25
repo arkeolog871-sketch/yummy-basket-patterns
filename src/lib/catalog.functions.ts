@@ -93,8 +93,24 @@ export const getRestaurantBySlug = createServerFn({ method: "GET" })
         .maybeSingle();
       if (fallback.error) throw new Error(fallback.error.message);
       restaurant = fallback.data
-        ? { ...fallback.data, contact_phone: null }
+        ? { ...fallback.data, contact_phone: null as string | null }
         : null;
+      if (restaurant) {
+        try {
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const { data: phoneRow } = await supabaseAdmin
+            .from("restaurants")
+            .select("contact_phone")
+            .eq("id", restaurant.id)
+            .maybeSingle();
+          restaurant = {
+            ...restaurant,
+            contact_phone: phoneRow?.contact_phone ?? null,
+          };
+        } catch {
+          // Servis anahtarı yoksa kart gizlenir; sabit numara yazılmaz.
+        }
+      }
     }
     if (!restaurant) return null;
 

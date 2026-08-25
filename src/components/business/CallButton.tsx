@@ -1,12 +1,7 @@
 import { Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatPhoneDisplay, resolveBusinessPhone, toTelHref } from "@/lib/phone";
+import { formatPhoneDisplay, toTelNumber } from "@/lib/phone";
 import { cn } from "@/lib/utils";
-
-function startCall(href: string, event?: { preventDefault: () => void }) {
-  event?.preventDefault();
-  window.open(href, "_self");
-}
 
 export function CallButton({
   phone,
@@ -17,10 +12,9 @@ export function CallButton({
   businessName: string;
   className?: string;
 }) {
-  const number = resolveBusinessPhone(phone);
-  const href = toTelHref(number);
-  if (!href) return null;
-  const display = formatPhoneDisplay(number);
+  const telefonNumarasi = toTelNumber(phone);
+  if (!telefonNumarasi || !phone) return null;
+  const display = formatPhoneDisplay(phone);
 
   return (
     <div
@@ -30,8 +24,7 @@ export function CallButton({
       )}
     >
       <a
-        href={href}
-        onClick={(event) => startCall(href, event)}
+        href={`tel:${telefonNumarasi}`}
         className="min-w-0 text-foreground no-underline"
         aria-label={`${businessName} numarasını ara: ${display}`}
       >
@@ -43,13 +36,9 @@ export function CallButton({
         </p>
       </a>
       <Button asChild size="lg" className="h-12 shrink-0 rounded-full px-6 text-base shadow-glow">
-        <a
-          href={href}
-          onClick={(event) => startCall(href, event)}
-          aria-label={`${businessName} işletmesini ara`}
-        >
+        <a href={`tel:${telefonNumarasi}`} aria-label={`${businessName} işletmesini ara`}>
           <Phone className="size-5" />
-          İşletmeyi Ara
+          Ara
         </a>
       </Button>
     </div>
