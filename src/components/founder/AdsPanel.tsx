@@ -31,8 +31,6 @@ import {
   adImageTypeRejectedMessage,
   adStorageUploadErrorMessage,
   AD_MEDIA_ACCEPT,
-  BANNERS_BUCKET,
-  contentTypeForBrandPath,
   extensionForAdMediaFile,
   isAdMediaFile,
   MAX_AD_IMAGE_MB,
@@ -194,17 +192,31 @@ export function AdsPanel() {
     setLocalPreview(blobUrl);
     setUploading(true);
     try {
-      const path = `ads/${crypto.randomUUID()}.${extension}`;
-      const contentType = file.type || contentTypeForBrandPath(path);
-      const { error } = await supabase.storage.from(BANNERS_BUCKET).upload(path, file, {
-        cacheControl: "3600",
-        upsert: false,
-        contentType,
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Oturum bulunamadı. Kurucu girişi yapın.");
+      const form = new FormData();
+      form.append("file", file, file.name || `reklam.${extension}`);
+      const response = await fetch("/api/v1/banners", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+        body: form,
       });
-      if (error) throw new Error(error.message);
-      const published = supabase.storage.from(BANNERS_BUCKET).getPublicUrl(path);
-      const url = published.data.publicUrl;
-      if (!url) throw new Error("Görsel adresi alınamadı");
+      const payload: unknown = await response.json().catch(() => null);
+      const url =
+        payload && typeof payload === "object" && typeof (payload as Record<string, unknown>)["url"] === "string"
+          ? String((payload as Record<string, unknown>)["url"])
+          : "";
+      const errText =
+        payload && typeof payload === "object" && typeof (payload as Record<string, unknown>)["error"] === "string"
+          ? String((payload as Record<string, unknown>)["error"])
+          : "";
+      if (!response.ok || !url) {
+        throw new Error(errText || `Yükleme başarısız (${response.status})`);
+      }
       setDraft((prev) => ({ ...prev, image_url: url }));
       clearLocalPreview();
       toast.success("Dosya banners kovasına yüklendi");
