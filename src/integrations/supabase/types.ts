@@ -713,6 +713,7 @@ export type Database = {
           primary_color: string
           secondary_color: string
           theme_mode: string
+          typography: Json
           updated_at: string
         }
         Insert: {
@@ -732,6 +733,7 @@ export type Database = {
           primary_color?: string
           secondary_color?: string
           theme_mode?: string
+          typography?: Json
           updated_at?: string
         }
         Update: {
@@ -751,6 +753,7 @@ export type Database = {
           primary_color?: string
           secondary_color?: string
           theme_mode?: string
+          typography?: Json
           updated_at?: string
         }
         Relationships: []
@@ -810,7 +813,39 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_banners: {
+        Row: {
+          action_type:
+            | Database["public"]["Enums"]["advertisement_action_type"]
+            | null
+          action_value: string | null
+          display_order: number | null
+          id: string | null
+          image_url: string | null
+          title: string | null
+        }
+        Insert: {
+          action_type?:
+            | Database["public"]["Enums"]["advertisement_action_type"]
+            | null
+          action_value?: string | null
+          display_order?: number | null
+          id?: string | null
+          image_url?: string | null
+          title?: string | null
+        }
+        Update: {
+          action_type?:
+            | Database["public"]["Enums"]["advertisement_action_type"]
+            | null
+          action_value?: string | null
+          display_order?: number | null
+          id?: string | null
+          image_url?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       expire_stale_advertisements: { Args: never; Returns: number }
