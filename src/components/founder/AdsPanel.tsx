@@ -37,7 +37,8 @@ import {
   MAX_AD_IMAGE_MB,
   MAX_AD_MEDIA_BYTES,
 } from "@/lib/upload-limits";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -275,7 +276,6 @@ export function AdsPanel() {
           <Button
             type="button"
             className="rounded-full"
-            disabled={items.length >= MAX_ADVERTISEMENTS}
             onClick={() => {
               clearLocalPreview();
               setDraft(emptyAdvertisementDraft());
@@ -426,7 +426,13 @@ export function AdsPanel() {
             uploading={uploading}
             fileRef={fileRef}
             onUpload={onUpload}
-            onSubmit={() => saveMutation.mutate(draft)}
+            onSubmit={() => {
+              if (!draft.title.trim() || !draft.image_url) {
+                toast.error("Başlık ve galeriden bir görsel/video seçin");
+                return;
+              }
+              saveMutation.mutate(draft);
+            }}
             pending={saveMutation.isPending}
           />
         </DialogContent>
@@ -502,25 +508,32 @@ function AdForm({
           <div className="h-16 w-28 overflow-hidden rounded-xl border bg-muted">
             {previewSrc ? <AdMedia src={previewSrc} className="size-full object-cover" active /> : null}
           </div>
-          <div className="relative inline-flex overflow-hidden rounded-full">
-            <Button type="button" variant="outline" className="pointer-events-none rounded-full" disabled={uploading} tabIndex={-1}>
-              <ImageUp className="size-4" />
-              {uploading ? "Yükleniyor…" : "Galeriden seç"}
-            </Button>
+          <label
+            htmlFor="ad-media-file"
+            className={cn(
+              buttonVariants({ variant: "outline" }),
+              "relative cursor-pointer overflow-hidden rounded-full",
+              uploading && "pointer-events-none opacity-60",
+            )}
+          >
             <input
               ref={fileRef}
               id="ad-media-file"
               type="file"
               accept={AD_MEDIA_ACCEPT}
-              disabled={uploading}
-              className="absolute inset-0 z-10 cursor-pointer opacity-0"
+              className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+              style={{ fontSize: 16 }}
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 event.target.value = "";
                 if (file) onUpload(file);
               }}
             />
-          </div>
+            <span className="pointer-events-none inline-flex items-center gap-2">
+              <ImageUp className="size-4" />
+              {uploading ? "Yükleniyor…" : "Galeriden seç"}
+            </span>
+          </label>
         </div>
         <Input
           className="mt-2"
@@ -603,7 +616,7 @@ function AdForm({
           <Switch checked={draft.is_active} onCheckedChange={(is_active) => patch({ is_active })} />
         </div>
       </div>
-      <Button type="submit" className="w-full rounded-full" disabled={pending || !draft.image_url || !draft.title}>
+      <Button type="submit" className="w-full rounded-full" disabled={pending}>
         {pending ? "Kaydediliyor…" : "Kaydet"}
       </Button>
     </form>
