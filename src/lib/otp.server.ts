@@ -8,8 +8,8 @@ import {
   OTP_TTL_MINUTES,
   isCompleteOtpCode,
   normalizeOtpCode,
+  type OtpEmailPurpose,
 } from "@/lib/otp";
-import type { OtpEmailPurpose } from "@/lib/otp";
 
 /** Yeniden gönderim için minimum bekleme (saniye). */
 export const RESEND_COOLDOWN_SECONDS = OTP_RESEND_COOLDOWN_SECONDS;

@@ -22,6 +22,10 @@ export function OtpCodeInput({ id, value, disabled, autoFocus, onChange, onCompl
       pattern={REGEXP_ONLY_DIGITS}
       inputMode="numeric"
       autoComplete="one-time-code"
+      autoCapitalize="none"
+      autoCorrect="off"
+      spellCheck={false}
+      aria-label="6 haneli e-posta doğrulama kodu"
       autoFocus={autoFocus}
       disabled={disabled}
       value={value}
