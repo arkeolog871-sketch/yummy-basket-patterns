@@ -54,11 +54,11 @@ export const verifyEmailVerificationCode = createServerFn({ method: "POST" })
       assertCanVerify,
       registerFailedAttempt,
       clearGuard,
-      matchIssuedOtp,
+      inspectIssuedOtp,
+      messageForOtpInspect,
       createVerifiedSession,
       recordTermsAcceptance,
       MAX_FAILED_ATTEMPTS,
-      OTP_INVALID_MESSAGE: invalidMessage,
     } = await import("./otp.server");
 
     if (data.termsAccepted !== true) {
@@ -73,14 +73,20 @@ export const verifyEmailVerificationCode = createServerFn({ method: "POST" })
     const allowed = await assertCanVerify(data.email);
     if (!allowed.ok) return { ok: false as const, error: allowed.error };
 
-    const matched = await matchIssuedOtp(data.email, token);
-    if (!matched) {
-      const attempts = await registerFailedAttempt(data.email);
-      const remaining = Math.max(0, MAX_FAILED_ATTEMPTS - attempts);
-      return {
-        ok: false as const,
-        error: remaining > 0 ? invalidMessage : "Doğrulama kodu hatalı. Mevcut kod geçersiz kıldı — yeni kod isteyin.",
-      };
+    const inspected = await inspectIssuedOtp(data.email, token);
+    if (inspected !== "match") {
+      if (inspected === "mismatch") {
+        const attempts = await registerFailedAttempt(data.email);
+        const remaining = Math.max(0, MAX_FAILED_ATTEMPTS - attempts);
+        return {
+          ok: false as const,
+          error:
+            remaining > 0
+              ? messageForOtpInspect(inspected)
+              : "Doğrulama kodu hatalı. Mevcut kod geçersiz kıldı — yeni kod isteyin.",
+        };
+      }
+      return { ok: false as const, error: messageForOtpInspect(inspected) };
     }
 
     const session = await createVerifiedSession(data.email);

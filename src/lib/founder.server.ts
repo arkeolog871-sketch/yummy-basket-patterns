@@ -70,13 +70,48 @@ type BusinessVendorInput = {
   phone: string;
 };
 
+export type BusinessVendorResult = {
+  userId: string;
+  created: boolean;
+  verificationSent: boolean;
+  emailVerified: boolean;
+};
+
+async function rollbackNewVendorUser(userId: string, email: string): Promise<void> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await supabaseAdmin.from("vendor_assignments").delete().eq("user_id", userId);
+  await supabaseAdmin.from("user_roles").delete().eq("user_id", userId).eq("role", "vendor");
+  await supabaseAdmin.from("profiles").delete().eq("id", userId);
+  const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+  if (error) {
+    console.error("[vendor-signup] yarım hesap silinemedi", { message: error.message });
+  }
+  const { clearGuard } = await import("./otp.server");
+  await clearGuard(email);
+}
+
+async function sendVendorSignupCode(email: string): Promise<void> {
+  const { sendSixDigitOtp, hashEmail, EMAIL_SEND_FAILED_MESSAGE } = await import("./otp.server");
+  const sent = await sendSixDigitOtp(email, "signup");
+  if (sent.ok) return;
+  console.error("[vendor-signup] doğrulama e-postası gönderilemedi", {
+    emailHash: hashEmail(email),
+    message: sent.error,
+    retryAfterSeconds: sent.retryAfterSeconds ?? null,
+  });
+  throw new Error(EMAIL_SEND_FAILED_MESSAGE);
+}
+
 /**
  * İşletme iletişim e-postasını mevcut müşteri hesabıyla birleştirir; hesap yoksa
- * OTP ile etkinleşebilen yeni bir hesap oluşturur ve işletmeye atar.
+ * doğrulanmamış hesap oluşturur, 6 haneli kod gönderir ve işletmeye atar.
  */
-export async function ensureBusinessVendorAccount(input: BusinessVendorInput): Promise<void> {
+export async function ensureBusinessVendorAccount(
+  input: BusinessVendorInput,
+): Promise<BusinessVendorResult> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { normalizePhone } = await import("./vendor-auth.server");
+  const { isEmailVerified } = await import("./otp.server");
   const email = input.email.trim().toLowerCase();
   const phone = normalizePhone(input.phone);
 
@@ -99,7 +134,18 @@ export async function ensureBusinessVendorAccount(input: BusinessVendorInput): P
           { onConflict: "id" },
         );
       if (profileError) throw new Error(profileError.message);
-      return;
+      const emailVerified = await isEmailVerified(currentAssignment.user_id);
+      let verificationSent = false;
+      if (!emailVerified) {
+        await sendVendorSignupCode(email);
+        verificationSent = true;
+      }
+      return {
+        userId: currentAssignment.user_id,
+        created: false,
+        verificationSent,
+        emailVerified,
+      };
     }
     previousVendorUserId = currentAssignment.user_id;
   }
@@ -116,14 +162,16 @@ export async function ensureBusinessVendorAccount(input: BusinessVendorInput): P
     if (users.users.length < 200) break;
   }
 
+  let created = false;
   if (!matchedUserId) {
-    const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    const { data: createdUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       email_confirm: false,
       user_metadata: { full_name: input.businessName, phone },
     });
     if (createError) throw new Error(createError.message);
-    matchedUserId = created.user?.id ?? null;
+    matchedUserId = createdUser.user?.id ?? null;
+    created = true;
   }
   if (!matchedUserId) throw new Error("İşletme hesabı oluşturulamadı");
 
@@ -132,9 +180,25 @@ export async function ensureBusinessVendorAccount(input: BusinessVendorInput): P
     .select("restaurant_id")
     .eq("user_id", matchedUserId)
     .maybeSingle();
-  if (otherAssignmentError) throw new Error(otherAssignmentError.message);
+  if (otherAssignmentError) {
+    if (created) await rollbackNewVendorUser(matchedUserId, email);
+    throw new Error(otherAssignmentError.message);
+  }
   if (otherAssignment && otherAssignment.restaurant_id !== input.restaurantId) {
+    if (created) await rollbackNewVendorUser(matchedUserId, email);
     throw new Error("Bu e-posta başka bir işletme hesabına atanmış");
+  }
+
+  const emailVerified = await isEmailVerified(matchedUserId);
+  let verificationSent = false;
+  if (!emailVerified) {
+    try {
+      await sendVendorSignupCode(email);
+      verificationSent = true;
+    } catch (error) {
+      if (created) await rollbackNewVendorUser(matchedUserId, email);
+      throw error;
+    }
   }
 
   if (previousVendorUserId && previousVendorUserId !== matchedUserId) {
@@ -169,4 +233,6 @@ export async function ensureBusinessVendorAccount(input: BusinessVendorInput): P
       { onConflict: "user_id" },
     );
   if (assignmentError) throw new Error(assignmentError.message);
+
+  return { userId: matchedUserId, created, verificationSent, emailVerified };
 }

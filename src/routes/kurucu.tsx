@@ -632,9 +632,15 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
           is_open_manual: form.is_open_manual,
         },
       }),
-    onSuccess: () => {
+    onSuccess: (result: { verificationSent?: boolean; emailVerified?: boolean }) => {
       toast.success(
-        editingId ? "İşletme ve giriş hesabı güncellendi" : "İşletme ve giriş hesabı oluşturuldu",
+        editingId
+          ? result?.verificationSent
+            ? "İşletme güncellendi, doğrulama kodu e-postaya gönderildi"
+            : "İşletme ve giriş hesabı güncellendi"
+          : result?.verificationSent
+            ? "İşletme oluşturuldu, doğrulama kodu e-postaya gönderildi"
+            : "İşletme ve giriş hesabı oluşturuldu",
       );
       setEditingId(null);
       setForm(emptyBusiness);
@@ -797,7 +803,8 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
         </div>
         <div className="space-y-2 rounded-2xl border border-border p-3">
           <p className="text-xs font-medium text-muted-foreground">
-            İletişim — işletme girişinde bu e-posta veya telefon kullanılır
+            İletişim — kayıtta bu e-postaya 6 haneli doğrulama kodu gönderilir; kod doğrulanmadan
+            işletme vitrinde aktif olmaz
           </p>
           <Input
             type="email"
@@ -1359,9 +1366,7 @@ function UserPanel({
       toast.success(
         result?.verificationSent
           ? "Hesap oluşturuldu, doğrulama kodu e-postaya gönderildi"
-          : verifyEmail
-            ? "Hesap oluşturuldu ancak doğrulama e-postası gönderilemedi"
-            : "Yetkili hesap oluşturuldu",
+          : "Yetkili hesap oluşturuldu",
       );
       setEmail("");
       setPassword("");

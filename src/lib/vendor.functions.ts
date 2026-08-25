@@ -18,14 +18,17 @@ export const getMyAccessContext = createServerFn({ method: "GET" })
     runServerFn(async () => {
       const { isFounderUser } = await import("./founder.server");
       const { getVendorRestaurantId } = await import("./vendor.server");
-      const [isFounder, restaurantId] = await Promise.all([
+      const { isEmailVerified } = await import("./otp.server");
+      const [isFounder, restaurantId, emailVerified] = await Promise.all([
         isFounderUser(context.supabase, context.userId),
         getVendorRestaurantId(context.supabase, context.userId),
+        isEmailVerified(context.userId),
       ]);
       return {
         isFounder,
         isVendor: Boolean(restaurantId),
         restaurantId,
+        emailVerified,
         role: isFounder ? "founder" : restaurantId ? "vendor" : "customer",
       } as const;
     }),

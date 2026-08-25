@@ -3,7 +3,7 @@ import { render } from "@react-email/render";
 import { sendLovableEmail } from "@lovable.dev/email-js";
 import { MagicLinkEmail } from "@/lib/email-templates/magic-link";
 import { SignupEmail } from "@/lib/email-templates/signup";
-import type { OtpEmailPurpose } from "@/lib/otp";
+import { EMAIL_SEND_FAILED_MESSAGE, type OtpEmailPurpose } from "@/lib/otp";
 
 const SITE_NAME = "SİLVAN CEBİMDE";
 const SENDER_DOMAIN = "notify.uygulamamcebimde.online";
@@ -21,7 +21,7 @@ export async function sendSixDigitOtpEmail(input: {
     console.error("[otp] LOVABLE_API_KEY eksik, doğrulama kodu gönderilemedi");
     return {
       ok: false,
-      error: "Doğrulama kodu şu anda gönderilemedi. Lütfen birkaç saniye sonra tekrar deneyin.",
+      error: EMAIL_SEND_FAILED_MESSAGE,
     };
   }
 
@@ -64,21 +64,30 @@ export async function sendSixDigitOtpEmail(input: {
         { apiKey, sendUrl: process.env["LOVABLE_SEND_URL"] },
       );
       if (result.success) return { ok: true };
-      lastMessage = "Doğrulama kodu şu anda gönderilemedi. Lütfen birkaç saniye sonra tekrar deneyin.";
+      lastMessage =
+        typeof result === "object" && result && "error" in result && result.error
+          ? String(result.error)
+          : "Lovable e-posta API başarısız döndü";
+      console.error("[otp] doğrulama kodu e-postası gönderilemedi", {
+        senderDomain: domain,
+        success: false,
+        message: lastMessage,
+      });
     } catch (error) {
       lastMessage = error instanceof Error ? error.message : lastMessage;
       console.error("[otp] doğrulama kodu e-postası gönderilemedi", {
         senderDomain: domain,
         message: lastMessage,
+        stack: error instanceof Error ? error.stack : undefined,
       });
     }
   }
 
-  const hookFailure = /hook|send|email|deliver/i.test(lastMessage);
+  console.error("[otp] tüm gönderici alan adları denendi, kod e-postası gitmedi", {
+    lastMessage,
+  });
   return {
     ok: false,
-    error: hookFailure
-      ? "E-posta gönderim servisine ulaşılamadı, kod gönderilemedi. Lütfen tekrar deneyin."
-      : "Doğrulama kodu şu anda gönderilemedi. Lütfen birkaç saniye sonra tekrar deneyin.",
+    error: EMAIL_SEND_FAILED_MESSAGE,
   };
 }

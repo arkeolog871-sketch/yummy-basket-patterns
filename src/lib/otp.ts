@@ -6,6 +6,11 @@ export const OTP_TTL_MINUTES = 10;
 export const OTP_RESEND_COOLDOWN_SECONDS = 60;
 /** Yanlış veya süresi dolmuş kod için kullanıcıya gösterilen metin. */
 export const OTP_INVALID_MESSAGE = "Girdiğiniz kod hatalı veya süresi dolmuş";
+/** Kod e-posta servisine iletilemediğinde kullanıcıya gösterilir; teknik ayrıntı loglanır. */
+export const EMAIL_SEND_FAILED_MESSAGE =
+  "Doğrulama e-postası gönderilemedi. Lütfen tekrar deneyin.";
+export const OTP_WRONG_MESSAGE = "Doğrulama kodu hatalı.";
+export const OTP_EXPIRED_MESSAGE = "Doğrulama kodunun süresi doldu.";
 
 export type OtpEmailPurpose = "login" | "signup";
 

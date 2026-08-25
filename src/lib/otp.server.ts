@@ -3,9 +3,12 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import {
   OTP_CODE_LENGTH,
+  OTP_EXPIRED_MESSAGE,
   OTP_INVALID_MESSAGE,
   OTP_RESEND_COOLDOWN_SECONDS,
   OTP_TTL_MINUTES,
+  OTP_WRONG_MESSAGE,
+  EMAIL_SEND_FAILED_MESSAGE,
   isCompleteOtpCode,
   normalizeOtpCode,
   type OtpEmailPurpose,
@@ -19,7 +22,7 @@ export const MAX_SENDS_PER_HOUR = 5;
 export const MAX_FAILED_ATTEMPTS = 5;
 /** Kodun geçerlilik süresi (dakika). */
 export const CODE_TTL_MINUTES = OTP_TTL_MINUTES;
-export { OTP_CODE_LENGTH, OTP_INVALID_MESSAGE };
+export { OTP_CODE_LENGTH, OTP_INVALID_MESSAGE, OTP_WRONG_MESSAGE, OTP_EXPIRED_MESSAGE, EMAIL_SEND_FAILED_MESSAGE };
 
 /** E-posta adresi düz metin saklanmaz; yalnızca tek yönlü özeti tutulur. */
 export function hashEmail(email: string): string {
@@ -155,7 +158,14 @@ export async function sendSixDigitOtp(
 
   const { sendSixDigitOtpEmail } = await import("./otp-mail.server");
   const sent = await sendSixDigitOtpEmail({ to: email, code: issued.code, purpose });
-  if (!sent.ok) return sent;
+  if (!sent.ok) {
+    console.error("[otp] 6 haneli kod e-postası gönderilemedi", {
+      emailHash: hashEmail(email),
+      purpose,
+      message: sent.error,
+    });
+    return { ok: false, error: EMAIL_SEND_FAILED_MESSAGE };
+  }
   return { ok: true };
 }
 
@@ -172,30 +182,43 @@ export async function assertCanVerify(
       error: "Çok fazla hatalı deneme yaptınız. Mevcut kod geçersiz — yeni kod isteyin.",
     };
   }
-  if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) {
-    return { ok: false, error: OTP_INVALID_MESSAGE };
-  }
-  if (!row.expires_at && row.last_sent_at) {
-    const ageMinutes = (Date.now() - new Date(row.last_sent_at).getTime()) / 60000;
-    if (ageMinutes > CODE_TTL_MINUTES) {
-      return { ok: false, error: OTP_INVALID_MESSAGE };
-    }
+  if (isGuardExpired(row)) {
+    return { ok: false, error: OTP_EXPIRED_MESSAGE };
   }
   return { ok: true };
 }
 
-/** Saklanan özet ve TTL ile kodu doğrular. */
-export async function matchIssuedOtp(email: string, rawCode: unknown): Promise<boolean> {
-  const token = normalizeOtpCode(rawCode);
-  if (!isCompleteOtpCode(token)) return false;
-  const row = await loadGuard(hashEmail(email));
-  if (!row?.code_hash) return false;
-  if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) return false;
+function isGuardExpired(row: GuardRow): boolean {
+  if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) return true;
   if (!row.expires_at && row.last_sent_at) {
     const ageMinutes = (Date.now() - new Date(row.last_sent_at).getTime()) / 60000;
-    if (ageMinutes > CODE_TTL_MINUTES) return false;
+    if (ageMinutes > CODE_TTL_MINUTES) return true;
   }
-  return hashesEqual(row.code_hash, hashOtpCode(email, token));
+  return false;
+}
+
+/** Saklanan özet ve TTL ile kodu doğrular. */
+export async function matchIssuedOtp(email: string, rawCode: unknown): Promise<boolean> {
+  return (await inspectIssuedOtp(email, rawCode)) === "match";
+}
+
+export type OtpInspectResult = "match" | "expired" | "mismatch" | "missing";
+
+/** Yanlış kod ile süresi dolmuş kodu ayırır; düz metin kod loglanmaz. */
+export async function inspectIssuedOtp(email: string, rawCode: unknown): Promise<OtpInspectResult> {
+  const token = normalizeOtpCode(rawCode);
+  if (!isCompleteOtpCode(token)) return "mismatch";
+  const row = await loadGuard(hashEmail(email));
+  if (!row?.code_hash) return "missing";
+  if (isGuardExpired(row)) return "expired";
+  return hashesEqual(row.code_hash, hashOtpCode(email, token)) ? "match" : "mismatch";
+}
+
+export function messageForOtpInspect(result: OtpInspectResult): string {
+  if (result === "expired") return OTP_EXPIRED_MESSAGE;
+  if (result === "match") return "";
+  if (result === "missing") return OTP_EXPIRED_MESSAGE;
+  return OTP_WRONG_MESSAGE;
 }
 
 /** Hatalı denemeyi sayar; sınır aşılırsa mevcut kodu geçersiz kılar. */
@@ -243,6 +266,9 @@ export async function createVerifiedSession(email: string): Promise<
     return { ok: false, error: OTP_INVALID_MESSAGE };
   }
 
+  const before = await supabaseAdmin.auth.admin.getUserById(userId);
+  const wasUnconfirmed = !Boolean(before.data.user?.email_confirmed_at);
+
   await supabaseAdmin.auth.admin.updateUserById(userId, { email_confirm: true });
 
   // Doğrulanmamış hesaplarda recovery linki reddedilebilir; önce magiclink dene.
@@ -287,12 +313,34 @@ export async function createVerifiedSession(email: string): Promise<
     await supabaseAdmin.auth.admin.updateUserById(userId, { email_confirm: true });
   }
 
+  if (wasUnconfirmed) {
+    await activateVendorRestaurantOnFirstVerify(userId);
+  }
+
   return {
     ok: true,
     accessToken: verified.data.session.access_token,
     refreshToken: verified.data.session.refresh_token,
     userId,
   };
+}
+
+/** İlk e-posta doğrulamasında işletme kaydını vitrine açar. */
+async function activateVendorRestaurantOnFirstVerify(userId: string): Promise<void> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: assignment, error } = await supabaseAdmin
+    .from("vendor_assignments")
+    .select("restaurant_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error || !assignment?.restaurant_id) return;
+  const { error: updateError } = await supabaseAdmin
+    .from("restaurants")
+    .update({ is_active: true })
+    .eq("id", assignment.restaurant_id);
+  if (updateError) {
+    console.error("[vendor-signup] işletme aktifleştirilemedi", { message: updateError.message });
+  }
 }
 
 /** OTP sonrası yasal onay kaydı (Kullanım Koşulları / Gizlilik / KVKK). */
