@@ -8,12 +8,25 @@ import { useServerFn } from "@tanstack/react-start";
 import { registerWithEmailCode } from "@/lib/otp.functions";
 import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { VendorPhoneLogin } from "@/components/auth/VendorPhoneLogin";
-import { humanizeOAuthError, isInAppBrowser, startGoogleOAuth } from "@/lib/google-oauth";
+import {
+  completeGoogleOAuthFromCallback,
+  humanizeOAuthError,
+  isGoogleOAuthCallbackParams,
+  isInAppBrowser,
+  startGoogleOAuth,
+  stripOAuthCallbackFromUrl,
+} from "@/lib/google-oauth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-type AuthSearch = { redirect?: string; error?: string; error_description?: string };
+type AuthSearch = {
+  redirect?: string;
+  error?: string;
+  error_description?: string;
+  code?: string;
+  state?: string;
+};
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>): AuthSearch => {
@@ -23,6 +36,8 @@ export const Route = createFileRoute("/auth")({
     if (typeof search["error_description"] === "string" && search["error_description"]) {
       next.error_description = search["error_description"];
     }
+    if (typeof search["code"] === "string" && search["code"]) next.code = search["code"];
+    if (typeof search["state"] === "string" && search["state"]) next.state = search["state"];
     return next;
   },
   head: () => ({
@@ -57,11 +72,34 @@ function AuthPage() {
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [pendingVerification, setPendingVerification] = useState<string | null>(null);
+  const [googleCompleting, setGoogleCompleting] = useState(() =>
+    typeof window === "undefined" ? false : isGoogleOAuthCallbackParams(),
+  );
 
   useEffect(() => {
     if (!oauthError) return;
+    if (isGoogleOAuthCallbackParams()) return;
     toast.error(humanizeOAuthError(oauthErrorDescription || oauthError));
   }, [oauthError, oauthErrorDescription]);
+
+  useEffect(() => {
+    if (!isGoogleOAuthCallbackParams()) return;
+    let cancelled = false;
+    setGoogleCompleting(true);
+    void completeGoogleOAuthFromCallback().then((result) => {
+      if (cancelled) return;
+      stripOAuthCallbackFromUrl();
+      if (result?.ok === false) {
+        toast.error(result.error);
+        setGoogleCompleting(false);
+        return;
+      }
+      setGoogleCompleting(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!user || access.loading) return;
@@ -118,6 +156,15 @@ function AuthPage() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Google girişi başlatılamadı.");
     }
+  }
+
+  if (googleCompleting) {
+    return (
+      <div className="mx-auto w-full max-w-md px-4 py-16">
+        <h1 className="text-3xl">Google ile giriş</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Yetkilendirme tamamlanıyor, lütfen bekleyin…</p>
+      </div>
+    );
   }
 
   return (
@@ -301,9 +348,9 @@ function AuthPage() {
             Google ile devam et
           </Button>
           <p className="mt-2 text-center text-xs text-muted-foreground">
-            Google aynı tarayıcı sekmesinde açılmalıdır. WhatsApp, Instagram veya Facebook içi
-            tarayıcıda çalışmaz; Chrome veya Safari kullanın. E-posta kodu ile giriş her zaman
-            kullanılabilir.
+            Google, uygulamanın kendi alan adına döner. Android uygulamasında sistem tarayıcısı
+            (Chrome) açılır. WhatsApp, Instagram veya Facebook içi tarayıcıda çalışmaz. E-posta
+            kodu ile giriş her zaman kullanılabilir.
           </p>
         </>
       )}
