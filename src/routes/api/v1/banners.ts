@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { applySecurityHeaders } from "@/lib/security-wall.server";
 import { isMissingAdvertisementsSchema, parsePublicBanner } from "@/lib/advertisements";
+import { toPublicErrorMessage } from "@/lib/public-error";
 
 function json(data: unknown, status = 200, extra?: Record<string, string>) {
   return applySecurityHeaders(
@@ -13,6 +14,27 @@ function json(data: unknown, status = 200, extra?: Record<string, string>) {
       },
     }),
   );
+}
+
+async function handleUpload(request: Request) {
+  const { founderClientFromRequest, uploadFounderBannerFile } = await import(
+    "@/lib/advertisements-upload.server"
+  );
+  const supabase = await founderClientFromRequest(request);
+  const form = await request.formData();
+  const file = form.get("file");
+  if (!(file instanceof Blob) || file.size === 0) {
+    return json({ error: "Dosya seçilmedi" }, 400);
+  }
+  const named = file as Blob & { name?: string };
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const uploaded = await uploadFounderBannerFile({
+    supabase,
+    bytes,
+    fileName: typeof named.name === "string" ? named.name : "reklam",
+    contentType: file.type || "application/octet-stream",
+  });
+  return json({ url: uploaded.url, path: uploaded.path });
 }
 
 export const Route = createFileRoute("/api/v1/banners")({
@@ -49,6 +71,18 @@ export const Route = createFileRoute("/api/v1/banners")({
         } catch (error) {
           console.error("[banners]", error);
           return json([]);
+        }
+      },
+      POST: async ({ request }) => {
+        try {
+          return await handleUpload(request);
+        } catch (error) {
+          const message = toPublicErrorMessage(error);
+          const lower = message.toLowerCase();
+          const unauthorized = lower.includes("unauthorized") || lower.includes("oturum");
+          const forbidden = lower.includes("yetki") || lower.includes("forbidden");
+          const status = unauthorized ? 401 : forbidden ? 403 : 400;
+          return json({ error: message }, status);
         }
       },
     },
