@@ -1,8 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-const ALLOWED_BUCKETS = new Set(["product-images", "business-images"]);
-const SAFE_MEDIA_PATH =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/[A-Za-z0-9-]+\.(png|jpg|webp|avif)$/i;
+const ALLOWED_BUCKETS = new Set(["product-images", "business-images", "banners"]);
+const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
+const SAFE_MEDIA_PATH = new RegExp(
+  `^(?:${UUID}/[A-Za-z0-9-]+\\.(?:png|jpg|webp|avif)|ads/${UUID}\\.(?:png|jpg|jpeg|webp|gif|avif|bmp|heic|heif|mp4|mov|webm))$`,
+  "i",
+);
 
 export const Route = createFileRoute("/api/public/media/$")({
   server: {

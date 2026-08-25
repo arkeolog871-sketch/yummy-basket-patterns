@@ -813,22 +813,12 @@ export type Database = {
       }
     }
     Views: {
-      public_banners: {
-        Row: {
-          action_type: Database["public"]["Enums"]["advertisement_action_type"] | null
-          action_value: string | null
-          display_order: number | null
-          id: string | null
-          image_url: string | null
-          title: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
-      expire_stale_advertisements: { Args: Record<PropertyKey, never>; Returns: number }
+      expire_stale_advertisements: { Args: never; Returns: number }
       get_active_banners: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           action_type: Database["public"]["Enums"]["advertisement_action_type"]
           action_value: string
@@ -993,6 +983,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      advertisement_action_type: ["phone", "internal_route", "external_link"],
       app_role: ["admin", "user", "founder", "vendor"],
       order_status: [
         "pending",
