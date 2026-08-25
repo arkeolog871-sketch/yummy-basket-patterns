@@ -1,3 +1,12 @@
+/** Veri yoksa işletme detayında gösterilecek örnek numara. */
+export const DEMO_BUSINESS_PHONE = "0555 555 55 55";
+
+/** Kayıtlı numara geçersizse örnek numarayı kullanır. */
+export function resolveBusinessPhone(raw: string | null | undefined): string {
+  if (raw && toTelHref(raw)) return raw.trim();
+  return DEMO_BUSINESS_PHONE;
+}
+
 /** İşletme telefonunu `tel:` bağlantısına çevirir. Geçersizse null. */
 export function toTelHref(raw: string | null | undefined): string | null {
   if (!raw) return null;
