@@ -813,39 +813,7 @@ export type Database = {
       }
     }
     Views: {
-      public_banners: {
-        Row: {
-          action_type:
-            | Database["public"]["Enums"]["advertisement_action_type"]
-            | null
-          action_value: string | null
-          display_order: number | null
-          id: string | null
-          image_url: string | null
-          title: string | null
-        }
-        Insert: {
-          action_type?:
-            | Database["public"]["Enums"]["advertisement_action_type"]
-            | null
-          action_value?: string | null
-          display_order?: number | null
-          id?: string | null
-          image_url?: string | null
-          title?: string | null
-        }
-        Update: {
-          action_type?:
-            | Database["public"]["Enums"]["advertisement_action_type"]
-            | null
-          action_value?: string | null
-          display_order?: number | null
-          id?: string | null
-          image_url?: string | null
-          title?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       expire_stale_advertisements: { Args: never; Returns: number }
