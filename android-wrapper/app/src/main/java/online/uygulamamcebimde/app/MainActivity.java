@@ -6,8 +6,10 @@ import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.net.Uri;
+import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
+import android.net.Uri;
+import android.net.http.SslError;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Message;
@@ -15,39 +17,44 @@ import android.os.Parcelable;
 import android.provider.MediaStore;
 import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
+import android.webkit.JavascriptInterface;
+import android.webkit.SslErrorHandler;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
-import android.webkit.JavascriptInterface;
-import android.webkit.SslErrorHandler;
-import android.net.http.SslError;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
+
+import java.io.File;
+import java.util.ArrayList;
 
 public class MainActivity extends Activity {
     private static final String APP_URL = "https://yummy-basket-patterns.lovable.app/";
     private static final String APP_HOST = "yummy-basket-patterns.lovable.app";
     private static final int FILE_CHOOSER_REQUEST = 1001;
-    private static final int MEDIA_PERMISSION_REQUEST = 1002;
+    private static final int STARTUP_PERMISSION_REQUEST = 1002;
+    private static final int FILE_PERMISSION_REQUEST = 1003;
+    private static final int LOCATION_PERMISSION_REQUEST = 1004;
+
     private WebView webView;
     private ValueCallback<Uri[]> fileChooserCallback;
+    private WebChromeClient.FileChooserParams pendingChooserParams;
+    private Uri imageCaptureUri;
+    private Uri videoCaptureUri;
+    private String geolocationOrigin;
+    private GeolocationPermissions.Callback geolocationCallback;
 
     @Override
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        java.util.ArrayList<String> startup = new java.util.ArrayList<>();
-        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-            startup.add(Manifest.permission.ACCESS_FINE_LOCATION);
-            startup.add(Manifest.permission.ACCESS_COARSE_LOCATION);
-        }
-        addMissingMediaPermissions(startup);
-        if (!startup.isEmpty()) {
-            requestPermissions(startup.toArray(new String[0]), MEDIA_PERMISSION_REQUEST);
-        }
+        requestStartupPermissions();
 
         webView = new WebView(this);
         setContentView(webView);
@@ -62,8 +69,7 @@ public class MainActivity extends Activity {
         settings.setDatabaseEnabled(true);
         settings.setGeolocationEnabled(true);
         settings.setAllowFileAccess(false);
-        // Android galerisi/dosya seçici `content://` URI döndürür; WebView'ın seçilen medyayı
-        // okuyabilmesi için content erişimi açık kalmalı. Yerel `file://` erişimi kapalıdır.
+        // Galeri/kamera `content://` URI döndürür; WebView'ın medyayı okuması için content erişimi açık.
         settings.setAllowContentAccess(true);
         settings.setAllowFileAccessFromFileURLs(false);
         settings.setAllowUniversalAccessFromFileURLs(false);
@@ -81,126 +87,157 @@ public class MainActivity extends Activity {
         if (!ua.contains("SilvanCebimde")) {
             settings.setUserAgentString(ua + " SilvanCebimde");
         }
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             settings.setSafeBrowsingEnabled(true);
         }
 
         WebView.setWebContentsDebuggingEnabled(false);
         webView.addJavascriptInterface(new SilvanNativeBridge(), "SilvanNative");
-        webView.setWebViewClient(new WebViewClient() {
-            @Override
-            public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                return openMapsOrExternal(url);
-            }
-
-            @Override
-            public boolean shouldOverrideUrlLoading(WebView view, android.webkit.WebResourceRequest request) {
-                return openMapsOrExternal(request.getUrl().toString());
-            }
-
-            @Override
-            public void onPageStarted(WebView view, String url, Bitmap favicon) {
-                if (shouldLeaveWebView(url)) {
-                    leaveWebView(view, url);
-                }
-            }
-
-            @Override
-            public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
-                handler.cancel();
-            }
-
-            @Override
-            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                if (request == null || error == null || !request.isForMainFrame()) return;
-                if (error.getErrorCode() != WebViewClient.ERROR_UNSUPPORTED_SCHEME) return;
-                String failing = request.getUrl() != null ? request.getUrl().toString() : "";
-                leaveWebView(view, failing);
-            }
-
-            @Override
-            @SuppressWarnings("deprecation")
-            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-                if (errorCode != WebViewClient.ERROR_UNSUPPORTED_SCHEME) return;
-                leaveWebView(view, failingUrl);
-            }
-        });
-        webView.setWebChromeClient(new WebChromeClient() {
-            @Override
-            public void onGeolocationPermissionsShowPrompt(
-                    String origin,
-                    GeolocationPermissions.Callback callback
-            ) {
-                Uri uri = Uri.parse(origin);
-                boolean allowed = "https".equals(uri.getScheme()) && APP_HOST.equals(uri.getHost());
-                callback.invoke(origin, allowed, false);
-            }
-
-            @Override
-            public boolean onShowFileChooser(
-                    WebView view,
-                    ValueCallback<Uri[]> filePathCallback,
-                    FileChooserParams params
-            ) {
-                if (fileChooserCallback != null) {
-                    fileChooserCallback.onReceiveValue(null);
-                }
-                fileChooserCallback = filePathCallback;
-                if (!launchGalleryChooser(params)) {
-                    fileChooserCallback = null;
-                    filePathCallback.onReceiveValue(null);
-                    return false;
-                }
-                return true;
-            }
-
-            @Override
-            public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, Message resultMsg) {
-                if (resultMsg == null || !(resultMsg.obj instanceof WebView.WebViewTransport)) {
-                    return false;
-                }
-                String hitUrl = view.getHitTestResult() != null ? view.getHitTestResult().getExtra() : null;
-                if (hitUrl != null && !hitUrl.isEmpty()) {
-                    openMapsOrExternal(hitUrl);
-                    return false;
-                }
-                // window.open ilk yüklemede shouldOverrideUrlLoading çağrılmaz; onPageStarted yakalar.
-                WebView popup = new WebView(view.getContext());
-                popup.setWebViewClient(new WebViewClient() {
-                    private void intercept(WebView v, String url) {
-                        if (url == null || url.startsWith("about:")) return;
-                        openMapsOrExternal(url);
-                        v.stopLoading();
-                    }
-
-                    @Override
-                    public void onPageStarted(WebView v, String url, Bitmap favicon) {
-                        intercept(v, url);
-                    }
-
-                    @Override
-                    public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest request) {
-                        intercept(v, request.getUrl().toString());
-                        return true;
-                    }
-
-                    @Override
-                    public boolean shouldOverrideUrlLoading(WebView v, String url) {
-                        intercept(v, url);
-                        return true;
-                    }
-                });
-                WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
-                transport.setWebView(popup);
-                resultMsg.sendToTarget();
-                return true;
-            }
-        });
+        webView.setWebViewClient(new SilvanWebViewClient());
+        webView.setWebChromeClient(new SilvanWebChromeClient());
 
         if (savedInstanceState == null) {
             webView.loadUrl(APP_URL);
         } else {
             webView.restoreState(savedInstanceState);
+        }
+    }
+
+    private final class SilvanWebViewClient extends WebViewClient {
+        @Override
+        public boolean shouldOverrideUrlLoading(WebView view, String url) {
+            return openExternalOrApp(url);
+        }
+
+        @Override
+        public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+            return openExternalOrApp(request.getUrl().toString());
+        }
+
+        @Override
+        public void onPageStarted(WebView view, String url, Bitmap favicon) {
+            if (shouldLeaveWebView(url)) {
+                leaveWebView(view, url);
+            }
+        }
+
+        @Override
+        public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+            handler.cancel();
+        }
+
+        @Override
+        public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+            if (request == null || error == null || !request.isForMainFrame()) return;
+            if (error.getErrorCode() != WebViewClient.ERROR_UNSUPPORTED_SCHEME) return;
+            String failing = request.getUrl() != null ? request.getUrl().toString() : "";
+            leaveWebView(view, failing);
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
+        public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+            if (errorCode != WebViewClient.ERROR_UNSUPPORTED_SCHEME) return;
+            leaveWebView(view, failingUrl);
+        }
+    }
+
+    private final class SilvanWebChromeClient extends WebChromeClient {
+        @Override
+        public void onGeolocationPermissionsShowPrompt(
+                String origin,
+                GeolocationPermissions.Callback callback
+        ) {
+            Uri uri = Uri.parse(origin);
+            boolean appHost = "https".equals(uri.getScheme()) && APP_HOST.equals(uri.getHost());
+            if (!appHost) {
+                callback.invoke(origin, false, false);
+                return;
+            }
+            if (hasLocationPermission()) {
+                callback.invoke(origin, true, false);
+                return;
+            }
+            geolocationOrigin = origin;
+            geolocationCallback = callback;
+            ActivityCompat.requestPermissions(
+                    MainActivity.this,
+                    new String[] {
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    },
+                    LOCATION_PERMISSION_REQUEST
+            );
+        }
+
+        @Override
+        public boolean onShowFileChooser(
+                WebView view,
+                ValueCallback<Uri[]> filePathCallback,
+                FileChooserParams params
+        ) {
+            if (fileChooserCallback != null) {
+                fileChooserCallback.onReceiveValue(null);
+            }
+            fileChooserCallback = filePathCallback;
+            pendingChooserParams = params;
+            ArrayList<String> needed = missingFilePermissions(params);
+            if (!needed.isEmpty()) {
+                ActivityCompat.requestPermissions(
+                        MainActivity.this,
+                        needed.toArray(new String[0]),
+                        FILE_PERMISSION_REQUEST
+                );
+                return true;
+            }
+            if (!launchGalleryChooser(params)) {
+                fileChooserCallback = null;
+                pendingChooserParams = null;
+                filePathCallback.onReceiveValue(null);
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, Message resultMsg) {
+            if (resultMsg == null || !(resultMsg.obj instanceof WebView.WebViewTransport)) {
+                return false;
+            }
+            String hitUrl = view.getHitTestResult() != null ? view.getHitTestResult().getExtra() : null;
+            if (hitUrl != null && !hitUrl.isEmpty()) {
+                openExternalOrApp(hitUrl);
+                return false;
+            }
+            WebView popup = new WebView(view.getContext());
+            popup.setWebViewClient(new WebViewClient() {
+                private void intercept(WebView v, String url) {
+                    if (url == null || url.startsWith("about:")) return;
+                    openExternalOrApp(url);
+                    v.stopLoading();
+                }
+
+                @Override
+                public void onPageStarted(WebView v, String url, Bitmap favicon) {
+                    intercept(v, url);
+                }
+
+                @Override
+                public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest request) {
+                    intercept(v, request.getUrl().toString());
+                    return true;
+                }
+
+                @Override
+                public boolean shouldOverrideUrlLoading(WebView v, String url) {
+                    intercept(v, url);
+                    return true;
+                }
+            });
+            WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
+            transport.setWebView(popup);
+            resultMsg.sendToTarget();
+            return true;
         }
     }
 
@@ -211,46 +248,102 @@ public class MainActivity extends Activity {
             return;
         }
         if (fileChooserCallback == null) {
+            imageCaptureUri = null;
+            videoCaptureUri = null;
             return;
         }
         Uri[] results = null;
-        if (resultCode == RESULT_OK && data != null) {
-            if (data.getClipData() != null) {
+        if (resultCode == RESULT_OK) {
+            if (data != null && data.getClipData() != null) {
                 int count = data.getClipData().getItemCount();
                 results = new Uri[count];
                 for (int i = 0; i < count; i++) {
                     results[i] = data.getClipData().getItemAt(i).getUri();
                     persistReadPermission(results[i]);
                 }
-            } else if (data.getData() != null) {
+            } else if (data != null && data.getData() != null) {
                 Uri uri = data.getData();
                 persistReadPermission(uri);
                 results = new Uri[] { uri };
+            } else {
+                Uri captured = firstExistingCapture(imageCaptureUri, videoCaptureUri);
+                if (captured != null) results = new Uri[] { captured };
             }
         }
         fileChooserCallback.onReceiveValue(results);
         fileChooserCallback = null;
+        pendingChooserParams = null;
+        imageCaptureUri = null;
+        videoCaptureUri = null;
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == LOCATION_PERMISSION_REQUEST && geolocationCallback != null) {
+            boolean granted = hasLocationPermission();
+            geolocationCallback.invoke(geolocationOrigin, granted, false);
+            geolocationCallback = null;
+            geolocationOrigin = null;
+            return;
+        }
+        if (requestCode == FILE_PERMISSION_REQUEST && fileChooserCallback != null) {
+            WebChromeClient.FileChooserParams params = pendingChooserParams;
+            if (!launchGalleryChooser(params)) {
+                fileChooserCallback.onReceiveValue(null);
+                fileChooserCallback = null;
+                pendingChooserParams = null;
+            }
+        }
     }
 
-    private void addMissingMediaPermissions(java.util.ArrayList<String> needed) {
+    private void requestStartupPermissions() {
+        ArrayList<String> needed = new ArrayList<>();
+        addIfMissing(needed, Manifest.permission.ACCESS_FINE_LOCATION);
+        addIfMissing(needed, Manifest.permission.ACCESS_COARSE_LOCATION);
+        addIfMissing(needed, Manifest.permission.CAMERA);
+        addIfMissing(needed, Manifest.permission.CALL_PHONE);
         if (Build.VERSION.SDK_INT >= 33) {
-            if (checkSelfPermission(Manifest.permission.READ_MEDIA_IMAGES)
-                    != PackageManager.PERMISSION_GRANTED) {
-                needed.add(Manifest.permission.READ_MEDIA_IMAGES);
+            addIfMissing(needed, Manifest.permission.READ_MEDIA_IMAGES);
+            addIfMissing(needed, Manifest.permission.READ_MEDIA_VIDEO);
+            addIfMissing(needed, Manifest.permission.READ_MEDIA_AUDIO);
+            addIfMissing(needed, Manifest.permission.POST_NOTIFICATIONS);
+        } else {
+            addIfMissing(needed, Manifest.permission.READ_EXTERNAL_STORAGE);
+            if (Build.VERSION.SDK_INT <= 28) {
+                addIfMissing(needed, Manifest.permission.WRITE_EXTERNAL_STORAGE);
             }
-            if (checkSelfPermission(Manifest.permission.READ_MEDIA_VIDEO)
-                    != PackageManager.PERMISSION_GRANTED) {
-                needed.add(Manifest.permission.READ_MEDIA_VIDEO);
-            }
-        } else if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED) {
-            needed.add(Manifest.permission.READ_EXTERNAL_STORAGE);
         }
+        if (!needed.isEmpty()) {
+            ActivityCompat.requestPermissions(this, needed.toArray(new String[0]), STARTUP_PERMISSION_REQUEST);
+        }
+    }
+
+    private ArrayList<String> missingFilePermissions(WebChromeClient.FileChooserParams params) {
+        ArrayList<String> needed = new ArrayList<>();
+        addIfMissing(needed, Manifest.permission.CAMERA);
+        if (Build.VERSION.SDK_INT >= 33) {
+            addIfMissing(needed, Manifest.permission.READ_MEDIA_IMAGES);
+            if (params == null || acceptsVideo(normalizeAcceptTypes(params.getAcceptTypes()))) {
+                addIfMissing(needed, Manifest.permission.READ_MEDIA_VIDEO);
+            }
+        } else {
+            addIfMissing(needed, Manifest.permission.READ_EXTERNAL_STORAGE);
+        }
+        return needed;
+    }
+
+    private void addIfMissing(ArrayList<String> needed, String permission) {
+        if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+            needed.add(permission);
+        }
+    }
+
+    private boolean hasLocationPermission() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED
+            || ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED;
     }
 
     private boolean launchGalleryChooser(WebChromeClient.FileChooserParams params) {
@@ -260,10 +353,9 @@ public class MainActivity extends Activity {
         }
         boolean allowMultiple =
             params != null && params.getMode() == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE;
-
-        Intent gallery = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-        gallery.setType(acceptsVideo(acceptTypes) && !acceptsImage(acceptTypes) ? "video/*" : "image/*");
-        gallery.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        boolean capture = params != null && params.isCaptureEnabled();
+        boolean images = acceptsImage(acceptTypes);
+        boolean videos = acceptsVideo(acceptTypes);
 
         Intent content = new Intent(Intent.ACTION_GET_CONTENT);
         content.addCategory(Intent.CATEGORY_OPENABLE);
@@ -276,9 +368,26 @@ public class MainActivity extends Activity {
         }
         content.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, allowMultiple);
 
+        ArrayList<Intent> extras = new ArrayList<>();
+        Intent gallery = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        gallery.setType(videos && !images ? "video/*" : "image/*");
+        gallery.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        extras.add(gallery);
+
+        if (images) {
+            Intent camera = buildCaptureIntent(MediaStore.ACTION_IMAGE_CAPTURE, "jpg", true);
+            if (camera != null) extras.add(camera);
+        }
+        if (videos || capture) {
+            Intent camcorder = buildCaptureIntent(MediaStore.ACTION_VIDEO_CAPTURE, "mp4", false);
+            if (camcorder != null) extras.add(camcorder);
+        }
+
         try {
-            Intent chooser = Intent.createChooser(content, "Galeriden seç");
-            chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Parcelable[] { gallery });
+            Intent chooser = Intent.createChooser(content, "Galeriden seç veya çek");
+            if (!extras.isEmpty()) {
+                chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, extras.toArray(new Parcelable[0]));
+            }
             startActivityForResult(chooser, FILE_CHOOSER_REQUEST);
             return true;
         } catch (Exception ignored) {
@@ -295,6 +404,52 @@ public class MainActivity extends Activity {
                 return false;
             }
         }
+    }
+
+    private Intent buildCaptureIntent(String action, String extension, boolean photo) {
+        try {
+            Uri uri = createCaptureUri(extension);
+            if (uri == null) return null;
+            if (photo) imageCaptureUri = uri;
+            else videoCaptureUri = uri;
+            Intent intent = new Intent(action);
+            intent.putExtra(MediaStore.EXTRA_OUTPUT, uri);
+            intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            for (ResolveInfo info : getPackageManager().queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)) {
+                grantUriPermission(
+                        info.activityInfo.packageName,
+                        uri,
+                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION
+                );
+            }
+            return intent;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private Uri firstExistingCapture(Uri... uris) {
+        for (Uri uri : uris) {
+            if (uri == null) continue;
+            try (android.os.ParcelFileDescriptor fd = getContentResolver().openFileDescriptor(uri, "r")) {
+                if (fd != null && fd.getStatSize() > 0) return uri;
+            } catch (Exception ignored) {
+                // Boş veya okunamayan yakalama dosyası.
+            }
+        }
+        return null;
+    }
+
+    private Uri createCaptureUri(String extension) {
+        File dir = new File(getCacheDir(), "capture");
+        if (!dir.exists() && !dir.mkdirs()) return null;
+        File file = new File(dir, "capture-" + System.currentTimeMillis() + "." + extension);
+        try {
+            if (!file.exists() && !file.createNewFile()) return null;
+        } catch (Exception ignored) {
+            return null;
+        }
+        return FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", file);
     }
 
     private boolean acceptsImage(String[] types) {
@@ -330,7 +485,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void openMaps(final String url) {
             if (!isExternalMapsUrl(url)) return;
-            runOnUiThread(() -> openMapsOrExternal(url));
+            runOnUiThread(() -> openExternalOrApp(url));
         }
     }
 
@@ -346,15 +501,56 @@ public class MainActivity extends Activity {
     private void leaveWebView(WebView view, String url) {
         if (view == null) return;
         view.stopLoading();
-        openMapsOrExternal(url);
+        openExternalOrApp(url);
         view.post(() -> {
             if (view.canGoBack()) view.goBack();
         });
     }
 
-    private boolean openMapsOrExternal(String rawUrl) {
-        if (tryOpenGoogleMapsApp(rawUrl)) return true;
-        return openAllowedUrlOrExternal(rawUrl);
+    /** intent://, tel:, mailto:, whatsapp:, geo: ve diğer harici adresleri dış uygulamaya verir. */
+    private boolean openExternalOrApp(String rawUrl) {
+        try {
+            if (rawUrl == null || rawUrl.isEmpty()) return true;
+            Uri uri = Uri.parse(rawUrl);
+            String scheme = uri.getScheme();
+            if ("about".equals(scheme)) return false;
+            if ("https".equals(scheme) && APP_HOST.equals(uri.getHost())) return false;
+
+            if ("intent".equalsIgnoreCase(scheme)) {
+                return openIntentUrl(rawUrl);
+            }
+            if (tryOpenGoogleMapsApp(rawUrl)) return true;
+
+            Intent intent;
+            if ("tel".equalsIgnoreCase(scheme)) {
+                intent = new Intent(Intent.ACTION_DIAL, uri);
+            } else if ("mailto".equalsIgnoreCase(scheme)) {
+                intent = new Intent(Intent.ACTION_SENDTO, uri);
+            } else if ("whatsapp".equalsIgnoreCase(scheme)) {
+                intent = new Intent(Intent.ACTION_VIEW, uri);
+                intent.setPackage("com.whatsapp");
+            } else {
+                intent = new Intent(Intent.ACTION_VIEW, uri);
+                intent.addCategory(Intent.CATEGORY_BROWSABLE);
+            }
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            return true;
+        } catch (Exception ignored) {
+            try {
+                if (rawUrl != null && rawUrl.toLowerCase(java.util.Locale.ROOT).startsWith("whatsapp:")) {
+                    Intent store = new Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://play.google.com/store/apps/details?id=com.whatsapp")
+                    );
+                    store.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(store);
+                }
+            } catch (Exception alsoIgnored) {
+                // Harici uygulama yoksa WebView içinde bilinmeyen şema yüklenmesin.
+            }
+            return true;
+        }
     }
 
     private boolean tryOpenGoogleMapsApp(String rawUrl) {
@@ -425,32 +621,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    private boolean openAllowedUrlOrExternal(String rawUrl) {
-        if (rawUrl == null || rawUrl.isEmpty()) return true;
-        Uri uri = Uri.parse(rawUrl);
-        String scheme = uri.getScheme();
-        if ("about".equals(scheme)) {
-            return false;
-        }
-        if ("https".equals(scheme) && APP_HOST.equals(uri.getHost())) {
-            return false;
-        }
-
-        if ("intent".equals(scheme)) {
-            return openIntentUrl(rawUrl);
-        }
-
-        try {
-            Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-            intent.addCategory(Intent.CATEGORY_BROWSABLE);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
-        } catch (Exception ignored) {
-            // Do not load unknown schemes or hosts inside the WebView.
-        }
-        return true;
-    }
-
     private boolean openIntentUrl(String rawUrl) {
         String fallbackUrl = httpsFromIntentUrl(rawUrl);
         try {
@@ -465,7 +635,7 @@ public class MainActivity extends Activity {
             startActivity(intent);
             return true;
         } catch (ActivityNotFoundException ignored) {
-            // Maps kurulu değilse https yedek adrese düş.
+            // Haritalar kurulu değilse https yedek.
         } catch (Exception ignored) {
             // Bozuk intent:// adresi.
         }
@@ -504,7 +674,7 @@ public class MainActivity extends Activity {
     }
 
     private String[] normalizeAcceptTypes(String[] rawTypes) {
-        java.util.ArrayList<String> types = new java.util.ArrayList<>();
+        ArrayList<String> types = new ArrayList<>();
         if (rawTypes != null) {
             for (String raw : rawTypes) {
                 if (raw == null) continue;
@@ -537,7 +707,7 @@ public class MainActivity extends Activity {
                     Intent.FLAG_GRANT_READ_URI_PERMISSION
             );
         } catch (Exception ignored) {
-            // Bazı galeri sağlayıcıları kalıcı izin vermez; anlık izin WebView için yeterlidir.
+            // Galeri sağlayıcıları kalıcı izin vermeyebilir; anlık grant yeterlidir.
         }
     }
 }
