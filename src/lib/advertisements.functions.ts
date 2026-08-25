@@ -19,13 +19,16 @@ const saveSchema = z.object({
     .max(30)
     .regex(/^$|^[0-9+()\s-]{10,30}$/, "Geçerli bir telefon girin")
     .default(""),
-  image_url: z.string().trim().min(4).max(500),
+  image_url: z.string().trim().max(500).default(""),
   action_type: z.enum(["phone", "internal_route", "external_link"]),
   action_value: z.string().trim().min(1).max(500),
   display_order: z.number().int().min(0).max(9999).default(0),
   is_active: z.boolean().default(true),
   start_date: z.string().trim().min(10).max(40),
   end_date: z.string().trim().min(10).max(40),
+  fileName: z.string().trim().min(1).max(180).optional(),
+  contentType: z.string().trim().max(120).optional(),
+  base64: z.string().min(16).max(42_000_000).optional(),
 });
 
 export const listAdvertisements = createServerFn({ method: "GET" })
@@ -52,6 +55,9 @@ export const saveAdvertisement = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => {
     const data = saveSchema.parse(input);
+    if (!data.base64 && data.image_url.trim().length < 4) {
+      throw new Error("Galeriden bir görsel veya video seçin");
+    }
     const action_type = parseActionType(data.action_type) as AdActionType;
     const action_value = sanitizeActionValue(action_type, data.action_value);
     if (!action_value) {
@@ -73,33 +79,37 @@ export const saveAdvertisement = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
       const { assertFounder } = await import("./founder.server");
-      const { audited } = await import("./audit.server");
       await assertFounder(context.supabase, context.userId, context.claims as never);
-      const { id, ...values } = data;
-      return audited(
-        {
-          actorId: context.userId,
-          actorEmail: (context.claims as { email?: string } | null)?.email ?? null,
-          action: id ? "advertisement.update" : "advertisement.create",
-          entity: "advertisements",
-          entityId: id ?? null,
-          detail: { title: values.title, action_type: values.action_type },
-        },
-        async () => {
-          if (id) {
-            const { error } = await context.supabase.from("advertisements").update(values).eq("id", id);
-            if (error) throw new Error(error.message);
-            return { ok: true, id };
-          }
-          const { data: inserted, error } = await context.supabase
-            .from("advertisements")
-            .insert(values)
-            .select("id")
-            .maybeSingle();
-          if (error) throw new Error(error.message);
-          return { ok: true, id: inserted?.["id"] ?? null };
-        },
+      const { persistFounderAdvertisement, bytesFromBase64 } = await import(
+        "./advertisements-upload.server"
       );
+      const email = (context.claims as { email?: string } | null)?.email ?? null;
+      const file =
+        data.base64 && data.fileName
+          ? {
+              bytes: bytesFromBase64(data.base64),
+              fileName: data.fileName,
+              contentType: data.contentType || "application/octet-stream",
+            }
+          : undefined;
+      return persistFounderAdvertisement({
+        userId: context.userId,
+        email,
+        fields: {
+          ...(data.id ? { id: data.id } : {}),
+          title: data.title,
+          client_name: data.client_name,
+          client_phone: data.client_phone,
+          image_url: data.image_url,
+          action_type: data.action_type,
+          action_value: data.action_value,
+          display_order: data.display_order,
+          is_active: data.is_active,
+          start_date: data.start_date,
+          end_date: data.end_date,
+        },
+        ...(file ? { file } : {}),
+      });
     }),
   );
 
