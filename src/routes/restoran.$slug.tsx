@@ -166,12 +166,13 @@ function RestaurantDetail() {
             {open ? "Şu An Açık" : "Şu An Kapalı"}
           </span>
           <LocationButton business={restaurant} className="text-muted-foreground" />
-          <CallButton
-            phone={restaurant.contact_phone}
-            businessName={restaurant.name}
-            className="w-full sm:w-auto"
-          />
         </div>
+
+        <CallButton
+          phone={restaurant.contact_phone}
+          businessName={restaurant.name}
+          className="mt-4"
+        />
 
         {open ? null : (
           <div className="mt-4 rounded-3xl border border-border bg-warm px-4 py-3 text-sm text-warm-foreground">
