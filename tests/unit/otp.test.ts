@@ -35,6 +35,13 @@ describe("OTP input parsing", () => {
     expect(parseExactOtpCode(123456)).toBe("123456");
   });
 
+  it("rejects letter-containing codes at verification even if digits remain", () => {
+    expect(parseExactOtpCode("12ab34cd56")).toBeNull();
+    expect(parseExactOtpCode("abcdef")).toBeNull();
+    expect(parseExactOtpCode("12345a")).toBeNull();
+    expect(parseExactOtpCode("12 34 56")).toBe("123456");
+  });
+
   it("treats complete codes as 6 digits only", () => {
     expect(isCompleteOtpCode("123456")).toBe(true);
     expect(isCompleteOtpCode("12345")).toBe(false);

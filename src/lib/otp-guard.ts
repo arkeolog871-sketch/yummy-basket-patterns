@@ -176,3 +176,18 @@ export function consumeMatchingCode(row: GuardSnapshot): GuardSnapshot {
     lockedUntilMs: null,
   };
 }
+
+/**
+ * SQL `UPDATE ... WHERE code_hash = expected` ile aynı compare-and-swap.
+ * Paralel iki çağrıda yalnızca ilki match döner.
+ */
+export function compareAndSwapConsume(
+  row: GuardSnapshot | null,
+  expectedHash: string,
+  nowMs: number,
+): { result: OtpInspectResult; next: GuardSnapshot | null } {
+  if (!row?.codeHash) return { result: "missing", next: row };
+  if (isGuardExpired(row, nowMs)) return { result: "expired", next: row };
+  if (!hashesEqual(row.codeHash, expectedHash)) return { result: "mismatch", next: row };
+  return { result: "match", next: consumeMatchingCode(row) };
+}

@@ -1,4 +1,5 @@
 import { getRequestHeader } from "@tanstack/react-start/server";
+import { trustedClientAddress } from "@/lib/trusted-ip";
 
 type RateLimitState = {
   count: number;
@@ -9,17 +10,7 @@ const buckets = new Map<string, RateLimitState>();
 const MAX_BUCKETS = 10_000;
 
 function clientAddress(request?: Request): string {
-  // Cloudflare overwrites this header at the edge. The fallback is useful for
-  // local development and should only be trusted when the origin is proxy-only.
-  return (
-    request?.headers.get("cf-connecting-ip") ??
-    request?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    request?.headers.get("x-real-ip") ??
-    getRequestHeader("cf-connecting-ip") ??
-    getRequestHeader("x-forwarded-for")?.split(",")[0]?.trim() ??
-    getRequestHeader("x-real-ip") ??
-    "unknown"
-  );
+  return trustedClientAddress((name) => request?.headers.get(name) ?? getRequestHeader(name));
 }
 
 function consume(scope: string, limit: number, windowMs: number, request?: Request): boolean {

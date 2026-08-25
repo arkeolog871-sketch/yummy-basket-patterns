@@ -33,7 +33,7 @@ export function normalizeOtpCode(raw: unknown): string {
 }
 
 /**
- * Doğrulama için tam 6 rakam ister. 5/7 hane, boş veya kesilmiş kod reddedilir.
+ * Doğrulama için tam 6 rakam ister. 5/7 hane, harf, boş veya kesilmiş kod reddedilir.
  * Sayısal JSON girdilerinde baştaki sıfırlar kaybolacağı için 6 haneden kısa sayı da reddedilir.
  */
 export function parseExactOtpCode(raw: unknown): string | null {
@@ -43,6 +43,7 @@ export function parseExactOtpCode(raw: unknown): string | null {
     return digits;
   }
   if (typeof raw !== "string") return null;
+  if (/[a-zA-Z]/.test(raw)) return null;
   const digits = raw.trim().replace(/\D/g, "");
   if (digits.length !== OTP_CODE_LENGTH) return null;
   return digits;

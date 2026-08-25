@@ -38,6 +38,7 @@ Legend: `[PASS]` verified or implemented, `[WARNING]` requires deployment/archit
 - [PASS] Server functions have Zod input validation.
 - [PASS] Global server-function rate limiting is enabled.
 - [PASS] Sensitive OTP, registration, backup-code, login-log, and order limits are tighter.
+- [PASS] Rate-limit identity prefers `cf-connecting-ip` and ignores spoofable `X-Forwarded-For` / `X-Real-IP`.
 - [PASS] TanStack CSRF middleware protects server-function requests.
 - [PASS] No wildcard CORS policy is configured.
 - [PASS] Body and upload data have bounded validation.

@@ -94,4 +94,11 @@ describe("static secret and authorization controls", () => {
     expect(sql).toMatch(/REVOKE ALL ON FUNCTION public.place_customer_order/);
     expect(sql).not.toMatch(/GRANT EXECUTE ON FUNCTION public.place_customer_order[\s\S]*TO authenticated/);
   });
+
+  it("locks OTP issue/consume/failure with an advisory transaction lock and CAS consume", () => {
+    const sql = readFileSync(join(ROOT, "supabase/migrations/20260825230000_otp_advisory_lock_cas.sql"), "utf8");
+    expect(sql).toMatch(/pg_advisory_xact_lock/);
+    expect(sql).toMatch(/GET DIAGNOSTICS v_updated = ROW_COUNT/);
+    expect(sql).toMatch(/code_hash IS NOT DISTINCT FROM p_code_hash/);
+  });
 });

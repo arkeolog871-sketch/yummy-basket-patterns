@@ -4,6 +4,7 @@ import {
   MAX_FAILED_ATTEMPTS,
   MAX_SENDS_PER_HOUR,
   consumeMatchingCode,
+  compareAndSwapConsume,
   evaluateCanVerify,
   evaluateSendLimit,
   hashOtpCode,
@@ -114,5 +115,32 @@ describe("OTP guard verification", () => {
     expect(invalidated.codeHash).toBeNull();
     expect(invalidated.sendsInWindow).toBe(row.sendsInWindow);
     expect(inspectGuard(invalidated, CODE, hashOtpCode(EMAIL, CODE), now)).toBe("missing");
+  });
+
+  it("allows only one parallel compare-and-swap consume of the same hash", () => {
+    const now = Date.UTC(2026, 7, 25, 12, 0, 0);
+    const expected = hashOtpCode(EMAIL, CODE);
+    let store: GuardSnapshot | null = issuedAt(now);
+    const first = compareAndSwapConsume(store, expected, now);
+    store = first.next;
+    const second = compareAndSwapConsume(store, expected, now + 1);
+    expect(first.result).toBe("match");
+    expect(second.result).toBe("missing");
+  });
+
+  it("counts wrong attempts toward lockout so brute-force cannot skip the counter", () => {
+    const now = Date.UTC(2026, 7, 25, 12, 0, 0);
+    let row: GuardSnapshot | null = issuedAt(now);
+    const expected = hashOtpCode(EMAIL, OTHER);
+    for (let i = 0; i < MAX_FAILED_ATTEMPTS - 1; i += 1) {
+      const inspected = inspectGuard(row, OTHER, expected, now);
+      expect(inspected).toBe("mismatch");
+      row = nextAfterFailedAttempt(row, now + i);
+    }
+    expect(row.failedAttempts).toBe(MAX_FAILED_ATTEMPTS - 1);
+    expect(evaluateCanVerify(row, now).ok).toBe(true);
+    row = nextAfterFailedAttempt(row, now + 1000);
+    expect(evaluateCanVerify(row, now + 1000).ok).toBe(false);
+    expect(row.codeHash).toBeNull();
   });
 });
