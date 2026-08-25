@@ -38,7 +38,6 @@ public class MainActivity extends Activity {
     private static final String APP_URL = "https://yummy-basket-patterns.lovable.app/";
     private static final String APP_HOST = "yummy-basket-patterns.lovable.app";
     private static final int FILE_CHOOSER_REQUEST = 1001;
-    private static final int STARTUP_PERMISSION_REQUEST = 1002;
     private static final int FILE_PERMISSION_REQUEST = 1003;
     private static final int LOCATION_PERMISSION_REQUEST = 1004;
 
@@ -54,7 +53,6 @@ public class MainActivity extends Activity {
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        requestStartupPermissions();
 
         webView = new WebView(this);
         setContentView(webView);
@@ -181,11 +179,12 @@ public class MainActivity extends Activity {
             }
             fileChooserCallback = filePathCallback;
             pendingChooserParams = params;
-            ArrayList<String> needed = missingFilePermissions(params);
-            if (!needed.isEmpty()) {
+            // Galeri Photo Picker / SAF ile açılır; depolama izni gerekmez.
+            // Kamera izni yalnızca <input capture> veya çekim seçeneği için, o anda istenir.
+            if (params != null && params.isCaptureEnabled() && !hasCameraPermission()) {
                 ActivityCompat.requestPermissions(
                         MainActivity.this,
-                        needed.toArray(new String[0]),
+                        new String[] { Manifest.permission.CAMERA },
                         FILE_PERMISSION_REQUEST
                 );
                 return true;
@@ -297,46 +296,9 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void requestStartupPermissions() {
-        ArrayList<String> needed = new ArrayList<>();
-        addIfMissing(needed, Manifest.permission.ACCESS_FINE_LOCATION);
-        addIfMissing(needed, Manifest.permission.ACCESS_COARSE_LOCATION);
-        addIfMissing(needed, Manifest.permission.CAMERA);
-        addIfMissing(needed, Manifest.permission.CALL_PHONE);
-        if (Build.VERSION.SDK_INT >= 33) {
-            addIfMissing(needed, Manifest.permission.READ_MEDIA_IMAGES);
-            addIfMissing(needed, Manifest.permission.READ_MEDIA_VIDEO);
-            addIfMissing(needed, Manifest.permission.READ_MEDIA_AUDIO);
-            addIfMissing(needed, Manifest.permission.POST_NOTIFICATIONS);
-        } else {
-            addIfMissing(needed, Manifest.permission.READ_EXTERNAL_STORAGE);
-            if (Build.VERSION.SDK_INT <= 28) {
-                addIfMissing(needed, Manifest.permission.WRITE_EXTERNAL_STORAGE);
-            }
-        }
-        if (!needed.isEmpty()) {
-            ActivityCompat.requestPermissions(this, needed.toArray(new String[0]), STARTUP_PERMISSION_REQUEST);
-        }
-    }
-
-    private ArrayList<String> missingFilePermissions(WebChromeClient.FileChooserParams params) {
-        ArrayList<String> needed = new ArrayList<>();
-        addIfMissing(needed, Manifest.permission.CAMERA);
-        if (Build.VERSION.SDK_INT >= 33) {
-            addIfMissing(needed, Manifest.permission.READ_MEDIA_IMAGES);
-            if (params == null || acceptsVideo(normalizeAcceptTypes(params.getAcceptTypes()))) {
-                addIfMissing(needed, Manifest.permission.READ_MEDIA_VIDEO);
-            }
-        } else {
-            addIfMissing(needed, Manifest.permission.READ_EXTERNAL_STORAGE);
-        }
-        return needed;
-    }
-
-    private void addIfMissing(ArrayList<String> needed, String permission) {
-        if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
-            needed.add(permission);
-        }
+    private boolean hasCameraPermission() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED;
     }
 
     private boolean hasLocationPermission() {
@@ -357,34 +319,22 @@ public class MainActivity extends Activity {
         boolean images = acceptsImage(acceptTypes);
         boolean videos = acceptsVideo(acceptTypes);
 
-        Intent content = new Intent(Intent.ACTION_GET_CONTENT);
-        content.addCategory(Intent.CATEGORY_OPENABLE);
-        content.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        if (acceptTypes.length == 1) {
-            content.setType(acceptTypes[0]);
-        } else {
-            content.setType("*/*");
-            content.putExtra(Intent.EXTRA_MIME_TYPES, acceptTypes);
-        }
-        content.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, allowMultiple);
-
+        Intent primary = buildPhotoPickerOrContentIntent(acceptTypes, allowMultiple);
         ArrayList<Intent> extras = new ArrayList<>();
-        Intent gallery = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-        gallery.setType(videos && !images ? "video/*" : "image/*");
-        gallery.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        extras.add(gallery);
 
-        if (images) {
-            Intent camera = buildCaptureIntent(MediaStore.ACTION_IMAGE_CAPTURE, "jpg", true);
-            if (camera != null) extras.add(camera);
-        }
-        if (videos || capture) {
-            Intent camcorder = buildCaptureIntent(MediaStore.ACTION_VIDEO_CAPTURE, "mp4", false);
-            if (camcorder != null) extras.add(camcorder);
+        if (hasCameraPermission()) {
+            if (images || capture) {
+                Intent camera = buildCaptureIntent(MediaStore.ACTION_IMAGE_CAPTURE, "jpg", true);
+                if (camera != null) extras.add(camera);
+            }
+            if (videos || capture) {
+                Intent camcorder = buildCaptureIntent(MediaStore.ACTION_VIDEO_CAPTURE, "mp4", false);
+                if (camcorder != null) extras.add(camcorder);
+            }
         }
 
         try {
-            Intent chooser = Intent.createChooser(content, "Galeriden seç veya çek");
+            Intent chooser = Intent.createChooser(primary, "Galeriden seç");
             if (!extras.isEmpty()) {
                 chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, extras.toArray(new Parcelable[0]));
             }
@@ -404,6 +354,33 @@ public class MainActivity extends Activity {
                 return false;
             }
         }
+    }
+
+    private Intent buildPhotoPickerOrContentIntent(String[] acceptTypes, boolean allowMultiple) {
+        if (Build.VERSION.SDK_INT >= 33) {
+            try {
+                Intent picker = new Intent(MediaStore.ACTION_PICK_IMAGES);
+                if (allowMultiple) {
+                    int max = Math.min(10, MediaStore.getPickImagesMaxLimit());
+                    picker.putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, max);
+                }
+                MediaStore.setPickImagesMimeTypes(picker, acceptTypes);
+                return picker;
+            } catch (Exception ignored) {
+                // Eski WebView / OEM: GET_CONTENT'e düş.
+            }
+        }
+        Intent content = new Intent(Intent.ACTION_GET_CONTENT);
+        content.addCategory(Intent.CATEGORY_OPENABLE);
+        content.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        if (acceptTypes.length == 1) {
+            content.setType(acceptTypes[0]);
+        } else {
+            content.setType("*/*");
+            content.putExtra(Intent.EXTRA_MIME_TYPES, acceptTypes);
+        }
+        content.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, allowMultiple);
+        return content;
     }
 
     private Intent buildCaptureIntent(String action, String extension, boolean photo) {
