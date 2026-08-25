@@ -170,16 +170,6 @@ export function EmailCodeLogin({
               void verify(next);
             }}
           />
-          {error ? (
-            <p className="text-sm text-destructive" role="alert">
-              {error}
-            </p>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Kod {OTP_CODE_LENGTH} hanelidir ve {OTP_TTL_MINUTES} dakika geçerlidir. Yapıştırabilirsiniz;
-              yalnızca rakam kabul edilir. {OTP_CODE_LENGTH} hane dolunca otomatik doğrulanır.
-            </p>
-          )}
           <LegalConsentCheckbox
             id={`${idPrefix}-terms`}
             checked={termsAccepted}
@@ -191,6 +181,16 @@ export function EmailCodeLogin({
               if (next && isCompleteOtpCode(code)) void verify(code);
             }}
           />
+          {error ? (
+            <p className="text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Kod {OTP_CODE_LENGTH} hanelidir ve {OTP_TTL_MINUTES} dakika geçerlidir. Yapıştırabilirsiniz;
+              yalnızca rakam kabul edilir. {OTP_CODE_LENGTH} hane dolunca otomatik doğrulanır.
+            </p>
+          )}
         </div>
       ) : null}
 

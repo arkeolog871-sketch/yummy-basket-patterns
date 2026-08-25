@@ -136,16 +136,6 @@ export function VendorPhoneLogin() {
               void verify(next);
             }}
           />
-          {error ? (
-            <p className="text-sm text-destructive" role="alert">
-              {error}
-            </p>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Kod, işletme hesabınızın kayıtlı e-posta adresine ({maskedEmail}) gönderildi. 6 haneyi
-              yazın veya yapıştırın; yalnızca rakam kabul edilir.
-            </p>
-          )}
           <LegalConsentCheckbox
             id="vendor-terms"
             checked={termsAccepted}
@@ -157,6 +147,16 @@ export function VendorPhoneLogin() {
               if (next && isCompleteOtpCode(code)) void verify(code);
             }}
           />
+          {error ? (
+            <p className="text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Kod, işletme hesabınızın kayıtlı e-posta adresine ({maskedEmail}) gönderildi. 6 haneyi
+              yazın veya yapıştırın; yalnızca rakam kabul edilir.
+            </p>
+          )}
         </div>
       ) : null}
 

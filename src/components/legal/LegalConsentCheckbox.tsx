@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { LEGAL_DOCUMENTS, type LegalDocId } from "@/lib/legal";
 import { LegalDocumentBody } from "@/components/legal/LegalDocument";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -19,29 +17,33 @@ type Props = {
   onCheckedChange: (checked: boolean) => void;
 };
 
-/** OTP doğrulama adımındaki zorunlu yasal onay kutusu. */
+/** OTP kodunun hemen altında görünen zorunlu yasal onay. */
 export function LegalConsentCheckbox({ id, checked, disabled, onCheckedChange }: Props) {
   const [openDoc, setOpenDoc] = useState<LegalDocId | null>(null);
   const active = openDoc ? LEGAL_DOCUMENTS[openDoc] : null;
 
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-border/70 bg-muted/30 p-3">
-      <Checkbox
-        id={id}
-        checked={checked}
-        disabled={disabled}
-        onCheckedChange={(value) => onCheckedChange(value === true)}
-        className="mt-0.5"
-        aria-required
-      />
-      <Label htmlFor={id} className="text-xs font-normal leading-5 text-muted-foreground">
-        <LegalDocLink docId="terms" onOpen={setOpenDoc} />
-        {", "}
-        <LegalDocLink docId="privacy" onOpen={setOpenDoc} />
-        {" ve "}
-        <LegalDocLink docId="kvkk" onOpen={setOpenDoc} />
-        {"'ni okudum, kabul ediyorum."}
-      </Label>
+    <div className="mt-3 w-full rounded-xl border border-primary/40 bg-background p-3 shadow-sm">
+      <label htmlFor={id} className="flex cursor-pointer items-start gap-3">
+        <input
+          id={id}
+          name="termsAccepted"
+          type="checkbox"
+          required
+          checked={checked}
+          disabled={disabled}
+          onChange={(event) => onCheckedChange(event.target.checked)}
+          className="mt-0.5 size-5 shrink-0 accent-primary"
+        />
+        <span className="text-sm leading-5 text-foreground">
+          <LegalDocButton docId="terms" onOpen={setOpenDoc} />
+          {", "}
+          <LegalDocButton docId="privacy" onOpen={setOpenDoc} />
+          {" ve "}
+          <LegalDocButton docId="kvkk" onOpen={setOpenDoc} />
+          {"'ni okudum, kabul ediyorum."}
+        </span>
+      </label>
 
       <Dialog open={Boolean(openDoc)} onOpenChange={(open) => !open && setOpenDoc(null)}>
         <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
@@ -70,7 +72,7 @@ export function LegalConsentCheckbox({ id, checked, disabled, onCheckedChange }:
   );
 }
 
-function LegalDocLink({
+function LegalDocButton({
   docId,
   onOpen,
 }: {
@@ -79,11 +81,9 @@ function LegalDocLink({
 }) {
   const doc = LEGAL_DOCUMENTS[docId];
   return (
-    <a
-      href={doc.path}
-      target="_blank"
-      rel="noreferrer"
-      className="font-medium text-foreground underline underline-offset-2 hover:text-primary"
+    <button
+      type="button"
+      className="inline p-0 font-semibold text-primary underline underline-offset-2 hover:text-primary/80"
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -91,6 +91,6 @@ function LegalDocLink({
       }}
     >
       {doc.title}
-    </a>
+    </button>
   );
 }
