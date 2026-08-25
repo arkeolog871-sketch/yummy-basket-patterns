@@ -3,6 +3,7 @@ package online.uygulamamcebimde.app;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -13,11 +14,12 @@ import android.net.http.SslError;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Message;
-import android.os.Parcelable;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
+import android.webkit.PermissionRequest;
 import android.webkit.SslErrorHandler;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -26,6 +28,7 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Toast;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -38,8 +41,9 @@ public class MainActivity extends Activity {
     private static final String APP_URL = "https://yummy-basket-patterns.lovable.app/";
     private static final String APP_HOST = "yummy-basket-patterns.lovable.app";
     private static final int FILE_CHOOSER_REQUEST = 1001;
-    private static final int FILE_PERMISSION_REQUEST = 1003;
+    private static final int CAMERA_PERMISSION_REQUEST = 1003;
     private static final int LOCATION_PERMISSION_REQUEST = 1004;
+    private static final int WEB_CAMERA_PERMISSION_REQUEST = 1005;
 
     private WebView webView;
     private ValueCallback<Uri[]> fileChooserCallback;
@@ -48,6 +52,7 @@ public class MainActivity extends Activity {
     private Uri videoCaptureUri;
     private String geolocationOrigin;
     private GeolocationPermissions.Callback geolocationCallback;
+    private PermissionRequest webPermissionRequest;
 
     @Override
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
@@ -178,23 +183,26 @@ public class MainActivity extends Activity {
             }
             fileChooserCallback = filePathCallback;
             pendingChooserParams = params;
-            // Galeri SAF / Photo Picker ile açılır; READ_MEDIA gerekmez ve istenirse kullanıcı reddedince seçici de kırılır.
-            // Kamera seçeneği için CAMERA bu anda sorulur.
-            if (!hasCameraPermission()) {
-                ActivityCompat.requestPermissions(
-                        MainActivity.this,
-                        new String[] { Manifest.permission.CAMERA },
-                        FILE_PERMISSION_REQUEST
-                );
-                return true;
+            if (params != null && params.isCaptureEnabled()) {
+                return startCameraCaptureOrAskPermission(params);
             }
             if (!launchGalleryChooser(params)) {
-                fileChooserCallback = null;
-                pendingChooserParams = null;
-                filePathCallback.onReceiveValue(null);
-                return false;
+                Toast.makeText(MainActivity.this, "Galeri açılamadı.", Toast.LENGTH_LONG).show();
+                cancelFileChooser();
             }
             return true;
+        }
+
+        @Override
+        public void onPermissionRequest(final PermissionRequest request) {
+            runOnUiThread(() -> handleWebCameraPermissionRequest(request));
+        }
+
+        @Override
+        public void onPermissionRequestCanceled(PermissionRequest request) {
+            if (webPermissionRequest == request) {
+                webPermissionRequest = null;
+            }
         }
 
         @Override
@@ -252,7 +260,11 @@ public class MainActivity extends Activity {
         }
         Uri[] results = null;
         if (resultCode == RESULT_OK) {
-            if (data != null && data.getClipData() != null) {
+            // Kamera EXTRA_OUTPUT dosyasını öne al; bazı OEM'ler thumbnail data.uri de döndürür.
+            Uri captured = firstExistingCapture(imageCaptureUri, videoCaptureUri);
+            if (captured != null) {
+                results = new Uri[] { captured };
+            } else if (data != null && data.getClipData() != null) {
                 int count = data.getClipData().getItemCount();
                 results = new Uri[count];
                 for (int i = 0; i < count; i++) {
@@ -263,9 +275,6 @@ public class MainActivity extends Activity {
                 Uri uri = data.getData();
                 persistReadPermission(uri);
                 results = new Uri[] { uri };
-            } else {
-                Uri captured = firstExistingCapture(imageCaptureUri, videoCaptureUri);
-                if (captured != null) results = new Uri[] { captured };
             }
         }
         fileChooserCallback.onReceiveValue(results);
@@ -285,12 +294,28 @@ public class MainActivity extends Activity {
             geolocationOrigin = null;
             return;
         }
-        if (requestCode == FILE_PERMISSION_REQUEST && fileChooserCallback != null) {
+        if (requestCode == CAMERA_PERMISSION_REQUEST) {
+            if (!hasCameraPermission()) {
+                showCameraDeniedMessage();
+                cancelFileChooser();
+                return;
+            }
             WebChromeClient.FileChooserParams params = pendingChooserParams;
-            if (!launchGalleryChooser(params)) {
-                fileChooserCallback.onReceiveValue(null);
-                fileChooserCallback = null;
-                pendingChooserParams = null;
+            if (!launchCameraCapture(params)) {
+                Toast.makeText(this, "Kamera açılamadı. Galeriden seçebilirsiniz.", Toast.LENGTH_LONG).show();
+                cancelFileChooser();
+            }
+            return;
+        }
+        if (requestCode == WEB_CAMERA_PERMISSION_REQUEST) {
+            PermissionRequest request = webPermissionRequest;
+            webPermissionRequest = null;
+            if (request == null) return;
+            if (hasCameraPermission()) {
+                request.grant(new String[] { PermissionRequest.RESOURCE_VIDEO_CAPTURE });
+            } else {
+                showCameraDeniedMessage();
+                request.deny();
             }
         }
     }
@@ -307,54 +332,143 @@ public class MainActivity extends Activity {
                 == PackageManager.PERMISSION_GRANTED;
     }
 
+    private boolean startCameraCaptureOrAskPermission(WebChromeClient.FileChooserParams params) {
+        if (!hasCameraPermission()) {
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[] { Manifest.permission.CAMERA },
+                    CAMERA_PERMISSION_REQUEST
+            );
+            return true;
+        }
+        if (!launchCameraCapture(params)) {
+            Toast.makeText(this, "Kamera açılamadı. Galeriden seçebilirsiniz.", Toast.LENGTH_LONG).show();
+            cancelFileChooser();
+            return true;
+        }
+        return true;
+    }
+
+    private void handleWebCameraPermissionRequest(PermissionRequest request) {
+        if (request == null) return;
+        Uri origin = Uri.parse(request.getOrigin() != null ? request.getOrigin().toString() : "");
+        if (!isTrustedWebOrigin(origin)) {
+            request.deny();
+            return;
+        }
+        boolean wantsCamera = false;
+        for (String resource : request.getResources()) {
+            if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(resource)) {
+                wantsCamera = true;
+                break;
+            }
+        }
+        if (!wantsCamera) {
+            request.deny();
+            return;
+        }
+        if (hasCameraPermission()) {
+            request.grant(new String[] { PermissionRequest.RESOURCE_VIDEO_CAPTURE });
+            return;
+        }
+        webPermissionRequest = request;
+        ActivityCompat.requestPermissions(
+                this,
+                new String[] { Manifest.permission.CAMERA },
+                WEB_CAMERA_PERMISSION_REQUEST
+        );
+    }
+
+    private void cancelFileChooser() {
+        if (fileChooserCallback != null) {
+            fileChooserCallback.onReceiveValue(null);
+        }
+        fileChooserCallback = null;
+        pendingChooserParams = null;
+        imageCaptureUri = null;
+        videoCaptureUri = null;
+    }
+
+    private void showCameraDeniedMessage() {
+        boolean canAskAgain = ActivityCompat.shouldShowRequestPermissionRationale(
+                this,
+                Manifest.permission.CAMERA
+        );
+        AlertDialog.Builder dialog = new AlertDialog.Builder(this)
+                .setTitle("Kamera izni gerekli")
+                .setMessage(
+                        "Fotoğraf çekmek için kamera iznini verin. İzin yoksa galeriden seçebilirsiniz."
+                )
+                .setNegativeButton("Tamam", null);
+        if (!canAskAgain) {
+            dialog.setPositiveButton("Ayarlar", (d, w) -> {
+                Intent settings = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                settings.setData(Uri.fromParts("package", getPackageName(), null));
+                startActivity(settings);
+            });
+        }
+        dialog.show();
+    }
+
+    private boolean launchCameraCapture(WebChromeClient.FileChooserParams params) {
+        String[] acceptTypes = params != null ? normalizeAcceptTypes(params.getAcceptTypes()) : new String[0];
+        boolean videos = acceptsVideo(acceptTypes);
+        boolean images = acceptsImage(acceptTypes);
+        imageCaptureUri = null;
+        videoCaptureUri = null;
+        Intent intent = videos && !images
+                ? buildCaptureIntent(MediaStore.ACTION_VIDEO_CAPTURE, "mp4", false)
+                : buildCaptureIntent(MediaStore.ACTION_IMAGE_CAPTURE, "jpg", true);
+        if (intent == null) return false;
+        try {
+            startActivityForResult(intent, FILE_CHOOSER_REQUEST);
+            return true;
+        } catch (Exception ignored) {
+            imageCaptureUri = null;
+            videoCaptureUri = null;
+            return false;
+        }
+    }
+
     private boolean launchGalleryChooser(WebChromeClient.FileChooserParams params) {
+        imageCaptureUri = null;
+        videoCaptureUri = null;
         String[] acceptTypes = params != null ? normalizeAcceptTypes(params.getAcceptTypes()) : new String[0];
         if (acceptTypes.length == 0) {
             acceptTypes = new String[] { "image/*", "video/*" };
         }
         boolean allowMultiple =
             params != null && params.getMode() == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE;
-        boolean capture = params != null && params.isCaptureEnabled();
-        boolean images = acceptsImage(acceptTypes);
-        boolean videos = acceptsVideo(acceptTypes);
-
-        Intent primary = buildGalleryIntent(acceptTypes, allowMultiple);
-        ArrayList<Intent> extras = new ArrayList<>();
-
-        Intent gallery = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-        gallery.setType(videos && !images ? "video/*" : "image/*");
-        gallery.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        extras.add(gallery);
-
-        if (hasCameraPermission()) {
-            if (images || capture) {
-                Intent camera = buildCaptureIntent(MediaStore.ACTION_IMAGE_CAPTURE, "jpg", true);
-                if (camera != null) extras.add(camera);
-            }
-            if (videos || capture) {
-                Intent camcorder = buildCaptureIntent(MediaStore.ACTION_VIDEO_CAPTURE, "mp4", false);
-                if (camcorder != null) extras.add(camcorder);
-            }
-        }
 
         try {
-            Intent chooser = Intent.createChooser(primary, "Galeriden seç veya çek");
-            if (!extras.isEmpty()) {
-                chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, extras.toArray(new Parcelable[0]));
-            }
-            startActivityForResult(chooser, FILE_CHOOSER_REQUEST);
+            startActivityForResult(buildGalleryIntent(acceptTypes, allowMultiple), FILE_CHOOSER_REQUEST);
             return true;
         } catch (Exception ignored) {
             try {
                 Intent documents = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 documents.addCategory(Intent.CATEGORY_OPENABLE);
-                documents.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                documents.setType("*/*");
-                documents.putExtra(Intent.EXTRA_MIME_TYPES, acceptTypes);
+                documents.addFlags(
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                );
+                documents.setType(acceptTypes.length == 1 ? acceptTypes[0] : "*/*");
+                if (acceptTypes.length > 1) {
+                    documents.putExtra(Intent.EXTRA_MIME_TYPES, acceptTypes);
+                }
                 documents.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, allowMultiple);
                 startActivityForResult(Intent.createChooser(documents, "Galeriden seç"), FILE_CHOOSER_REQUEST);
                 return true;
             } catch (Exception alsoIgnored) {
+                if (params != null) {
+                    try {
+                        startActivityForResult(
+                                Intent.createChooser(params.createIntent(), "Galeriden seç"),
+                                FILE_CHOOSER_REQUEST
+                        );
+                        return true;
+                    } catch (Exception ignoredCreate) {
+                        return false;
+                    }
+                }
                 return false;
             }
         }
@@ -384,7 +498,7 @@ public class MainActivity extends Activity {
             content.putExtra(Intent.EXTRA_MIME_TYPES, acceptTypes);
         }
         content.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, allowMultiple);
-        return content;
+        return Intent.createChooser(content, "Galeriden seç");
     }
 
     private Intent buildCaptureIntent(String action, String extension, boolean photo) {
