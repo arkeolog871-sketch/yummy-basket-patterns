@@ -813,7 +813,17 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_banners: {
+        Row: {
+          action_type: Database["public"]["Enums"]["advertisement_action_type"] | null
+          action_value: string | null
+          display_order: number | null
+          id: string | null
+          image_url: string | null
+          title: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       expire_stale_advertisements: { Args: Record<PropertyKey, never>; Returns: number }

@@ -236,7 +236,7 @@ export function AdsPanel() {
   async function copySql() {
     try {
       await navigator.clipboard.writeText(ADVERTISEMENTS_SETUP_SQL);
-      toast.success("SQL kopyalandı — SQL Editor’a yapıştırıp çalıştırın");
+      toast.success("SQL kopyalandı — SQL Editor’da Run; sonuç advertisements / true / true olmalı");
     } catch {
       toast.error("Kopyalanamadı; aşağıdaki kutudaki metni seçin");
     }
@@ -266,23 +266,24 @@ export function AdsPanel() {
     <div className="space-y-6">
       {schemaMissing ? (
         <div className="rounded-3xl border border-dashed border-primary/40 bg-card p-6">
-          <h2 className="text-lg font-semibold">Tablo ve kova bu uygulamada yok</h2>
+          <h2 className="text-lg font-semibold">Tek seferlik kurulum SQL</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Bu kutuya yapıştırmak SQL’i kaydetmez. Canlı site{" "}
-            <code className="rounded bg-muted px-1">{supabaseProject.ref || "bağlı Supabase"}</code>{" "}
-            projesinde <code className="rounded bg-muted px-1">public.advertisements</code> tablosunu ve{" "}
-            <code className="rounded bg-muted px-1">banners</code> kovasını görmüyor.{" "}
-            <strong>SQL’i kopyala</strong> → aynı projenin SQL Editor’ında Run → Success. Sonra{" "}
-            <strong>Tekrar kontrol et</strong>. Reel deneme: Reklam ekle → Galeriden seç → Kaydet → ana sayfa.
+            Bu kutu SQL’i kaydetmez.{" "}
+            <strong>SQL’i kopyala</strong> →{" "}
+            <a
+              href={supabaseProject.sqlUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-accent hover:underline"
+            >
+              {supabaseProject.ref || "bağlı proje"} SQL Editor
+            </a>
+            {" "}→ hiçbir satır seçmeden <strong>Run</strong>. Sonuç satırı şöyle olmalı:{" "}
+            <code className="rounded bg-muted px-1">advertisements</code> ·{" "}
+            <code className="rounded bg-muted px-1">true</code> ·{" "}
+            <code className="rounded bg-muted px-1">true</code>.
+            Sonra <strong>Tekrar kontrol et</strong>.
           </p>
-          <a
-            href={supabaseProject.sqlUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-2 inline-flex text-sm font-medium text-accent hover:underline"
-          >
-            Bu projenin SQL Editor’ını aç
-          </a>
           <textarea
             readOnly
             value={ADVERTISEMENTS_SETUP_SQL}

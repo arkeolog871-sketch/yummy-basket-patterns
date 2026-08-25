@@ -27,12 +27,22 @@ export const Route = createFileRoute("/api/v1/banners")({
             console.error("[banners.expire]", expired.error.message);
           }
           const { data, error } = await supabase.rpc("get_active_banners");
+          let rows: unknown = data;
           if (error) {
-            if (isMissingAdvertisementsSchema(error)) return json([]);
-            console.error("[banners]", error.message);
-            return json({ error: "Reklamlar yüklenemedi" }, 500);
+            const fallback = await supabase
+              .from("public_banners")
+              .select("id,title,image_url,action_type,action_value,display_order")
+              .order("display_order", { ascending: true });
+            if (fallback.error) {
+              if (isMissingAdvertisementsSchema(error) || isMissingAdvertisementsSchema(fallback.error)) {
+                return json([]);
+              }
+              console.error("[banners]", error.message, fallback.error.message);
+              return json({ error: "Reklamlar yüklenemedi" }, 500);
+            }
+            rows = fallback.data;
           }
-          const banners = (Array.isArray(data) ? data : [])
+          const banners = (Array.isArray(rows) ? rows : [])
             .map(parsePublicBanner)
             .filter((item) => item != null);
           return json(banners);

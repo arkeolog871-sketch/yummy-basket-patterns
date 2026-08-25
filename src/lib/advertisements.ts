@@ -44,6 +44,7 @@ export function isMissingAdvertisementsSchema(error: { message?: string; code?: 
   return (
     (msg.includes("advertisements") ||
       msg.includes("get_active_banners") ||
+      msg.includes("public_banners") ||
       msg.includes("track_advertisement") ||
       msg.includes("expire_stale")) &&
     (msg.includes("does not exist") ||
