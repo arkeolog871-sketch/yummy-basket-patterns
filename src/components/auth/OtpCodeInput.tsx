@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { OTP_CODE_LENGTH, isCompleteOtpCode, normalizeOtpCode } from "@/lib/otp";
@@ -19,10 +19,9 @@ type Props = {
  * iOS Safari / Web Clip: tek görünür alan — one-time-code, önde sıfır, yapıştırma.
  */
 export function OtpCodeInput({ id, value, disabled, autoFocus, onChange, onComplete }: Props) {
-  const [ios, setIos] = useState(false);
-  useEffect(() => {
-    setIos(isIosDevice());
-  }, []);
+  // İlk istemci karesinde iOS'u tanı; useEffect sonrası 6 kutudan tek alana geçiş
+  // kodu ve odak durumunu sıfırlıyordu (Playwright/Web Clip).
+  const [ios] = useState(() => isIosDevice());
 
   if (ios) {
     return (

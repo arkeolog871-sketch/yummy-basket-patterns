@@ -16,15 +16,21 @@ describe("iOS OTP input and consent", () => {
     expect(source).toContain("text-[16px]");
   });
 
-  it("does not wrap the terms checkbox with htmlFor of itself (iOS double-toggle)", () => {
+  it("does not wrap the terms checkbox in a label (iOS double-toggle)", () => {
     const source = readFileSync(
       join(ROOT, "src/components/legal/LegalConsentCheckbox.tsx"),
       "utf8",
     );
-    expect(source).not.toMatch(/<label htmlFor=\{id\}/);
+    expect(source).not.toMatch(/<label[\s>/]/);
     expect(source).toContain('type="checkbox"');
     expect(source).toContain("okudum, kabul ediyorum");
     expect(source).toContain("stopPropagation");
+  });
+
+  it("picks the iOS single field on the first client render", () => {
+    const source = readFileSync(join(ROOT, "src/components/auth/OtpCodeInput.tsx"), "utf8");
+    expect(source).toContain("useState(() => isIosDevice())");
+    expect(source).not.toContain("setIos(isIosDevice())");
   });
 
   it("detects iPhone user agents and not Android", () => {

@@ -24,7 +24,19 @@ export function LegalConsentCheckbox({ id, checked, disabled, onCheckedChange }:
 
   return (
     <div className="mt-3 w-full rounded-xl border border-primary/40 bg-background p-3 shadow-sm">
-      <label className="flex min-h-11 cursor-pointer items-start gap-3 touch-manipulation">
+      {/*
+        iOS Safari/WebKit: onay kutusunu etiket öğesinin içine sarmak
+        (htmlFor olsa da olmasa da) tıklamada çifte toggle üretir; Android
+        Chromium çoğu zaman üretmez. Satır bir div; kutu kendi onChange'i
+        ile tek kez güncellenir.
+      */}
+      <div
+        className="flex min-h-11 cursor-pointer items-start gap-3 touch-manipulation"
+        onClick={() => {
+          if (disabled) return;
+          onCheckedChange(!checked);
+        }}
+      >
         <input
           id={id}
           name="termsAccepted"
@@ -33,7 +45,10 @@ export function LegalConsentCheckbox({ id, checked, disabled, onCheckedChange }:
           checked={checked}
           disabled={disabled}
           onClick={(event) => event.stopPropagation()}
-          onChange={(event) => onCheckedChange(event.target.checked)}
+          onChange={(event) => {
+            event.stopPropagation();
+            onCheckedChange(event.target.checked);
+          }}
           className="mt-0.5 size-6 min-h-6 min-w-6 shrink-0 accent-primary"
         />
         <span className="text-[16px] leading-6 text-foreground">
@@ -44,7 +59,7 @@ export function LegalConsentCheckbox({ id, checked, disabled, onCheckedChange }:
           <LegalDocButton docId="kvkk" onOpen={setOpenDoc} />
           {"'ni okudum, kabul ediyorum."}
         </span>
-      </label>
+      </div>
 
       <Dialog open={Boolean(openDoc)} onOpenChange={(open) => !open && setOpenDoc(null)}>
         <DialogContent className="max-h-[min(85vh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem))] max-w-2xl overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))]">

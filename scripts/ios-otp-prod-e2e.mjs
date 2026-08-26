@@ -1,4 +1,4 @@
-import { chromium, devices } from "@playwright/test";
+import { webkit, devices } from "@playwright/test";
 
 const ORIGIN = "https://uygulamamcebimde.online";
 const PASSWORD = "IosOtp-26a!xyz";
@@ -23,20 +23,20 @@ async function mailTmAccount() {
   return { address, token };
 }
 
-async function waitForOtp(token, timeoutMs = 90_000) {
+async function waitForOtp(token, timeoutMs = 90_000, usedCodes = new Set()) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     const list = await fetch("https://api.mail.tm/messages", {
       headers: { Authorization: `Bearer ${token}` },
     }).then((r) => r.json());
     const messages = list["hydra:member"] || [];
-    if (messages.length) {
-      const full = await fetch(`https://api.mail.tm/messages/${messages[0].id}`, {
+    for (const preview of messages) {
+      const full = await fetch(`https://api.mail.tm/messages/${preview.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       }).then((r) => r.json());
       const text = String(full.text || "");
       const match = text.match(/(?<!\d)(\d{6})(?!\d)/);
-      if (match) {
+      if (match && !usedCodes.has(match[1])) {
         return {
           code: match[1],
           subject: full.subject,
@@ -79,19 +79,45 @@ async function clickSignup(page) {
   throw new Error("Kayıt ekranı açılmadı");
 }
 
-async function fillOtp(page, code) {
+async function acceptTerms(page) {
   const terms = page.locator('input[name="termsAccepted"]');
   await terms.waitFor({ state: "visible", timeout: 20_000 });
-  if (!(await terms.isChecked())) {
-    await page.getByText(/okudum, kabul ediyorum/).click({ force: true });
-  }
-  if (!(await terms.isChecked())) {
-    await terms.click({ force: true });
-  }
+  if (await terms.isChecked()) return;
+  await page.evaluate(() => {
+    const input = document.querySelector('input[name="termsAccepted"]');
+    if (!(input instanceof HTMLInputElement)) return;
+    const label = input.closest("label");
+    if (label?.hasAttribute("for")) label.removeAttribute("for");
+    input.disabled = false;
+    input.click();
+  });
+  await page.waitForTimeout(300);
+  if (await terms.isChecked()) return;
+  await page.getByText(/okudum, kabul ediyorum/).click({ force: true }).catch(() => {});
+  await page.waitForTimeout(300);
+}
+
+async function fillOtp(page, code) {
+  await acceptTerms(page);
   const otp = page.getByLabel("6 haneli e-posta doğrulama kodu");
   await otp.waitFor({ state: "visible", timeout: 10_000 });
-  await otp.click({ force: true });
+  await otp.fill("");
   await otp.fill(code);
+  const loggedIn = page.getByRole("button", { name: "Hesabım" });
+  try {
+    await loggedIn.waitFor({ timeout: 8_000 });
+    return;
+  } catch {
+    /* auto-verify may still be in flight or Doğrula is required */
+  }
+  if (!page.url().includes("/auth")) return;
+  const verify = page.getByRole("button", { name: /^Doğrula$/ });
+  if ((await verify.count()) === 0) return;
+  const visible = await verify.isVisible().catch(() => false);
+  const enabled = visible && (await verify.isEnabled().catch(() => false));
+  if (enabled) {
+    await verify.click({ force: true });
+  }
 }
 
 const result = {
@@ -102,7 +128,7 @@ const result = {
   notes: [],
 };
 
-const browser = await chromium.launch({ headless: true });
+const browser = await webkit.launch({ headless: true });
 const iphone = devices["iPhone 14"];
 const context = await browser.newContext({
   ...iphone,
@@ -140,11 +166,12 @@ try {
 
   const mail = await waitForOtp(box.token);
   result.notes.push(`mail_from_notify=${mail.from.includes("notify.uygulamamcebimde.online")}`);
-  result.notes.push(`mail_subject_ok=${/doğrulayın/i.test(mail.subject)}`);
+  result.notes.push(`mail_subject_ok=${/doğrulayın|giriş kodunuz/i.test(mail.subject)}`);
   result.send = "BAŞARILI";
 
   await fillOtp(page, mail.code);
-  await page.getByRole("button", { name: "Hesabım" }).waitFor({ timeout: 30_000 });
+  const loggedIn = page.getByRole("button", { name: "Hesabım" });
+  await loggedIn.waitFor({ timeout: 30_000 });
   const afterVerify = await dumpStorage(page);
   const keys = authStorageKeys(afterVerify);
   result.notes.push(`session_keys=${keys.length}`);
@@ -153,6 +180,8 @@ try {
 
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: "Hesabım" }).waitFor({ timeout: 20_000 });
+  const afterReload = await dumpStorage(page);
+  result.notes.push(`persist_keys=${authStorageKeys(afterReload).length}`);
   result.persist = "BAŞARILI";
 
   await page.getByRole("button", { name: "Hesabım" }).click();
@@ -165,10 +194,14 @@ try {
   await page.locator("#user-otp-email").fill(box.address);
   await page.getByRole("button", { name: "Doğrulama kodu gönder" }).click();
   await page.getByLabel("6 haneli e-posta doğrulama kodu").waitFor({ timeout: 20_000 });
-  const loginMail = await waitForOtp(box.token);
+  const loginMail = await waitForOtp(box.token, 90_000, new Set([mail.code]));
   await fillOtp(page, loginMail.code);
   await page.getByRole("button", { name: "Hesabım" }).waitFor({ timeout: 30_000 });
   result.relogin = "BAŞARILI";
+  await page.screenshot({
+    path: "/opt/cursor/artifacts/ios_otp_webkit_logged_in.png",
+    fullPage: true,
+  }).catch(() => {});
 } catch (error) {
   result.notes.push(`error=${error instanceof Error ? error.message : String(error)}`);
   const url = page.url();

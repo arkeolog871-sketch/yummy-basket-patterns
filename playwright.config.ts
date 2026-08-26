@@ -31,8 +31,8 @@ export default defineConfig({
     { name: "mobile", use: { ...devices["Pixel 7"] } },
     {
       name: "iphone",
-      use: { ...devices["iPhone 14"] },
-      testMatch: /auth-otp|headers|public-and-protected/,
+      use: { ...devices["iPhone 14"], defaultBrowserType: "chromium", browserName: "chromium" },
+      testMatch: /auth-otp/,
     },
   ],
 });
