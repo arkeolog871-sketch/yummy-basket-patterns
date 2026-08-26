@@ -5,7 +5,7 @@ import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { runServerFn, toPublicErrorMessage } from "./public-error";
 import { planStockDecrement } from "./orders-stock";
-import { isMissingRpcError } from "./rpc-fallback";
+import { isMissingRpcError, shouldUseOrderPlacementFallback } from "./rpc-fallback";
 import {
   CASH_ON_DELIVERY_PAYMENT_METHOD,
   createOrderSchema,
@@ -97,7 +97,7 @@ async function placeOrder(
     });
     throw new Error(result?.error || "Sipariş oluşturulamadı.");
   }
-  if (!isMissingRpcError(rpc.error)) {
+  if (!shouldUseOrderPlacementFallback(rpc.error)) {
     logOrderFailure({
       stage: "place_customer_order.rpc",
       userId,
@@ -108,7 +108,9 @@ async function placeOrder(
   }
 
   logOrderFailure({
-    stage: "place_customer_order.missing_rpc_fallback",
+    stage: isMissingRpcError(rpc.error)
+      ? "place_customer_order.missing_rpc_fallback"
+      : "place_customer_order.schema_mismatch_fallback",
     userId,
     restaurantId: restaurant.id,
     error: rpc.error,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { toPublicErrorMessage } from "@/lib/public-error";
-import { isMissingRpcError } from "@/lib/rpc-fallback";
+import { isMissingRpcError, shouldUseOrderPlacementFallback } from "@/lib/rpc-fallback";
 
 describe("public error sanitization", () => {
   it("hides stack traces, SQL, and secret-like text", () => {
@@ -42,5 +42,29 @@ describe("RPC rollout fallback", () => {
       false,
     );
     expect(isMissingRpcError({ code: "42501", message: "permission denied" })).toBe(false);
+    expect(
+      shouldUseOrderPlacementFallback({
+        code: "PGRST202",
+        message: "Could not find the function",
+      }),
+    ).toBe(true);
+    expect(
+      shouldUseOrderPlacementFallback({
+        code: "42703",
+        message: 'column "payment_method" does not exist',
+      }),
+    ).toBe(true);
+    expect(
+      shouldUseOrderPlacementFallback({
+        code: "PGRST204",
+        message: 'Could not find the "idempotency_key" column of "orders"',
+      }),
+    ).toBe(true);
+    expect(shouldUseOrderPlacementFallback({ code: "42501", message: "permission denied" })).toBe(
+      false,
+    );
+    expect(shouldUseOrderPlacementFallback({ message: "Minimum sepet tutarına ulaşılmadı." })).toBe(
+      false,
+    );
   });
 });
