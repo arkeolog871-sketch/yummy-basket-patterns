@@ -373,7 +373,7 @@ export async function createVerifiedSession(
   }
 
   const before = await supabaseAdmin.auth.admin.getUserById(userId);
-  const wasUnconfirmed = !Boolean(before.data.user?.email_confirmed_at);
+  const wasUnconfirmed = !before.data.user?.email_confirmed_at;
 
   await supabaseAdmin.auth.admin.updateUserById(userId, { email_confirm: true });
 
