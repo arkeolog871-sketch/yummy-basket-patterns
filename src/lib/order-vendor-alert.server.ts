@@ -1,6 +1,7 @@
 import * as React from "react";
 import { render } from "@react-email/render";
 import { sendLovableEmail } from "@lovable.dev/email-js";
+import { getRequest } from "@tanstack/react-start/server";
 import { NewOrderEmail } from "@/lib/email-templates/new-order";
 import { formatDateTime, formatPrice } from "@/lib/format";
 
@@ -49,11 +50,40 @@ export async function finishPlacedOrder(
   notify: (orderId: string) => Promise<void> = notifyVendorOfNewOrder,
 ): Promise<{ ok: true; id: string; total: number }> {
   try {
-    await notify(placed.id);
+    continueAfterResponse(
+      notify(placed.id).catch((error) => {
+        console.error("[order-vendor-alert] bildirim başlatılamadı", {
+          orderId: placed.id,
+          code: error && typeof error === "object" && "code" in error ? error.code : undefined,
+        });
+      }),
+    );
   } catch {
     console.error("[order-vendor-alert] bildirim başlatılamadı", { orderId: placed.id });
   }
   return { ok: true as const, id: placed.id, total: placed.total };
+}
+
+type WaitUntilRequest = Request & {
+  waitUntil?: (p: Promise<unknown>) => void;
+  runtime?: { cloudflare?: { context?: { waitUntil?: (p: Promise<unknown>) => void } } };
+};
+
+/** Nitro Cloudflare `request.waitUntil` (ExecutionContext); yoksa izlenen promise event loop'ta sürer. */
+function continueAfterResponse(task: Promise<unknown>): void {
+  try {
+    const request = getRequest() as WaitUntilRequest;
+    if (typeof request.waitUntil === "function") {
+      request.waitUntil(task);
+      return;
+    }
+    const cfWaitUntil = request.runtime?.cloudflare?.context?.waitUntil;
+    if (typeof cfWaitUntil === "function") {
+      cfWaitUntil.call(request.runtime?.cloudflare?.context, task);
+    }
+  } catch {
+    // Request ALS yok (unit test / Node): .catch ile izlenen promise event loop'ta sürer.
+  }
 }
 
 async function notifyVendorOfNewOrderUnsafe(orderId: string): Promise<void> {

@@ -3,11 +3,18 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import * as React from "react";
 import { render } from "@react-email/render";
+import { getRequest } from "@tanstack/react-start/server";
 import { NewOrderEmail } from "@/lib/email-templates/new-order";
 import {
   __orderVendorAlertTest,
   finishPlacedOrder,
 } from "@/lib/order-vendor-alert.server";
+
+vi.mock("@tanstack/react-start/server", () => ({
+  getRequest: vi.fn(() => {
+    throw new Error("No StartEvent found in AsyncLocalStorage");
+  }),
+}));
 
 const ROOT = join(import.meta.dirname, "../..");
 
@@ -23,6 +30,36 @@ describe("vendor new-order alerts", () => {
     expect(notifyAt).toBeGreaterThan(placedAt);
     expect(isolatedReturn).toBeGreaterThan(notifyAt);
     expect(text).toMatch(/bildirim başlatılamadı/);
+  });
+
+  it("returns ok:true before vendor notify finishes", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const notify = vi.fn().mockImplementation(() => gate);
+    const result = await finishPlacedOrder({ id: "order-fast", total: 220 }, notify);
+    expect(result).toEqual({ ok: true, id: "order-fast", total: 220 });
+    expect(notify).toHaveBeenCalledWith("order-fast");
+    release();
+    await gate;
+  });
+
+  it("keeps the isolate alive with request.waitUntil when the runtime provides it", async () => {
+    const waitUntil = vi.fn();
+    vi.mocked(getRequest).mockReturnValueOnce({ waitUntil } as never);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const notify = vi.fn().mockImplementation(() => gate);
+    const result = await finishPlacedOrder({ id: "order-wait", total: 90 }, notify);
+    expect(result).toEqual({ ok: true, id: "order-wait", total: 90 });
+    expect(notify).toHaveBeenCalledWith("order-wait");
+    expect(waitUntil).toHaveBeenCalledTimes(1);
+    expect(waitUntil.mock.calls[0]?.[0]).toBeInstanceOf(Promise);
+    release();
+    await gate;
   });
 
   it("returns ok:true when order is placed and vendor notify succeeds", async () => {
@@ -42,6 +79,7 @@ describe("vendor new-order alerts", () => {
       id: "order-mail",
       total: 80,
     });
+    expect(notify).toHaveBeenCalledWith("order-mail");
   });
 
   it("returns ok:true when order is placed but in-app notify throws", async () => {
@@ -51,6 +89,7 @@ describe("vendor new-order alerts", () => {
       id: "order-app",
       total: 50,
     });
+    expect(notify).toHaveBeenCalledWith("order-app");
   });
 
   it("does not claim a second in_app or email alert for the same order", () => {
@@ -98,6 +137,13 @@ describe("vendor new-order alerts", () => {
     const text = readFileSync(join(ROOT, "src/lib/order-vendor-alert.server.ts"), "utf8");
     expect(text).toMatch(/sendLovableEmail/);
     expect(text).toMatch(/LOVABLE_API_KEY/);
+    expect(text).toMatch(/waitUntil/);
+    expect(text).toMatch(/continueAfterResponse/);
+    expect(text).not.toMatch(/await notify\(/);
+    expect(text).not.toMatch(/setTimeout\(|process\.nextTick|queueMicrotask\(/);
+    expect(text).toMatch(/deliverInAppAlert/);
+    expect(text).toMatch(/deliverOrderEmail/);
+    expect(text).toMatch(/UNIQUE \(order_id, channel\)|channel: "in_app"|channel: "email"/);
     expect(text).toMatch(/in-app bildirim başarısız/);
     expect(text).toMatch(/e-posta bildirimi başarısız/);
     expect(text).not.toMatch(/resend|nodemailer|sendgrid|postmark/i);
