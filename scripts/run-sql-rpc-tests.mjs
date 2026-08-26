@@ -321,19 +321,19 @@ check(
   "rate limit first hit allowed",
   scalar(
     `SELECT consume_request_rate_limit('${rateKey}', 2, 60, '${rateT0}'::timestamptz)::text;`,
-  ) === "t",
+  ) === "true",
 );
 check(
   "rate limit second hit allowed",
   scalar(
     `SELECT consume_request_rate_limit('${rateKey}', 2, 60, '${rateT1}'::timestamptz)::text;`,
-  ) === "t",
+  ) === "true",
 );
 check(
   "rate limit third hit denied",
   scalar(
     `SELECT consume_request_rate_limit('${rateKey}', 2, 60, '${rateT1}'::timestamptz)::text;`,
-  ) === "f",
+  ) === "false",
 );
 const anonRate = spawnSync(
   "sudo",
