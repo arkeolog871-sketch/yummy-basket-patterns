@@ -63,5 +63,22 @@ describe("production release contract (no secrets)", () => {
     expect(
       existsSync(join(ROOT, "supabase/migrations/20260826183000_place_order_idempotency_payment.sql")),
     ).toBe(true);
+    const place = readFileSync(
+      join(ROOT, "supabase/migrations/20260826183000_place_order_idempotency_payment.sql"),
+      "utf8",
+    );
+    const placeSql = place
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("--"))
+      .join("\n");
+    expect(placeSql).toMatch(/ADD COLUMN IF NOT EXISTS idempotency_key/);
+    expect(placeSql).toMatch(/ADD COLUMN IF NOT EXISTS payment_method/);
+    expect(placeSql).toMatch(/cash_on_delivery/);
+    expect(placeSql).toMatch(/GRANT EXECUTE[\s\S]*TO service_role/);
+    expect(placeSql).toMatch(/REVOKE ALL[\s\S]*FROM PUBLIC, anon, authenticated/);
+    expect(placeSql).toMatch(/ENABLE ROW LEVEL SECURITY/);
+    expect(placeSql).not.toMatch(/DISABLE ROW LEVEL SECURITY/);
+    expect(placeSql).not.toMatch(/GRANT INSERT ON public\.orders TO (anon|PUBLIC)/);
+    expect(placeSql).not.toMatch(/DROP POLICY/);
   });
 });

@@ -1,6 +1,12 @@
--- Production'da place_customer_order ve orders.idempotency_key henüz yok.
--- Kod yedeği kolon yokken de INSERT eder; bu migration kolon + atomik RPC ekler.
--- OTP fonksiyonlarına dokunulmaz.
+-- Production-safe order placement: add missing columns + atomic RPC.
+-- This file is idempotent (IF NOT EXISTS / CREATE OR REPLACE).
+--
+-- DOES NOT disable RLS, drop existing policies, or open table INSERT/SELECT
+-- to anon/public. Execute is service_role only. App uses orders.id (no extra
+-- order number column). OTP functions are not replaced.
+
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.orders
   ADD COLUMN IF NOT EXISTS idempotency_key text;

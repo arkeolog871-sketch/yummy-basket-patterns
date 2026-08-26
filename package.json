@@ -16,6 +16,8 @@
     "test:sql": "node scripts/run-sql-rpc-tests.mjs",
     "security:test": "node scripts/security-smoke.mjs",
     "security:prod": "node scripts/production-readonly-probe.mjs",
+    "order:prod-probe": "node scripts/production-order-schema-probe.mjs",
+    "order:prod-migrate": "node scripts/production-apply-order-migration.mjs",
     "staging:migrate": "node scripts/staging-migrate.mjs",
     "ios:prepare": "node scripts/prepare-ios-pwa.mjs",
     "build:ios": "node scripts/prepare-ios-pwa.mjs && vite build"
