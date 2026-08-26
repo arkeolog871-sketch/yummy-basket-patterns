@@ -267,7 +267,9 @@ export type Database = {
       }
       email_otp_guard: {
         Row: {
+          code_hash: string | null
           email_hash: string
+          expires_at: string | null
           failed_attempts: number
           last_sent_at: string | null
           locked_until: string | null
@@ -276,7 +278,9 @@ export type Database = {
           window_started_at: string
         }
         Insert: {
+          code_hash?: string | null
           email_hash: string
+          expires_at?: string | null
           failed_attempts?: number
           last_sent_at?: string | null
           locked_until?: string | null
@@ -285,7 +289,9 @@ export type Database = {
           window_started_at?: string
         }
         Update: {
+          code_hash?: string | null
           email_hash?: string
+          expires_at?: string | null
           failed_attempts?: number
           last_sent_at?: string | null
           locked_until?: string | null
@@ -554,6 +560,8 @@ export type Database = {
           full_name: string | null
           id: string
           phone: string | null
+          terms_accepted: boolean
+          terms_accepted_at: string | null
           updated_at: string
         }
         Insert: {
@@ -561,6 +569,8 @@ export type Database = {
           full_name?: string | null
           id: string
           phone?: string | null
+          terms_accepted?: boolean
+          terms_accepted_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -568,6 +578,8 @@ export type Database = {
           full_name?: string | null
           id?: string
           phone?: string | null
+          terms_accepted?: boolean
+          terms_accepted_at?: string | null
           updated_at?: string
         }
         Relationships: []
