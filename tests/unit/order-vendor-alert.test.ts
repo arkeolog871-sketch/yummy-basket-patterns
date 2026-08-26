@@ -1,27 +1,87 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import * as React from "react";
 import { render } from "@react-email/render";
 import { NewOrderEmail } from "@/lib/email-templates/new-order";
-import { __orderVendorAlertTest } from "@/lib/order-vendor-alert.server";
+import {
+  __orderVendorAlertTest,
+  finishPlacedOrder,
+} from "@/lib/order-vendor-alert.server";
 
 const ROOT = join(import.meta.dirname, "../..");
 
 describe("vendor new-order alerts", () => {
-  it("hooks notify after a successful createOrder and does not await it in the success path", () => {
+  it("notifies only after placeOrder succeeds and keeps ok:true if notify setup fails", () => {
     const text = readFileSync(join(ROOT, "src/lib/orders.functions.ts"), "utf8");
-    expect(text).toMatch(/void notifyVendorOfNewOrder\(placed\.id\)/);
+    expect(text).toMatch(/finishPlacedOrder/);
     expect(text).toMatch(/order-vendor-alert\.server/);
     const placedAt = text.indexOf("const placed = await placeOrder");
-    const notifyAt = text.indexOf("void notifyVendorOfNewOrder");
-    const returnAt = text.indexOf("return { ok: true as const, ...placed }");
+    const notifyAt = text.indexOf("finishPlacedOrder");
+    const isolatedReturn = text.indexOf("return { ok: true as const, ...placed }");
     expect(placedAt).toBeGreaterThan(0);
     expect(notifyAt).toBeGreaterThan(placedAt);
-    expect(returnAt).toBeGreaterThan(notifyAt);
-    expect(text).not.toMatch(/await notifyVendorOfNewOrder/);
+    expect(isolatedReturn).toBeGreaterThan(notifyAt);
     expect(text).toMatch(/bildirim başlatılamadı/);
   });
+
+  it("returns ok:true when order is placed and vendor notify succeeds", async () => {
+    const notify = vi.fn().mockResolvedValue(undefined);
+    await expect(finishPlacedOrder({ id: "order-ok", total: 220 }, notify)).resolves.toEqual({
+      ok: true,
+      id: "order-ok",
+      total: 220,
+    });
+    expect(notify).toHaveBeenCalledWith("order-ok");
+  });
+
+  it("returns ok:true when order is placed but email notify throws", async () => {
+    const notify = vi.fn().mockRejectedValue(new Error("e-posta gönderilemedi"));
+    await expect(finishPlacedOrder({ id: "order-mail", total: 80 }, notify)).resolves.toEqual({
+      ok: true,
+      id: "order-mail",
+      total: 80,
+    });
+  });
+
+  it("returns ok:true when order is placed but in-app notify throws", async () => {
+    const notify = vi.fn().mockRejectedValue(new Error("in-app bildirim başarısız"));
+    await expect(finishPlacedOrder({ id: "order-app", total: 50 }, notify)).resolves.toEqual({
+      ok: true,
+      id: "order-app",
+      total: 50,
+    });
+  });
+
+  it("does not claim a second in_app or email alert for the same order", () => {
+    const { decideClaimAfterInsert } = __orderVendorAlertTest;
+    expect(decideClaimAfterInsert({ insertError: null, markSent: true })).toBe("already_sent");
+    expect(
+      decideClaimAfterInsert({ insertError: { code: "23505" }, markSent: true }),
+    ).toBe("check_existing");
+    expect(
+      decideClaimAfterInsert({
+        insertError: { code: "23505" },
+        markSent: true,
+        existingSentAt: "2026-08-26T00:00:00.000Z",
+      }),
+    ).toBe("already_sent");
+    expect(
+      decideClaimAfterInsert({
+        insertError: { code: "23505" },
+        markSent: false,
+        existingSentAt: "2026-08-26T00:00:00.000Z",
+      }),
+    ).toBe("already_sent");
+    expect(
+      decideClaimAfterInsert({
+        insertError: { code: "23505" },
+        markSent: false,
+        existingSentAt: null,
+      }),
+    ).toBe("claimed");
+  });
+
 
   it("loads restaurant email and order rows from the database, not the client payload", () => {
     const text = readFileSync(join(ROOT, "src/lib/order-vendor-alert.server.ts"), "utf8");
@@ -38,6 +98,8 @@ describe("vendor new-order alerts", () => {
     const text = readFileSync(join(ROOT, "src/lib/order-vendor-alert.server.ts"), "utf8");
     expect(text).toMatch(/sendLovableEmail/);
     expect(text).toMatch(/LOVABLE_API_KEY/);
+    expect(text).toMatch(/in-app bildirim başarısız/);
+    expect(text).toMatch(/e-posta bildirimi başarısız/);
     expect(text).not.toMatch(/resend|nodemailer|sendgrid|postmark/i);
   });
 

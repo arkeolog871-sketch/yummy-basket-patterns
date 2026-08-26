@@ -43,6 +43,19 @@ export async function notifyVendorOfNewOrder(orderId: string): Promise<void> {
   }
 }
 
+/** DB kaydı bittikten sonra çağrılır; bildirim hatası her zaman ok:true döner. */
+export async function finishPlacedOrder(
+  placed: { id: string; total: number },
+  notify: (orderId: string) => Promise<void> = notifyVendorOfNewOrder,
+): Promise<{ ok: true; id: string; total: number }> {
+  try {
+    await notify(placed.id);
+  } catch {
+    console.error("[order-vendor-alert] bildirim başlatılamadı", { orderId: placed.id });
+  }
+  return { ok: true as const, id: placed.id, total: placed.total };
+}
+
 async function notifyVendorOfNewOrderUnsafe(orderId: string): Promise<void> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -75,34 +88,48 @@ async function notifyVendorOfNewOrderUnsafe(orderId: string): Promise<void> {
   const title = "Yeni sipariş";
   const body = `${restaurant.name} · ${totalLabel} · ${order.recipient_name}`;
 
-  await deliverInAppAlert({
-    orderId: order.id,
-    restaurantId: restaurant.id,
-    title,
-    body,
-  });
+  try {
+    await deliverInAppAlert({
+      orderId: order.id,
+      restaurantId: restaurant.id,
+      title,
+      body,
+    });
+  } catch (error) {
+    console.error("[order-vendor-alert] in-app bildirim başarısız", {
+      orderId: order.id,
+      code: error && typeof error === "object" && "code" in error ? error.code : undefined,
+    });
+  }
 
   const to = (restaurant.contact_email ?? "").trim().toLowerCase();
   if (!looksLikeEmail(to)) return;
 
-  await deliverOrderEmail({
-    orderId: order.id,
-    restaurantId: restaurant.id,
-    title,
-    body,
-    to,
-    restaurantName: restaurant.name,
-    createdAtLabel: formatDateTime(order.created_at),
-    recipientName: order.recipient_name,
-    phone: order.phone,
-    address,
-    note: order.note,
-    lines,
-    subtotalLabel: formatPrice(Number(order.subtotal)),
-    deliveryFeeLabel: formatPrice(Number(order.delivery_fee)),
-    totalLabel,
-    paymentLabel: "Kapıda ödeme",
-  });
+  try {
+    await deliverOrderEmail({
+      orderId: order.id,
+      restaurantId: restaurant.id,
+      title,
+      body,
+      to,
+      restaurantName: restaurant.name,
+      createdAtLabel: formatDateTime(order.created_at),
+      recipientName: order.recipient_name,
+      phone: order.phone,
+      address,
+      note: order.note,
+      lines,
+      subtotalLabel: formatPrice(Number(order.subtotal)),
+      deliveryFeeLabel: formatPrice(Number(order.delivery_fee)),
+      totalLabel,
+      paymentLabel: "Kapıda ödeme",
+    });
+  } catch (error) {
+    console.error("[order-vendor-alert] e-posta bildirimi başarısız", {
+      orderId: order.id,
+      code: error && typeof error === "object" && "code" in error ? error.code : undefined,
+    });
+  }
 }
 
 async function deliverInAppAlert(input: {
@@ -245,9 +272,12 @@ async function claimAlert(input: {
     .select("id, sent_at")
     .maybeSingle();
 
-  if (!inserted.error) return input.markSent ? "already_sent" : "claimed";
-  if (isMissingRelationError(inserted.error)) return "missing_table";
-  if (!isUniqueViolation(inserted.error)) throw inserted.error;
+  if (!inserted.error) return decideClaimAfterInsert({ insertError: null, markSent: input.markSent });
+  const fromInsert = decideClaimAfterInsert({
+    insertError: inserted.error,
+    markSent: input.markSent,
+  });
+  if (fromInsert !== "check_existing") return fromInsert;
 
   const existing = await supabaseAdmin
     .from("order_vendor_alerts")
@@ -259,7 +289,23 @@ async function claimAlert(input: {
     if (isMissingRelationError(existing.error)) return "missing_table";
     throw existing.error;
   }
-  if (input.markSent || existing.data?.sent_at) return "already_sent";
+  return decideClaimAfterInsert({
+    insertError: inserted.error,
+    markSent: input.markSent,
+    existingSentAt: existing.data?.sent_at ?? null,
+  });
+}
+
+function decideClaimAfterInsert(input: {
+  insertError: { code?: string; message?: string } | null;
+  markSent: boolean;
+  existingSentAt?: string | null;
+}): "claimed" | "already_sent" | "missing_table" | "check_existing" {
+  if (!input.insertError) return input.markSent ? "already_sent" : "claimed";
+  if (isMissingRelationError(input.insertError)) return "missing_table";
+  if (!isUniqueViolation(input.insertError)) throw input.insertError;
+  if (input.existingSentAt === undefined) return "check_existing";
+  if (input.markSent || input.existingSentAt) return "already_sent";
   return "claimed";
 }
 
@@ -267,4 +313,5 @@ export const __orderVendorAlertTest = {
   looksLikeEmail,
   isMissingRelationError,
   isUniqueViolation,
+  decideClaimAfterInsert,
 };

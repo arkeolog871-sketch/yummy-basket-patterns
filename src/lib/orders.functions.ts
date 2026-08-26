@@ -35,12 +35,12 @@ export const createOrder = createServerFn({ method: "POST" })
     try {
       const placed = await placeOrder(data, context);
       try {
-        const { notifyVendorOfNewOrder } = await import("./order-vendor-alert.server");
-        void notifyVendorOfNewOrder(placed.id);
+        const { finishPlacedOrder } = await import("./order-vendor-alert.server");
+        return await finishPlacedOrder(placed);
       } catch {
         console.error("[order-vendor-alert] bildirim başlatılamadı", { orderId: placed.id });
+        return { ok: true as const, ...placed };
       }
-      return { ok: true as const, ...placed };
     } catch (error) {
       return { ok: false as const, error: toPublicErrorMessage(error) };
     }
