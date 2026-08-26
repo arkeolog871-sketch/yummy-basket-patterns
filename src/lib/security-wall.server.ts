@@ -5,25 +5,22 @@ export const SECURITY_HEADERS: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "X-Permitted-Cross-Domain-Policies": "none",
-  "Permissions-Policy":
-    "geolocation=(self), camera=(self), microphone=(), payment=(), usb=(), interest-cohort=()",
+  "Permissions-Policy": "geolocation=(self), camera=(self), microphone=(), payment=(), usb=(), interest-cohort=()",
   "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
   "X-DNS-Prefetch-Control": "off",
   "X-Frame-Options": "SAMEORIGIN",
   "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
   "Content-Security-Policy":
-    // unsafe-inline: TanStack Start `Scripts` + `window.__PUBLIC_ENV__` inline script.
-    // Nonce CSP would require a larger SSR change. Do not drop without replacing those emitters.
     "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'self'; " +
-    "form-action 'self' https://accounts.google.com https://accounts.google.com.tr; " +
+    "form-action 'self' https://accounts.google.com https://accounts.google.com.tr https://oauth.lovable.app https://auth.lovable.app; " +
     "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com https://unpkg.com; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; " +
     "font-src 'self' data: https://fonts.gstatic.com https://unpkg.com; " +
     "img-src 'self' data: blob: https:; " +
-    "connect-src 'self' https://*.supabase.co https://oauth2.googleapis.com https://accounts.google.com " +
-    "https://maps.googleapis.com https://unpkg.com " +
-    "https://tile.openstreetmap.org; " +
-    "frame-src 'self' https://www.openstreetmap.org https://accounts.google.com; " +
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://oauth2.googleapis.com https://accounts.google.com " +
+    "https://oauth.lovable.app https://auth.lovable.app https://maps.googleapis.com https://unpkg.com " +
+    "https://tile.openstreetmap.org ws://localhost:* ws://127.0.0.1:*; " +
+    "frame-src 'self' https://www.openstreetmap.org https://accounts.google.com https://oauth.lovable.app https://auth.lovable.app; " +
     "media-src 'self' blob: https:",
 };
 
