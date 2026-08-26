@@ -477,6 +477,57 @@ export type Database = {
           },
         ];
       };
+      order_vendor_alerts: {
+        Row: {
+          body: string;
+          channel: string;
+          created_at: string;
+          id: string;
+          order_id: string;
+          read_at: string | null;
+          restaurant_id: string;
+          sent_at: string | null;
+          title: string;
+        };
+        Insert: {
+          body: string;
+          channel: string;
+          created_at?: string;
+          id?: string;
+          order_id: string;
+          read_at?: string | null;
+          restaurant_id: string;
+          sent_at?: string | null;
+          title: string;
+        };
+        Update: {
+          body?: string;
+          channel?: string;
+          created_at?: string;
+          id?: string;
+          order_id?: string;
+          read_at?: string | null;
+          restaurant_id?: string;
+          sent_at?: string | null;
+          title?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "order_vendor_alerts_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "order_vendor_alerts_restaurant_id_fkey";
+            columns: ["restaurant_id"];
+            isOneToOne: false;
+            referencedRelation: "restaurants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       orders: {
         Row: {
           city: string;

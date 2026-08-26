@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { toPublicErrorMessage } from "@/lib/public-error";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Store,
   LogOut,
@@ -26,6 +26,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 import {
   getVendorDashboard,
+  markVendorOrderAlertRead,
   setVendorItemAvailability,
   setVendorOrderStatus,
   setVendorStoreOpen,
@@ -135,6 +136,7 @@ function VendorDashboard() {
   const updateStatus = useServerFn(setVendorOrderStatus);
   const updateStore = useServerFn(setVendorStoreOpen);
   const updateItem = useServerFn(setVendorItemAvailability);
+  const markAlertRead = useServerFn(markVendorOrderAlertRead);
 
   const dashboard = useQuery({
     queryKey: ["vendor-dashboard"],
@@ -175,6 +177,22 @@ function VendorDashboard() {
     onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
 
+  const alertReadMutation = useMutation({
+    mutationFn: (id: string) => markAlertRead({ data: { id } }),
+    onSuccess: () => invalidate(),
+  });
+
+  const unreadAlerts = dashboard.data?.alerts ?? [];
+  const toastedAlertIds = useRef(new Set<string>());
+
+  useEffect(() => {
+    for (const alert of unreadAlerts) {
+      if (toastedAlertIds.current.has(alert.id)) continue;
+      toastedAlertIds.current.add(alert.id);
+      toast.success("Yeni sipariş", { description: alert.body });
+    }
+  }, [unreadAlerts]);
+
   async function handleSignOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
@@ -202,6 +220,7 @@ function VendorDashboard() {
   const restaurant = dashboard.data?.restaurant ?? null;
   const items = dashboard.data?.items ?? [];
   const orders = dashboard.data?.orders ?? [];
+  const unreadOrderIds = new Set(unreadAlerts.map((alert) => alert.order_id));
   const activeOrders = orders.filter(
     (order) => order.status !== "delivered" && order.status !== "cancelled",
   );
@@ -297,6 +316,26 @@ function VendorDashboard() {
           </TabsList>
 
           <TabsContent value="siparisler" className="mt-6 space-y-3">
+            {unreadAlerts.map((alert) => (
+              <div
+                key={alert.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-primary/40 bg-primary/5 p-4"
+              >
+                <div>
+                  <p className="font-semibold">Yeni sipariş</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{alert.body}</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-full"
+                  disabled={alertReadMutation.isPending}
+                  onClick={() => alertReadMutation.mutate(alert.id)}
+                >
+                  Gördüm
+                </Button>
+              </div>
+            ))}
             {orders.length === 0 ? (
               <EmptyState
                 title="Henüz sipariş yok"
@@ -306,7 +345,9 @@ function VendorDashboard() {
               orders.map((order) => (
                 <div
                   key={order.id}
-                  className="rounded-3xl border border-border bg-card p-5 shadow-card"
+                  className={`rounded-3xl border bg-card p-5 shadow-card ${
+                    unreadOrderIds.has(order.id) ? "border-primary/50" : "border-border"
+                  }`}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
