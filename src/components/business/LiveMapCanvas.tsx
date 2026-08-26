@@ -14,7 +14,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getMapsBrowserConfig } from "@/lib/maps.functions";
 import { isAndroidWebView } from "@/lib/maps";
 import type { GoogleInfoWindow, GoogleMap, GoogleMarker } from "@/lib/google-maps-types";
-import { escapeHtml } from "@/lib/escape-html";
+import { businessPinPopupHtml } from "@/lib/map-popup";
 
 export type LiveMapMarker = {
   lat: number;
@@ -37,13 +37,7 @@ function isLovableDomain() {
 }
 
 function markerPopup(marker: LiveMapMarker) {
-  const address = marker.address
-    ? `<p style="margin:4px 0 0;font-size:12px;opacity:.75">${escapeHtml(marker.address)}</p>`
-    : "";
-  const link = marker.href
-    ? `<a href="${escapeHtml(marker.href)}" style="display:inline-block;margin-top:8px;font-size:12px;font-weight:600;color:#c8341f">Menüye git →</a>`
-    : "";
-  return `<div style="min-width:160px"><strong>${escapeHtml(marker.title)}</strong>${address}${link}</div>`;
+  return businessPinPopupHtml(marker);
 }
 
 function osmEmbedSrc(markers: LiveMapMarker[]) {
