@@ -22,6 +22,7 @@ export const sealGoogleOAuthState = createServerFn({ method: "POST" })
     enforceSensitiveRateLimit("google-oauth-seal", 20, 10 * 60 * 1000);
     const {
       isAllowedGoogleRedirectUri,
+      isGoogleOAuthStateConfigured,
       sealGoogleOAuthStatePayload,
       googleOAuthClientId,
     } = await import("./google-oauth.server");
@@ -30,6 +31,12 @@ export const sealGoogleOAuthState = createServerFn({ method: "POST" })
       return {
         ok: false as const,
         error: "Google OAuth istemci kimliği eksik. VITE_GOOGLE_OAUTH_CLIENT_ID tanımlayın.",
+      };
+    }
+    if (!isGoogleOAuthStateConfigured()) {
+      return {
+        ok: false as const,
+        error: "Google OAuth durum anahtarı yapılandırılmadı. GOOGLE_OAUTH_STATE_SECRET veya GOOGLE_OAUTH_CLIENT_SECRET tanımlayın.",
       };
     }
     if (!isAllowedGoogleRedirectUri(data.redirectUri)) {

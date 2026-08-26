@@ -37,9 +37,28 @@ export function isInAppBrowser(): boolean {
   return IN_APP_BROWSER.test(ua);
 }
 
+/**
+ * Google Cloud Console'da kayıtlı üretim dönüş adresi apex `/auth`.
+ * www ve apex aynı Web istemcisini paylaşır; www origin'inden başlatılsa bile
+ * redirect_uri apex'e sabitlenir (www→apex 302 Google'ın redirect_uri eşlemesini bozar).
+ * Önizleme / localhost aynı origin'deki `/auth` yolunu kullanır.
+ */
+export function googleOAuthRedirectUriForOrigin(origin: string): string {
+  const trimmed = origin.replace(/\/$/, "");
+  try {
+    const host = new URL(trimmed.includes("://") ? trimmed : `https://${trimmed}`).hostname.toLowerCase();
+    if (host === "uygulamamcebimde.online" || host === "www.uygulamamcebimde.online") {
+      return `${PRODUCTION_OAUTH_ORIGIN}/auth`;
+    }
+  } catch {
+    /* aynı origin yedek */
+  }
+  return `${trimmed}/auth`;
+}
+
 export function googleOAuthRedirectUri(): string {
   if (typeof window === "undefined") return `${PRODUCTION_OAUTH_ORIGIN}/auth`;
-  return `${window.location.origin.replace(/\/$/, "")}/auth`;
+  return googleOAuthRedirectUriForOrigin(window.location.origin);
 }
 
 function base64Url(bytes: Uint8Array): string {

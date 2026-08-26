@@ -41,6 +41,14 @@ Application limits are in-memory per instance. Edge limits must exist independen
 - [ ] Confirm `_headers` / application CSP still apply when proxied (no header stripping).
 - [ ] Strip incoming `X-Forwarded-For` / `X-Real-IP` at the trusted edge so only `CF-Connecting-IP` is meaningful. The app limiter already ignores spoofed forwarded headers.
 
+## Android App Links (www)
+
+Google’s Digital Asset Links crawler **does not follow redirects**. If `www` 302s to apex, `https://www.uygulamamcebimde.online/.well-known/assetlinks.json` will fail verification even when apex serves a valid JSON file.
+
+- [ ] Apex `https://uygulamamcebimde.online/.well-known/assetlinks.json` returns `200` + `Content-Type: application/json` (not the SPA HTML 404).
+- [ ] `www` either also returns the same JSON with `200` **without** a 302, or you accept that only the apex host can `autoVerify`.
+- [ ] SHA-256 in that JSON is the **Play App Signing** cert (not a placeholder). Empty `sha256_cert_fingerprints` means App Links stay unverified.
+
 ## What the app must not pretend
 
 - Presence of `cf-connecting-ip` in code does **not** mean WAF, Turnstile, or origin lockdown are on.

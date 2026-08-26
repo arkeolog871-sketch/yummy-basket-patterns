@@ -45,6 +45,23 @@ function iphoneProfileHeadersPlugin(): Plugin {
   };
 }
 
+const ASSETLINKS_URL = "/.well-known/assetlinks.json";
+
+function assetlinksHeadersPlugin(): Plugin {
+  return {
+    name: "assetlinks-headers",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url?.split("?")[0] === ASSETLINKS_URL) {
+          res.setHeader("Content-Type", "application/json; charset=utf-8");
+          res.setHeader("X-Content-Type-Options", "nosniff");
+        }
+        next();
+      });
+    },
+  };
+}
+
 function apkLinkRevPlugin(): Plugin {
   const stamp = (html: string) =>
     html.replace(/\/silvan-cebimde\.apk(?:\?v=[^"'\s]*)?/g, `/silvan-cebimde.apk?v=${encodeURIComponent(apkRev())}`);
@@ -104,7 +121,7 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
-    plugins: [iphoneProfileHeadersPlugin(), apkLinkRevPlugin()],
+    plugins: [iphoneProfileHeadersPlugin(), apkLinkRevPlugin(), assetlinksHeadersPlugin()],
     resolve: {
       alias: {
         "entities/lib/decode.js": path.resolve(

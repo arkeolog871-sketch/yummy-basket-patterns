@@ -84,6 +84,26 @@ describe("static secret and authorization controls", () => {
     expect(text).toMatch(/invalidateUndeliveredCode/);
   });
 
+  it("consumes a matching OTP before creating a GoTrue session", () => {
+    const text = readFileSync(join(ROOT, "src/lib/otp.functions.ts"), "utf8");
+    const consumeAt = text.indexOf("consumeIssuedOtp(");
+    const sessionAt = text.indexOf("createVerifiedSession(");
+    expect(consumeAt).toBeGreaterThan(0);
+    expect(sessionAt).toBeGreaterThan(consumeAt);
+  });
+
+  it("does not ship a hardcoded Google OAuth state fallback or Lovable OAuth CSP hosts", () => {
+    const oauth = readFileSync(join(ROOT, "src/lib/google-oauth.server.ts"), "utf8");
+    const csp = readFileSync(join(ROOT, "src/lib/security-wall.server.ts"), "utf8");
+    const headers = readFileSync(join(ROOT, "public/_headers"), "utf8");
+    expect(oauth).not.toMatch(/silvan-cebimde-google-oauth-state-v1/);
+    expect(oauth).toMatch(/resolveGoogleOAuthStateSecret/);
+    expect(csp).not.toMatch(/oauth\.lovable\.app/);
+    expect(csp).not.toMatch(/auth\.lovable\.app/);
+    expect(headers).not.toMatch(/oauth\.lovable\.app/);
+    expect(csp).toMatch(/unsafe-inline/);
+  });
+
   it("defines atomic OTP and order RPCs as service-role only", () => {
     const sql = readFileSync(join(ROOT, "supabase/migrations/20260825223000_otp_order_atomic_rpc.sql"), "utf8");
     expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public.issue_email_otp/);

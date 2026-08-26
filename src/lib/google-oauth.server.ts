@@ -16,12 +16,30 @@ const PRODUCTION_REDIRECTS = new Set([
   "https://www.uygulamamcebimde.online/auth",
 ]);
 
+/**
+ * Durum jetonu anahtarı. Sabit yedek yok — eksikse OAuth mühürlenmez.
+ * Tercih sırası: GOOGLE_OAUTH_STATE_SECRET, sonra istemci gizli anahtarı,
+ * sonra service-role (yalnızca sunucu env).
+ */
+export function resolveGoogleOAuthStateSecret(): string | null {
+  const dedicated = process.env["GOOGLE_OAUTH_STATE_SECRET"]?.trim();
+  if (dedicated) return dedicated;
+  const clientSecret = process.env["GOOGLE_OAUTH_CLIENT_SECRET"]?.trim();
+  if (clientSecret) return `sc-google-oauth-state:${clientSecret}`;
+  const serviceRole = process.env["SUPABASE_SERVICE_ROLE_KEY"]?.trim();
+  if (serviceRole) return `sc-google-oauth-state:${serviceRole}`;
+  return null;
+}
+
+export function isGoogleOAuthStateConfigured(): boolean {
+  return Boolean(resolveGoogleOAuthStateSecret());
+}
+
 function stateKey(): Buffer {
-  const secret =
-    process.env["GOOGLE_OAUTH_STATE_SECRET"] ||
-    process.env["GOOGLE_OAUTH_CLIENT_SECRET"] ||
-    process.env["SUPABASE_SERVICE_ROLE_KEY"] ||
-    "silvan-cebimde-google-oauth-state-v1";
+  const secret = resolveGoogleOAuthStateSecret();
+  if (!secret) {
+    throw new Error("Google OAuth durum anahtarı yapılandırılmadı.");
+  }
   return createHash("sha256").update(secret).digest();
 }
 

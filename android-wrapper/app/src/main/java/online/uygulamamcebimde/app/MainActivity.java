@@ -714,8 +714,7 @@ public class MainActivity extends Activity {
         host = host.toLowerCase(java.util.Locale.ROOT);
         return APP_HOST.equals(host)
             || "uygulamamcebimde.online".equals(host)
-            || "www.uygulamamcebimde.online".equals(host)
-            || host.endsWith(".lovable.app");
+            || "www.uygulamamcebimde.online".equals(host);
     }
 
     /** Google hesap seçici ve OAuth, SameSite çerezi için Chrome Custom Tabs’ta açılır. */

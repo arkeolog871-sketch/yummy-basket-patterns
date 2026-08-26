@@ -118,6 +118,8 @@
                     android:host="uygulamamcebimde.online"
                     android:pathPrefix="/auth" />
             </intent-filter>
+            <!-- www autoVerify: Google assetlinks crawler 302 takip etmez.
+                 Cloudflare'de www /.well-known/assetlinks.json apex'e yönlenmemeli. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

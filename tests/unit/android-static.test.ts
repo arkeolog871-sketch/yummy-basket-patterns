@@ -25,8 +25,10 @@ describe("Android wrapper static controls", () => {
 
   it("registers auth deep links", () => {
     expect(manifest).toMatch(/android:host="uygulamamcebimde.online"/);
+    expect(manifest).toMatch(/android:host="www.uygulamamcebimde.online"/);
     expect(manifest).toMatch(/android:pathPrefix="\/auth"/);
     expect(manifest).toMatch(/android:scheme="silvancebimde"/);
+    expect(manifest).toMatch(/android:autoVerify="true"/);
   });
 
   it("disables mixed content and WebView debugging", () => {
@@ -41,6 +43,11 @@ describe("Android wrapper static controls", () => {
     expect(activity).toMatch(/SameSite çerezi için Chrome Custom Tabs/);
     expect(manifest).toMatch(/usesCleartextTraffic="false"/);
     expect(manifest).toMatch(/networkSecurityConfig="@xml\/network_security_config"/);
+  });
+
+  it("does not trust preview *.lovable.app hosts inside the production WebView", () => {
+    expect(activity).toMatch(/isTrustedWebOrigin/);
+    expect(activity).not.toMatch(/host\.endsWith\("\.lovable\.app"\)/);
   });
 
   it("does not embed signing passwords in Gradle", () => {

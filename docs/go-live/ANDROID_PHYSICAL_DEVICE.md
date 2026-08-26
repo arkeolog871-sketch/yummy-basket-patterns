@@ -6,6 +6,18 @@ Build: signed release APK from `android-wrapper` using rotated keystore secrets 
 
 Install: sideload or internal track. Confirm Play Protect / OEM WebView version.
 
+## App Links (operator)
+
+`public/.well-known/assetlinks.json` ships with package `online.uygulamamcebimde.app` and an **empty** SHA-256 list. App Links will not verify until you paste the real digest.
+
+1. Play Console → App integrity → App signing → SHA-256 certificate fingerprint (preferred for Play installs).
+2. Or from the **release** keystore: `keytool -list -v -keystore <release.keystore>`.
+3. Replace the empty `sha256_cert_fingerprints` array with that value (`AA:BB:…` uppercase hex).
+4. Confirm `https://uygulamamcebimde.online/.well-known/assetlinks.json` is JSON `200`.
+5. On a physical device after install: `adb shell pm get-app-links online.uygulamamcebimde.app` → `verified`.
+
+Do **not** invent a fingerprint. **MANUEL: RELEASE SHA-256 GEREKLİ** until the array is filled.
+
 ## Transport
 
 | Step | Expected | Result |
