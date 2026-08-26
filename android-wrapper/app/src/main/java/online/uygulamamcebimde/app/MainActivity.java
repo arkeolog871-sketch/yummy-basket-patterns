@@ -895,6 +895,20 @@ public class MainActivity extends Activity {
         return oauthIntent;
     }
 
+    private boolean isAllowedIntentFallback(String url) {
+        if (url == null || url.isEmpty()) return false;
+        String trimmed = url.trim();
+        if (!trimmed.toLowerCase(java.util.Locale.ROOT).startsWith("https://")) return false;
+        try {
+            Uri uri = Uri.parse(trimmed);
+            if (isTrustedWebOrigin(uri)) return true;
+            if (isGoogleAuthorizeUrl(uri)) return true;
+            return isExternalMapsUrl(trimmed);
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
     private boolean openIntentUrl(String rawUrl) {
         String fallbackUrl = httpsFromIntentUrl(rawUrl);
         try {
@@ -913,7 +927,7 @@ public class MainActivity extends Activity {
         } catch (Exception ignored) {
             // Bozuk intent:// adresi.
         }
-        if (fallbackUrl != null) {
+        if (fallbackUrl != null && isAllowedIntentFallback(fallbackUrl)) {
             try {
                 Intent web = new Intent(Intent.ACTION_VIEW, Uri.parse(fallbackUrl));
                 web.addCategory(Intent.CATEGORY_BROWSABLE);
@@ -936,7 +950,7 @@ public class MainActivity extends Activity {
             if (end < 0) end = rawUrl.length();
             try {
                 String decoded = Uri.decode(rawUrl.substring(start, end));
-                if (decoded.startsWith("https://") || decoded.startsWith("http://")) return decoded;
+                if (isAllowedIntentFallback(decoded)) return decoded;
             } catch (Exception ignored) {
                 // Bozuk yedek adres.
             }
@@ -944,7 +958,8 @@ public class MainActivity extends Activity {
         if (!rawUrl.startsWith("intent://")) return null;
         int marker = rawUrl.indexOf("#Intent;");
         if (marker <= "intent://".length()) return null;
-        return "https://" + rawUrl.substring("intent://".length(), marker);
+        String reconstructed = "https://" + rawUrl.substring("intent://".length(), marker);
+        return isAllowedIntentFallback(reconstructed) ? reconstructed : null;
     }
 
     private String[] normalizeAcceptTypes(String[] rawTypes) {

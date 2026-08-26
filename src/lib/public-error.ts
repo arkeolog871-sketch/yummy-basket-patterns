@@ -27,7 +27,11 @@ export function toPublicErrorMessage(error: unknown, fallback = FALLBACK): strin
 function sanitizeMessage(message: string, fallback: string): string {
   const text = message.trim();
   if (!text) return fallback;
-  if (text === "HTTPError" || /"unhandled"\s*:\s*true/.test(text) || /unhandled/i.test(text) && /HTTPError/i.test(text)) {
+  if (
+    text === "HTTPError" ||
+    /"unhandled"\s*:\s*true/.test(text) ||
+    (/unhandled/i.test(text) && /HTTPError/i.test(text))
+  ) {
     return fallback;
   }
   if (/^Unauthorized/i.test(text)) {
@@ -35,13 +39,15 @@ function sanitizeMessage(message: string, fallback: string): string {
   }
   if (/^Forbidden:\s*/i.test(text)) {
     const rest = text.replace(/^Forbidden:\s*/i, "").trim();
-    return rest ? sanitizeMessage(rest, "Bu işlem için yetkiniz yok.") : "Bu işlem için yetkiniz yok.";
+    return rest
+      ? sanitizeMessage(rest, "Bu işlem için yetkiniz yok.")
+      : "Bu işlem için yetkiniz yok.";
   }
   if (/^Forbidden$/i.test(text)) {
     return "Bu işlem için yetkiniz yok.";
   }
   if (
-    /permission denied|PGRST|JWT|column|relation|violates|supabase|stack|ECONN|fetch failed|nosuchbucket|bucket not found/i.test(
+    /permission denied|PGRST|JWT|column|relation|violates|supabase|stack|ECONN|fetch failed|nosuchbucket|bucket not found|service[_-]?role|LOVABLE_API_KEY|GOOGLE_OAUTH_CLIENT_SECRET|SUPABASE_SERVICE_ROLE|sb_secret_|sk_live_|Bearer\s+eyJ/i.test(
       text,
     )
   ) {

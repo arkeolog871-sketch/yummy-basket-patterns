@@ -35,11 +35,6 @@ function consumeMemory(key: string, limit: number, windowMs: number): boolean {
   return true;
 }
 
-function consume(scope: string, limit: number, windowMs: number, request?: Request): boolean {
-  const key = `${scope}:${clientAddress(request)}`;
-  return consumeMemory(key, limit, windowMs);
-}
-
 function hashBucketKey(scope: string, request?: Request): string {
   return createHash("sha256")
     .update(`${scope}:${clientAddress(request)}`)
@@ -50,8 +45,9 @@ async function consumeDistributed(
   scope: string,
   limit: number,
   windowMs: number,
+  request?: Request,
 ): Promise<boolean> {
-  const bucketKey = hashBucketKey(scope);
+  const bucketKey = hashBucketKey(scope, request);
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin.rpc("consume_request_rate_limit", {
@@ -72,9 +68,9 @@ async function consumeDistributed(
   }
 }
 
-export function allowServerFnRequest(request: Request): boolean {
+export async function allowServerFnRequest(request: Request): Promise<boolean> {
   const method = request.method.toUpperCase();
-  return consume(
+  return consumeDistributed(
     method === "POST" ? "server-post" : "server-read",
     method === "POST" ? 90 : 180,
     60_000,

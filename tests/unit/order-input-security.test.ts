@@ -31,7 +31,12 @@ describe("order input cannot set payment or foreign identity", () => {
     const text = readFileSync(join(ROOT, "src/lib/orders.functions.ts"), "utf8");
     expect(text).toMatch(/idempotency_key/);
     expect(text).toMatch(/place_customer_order/);
+    expect(text).toMatch(/planStockDecrement/);
+    expect(text).toMatch(/findIdempotentOrder/);
+    expect(text).toMatch(/gte\("stock_quantity"/);
     expect(text).not.toMatch(/stock_quantity:\s*data/);
     expect(text).not.toMatch(/p_user_id:\s*data/);
+    expect(text).not.toMatch(/idempotency_key:\s*_ignored/);
+    expect(text).not.toMatch(/\.\.\.withoutKey/);
   });
 });

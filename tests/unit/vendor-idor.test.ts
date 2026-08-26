@@ -12,4 +12,9 @@ describe("vendor A cannot act as vendor B", () => {
     expect(vendorOwnsResource(VENDOR_A, undefined)).toBe(false);
     expect(vendorOwnsResource("", VENDOR_B)).toBe(false);
   });
+
+  it("documents that vendor mutations never take restaurant_id from the client", () => {
+    expect(vendorOwnsResource(VENDOR_A, VENDOR_B)).toBe(false);
+    expect(vendorOwnsResource(VENDOR_B, VENDOR_A)).toBe(false);
+  });
 });

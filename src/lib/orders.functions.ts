@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { runServerFn, toPublicErrorMessage } from "./public-error";
+import { planStockDecrement } from "./orders-stock";
 import { isMissingRpcError } from "./rpc-fallback";
 
 const createOrderSchema = z.object({
@@ -88,6 +89,33 @@ async function placeOrder(
   return placeOrderFallback(data, context, restaurant.id);
 }
 
+async function findIdempotentOrder(
+  userId: string,
+  key: string,
+): Promise<{ id: string; total: number } | null> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
+    .from("orders")
+    .select("id, total")
+    .eq("user_id", userId)
+    .eq("idempotency_key", key)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data?.id) return null;
+  return { id: data.id, total: Number(data.total) };
+}
+
+async function restoreStockSnapshots(rows: Array<{ id: string; previous: number }>): Promise<void> {
+  if (rows.length === 0) return;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  for (const row of rows) {
+    await supabaseAdmin
+      .from("menu_items")
+      .update({ stock_quantity: row.previous })
+      .eq("id", row.id);
+  }
+}
+
 async function placeOrderFallback(
   data: OrderInput,
   context: AuthContext,
@@ -95,6 +123,11 @@ async function placeOrderFallback(
 ): Promise<{ id: string; total: number }> {
   const { userId } = context;
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  if (data.idempotency_key) {
+    const existing = await findIdempotentOrder(userId, data.idempotency_key);
+    if (existing) return existing;
+  }
 
   const ids = data.items.map((item) => item.menu_item_id);
   const { data: restaurant, error: restaurantError } = await supabaseAdmin
@@ -126,16 +159,19 @@ async function placeOrderFallback(
     if (!item || !item.is_available || item.restaurant_id !== restaurant.id) {
       throw new Error("Sepetteki ürünlerden biri artık geçerli değil.");
     }
-    const stock = item.stock_quantity == null ? null : Number(item.stock_quantity);
-    if (stock !== null && Number.isFinite(stock) && stock < quantity) {
-      throw new Error(`${item.name} için yeterli stok yok.`);
-    }
+    const plan = planStockDecrement(item.stock_quantity, quantity);
+    if (!plan.ok) throw new Error(`${item.name} için yeterli stok yok.`);
     subtotal += Number(item.price) * quantity;
     return {
       menu_item_id: item.id,
       name: item.name,
       unit_price: Number(item.price),
       quantity,
+      stockPlan: plan,
+      previousStock:
+        item.stock_quantity == null || !Number.isFinite(Number(item.stock_quantity))
+          ? null
+          : Number(item.stock_quantity),
     };
   });
 
@@ -145,47 +181,71 @@ async function placeOrderFallback(
 
   const deliveryFee = Number(restaurant.delivery_fee);
   const total = Number((subtotal + deliveryFee).toFixed(2));
+  const decremented: Array<{ id: string; previous: number }> = [];
 
-  const insertPayload: Database["public"]["Tables"]["orders"]["Insert"] = {
-    user_id: userId,
-    restaurant_id: restaurant.id,
-    recipient_name: data.recipient_name,
-    phone: data.phone,
-    city: data.city,
-    district: data.district,
-    street: data.street,
-    directions: data.directions ?? null,
-    note: data.note ?? null,
-    subtotal: Number(subtotal.toFixed(2)),
-    delivery_fee: deliveryFee,
-    total,
-    status: "confirmed",
-    idempotency_key: data.idempotency_key ?? null,
-  };
+  try {
+    for (const line of orderItems) {
+      if (!("next" in line.stockPlan) || line.previousStock == null) continue;
+      const { data: updated, error: stockError } = await supabaseAdmin
+        .from("menu_items")
+        .update({ stock_quantity: line.stockPlan.next })
+        .eq("id", line.menu_item_id)
+        .eq("restaurant_id", restaurant.id)
+        .gte("stock_quantity", line.quantity)
+        .select("id")
+        .maybeSingle();
+      if (stockError) throw new Error(stockError.message);
+      if (!updated) throw new Error(`${line.name} için yeterli stok yok.`);
+      decremented.push({ id: line.menu_item_id, previous: line.previousStock });
+    }
 
-  let order: { id: string } | null = null;
-  const firstTry = await supabaseAdmin.from("orders").insert(insertPayload).select("id").single();
-  if (firstTry.error && /idempotency_key/i.test(firstTry.error.message)) {
-    const { idempotency_key: _ignored, ...withoutKey } = insertPayload;
-    const retry = await supabaseAdmin.from("orders").insert(withoutKey).select("id").single();
-    if (retry.error) throw new Error(retry.error.message);
-    order = retry.data;
-  } else if (firstTry.error) {
-    throw new Error(firstTry.error.message);
-  } else {
-    order = firstTry.data;
+    const insertPayload: Database["public"]["Tables"]["orders"]["Insert"] = {
+      user_id: userId,
+      restaurant_id: restaurant.id,
+      recipient_name: data.recipient_name,
+      phone: data.phone,
+      city: data.city,
+      district: data.district,
+      street: data.street,
+      directions: data.directions ?? null,
+      note: data.note ?? null,
+      subtotal: Number(subtotal.toFixed(2)),
+      delivery_fee: deliveryFee,
+      total,
+      status: "confirmed",
+      idempotency_key: data.idempotency_key ?? null,
+    };
+
+    const firstTry = await supabaseAdmin.from("orders").insert(insertPayload).select("id").single();
+    if (firstTry.error && data.idempotency_key && /idempotency_key/i.test(firstTry.error.message)) {
+      await restoreStockSnapshots(decremented);
+      const existing = await findIdempotentOrder(userId, data.idempotency_key);
+      if (existing) return existing;
+      throw new Error("Sipariş oluşturulamadı.");
+    }
+    if (firstTry.error) throw new Error(firstTry.error.message);
+    const order = firstTry.data;
+    if (!order) throw new Error("Sipariş oluşturulamadı.");
+
+    const { error: linesError } = await supabaseAdmin.from("order_items").insert(
+      orderItems.map((line) => ({
+        order_id: order.id,
+        menu_item_id: line.menu_item_id,
+        name: line.name,
+        unit_price: line.unit_price,
+        quantity: line.quantity,
+      })),
+    );
+    if (linesError) {
+      await supabaseAdmin.from("orders").delete().eq("id", order.id).eq("user_id", userId);
+      throw new Error(linesError.message);
+    }
+
+    return { id: order.id, total };
+  } catch (error) {
+    await restoreStockSnapshots(decremented);
+    throw error;
   }
-  if (!order) throw new Error("Sipariş oluşturulamadı.");
-
-  const { error: linesError } = await supabaseAdmin
-    .from("order_items")
-    .insert(orderItems.map((line) => ({ ...line, order_id: order.id })));
-  if (linesError) {
-    await supabaseAdmin.from("orders").delete().eq("id", order.id).eq("user_id", userId);
-    throw new Error(linesError.message);
-  }
-
-  return { id: order.id, total };
 }
 
 export const listMyOrders = createServerFn({ method: "GET" })

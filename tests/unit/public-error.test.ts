@@ -5,11 +5,16 @@ import { isMissingRpcError } from "@/lib/rpc-fallback";
 describe("public error sanitization", () => {
   it("hides stack traces, SQL, and secret-like text", () => {
     expect(
-      toPublicErrorMessage("Error: boom\n    at Object.<anonymous> (/app/src/lib/otp.server.ts:12:3)"),
+      toPublicErrorMessage(
+        "Error: boom\n    at Object.<anonymous> (/app/src/lib/otp.server.ts:12:3)",
+      ),
     ).toBe("İşlem şu anda tamamlanamadı. Lütfen tekrar deneyin.");
     expect(toPublicErrorMessage("permission denied for table orders")).toMatch(/tamamlanamadı/);
     expect(toPublicErrorMessage("JWT expired PGRST301")).toMatch(/tamamlanamadı/);
     expect(toPublicErrorMessage("<html>supabase stack</html>")).toMatch(/tamamlanamadı/);
+    expect(toPublicErrorMessage("SUPABASE_SERVICE_ROLE_KEY is invalid")).toMatch(/tamamlanamadı/);
+    expect(toPublicErrorMessage("LOVABLE_API_KEY missing")).toMatch(/tamamlanamadı/);
+    expect(toPublicErrorMessage("Bearer eyJhbGciOiJIUzI1NiJ9.aaa.bbb")).toMatch(/tamamlanamadı/);
   });
 
   it("keeps short user-facing messages", () => {
@@ -23,10 +28,15 @@ describe("public error sanitization", () => {
 
 describe("RPC rollout fallback", () => {
   it("detects missing PostgREST/Postgres functions without treating other errors as absent", () => {
-    expect(isMissingRpcError({ code: "PGRST202", message: "Could not find the function" })).toBe(true);
-    expect(isMissingRpcError({ code: "42883", message: "function public.issue_email_otp does not exist" })).toBe(
+    expect(isMissingRpcError({ code: "PGRST202", message: "Could not find the function" })).toBe(
       true,
     );
+    expect(
+      isMissingRpcError({
+        code: "42883",
+        message: "function public.issue_email_otp does not exist",
+      }),
+    ).toBe(true);
     expect(isMissingRpcError({ message: "stock_quantity check failed" })).toBe(false);
   });
 });

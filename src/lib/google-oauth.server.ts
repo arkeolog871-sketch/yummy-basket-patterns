@@ -18,16 +18,14 @@ const PRODUCTION_REDIRECTS = new Set([
 
 /**
  * Durum jetonu anahtarı. Sabit yedek yok — eksikse OAuth mühürlenmez.
- * Tercih sırası: GOOGLE_OAUTH_STATE_SECRET, sonra istemci gizli anahtarı,
- * sonra service-role (yalnızca sunucu env).
+ * Tercih: GOOGLE_OAUTH_STATE_SECRET, yoksa GOOGLE_OAUTH_CLIENT_SECRET.
+ * Service-role anahtarı durum jetonu için kullanılmaz.
  */
 export function resolveGoogleOAuthStateSecret(): string | null {
   const dedicated = process.env["GOOGLE_OAUTH_STATE_SECRET"]?.trim();
   if (dedicated) return dedicated;
   const clientSecret = process.env["GOOGLE_OAUTH_CLIENT_SECRET"]?.trim();
   if (clientSecret) return `sc-google-oauth-state:${clientSecret}`;
-  const serviceRole = process.env["SUPABASE_SERVICE_ROLE_KEY"]?.trim();
-  if (serviceRole) return `sc-google-oauth-state:${serviceRole}`;
   return null;
 }
 

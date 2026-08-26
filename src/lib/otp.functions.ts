@@ -111,16 +111,23 @@ export const registerWithEmailCode = createServerFn({ method: "POST" })
     await enforceSensitiveRateLimit("register", 6, 10 * 60 * 1000);
     const { createUnverifiedAccount } = await import("./otp.server");
     const created = await createUnverifiedAccount(data);
-    if (!created.ok) return { ok: false as const, error: created.error };
+    if (!created.ok && !("existing" in created)) {
+      return { ok: false as const, error: created.error };
+    }
+    const existing = !created.ok;
 
     const sent = await sendEmailVerificationCode({
-      data: { email: data.email, allowSignUp: true, purpose: "signup" },
+      data: {
+        email: data.email,
+        allowSignUp: !existing,
+        purpose: existing ? "login" : "signup",
+      },
     });
     if (!sent.ok) {
       return {
         ok: false as const,
-        error:
-          "Hesabınız oluşturuldu ancak doğrulama e-postası gönderilemedi. Lütfen tekrar deneyin.",
+        error: sent.error || "Doğrulama e-postası gönderilemedi. Lütfen tekrar deneyin.",
+        retryAfterSeconds: sent.retryAfterSeconds,
       };
     }
     return { ok: true as const, cooldownSeconds: sent.cooldownSeconds };

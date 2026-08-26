@@ -36,7 +36,7 @@ const csrfMiddleware = createCsrfMiddleware({
 });
 
 const rateLimitMiddleware = createMiddleware().server(async ({ next, request }) => {
-  if (isServerFnRequest(request) && !allowServerFnRequest(request)) {
+  if (isServerFnRequest(request) && !(await allowServerFnRequest(request))) {
     return rateLimitResponse();
   }
   return next();

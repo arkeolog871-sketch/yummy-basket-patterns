@@ -46,7 +46,6 @@ export async function sendSixDigitOtpEmail(input: {
   const subject =
     purpose === "signup" ? `${SITE_NAME} hesabınızı doğrulayın` : `${SITE_NAME} giriş kodunuz`;
   const domains = [SENDER_DOMAIN, ROOT_DOMAIN];
-  let lastMessage = "E-posta gönderim servisine ulaşılamadı, kod gönderilemedi. Lütfen tekrar deneyin.";
 
   for (const domain of domains) {
     try {
@@ -64,28 +63,18 @@ export async function sendSixDigitOtpEmail(input: {
         { apiKey, sendUrl: process.env["LOVABLE_SEND_URL"] },
       );
       if (result.success) return { ok: true };
-      lastMessage =
-        typeof result === "object" && result && "error" in result && result.error
-          ? String(result.error)
-          : "Lovable e-posta API başarısız döndü";
       console.error("[otp] doğrulama kodu e-postası gönderilemedi", {
         senderDomain: domain,
         success: false,
-        message: lastMessage,
       });
-    } catch (error) {
-      lastMessage = error instanceof Error ? error.message : lastMessage;
+    } catch {
       console.error("[otp] doğrulama kodu e-postası gönderilemedi", {
         senderDomain: domain,
-        message: lastMessage,
-        stack: error instanceof Error ? error.stack : undefined,
       });
     }
   }
 
-  console.error("[otp] tüm gönderici alan adları denendi, kod e-postası gitmedi", {
-    lastMessage,
-  });
+  console.error("[otp] tüm gönderici alan adları denendi, kod e-postası gitmedi");
   return {
     ok: false,
     error: EMAIL_SEND_FAILED_MESSAGE,

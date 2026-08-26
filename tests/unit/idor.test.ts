@@ -50,6 +50,11 @@ describe("server-side IDOR / object-level authorization", () => {
     const text = source("src/lib/founder.functions.ts");
     expect(text).toMatch(/assertFounder/);
     expect(text).toMatch(/from\("profiles"\)/);
+    expect(text).toMatch(/await assertFounder\(context\.supabase, context\.userId/);
+    const updateAt = text.indexOf("export const updateOrderStatus");
+    const assertAt = text.indexOf("assertFounder", updateAt);
+    expect(updateAt).toBeGreaterThan(0);
+    expect(assertAt).toBeGreaterThan(updateAt);
   });
 
   it("rejects vendor A acting on vendor B orders, items, and media", () => {

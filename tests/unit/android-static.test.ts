@@ -53,6 +53,11 @@ describe("Android wrapper static controls", () => {
     expect(activity).not.toMatch(/host\.endsWith\("\.lovable\.app"\)/);
   });
 
+  it("rejects untrusted intent:// browser_fallback_url hosts", () => {
+    expect(activity).toMatch(/isAllowedIntentFallback/);
+    expect(activity).toMatch(/isAllowedIntentFallback\(fallbackUrl\)/);
+  });
+
   it("does not embed signing passwords in Gradle", () => {
     expect(gradle).not.toMatch(/storePassword\s*=\s*"/);
     expect(gradle).toMatch(/ANDROID_KEYSTORE/);

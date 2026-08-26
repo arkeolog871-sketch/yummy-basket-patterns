@@ -96,18 +96,28 @@ describe("static secret and authorization controls", () => {
   it("does not create accounts from the OTP send endpoint and hides unknown emails", () => {
     const send = readFileSync(join(ROOT, "src/lib/otp.functions.ts"), "utf8");
     const authPage = readFileSync(join(ROOT, "src/routes/auth.tsx"), "utf8");
+    const server = readFileSync(join(ROOT, "src/lib/otp.server.ts"), "utf8");
     expect(send).toMatch(/reserveSend/);
     expect(send).not.toMatch(/ensureAuthUser/);
+    expect(send).toMatch(/existing \? "login" : "signup"/);
+    expect(send).not.toMatch(/Hesabınız oluşturuldu ancak/);
+    expect(server).not.toMatch(/Bu e-posta ile bir hesap zaten var/);
     expect(authPage).toMatch(/idPrefix="user-otp"/);
     expect(authPage).toMatch(/allowSignUp=\{false\}/);
   });
 
   it("does not ship a hardcoded Google OAuth state fallback or Lovable OAuth CSP hosts", () => {
     const oauth = readFileSync(join(ROOT, "src/lib/google-oauth.server.ts"), "utf8");
+    const oauthFn = readFileSync(join(ROOT, "src/lib/google-oauth.functions.ts"), "utf8");
+    const oauthClient = readFileSync(join(ROOT, "src/lib/google-oauth.ts"), "utf8");
     const csp = readFileSync(join(ROOT, "src/lib/security-wall.server.ts"), "utf8");
     const headers = readFileSync(join(ROOT, "public/_headers"), "utf8");
     expect(oauth).not.toMatch(/silvan-cebimde-google-oauth-state-v1/);
     expect(oauth).toMatch(/resolveGoogleOAuthStateSecret/);
+    expect(oauth).not.toMatch(/sc-google-oauth-state:\$\{serviceRole\}/);
+    expect(oauthFn).toMatch(/unsealGoogleOAuthStatePayload/);
+    expect(oauthFn).not.toMatch(/data\.state === data\.storedNonce/);
+    expect(oauthClient).toMatch(/if \(!sealed\.ok\)/);
     expect(csp).not.toMatch(/oauth\.lovable\.app/);
     expect(csp).not.toMatch(/auth\.lovable\.app/);
     expect(headers).not.toMatch(/oauth\.lovable\.app/);

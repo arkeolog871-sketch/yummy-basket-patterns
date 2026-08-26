@@ -521,7 +521,7 @@ export async function createUnverifiedAccount(input: {
   password: string;
   fullName: string;
   phone: string;
-}): Promise<{ ok: true } | { ok: false; error: string }> {
+}): Promise<{ ok: true } | { ok: false; existing: true } | { ok: false; error: string }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { error } = await supabaseAdmin.auth.admin.createUser({
     email: input.email,
@@ -531,8 +531,8 @@ export async function createUnverifiedAccount(input: {
   });
   if (!error) return { ok: true };
   if (/already|registered|exists/i.test(error.message)) {
-    return { ok: false, error: "Bu e-posta ile bir hesap zaten var. Giriş yapmayı deneyin." };
+    return { ok: false, existing: true };
   }
-  console.error("[signup] hesap oluşturulamadı:", error.message);
+  console.error("[signup] hesap oluşturulamadı");
   return { ok: false, error: "Hesap oluşturulamadı. Lütfen tekrar deneyin." };
 }

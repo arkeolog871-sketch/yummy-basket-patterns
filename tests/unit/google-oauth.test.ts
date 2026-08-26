@@ -71,6 +71,13 @@ describe("Google OAuth state secret fail-closed", () => {
     ).toThrow(/yapılandırılmadı/);
   });
 
+  it("does not derive the OAuth state key from the service-role key", () => {
+    clearStateEnv();
+    process.env["SUPABASE_SERVICE_ROLE_KEY"] = "role-key-for-tests";
+    expect(resolveGoogleOAuthStateSecret()).toBeNull();
+    expect(isGoogleOAuthStateConfigured()).toBe(false);
+  });
+
   it("derives the state key from GOOGLE_OAUTH_CLIENT_SECRET when dedicated secret is absent", () => {
     clearStateEnv();
     process.env["GOOGLE_OAUTH_CLIENT_SECRET"] = "client-secret-for-tests";

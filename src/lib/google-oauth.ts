@@ -204,13 +204,23 @@ export async function startGoogleOAuth(): Promise<{ ok: true } | { ok: false; er
   const nonce = crypto.randomUUID();
   persistGoogleOAuthPkce({ nonce, verifier, redirectUri, ts: Date.now() });
 
-  let state: string = nonce;
+  let sealed: Awaited<ReturnType<typeof sealGoogleOAuthState>>;
   try {
-    const sealed = await sealGoogleOAuthState({ data: { nonce, verifier, redirectUri } });
-    if (sealed.ok) state = sealed.state;
-  } catch {
-    /* storage eşleşmesi yedek kalır */
+    sealed = await sealGoogleOAuthState({ data: { nonce, verifier, redirectUri } });
+  } catch (error) {
+    clearGoogleOAuthPkce();
+    return {
+      ok: false,
+      error: humanizeOAuthError(
+        error instanceof Error ? error.message : "Google OAuth durum anahtarı yapılandırılmadı.",
+      ),
+    };
   }
+  if (!sealed.ok) {
+    clearGoogleOAuthPkce();
+    return { ok: false, error: humanizeOAuthError(sealed.error) };
+  }
+  const state = sealed.state;
 
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   url.searchParams.set("client_id", clientId);
