@@ -13,7 +13,9 @@ const url = process.env.STAGING_DATABASE_URL || process.env.STAGING_SUPABASE_DB_
 
 if (!stagingConfigured() || !url) {
   console.error("BLOCKED: staging credentials are not configured in this environment.");
-  console.error("Set STAGING_DATABASE_URL (or STAGING_SUPABASE_DB_URL) for a non-production database.");
+  console.error(
+    "Set STAGING_DATABASE_URL (or STAGING_SUPABASE_DB_URL) for a non-production database.",
+  );
   console.error("Production migrations were not touched.");
   process.exit(3);
 }
@@ -44,11 +46,14 @@ if (looksLikeProduction(identityText)) {
 const files = [
   join(ROOT, "supabase/migrations/20260825223000_otp_order_atomic_rpc.sql"),
   join(ROOT, "supabase/migrations/20260825230000_otp_advisory_lock_cas.sql"),
+  join(ROOT, "supabase/migrations/20260826120000_request_rate_limit.sql"),
 ];
 
 for (const file of files) {
   console.log(`Applying ${file.split("/").pop()} to staging...`);
-  const applied = spawnSync("psql", [url, "-v", "ON_ERROR_STOP=1", "-f", file], { encoding: "utf8" });
+  const applied = spawnSync("psql", [url, "-v", "ON_ERROR_STOP=1", "-f", file], {
+    encoding: "utf8",
+  });
   if (applied.status !== 0) {
     console.error("BLOCKED: staging migration failed.");
     console.error((applied.stderr || applied.stdout || "").trim());
@@ -68,7 +73,10 @@ const verify = spawnSync(
        (SELECT pg_get_functiondef('public.consume_email_otp(text,text,timestamptz)'::regprocedure) LIKE '%pg_advisory_xact_lock%') AS consume_locked,
        (SELECT EXISTS (
           SELECT 1 FROM pg_indexes WHERE indexname = 'orders_user_idempotency_key_uidx'
-       )) AS idempotency_index;`,
+       )) AS idempotency_index,
+       (SELECT EXISTS (
+          SELECT 1 FROM pg_proc WHERE proname = 'consume_request_rate_limit'
+       )) AS rate_rpc;`,
   ],
   { encoding: "utf8" },
 );
@@ -77,10 +85,18 @@ if (verify.status !== 0) {
   console.error((verify.stderr || verify.stdout || "").trim());
   process.exit(1);
 }
-const [rpcCount, consumeLocked, idempotencyIndex] = (verify.stdout || "").trim().split("|");
-if (rpcCount !== "4" || consumeLocked !== "t" || idempotencyIndex !== "t") {
-  console.error(`BLOCKED: staging verification mismatch rpc=${rpcCount} locked=${consumeLocked} idx=${idempotencyIndex}`);
+const [rpcCount, consumeLocked, idempotencyIndex, rateRpc] = (verify.stdout || "")
+  .trim()
+  .split("|");
+if (rpcCount !== "4" || consumeLocked !== "t" || idempotencyIndex !== "t" || rateRpc !== "t") {
+  console.error(
+    `BLOCKED: staging verification mismatch rpc=${rpcCount} locked=${consumeLocked} idx=${idempotencyIndex} rate=${rateRpc}`,
+  );
   process.exit(1);
 }
-console.log("STAGING schema/RPC verification passed (4 RPCs, CAS consume lock, idempotency index).");
-console.log("Existing staging rows were not rewritten; functions are CREATE OR REPLACE / ADD COLUMN IF NOT EXISTS.");
+console.log(
+  "STAGING schema/RPC verification passed (4 order/OTP RPCs, CAS consume lock, idempotency index, rate-limit RPC).",
+);
+console.log(
+  "Existing staging rows were not rewritten; functions are CREATE OR REPLACE / ADD COLUMN IF NOT EXISTS.",
+);

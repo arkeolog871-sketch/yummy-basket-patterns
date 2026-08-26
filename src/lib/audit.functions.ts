@@ -30,7 +30,7 @@ export const logFounderLoginAttempt = createServerFn({ method: "POST" })
   .validator((input: unknown) => loginAttemptSchema.parse(input))
   .handler(async ({ data }) => {
     const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
-    enforceSensitiveRateLimit("founder-login-log", 20, 10 * 60 * 1000);
+    await enforceSensitiveRateLimit("founder-login-log", 20, 10 * 60 * 1000);
     const { logAudit, tooManyRecentLoginLogs } = await import("./audit.server");
     if (await tooManyRecentLoginLogs()) return { ok: false };
 

@@ -11,9 +11,11 @@ import {
   inspectGuard,
   invalidateUndeliveredCode,
   issuedGuardRow,
+  messageForOtpInspect,
   nextAfterFailedAttempt,
   type GuardSnapshot,
 } from "@/lib/otp-guard";
+import { OTP_INVALID_MESSAGE, OTP_LOCK_MESSAGE } from "@/lib/otp";
 
 const EMAIL = "user@example.com";
 const CODE = "042861";
@@ -95,7 +97,7 @@ describe("OTP guard verification", () => {
     expect(inspectGuard(consumed, CODE, hashOtpCode(EMAIL, CODE), now + 1000)).toBe("missing");
   });
 
-  it("locks after 5 wrong attempts and clears the stored hash", () => {
+  it("locks after 5 wrong attempts and rejects a 6th try without a stored hash", () => {
     const now = Date.UTC(2026, 7, 25, 12, 0, 0);
     let row: GuardSnapshot | null = issuedAt(now);
     for (let i = 0; i < MAX_FAILED_ATTEMPTS; i += 1) {
@@ -103,9 +105,12 @@ describe("OTP guard verification", () => {
     }
     expect(row.failedAttempts).toBe(MAX_FAILED_ATTEMPTS);
     expect(row.codeHash).toBeNull();
-    const blocked = evaluateCanVerify(row, now + 2000);
-    expect(blocked.ok).toBe(false);
-    if (!blocked.ok) expect(blocked.error).toMatch(/hatalı deneme/);
+    const fifthLock = evaluateCanVerify(row, now + 2000);
+    expect(fifthLock.ok).toBe(false);
+    if (!fifthLock.ok) expect(fifthLock.error).toMatch(/hatalı deneme/);
+    const sixth = nextAfterFailedAttempt(row, now + 3000);
+    expect(evaluateCanVerify(sixth, now + 3000).ok).toBe(false);
+    expect(inspectGuard(sixth, CODE, hashOtpCode(EMAIL, CODE), now + 3000)).toBe("missing");
   });
 
   it("does not leave a usable code when email delivery fails", () => {
@@ -142,5 +147,13 @@ describe("OTP guard verification", () => {
     row = nextAfterFailedAttempt(row, now + 1000);
     expect(evaluateCanVerify(row, now + 1000).ok).toBe(false);
     expect(row.codeHash).toBeNull();
+  });
+
+  it("does not distinguish wrong, expired, or missing codes in public messages", () => {
+    expect(messageForOtpInspect("mismatch")).toBe(OTP_INVALID_MESSAGE);
+    expect(messageForOtpInspect("expired")).toBe(OTP_INVALID_MESSAGE);
+    expect(messageForOtpInspect("missing")).toBe(OTP_INVALID_MESSAGE);
+    expect(messageForOtpInspect("mismatch")).toBe(messageForOtpInspect("expired"));
+    expect(OTP_LOCK_MESSAGE).not.toBe(OTP_INVALID_MESSAGE);
   });
 });

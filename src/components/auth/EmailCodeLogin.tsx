@@ -31,7 +31,7 @@ type Props = {
 
 /** E-posta ile 6 haneli doğrulama kodu (OTP) girişi/doğrulaması. */
 export function EmailCodeLogin({
-  allowSignUp = true,
+  allowSignUp = false,
   idPrefix = "otp",
   initialEmail = "",
   startAtCode = false,
@@ -191,8 +191,9 @@ export function EmailCodeLogin({
             </p>
           ) : (
             <p className="text-xs text-muted-foreground">
-              Kod {OTP_CODE_LENGTH} hanelidir ve {OTP_TTL_MINUTES} dakika geçerlidir. Yapıştırabilirsiniz;
-              yalnızca rakam kabul edilir. {OTP_CODE_LENGTH} hane dolunca otomatik doğrulanır.
+              Kod {OTP_CODE_LENGTH} hanelidir ve {OTP_TTL_MINUTES} dakika geçerlidir.
+              Yapıştırabilirsiniz; yalnızca rakam kabul edilir. {OTP_CODE_LENGTH} hane dolunca
+              otomatik doğrulanır.
             </p>
           )}
         </div>

@@ -1,5 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
-import { OTP_INVALID_MESSAGE, OTP_LENGTH_MESSAGE, parseExactOtpCode } from "@/lib/otp";
+import {
+  OTP_INVALID_MESSAGE,
+  OTP_LENGTH_MESSAGE,
+  OTP_LOCK_MESSAGE,
+  parseExactOtpCode,
+} from "@/lib/otp";
 import { otpSendSchema, otpVerifySchema, registerSchema } from "@/lib/otp-schemas";
 
 /**
@@ -10,21 +15,28 @@ export const sendEmailVerificationCode = createServerFn({ method: "POST" })
   .validator((input: unknown) => otpSendSchema.parse(input))
   .handler(async ({ data }) => {
     const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
-    enforceSensitiveRateLimit("otp-send", 8, 10 * 60 * 1000);
-    const { sendSixDigitOtp, ensureAuthUser, findAuthUserIdByEmail, RESEND_COOLDOWN_SECONDS } =
+    await enforceSensitiveRateLimit("otp-send", 8, 10 * 60 * 1000);
+    const { sendSixDigitOtp, findAuthUserIdByEmail, reserveSend, RESEND_COOLDOWN_SECONDS } =
       await import("./otp.server");
 
-    if (data.allowSignUp) {
-      await ensureAuthUser(data.email);
-    } else if (!(await findAuthUserIdByEmail(data.email))) {
-      return {
-        ok: false as const,
-        error: "Doğrulama kodu şu anda gönderilemedi. Lütfen birkaç saniye sonra tekrar deneyin.",
-      };
+    if (!(await findAuthUserIdByEmail(data.email))) {
+      const reserved = await reserveSend(data.email);
+      if (!reserved.ok) {
+        return {
+          ok: false as const,
+          error: reserved.error,
+          retryAfterSeconds: reserved.retryAfterSeconds,
+        };
+      }
+      return { ok: true as const, cooldownSeconds: RESEND_COOLDOWN_SECONDS };
     }
 
-    const sent = await sendSixDigitOtp(data.email, data.purpose ?? (data.allowSignUp ? "signup" : "login"));
-    if (!sent.ok) return { ok: false as const, error: sent.error, retryAfterSeconds: sent.retryAfterSeconds };
+    const sent = await sendSixDigitOtp(
+      data.email,
+      data.purpose ?? (data.allowSignUp ? "signup" : "login"),
+    );
+    if (!sent.ok)
+      return { ok: false as const, error: sent.error, retryAfterSeconds: sent.retryAfterSeconds };
     return { ok: true as const, cooldownSeconds: RESEND_COOLDOWN_SECONDS };
   });
 
@@ -37,14 +49,13 @@ export const verifyEmailVerificationCode = createServerFn({ method: "POST" })
   .validator((input: unknown) => otpVerifySchema.parse(input))
   .handler(async ({ data }) => {
     const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
-    enforceSensitiveRateLimit("otp-verify", 12, 10 * 60 * 1000);
+    await enforceSensitiveRateLimit("otp-verify", 12, 10 * 60 * 1000);
     const { TERMS_ACCEPTANCE_REQUIRED } = await import("./legal");
     const {
       assertCanVerify,
       registerFailedAttempt,
       clearGuard,
       consumeIssuedOtp,
-      messageForOtpInspect,
       createVerifiedSession,
       recordTermsAcceptance,
       MAX_FAILED_ATTEMPTS,
@@ -66,16 +77,11 @@ export const verifyEmailVerificationCode = createServerFn({ method: "POST" })
     if (consumed !== "match") {
       if (consumed === "mismatch") {
         const attempts = await registerFailedAttempt(data.email);
-        const remaining = Math.max(0, MAX_FAILED_ATTEMPTS - attempts);
-        return {
-          ok: false as const,
-          error:
-            remaining > 0
-              ? messageForOtpInspect(consumed)
-              : "Doğrulama kodu hatalı. Mevcut kod geçersiz kıldı — yeni kod isteyin.",
-        };
+        if (attempts >= MAX_FAILED_ATTEMPTS) {
+          return { ok: false as const, error: OTP_LOCK_MESSAGE };
+        }
       }
-      return { ok: false as const, error: messageForOtpInspect(consumed) };
+      return { ok: false as const, error: OTP_INVALID_MESSAGE };
     }
 
     const session = await createVerifiedSession(data.email);
@@ -102,7 +108,7 @@ export const registerWithEmailCode = createServerFn({ method: "POST" })
   .validator((input: unknown) => registerSchema.parse(input))
   .handler(async ({ data }) => {
     const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
-    enforceSensitiveRateLimit("register", 6, 10 * 60 * 1000);
+    await enforceSensitiveRateLimit("register", 6, 10 * 60 * 1000);
     const { createUnverifiedAccount } = await import("./otp.server");
     const created = await createUnverifiedAccount(data);
     if (!created.ok) return { ok: false as const, error: created.error };
@@ -113,7 +119,8 @@ export const registerWithEmailCode = createServerFn({ method: "POST" })
     if (!sent.ok) {
       return {
         ok: false as const,
-        error: `Hesabınız oluşturuldu ancak kod gönderilemedi: ${sent.error}`,
+        error:
+          "Hesabınız oluşturuldu ancak doğrulama e-postası gönderilemedi. Lütfen tekrar deneyin.",
       };
     }
     return { ok: true as const, cooldownSeconds: sent.cooldownSeconds };

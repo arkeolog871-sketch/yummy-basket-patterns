@@ -12,6 +12,8 @@ export const SECURITY_HEADERS: Record<string, string> = {
   "X-Frame-Options": "SAMEORIGIN",
   "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
   "Content-Security-Policy":
+    // unsafe-inline: TanStack Start `Scripts` + `window.__PUBLIC_ENV__` inline script.
+    // Nonce CSP would require a larger SSR change. Do not drop without replacing those emitters.
     "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'self'; " +
     "form-action 'self' https://accounts.google.com https://accounts.google.com.tr; " +
     "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com https://unpkg.com; " +
@@ -20,7 +22,7 @@ export const SECURITY_HEADERS: Record<string, string> = {
     "img-src 'self' data: blob: https:; " +
     "connect-src 'self' https://*.supabase.co https://oauth2.googleapis.com https://accounts.google.com " +
     "https://maps.googleapis.com https://unpkg.com " +
-    "https://tile.openstreetmap.org ws://localhost:* ws://127.0.0.1:*; " +
+    "https://tile.openstreetmap.org; " +
     "frame-src 'self' https://www.openstreetmap.org https://accounts.google.com; " +
     "media-src 'self' blob: https:",
 };

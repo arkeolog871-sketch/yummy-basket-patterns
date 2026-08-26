@@ -93,6 +93,15 @@ describe("static secret and authorization controls", () => {
     expect(sessionAt).toBeGreaterThan(consumeAt);
   });
 
+  it("does not create accounts from the OTP send endpoint and hides unknown emails", () => {
+    const send = readFileSync(join(ROOT, "src/lib/otp.functions.ts"), "utf8");
+    const authPage = readFileSync(join(ROOT, "src/routes/auth.tsx"), "utf8");
+    expect(send).toMatch(/reserveSend/);
+    expect(send).not.toMatch(/ensureAuthUser/);
+    expect(authPage).toMatch(/idPrefix="user-otp"/);
+    expect(authPage).toMatch(/allowSignUp=\{false\}/);
+  });
+
   it("does not ship a hardcoded Google OAuth state fallback or Lovable OAuth CSP hosts", () => {
     const oauth = readFileSync(join(ROOT, "src/lib/google-oauth.server.ts"), "utf8");
     const csp = readFileSync(join(ROOT, "src/lib/security-wall.server.ts"), "utf8");
@@ -129,5 +138,20 @@ describe("static secret and authorization controls", () => {
     expect(sql).toMatch(/pg_advisory_xact_lock/);
     expect(sql).toMatch(/GET DIAGNOSTICS v_updated = ROW_COUNT/);
     expect(sql).toMatch(/code_hash IS NOT DISTINCT FROM p_code_hash/);
+  });
+
+  it("defines a service-role request rate-limit RPC shared across instances", () => {
+    const sql = readFileSync(
+      join(ROOT, "supabase/migrations/20260826120000_request_rate_limit.sql"),
+      "utf8",
+    );
+    const limiter = readFileSync(join(ROOT, "src/lib/rate-limit.server.ts"), "utf8");
+    expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public.consume_request_rate_limit/);
+    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public.consume_request_rate_limit/);
+    expect(sql).not.toMatch(
+      /GRANT EXECUTE ON FUNCTION public.consume_request_rate_limit[\s\S]*TO authenticated/,
+    );
+    expect(limiter).toMatch(/consume_request_rate_limit/);
+    expect(limiter).toMatch(/isMissingRpcError/);
   });
 });

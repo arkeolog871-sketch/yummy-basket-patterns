@@ -19,7 +19,7 @@ export const sealGoogleOAuthState = createServerFn({ method: "POST" })
   .validator((input: unknown) => sealSchema.parse(input))
   .handler(async ({ data }) => {
     const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
-    enforceSensitiveRateLimit("google-oauth-seal", 20, 10 * 60 * 1000);
+    await enforceSensitiveRateLimit("google-oauth-seal", 20, 10 * 60 * 1000);
     const {
       isAllowedGoogleRedirectUri,
       isGoogleOAuthStateConfigured,
@@ -59,7 +59,7 @@ export const exchangeGoogleOAuthCode = createServerFn({ method: "POST" })
   .validator((input: unknown) => exchangeSchema.parse(input))
   .handler(async ({ data }) => {
     const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
-    enforceSensitiveRateLimit("google-oauth-exchange", 12, 10 * 60 * 1000);
+    await enforceSensitiveRateLimit("google-oauth-exchange", 12, 10 * 60 * 1000);
     const {
       GOOGLE_OAUTH_STATE_PREFIX,
       exchangeGoogleAuthorizationCode,

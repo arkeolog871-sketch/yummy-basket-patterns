@@ -33,7 +33,7 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
     const startedAt = Date.now();
     try {
       const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
-      enforceSensitiveRateLimit("vendor-code-send", 8, 10 * 60 * 1000);
+      await enforceSensitiveRateLimit("vendor-code-send", 8, 10 * 60 * 1000);
       const { findVendorUser, GENERIC_VENDOR_MASKED_EMAIL } = await import("./vendor-auth.server");
       const { logAudit, tooManyRecentVendorAttempts } = await import("./audit.server");
       const { reserveSend, hashEmail, sendSixDigitOtp, RESEND_COOLDOWN_SECONDS } =
@@ -49,7 +49,11 @@ export const requestVendorLoginCode = createServerFn({ method: "POST" })
         const rate = await reserveSend(`${hashEmail(data.identifier)}@guard.local`);
         if (!rate.ok) {
           await padElapsed(startedAt);
-          return { ok: false as const, error: rate.error, retryAfterSeconds: rate.retryAfterSeconds };
+          return {
+            ok: false as const,
+            error: rate.error,
+            retryAfterSeconds: rate.retryAfterSeconds,
+          };
         }
         await logAudit({
           actorId: null,
@@ -129,7 +133,7 @@ export const verifyVendorLoginCode = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
-      enforceSensitiveRateLimit("vendor-code-verify", 12, 10 * 60 * 1000);
+      await enforceSensitiveRateLimit("vendor-code-verify", 12, 10 * 60 * 1000);
       const { findVendorUser } = await import("./vendor-auth.server");
       const { logAudit, tooManyRecentVendorAttempts } = await import("./audit.server");
       const { OTP_LENGTH_MESSAGE } = await import("./otp");

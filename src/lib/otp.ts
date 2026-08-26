@@ -9,9 +9,13 @@ export const OTP_INVALID_MESSAGE = "Girdiğiniz kod hatalı veya süresi dolmuş
 /** Kod e-posta servisine iletilemediğinde kullanıcıya gösterilir; teknik ayrıntı loglanır. */
 export const EMAIL_SEND_FAILED_MESSAGE =
   "Doğrulama e-postası gönderilemedi. Lütfen tekrar deneyin.";
-export const OTP_WRONG_MESSAGE = "Doğrulama kodu hatalı.";
-export const OTP_EXPIRED_MESSAGE = "Doğrulama kodunun süresi doldu.";
+/** Yanlış / süresi dolmuş / eksik kod aynı metin — OTP enumeration olmasın. */
+export const OTP_WRONG_MESSAGE = OTP_INVALID_MESSAGE;
+export const OTP_EXPIRED_MESSAGE = OTP_INVALID_MESSAGE;
 export const OTP_LENGTH_MESSAGE = "Doğrulama kodu 6 haneli olmalıdır.";
+/** 5 hatalı deneme sonrası; kodun doğru olup olmadığını söylemez. */
+export const OTP_LOCK_MESSAGE =
+  "Çok fazla hatalı deneme yaptınız. Mevcut kod geçersiz — yeni kod isteyin.";
 
 export type OtpEmailPurpose = "login" | "signup";
 

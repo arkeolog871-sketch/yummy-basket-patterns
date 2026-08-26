@@ -30,7 +30,7 @@ export const createOrder = createServerFn({ method: "POST" })
   .validator((input: unknown) => createOrderSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
-    enforceSensitiveRateLimit("order-create", 20, 60 * 1000);
+    await enforceSensitiveRateLimit("order-create", 20, 60 * 1000);
     try {
       const placed = await placeOrder(data, context);
       return { ok: true as const, ...placed };
@@ -39,7 +39,10 @@ export const createOrder = createServerFn({ method: "POST" })
     }
   });
 
-async function placeOrder(data: OrderInput, context: AuthContext): Promise<{ id: string; total: number }> {
+async function placeOrder(
+  data: OrderInput,
+  context: AuthContext,
+): Promise<{ id: string; total: number }> {
   const { supabase, userId } = context;
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 

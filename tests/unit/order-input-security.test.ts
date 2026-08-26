@@ -26,4 +26,12 @@ describe("order input cannot set payment or foreign identity", () => {
     expect(text).toMatch(/const restaurantId = await assertVendor/);
     expect(text).not.toMatch(/data\.restaurant_id/);
   });
+
+  it("does not accept client-supplied user_id, stock, or payment on createOrder", () => {
+    const text = readFileSync(join(ROOT, "src/lib/orders.functions.ts"), "utf8");
+    expect(text).toMatch(/idempotency_key/);
+    expect(text).toMatch(/place_customer_order/);
+    expect(text).not.toMatch(/stock_quantity:\s*data/);
+    expect(text).not.toMatch(/p_user_id:\s*data/);
+  });
 });

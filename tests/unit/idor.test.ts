@@ -51,4 +51,17 @@ describe("server-side IDOR / object-level authorization", () => {
     expect(text).toMatch(/assertFounder/);
     expect(text).toMatch(/from\("profiles"\)/);
   });
+
+  it("rejects vendor A acting on vendor B orders, items, and media", () => {
+    const dashboard = source("src/lib/vendor.functions.ts");
+    const media = source("src/lib/vendor-media.functions.ts");
+    expect(dashboard).not.toMatch(/data\.restaurant_id/);
+    expect(dashboard).not.toMatch(/data\.restaurantId/);
+    expect(dashboard).toMatch(/Bu sipariş işletmenize ait değil/);
+    expect(dashboard).toMatch(/Bu ürün işletmenize ait değil/);
+    expect(media).not.toMatch(/data\.restaurant_id/);
+    expect(media).not.toMatch(/data\.restaurantId/);
+    expect(media).toMatch(/assertVendor/);
+    expect(media).toMatch(/\.eq\("restaurant_id", restaurantId\)/);
+  });
 });

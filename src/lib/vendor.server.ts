@@ -15,6 +15,14 @@ export async function getVendorRestaurantId(
   return data?.restaurant_id ?? null;
 }
 
+/** İstemciden gelen işletme kimliği asla kullanılmaz; yalnızca atama kaydı. */
+export function vendorOwnsResource(
+  assignedRestaurantId: string,
+  resourceRestaurantId: string | null | undefined,
+): boolean {
+  return Boolean(assignedRestaurantId) && resourceRestaurantId === assignedRestaurantId;
+}
+
 /** Yetki ihlallerinde tek tip hata: panel 403 ekranına düşer. */
 export async function assertVendor(
   supabase: SupabaseClient<Database>,

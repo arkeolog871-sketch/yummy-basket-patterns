@@ -21,7 +21,7 @@ export const reportAppError = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
-      enforceSensitiveRateLimit("app-error-report", 20, 5 * 60 * 1000);
+      await enforceSensitiveRateLimit("app-error-report", 20, 5 * 60 * 1000);
       const { recordAppError } = await import("./errors.server");
       await recordAppError({
         source: "client",

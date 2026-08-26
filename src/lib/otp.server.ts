@@ -94,14 +94,20 @@ function toSnapshot(row: GuardRow): GuardSnapshot {
   };
 }
 
-function toRow(emailHash: string, snapshot: GuardSnapshot, nowIso: string): GuardRow & { updated_at: string } {
+function toRow(
+  emailHash: string,
+  snapshot: GuardSnapshot,
+  nowIso: string,
+): GuardRow & { updated_at: string } {
   return {
     email_hash: emailHash,
-    last_sent_at: snapshot.lastSentAtMs != null ? new Date(snapshot.lastSentAtMs).toISOString() : null,
+    last_sent_at:
+      snapshot.lastSentAtMs != null ? new Date(snapshot.lastSentAtMs).toISOString() : null,
     window_started_at: new Date(snapshot.windowStartedAtMs).toISOString(),
     sends_in_window: snapshot.sendsInWindow,
     failed_attempts: snapshot.failedAttempts,
-    locked_until: snapshot.lockedUntilMs != null ? new Date(snapshot.lockedUntilMs).toISOString() : null,
+    locked_until:
+      snapshot.lockedUntilMs != null ? new Date(snapshot.lockedUntilMs).toISOString() : null,
     code_hash: snapshot.codeHash,
     expires_at: snapshot.expiresAtMs != null ? new Date(snapshot.expiresAtMs).toISOString() : null,
     updated_at: nowIso,
@@ -123,28 +129,43 @@ async function loadGuard(emailHash: string): Promise<GuardRow | null> {
 
 async function saveGuard(emailHash: string, snapshot: GuardSnapshot): Promise<void> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { error } = await supabaseAdmin.from("email_otp_guard").upsert(toRow(emailHash, snapshot, new Date().toISOString()), {
-    onConflict: "email_hash",
-  });
+  const { error } = await supabaseAdmin
+    .from("email_otp_guard")
+    .upsert(toRow(emailHash, snapshot, new Date().toISOString()), {
+      onConflict: "email_hash",
+    });
   if (error) throw new Error(error.message);
 }
 
-function issueLimitError(error: string, retryAfter?: number): { ok: false; error: string; retryAfterSeconds?: number } {
+function issueLimitError(
+  error: string,
+  retryAfter?: number,
+): { ok: false; error: string; retryAfterSeconds?: number } {
   if (error === "cooldown") {
     const wait = retryAfter && retryAfter > 0 ? retryAfter : RESEND_COOLDOWN_SECONDS;
     return { ok: false, error: `Yeni kod için ${wait} saniye bekleyin.`, retryAfterSeconds: wait };
   }
   if (error === "hourly") {
-    return { ok: false, error: "Saatlik kod gönderim sınırına ulaşıldı. Lütfen bir saat sonra tekrar deneyin." };
+    return {
+      ok: false,
+      error: "Saatlik kod gönderim sınırına ulaşıldı. Lütfen bir saat sonra tekrar deneyin.",
+    };
   }
-  return { ok: false, error: "Doğrulama kodu şu anda gönderilemedi. Lütfen birkaç saniye sonra tekrar deneyin." };
+  return {
+    ok: false,
+    error: "Doğrulama kodu şu anda gönderilemedi. Lütfen birkaç saniye sonra tekrar deneyin.",
+  };
 }
 
 async function issueViaRpc(
   emailHash: string,
   codeHash: string,
   nowIso: string,
-): Promise<{ ok: true } | { ok: false; error: string; retryAfterSeconds?: number } | { ok: false; missing: true }> {
+): Promise<
+  | { ok: true }
+  | { ok: false; error: string; retryAfterSeconds?: number }
+  | { ok: false; missing: true }
+> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data, error } = await supabaseAdmin.rpc("issue_email_otp", {
     p_email_hash: emailHash,
@@ -183,10 +204,7 @@ async function consumeViaRpc(
   return "missing";
 }
 
-async function failViaRpc(
-  emailHash: string,
-  nowIso: string,
-): Promise<number | "missing-rpc"> {
+async function failViaRpc(emailHash: string, nowIso: string): Promise<number | "missing-rpc"> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data, error } = await supabaseAdmin.rpc("register_email_otp_failure", {
     p_email_hash: emailHash,
@@ -342,7 +360,9 @@ export async function clearGuard(email: string): Promise<void> {
  * Doğru OTP sonrası e-postayı doğrulanmış işaretler ve oturum jetonları üretir.
  * GoTrue'nun 8 haneli mailer koduna bağlı değildir.
  */
-export async function createVerifiedSession(email: string): Promise<
+export async function createVerifiedSession(
+  email: string,
+): Promise<
   | { ok: true; accessToken: string; refreshToken: string; userId: string }
   | { ok: false; error: string }
 > {
@@ -430,7 +450,9 @@ async function activateVendorRestaurantOnFirstVerify(userId: string): Promise<vo
 }
 
 /** OTP sonrası yasal onay kaydı (Kullanım Koşulları / Gizlilik / KVKK). */
-export async function recordTermsAcceptance(userId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function recordTermsAcceptance(
+  userId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const acceptedAt = new Date().toISOString();
   const { error } = await supabaseAdmin.from("profiles").upsert(
@@ -454,12 +476,15 @@ export async function findAuthUserIdByEmail(email: string): Promise<string | nul
   const key = process.env["SUPABASE_SERVICE_ROLE_KEY"];
   if (!url || !key) return null;
   const normalized = email.trim().toLowerCase();
-  const response = await fetch(`${url}/auth/v1/admin/users?email=${encodeURIComponent(normalized)}`, {
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
+  const response = await fetch(
+    `${url}/auth/v1/admin/users?email=${encodeURIComponent(normalized)}`,
+    {
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+      },
     },
-  });
+  );
   if (!response.ok) return null;
   const body = (await response.json()) as {
     users?: Array<{ id?: string; email?: string | null }>;
@@ -470,18 +495,6 @@ export async function findAuthUserIdByEmail(email: string): Promise<string | nul
   const match = (body.users ?? []).find((user) => user.email?.toLowerCase() === normalized);
   if (match?.id) return match.id;
   return null;
-}
-
-/** allowSignUp açıkken hesabı oluşturur; varsa yok sayar. */
-export async function ensureAuthUser(email: string): Promise<void> {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { error } = await supabaseAdmin.auth.admin.createUser({
-    email,
-    email_confirm: false,
-  });
-  if (error && !/already|registered|exists/i.test(error.message)) {
-    console.error("[otp] kullanıcı hazırlanamadı", { message: error.message });
-  }
 }
 
 /** Hesabın e-postası gerçekten doğrulanmış mı (sunucu tarafı kontrol). */

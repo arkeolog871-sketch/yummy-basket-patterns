@@ -1,10 +1,10 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import {
   OTP_CODE_LENGTH,
-  OTP_EXPIRED_MESSAGE,
+  OTP_INVALID_MESSAGE,
+  OTP_LOCK_MESSAGE,
   OTP_RESEND_COOLDOWN_SECONDS,
   OTP_TTL_MINUTES,
-  OTP_WRONG_MESSAGE,
   isCompleteOtpCode,
 } from "@/lib/otp";
 
@@ -37,7 +37,9 @@ export function hashEmail(email: string): string {
 }
 
 export function hashOtpCode(email: string, code: string): string {
-  return createHash("sha256").update(`${hashEmail(email)}:${code}`).digest("hex");
+  return createHash("sha256")
+    .update(`${hashEmail(email)}:${code}`)
+    .digest("hex");
 }
 
 export function hashesEqual(left: string, right: string): boolean {
@@ -61,7 +63,11 @@ export function evaluateSendLimit(
     const elapsed = (nowMs - row.lastSentAtMs) / 1000;
     if (elapsed < RESEND_COOLDOWN_SECONDS) {
       const wait = Math.ceil(RESEND_COOLDOWN_SECONDS - elapsed);
-      return { ok: false, error: `Yeni kod için ${wait} saniye bekleyin.`, retryAfterSeconds: wait };
+      return {
+        ok: false,
+        error: `Yeni kod için ${wait} saniye bekleyin.`,
+        retryAfterSeconds: wait,
+      };
     }
   }
 
@@ -113,13 +119,10 @@ export function evaluateCanVerify(
   if (!row) return { ok: true };
   const locked = row.lockedUntilMs != null ? row.lockedUntilMs > nowMs : false;
   if (locked || row.failedAttempts >= MAX_FAILED_ATTEMPTS) {
-    return {
-      ok: false,
-      error: "Çok fazla hatalı deneme yaptınız. Mevcut kod geçersiz — yeni kod isteyin.",
-    };
+    return { ok: false, error: OTP_LOCK_MESSAGE };
   }
   if (isGuardExpired(row, nowMs)) {
-    return { ok: false, error: OTP_EXPIRED_MESSAGE };
+    return { ok: false, error: OTP_INVALID_MESSAGE };
   }
   return { ok: true };
 }
@@ -137,10 +140,8 @@ export function inspectGuard(
 }
 
 export function messageForOtpInspect(result: OtpInspectResult): string {
-  if (result === "expired") return OTP_EXPIRED_MESSAGE;
   if (result === "match") return "";
-  if (result === "missing") return OTP_EXPIRED_MESSAGE;
-  return OTP_WRONG_MESSAGE;
+  return OTP_INVALID_MESSAGE;
 }
 
 export function nextAfterFailedAttempt(row: GuardSnapshot | null, nowMs: number): GuardSnapshot {

@@ -67,6 +67,34 @@ if (allowOrigin === "*" || allowOrigin === "https://evil.example") {
   console.log("PASS permissive CORS is not enabled");
 }
 
+const assetlinks = await get("/.well-known/assetlinks.json");
+const assetType = (assetlinks.headers.get("content-type") || "").toLowerCase();
+const assetBody = await assetlinks.text();
+let assetJson = null;
+try {
+  assetJson = JSON.parse(assetBody);
+} catch {
+  assetJson = null;
+}
+const assetLooksHtml = /<!doctype html|<html/i.test(assetBody) || assetType.includes("text/html");
+if (assetlinks.status !== 200 || assetLooksHtml || !Array.isArray(assetJson)) {
+  failures += 1;
+  console.error(
+    `FAIL assetlinks.json: expected JSON 200, received status=${assetlinks.status} type=${assetType || "missing"}`,
+  );
+} else if (assetJson[0]?.target?.package_name !== "online.uygulamamcebimde.app") {
+  failures += 1;
+  console.error("FAIL assetlinks.json: package_name is not online.uygulamamcebimde.app");
+} else {
+  console.log("PASS assetlinks.json: JSON 200 for online.uygulamamcebimde.app");
+  if (
+    !Array.isArray(assetJson[0]?.target?.sha256_cert_fingerprints) ||
+    assetJson[0].target.sha256_cert_fingerprints.length === 0
+  ) {
+    notes.push("assetlinks_sha256=empty_manual_required");
+  }
+}
+
 const cfRay = home.headers.get("cf-ray");
 const cfCache = home.headers.get("cf-cache-status");
 const server = home.headers.get("server");
@@ -94,9 +122,15 @@ try {
     });
     if (openapi.ok) {
       const spec = await openapi.text();
-      const names = ["issue_email_otp", "consume_email_otp", "register_email_otp_failure", "place_customer_order"];
+      const names = [
+        "issue_email_otp",
+        "consume_email_otp",
+        "register_email_otp_failure",
+        "place_customer_order",
+      ];
       const present = names.filter((name) => spec.includes(name));
-      rpcPresence = present.length === names.length ? "present" : `partial:${present.length}/${names.length}`;
+      rpcPresence =
+        present.length === names.length ? "present" : `partial:${present.length}/${names.length}`;
       // OpenAPI may omit service-role-only RPCs; treat absence as unknown rather than missing.
       if (present.length === 0) rpcPresence = "not_in_anon_openapi";
     } else {
@@ -108,7 +142,9 @@ try {
 } catch {
   rpcPresence = "probe_error";
 }
-console.log(`INFO production RPC OpenAPI visibility: ${rpcPresence} (service-role RPCs may be hidden from anon)`);
+console.log(
+  `INFO production RPC OpenAPI visibility: ${rpcPresence} (service-role RPCs may be hidden from anon)`,
+);
 notes.push(`rpc_openapi=${rpcPresence}`);
 
 if (failures > 0) {

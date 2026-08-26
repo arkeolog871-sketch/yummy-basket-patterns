@@ -31,7 +31,8 @@ type AuthSearch = {
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>): AuthSearch => {
     const next: AuthSearch = {};
-    if (typeof search["redirect"] === "string" && search["redirect"]) next.redirect = search["redirect"];
+    if (typeof search["redirect"] === "string" && search["redirect"])
+      next.redirect = search["redirect"];
     if (typeof search["error"] === "string" && search["error"]) next.error = search["error"];
     if (typeof search["error_description"] === "string" && search["error_description"]) {
       next.error_description = search["error_description"];
@@ -58,7 +59,11 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
-  const { redirect, error: oauthError, error_description: oauthErrorDescription } = Route.useSearch();
+  const {
+    redirect,
+    error: oauthError,
+    error_description: oauthErrorDescription,
+  } = Route.useSearch();
   const { user } = useAuth();
   const access = useAccess();
   const navigate = useNavigate();
@@ -175,7 +180,9 @@ function AuthPage() {
     return (
       <div className="mx-auto w-full max-w-md px-4 py-16">
         <h1 className="text-3xl">Google ile giriş</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Yetkilendirme tamamlanıyor, lütfen bekleyin…</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Yetkilendirme tamamlanıyor, lütfen bekleyin…
+        </p>
       </div>
     );
   }
@@ -225,11 +232,11 @@ function AuthPage() {
               ["code", "E-posta kodu ile"],
             ] as const
           ).map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            data-testid={`auth-method-${value}`}
-            onClick={() => setMethod(value)}
+            <button
+              key={value}
+              type="button"
+              data-testid={`auth-method-${value}`}
+              onClick={() => setMethod(value)}
               className={`rounded-full px-3 py-2 transition ${
                 method === value
                   ? "bg-card font-medium shadow-card"
@@ -249,8 +256,9 @@ function AuthPage() {
       ) : pendingVerification ? (
         <div className="mt-6 space-y-4 rounded-3xl border border-border/70 bg-card p-4 shadow-card sm:p-6">
           <p className="text-sm text-muted-foreground">
-            Hesabınız oluşturuldu ancak <strong>e-posta doğrulanmadı</strong>. {pendingVerification.email}{" "}
-            adresine gönderilen 6 haneli kodu girerek hesabınızı aktif edin.
+            Hesabınız oluşturuldu ancak <strong>e-posta doğrulanmadı</strong>.{" "}
+            {pendingVerification.email} adresine gönderilen 6 haneli kodu girerek hesabınızı aktif
+            edin.
           </p>
           <EmailCodeLogin
             idPrefix="signup-otp"
@@ -267,6 +275,7 @@ function AuthPage() {
         <div className="mt-6 rounded-3xl border border-border/70 bg-card p-4 shadow-card sm:p-6">
           <EmailCodeLogin
             idPrefix="user-otp"
+            allowSignUp={false}
             initialEmail={email}
             onVerified={() => {
               toast.success("Giriş başarılı!");
@@ -364,8 +373,8 @@ function AuthPage() {
           </Button>
           <p className="mt-2 text-center text-xs text-muted-foreground">
             Google, uygulamanın kendi alan adına döner. Android uygulamasında sistem tarayıcısı
-            (Chrome) açılır. WhatsApp, Instagram veya Facebook içi tarayıcıda çalışmaz. E-posta
-            kodu ile giriş her zaman kullanılabilir.
+            (Chrome) açılır. WhatsApp, Instagram veya Facebook içi tarayıcıda çalışmaz. E-posta kodu
+            ile giriş her zaman kullanılabilir.
           </p>
         </>
       )}
