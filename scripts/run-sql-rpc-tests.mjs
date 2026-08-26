@@ -86,6 +86,7 @@ file(join(ROOT, "tests/sql/local-rpc-fixture.sql"));
 file(join(ROOT, "supabase/migrations/20260825223000_otp_order_atomic_rpc.sql"));
 file(join(ROOT, "supabase/migrations/20260825230000_otp_advisory_lock_cas.sql"));
 file(join(ROOT, "supabase/migrations/20260826120000_request_rate_limit.sql"));
+file(join(ROOT, "supabase/migrations/20260826183000_place_order_idempotency_payment.sql"));
 
 const consumeSrc = psql([
   "-t",
@@ -218,11 +219,11 @@ check(
 check("duplicate key does not decrement stock twice", stockAfterIdem === "1", stockAfterIdem);
 
 const payment = scalar(
-  `SELECT payment_status || ',' || total::text FROM orders WHERE id = '${firstId}';`,
+  `SELECT payment_status || ',' || coalesce(payment_method, '') || ',' || total::text FROM orders WHERE id = '${firstId}';`,
 );
 check(
-  "payment fields are server-owned unpaid + computed total",
-  payment === "unpaid,60.00",
+  "payment fields are server-owned unpaid + cash_on_delivery + computed total",
+  payment === "unpaid,cash_on_delivery,60.00",
   payment,
 );
 
@@ -262,6 +263,27 @@ check(
 check(
   "application must bind p_user_id from verified JWT (service_role RPC is trusted)",
   readFileSync(join(ROOT, "src/lib/orders.functions.ts"), "utf8").includes("p_user_id: userId"),
+);
+
+const anonPlace = spawnSync(
+  "sudo",
+  [
+    "-u",
+    "postgres",
+    "psql",
+    "-d",
+    DB,
+    "-t",
+    "-A",
+    "-c",
+    "SET ROLE anon; SELECT place_customer_order(NULL, NULL, '[]'::jsonb, '', '', '', '', '', NULL, NULL, NULL);",
+  ],
+  { encoding: "utf8" },
+);
+check(
+  "anon cannot execute place_customer_order",
+  anonPlace.status !== 0,
+  anonPlace.stderr || anonPlace.stdout,
 );
 
 const anonDenied = spawnSync(
@@ -354,6 +376,21 @@ check(
   "anon cannot execute consume_request_rate_limit",
   anonRate.status !== 0,
   anonRate.stderr || anonRate.stdout,
+);
+
+const prodShapeInsert = scalar(`
+  INSERT INTO orders (
+    user_id, restaurant_id, recipient_name, phone, city, district, street,
+    subtotal, delivery_fee, total, status, payment_status
+  ) VALUES (
+    '${userB}', '${restaurantId}', 'Prod Shape', '05320000000', 'Diyarbakır', 'Silvan', 'Boyunlu 1',
+    2000, 0, 2000, 'confirmed', 'unpaid'
+  ) RETURNING round(total, 2)::text;
+`);
+check(
+  "production-shaped orders row (no client total/payment_method) stores 2000 + unpaid",
+  prodShapeInsert === "2000.00",
+  prodShapeInsert,
 );
 
 if (failed > 0) {

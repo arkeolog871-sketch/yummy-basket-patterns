@@ -55,6 +55,65 @@ export function omitOrderColumn<T extends Record<string, unknown>>(row: T, colum
   return next;
 }
 
+type InsertError = { message: string; code?: string; details?: string };
+
+export type OmitUnknownColumnInsert<T> = {
+  data: T | null;
+  error: InsertError | null;
+  duplicate: boolean;
+  omitted: string[];
+};
+
+/**
+ * Production şeması henüz migration'daki kolonları içermiyorsa
+ * (ör. idempotency_key, payment_method) o kolonları çıkarıp yeniden dener.
+ * Unique ihlali (23505) kolon yokluğu değildir.
+ */
+export async function insertOmittingUnknownColumns<T>(
+  insert: (row: Record<string, unknown>) => Promise<{ data: T | null; error: InsertError | null }>,
+  payload: Record<string, unknown>,
+  options?: { maxAttempts?: number; onOmit?: (column: string) => void },
+): Promise<OmitUnknownColumnInsert<T>> {
+  let current = { ...payload };
+  const omitted: string[] = [];
+  const maxAttempts = options?.maxAttempts ?? 8;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const result = await insert(current);
+    if (!result.error) return { data: result.data, error: null, duplicate: false, omitted };
+    if (result.error.code === "23505" || /duplicate key/i.test(result.error.message)) {
+      return { data: null, error: result.error, duplicate: true, omitted };
+    }
+    const column = missingColumnName(result.error);
+    if (column && column in current) {
+      omitted.push(column);
+      options?.onOmit?.(column);
+      current = omitOrderColumn(current, column);
+      continue;
+    }
+    return { data: null, error: result.error, duplicate: false, omitted };
+  }
+  return { data: null, error: { message: "Sipariş oluşturulamadı." }, duplicate: false, omitted };
+}
+
+const inflightOrders = new Map<string, Promise<{ id: string; total: number }>>();
+
+/** Aynı süreçte aynı kullanıcı + idempotency anahtarı tek işleme indirgenir. */
+export async function withOrderIdempotencyLock(
+  userId: string,
+  key: string | null | undefined,
+  work: () => Promise<{ id: string; total: number }>,
+): Promise<{ id: string; total: number }> {
+  if (!key) return work();
+  const lockKey = `${userId}:${key}`;
+  const existing = inflightOrders.get(lockKey);
+  if (existing) return existing;
+  const pending = work().finally(() => {
+    inflightOrders.delete(lockKey);
+  });
+  inflightOrders.set(lockKey, pending);
+  return pending;
+}
+
 export type OrderFailureContext = {
   stage: string;
   userId?: string;

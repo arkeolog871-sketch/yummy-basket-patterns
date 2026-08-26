@@ -9,10 +9,10 @@ import { isMissingRpcError } from "./rpc-fallback";
 import {
   CASH_ON_DELIVERY_PAYMENT_METHOD,
   createOrderSchema,
+  insertOmittingUnknownColumns,
   isUnknownOrderColumnError,
   logOrderFailure,
-  missingColumnName,
-  omitOrderColumn,
+  withOrderIdempotencyLock,
   type CreateOrderInput,
 } from "./order-placement";
 
@@ -25,7 +25,9 @@ export const createOrder = createServerFn({ method: "POST" })
     const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
     await enforceSensitiveRateLimit("order-create", 20, 60 * 1000);
     try {
-      const placed = await placeOrder(data, context);
+      const placed = await withOrderIdempotencyLock(context.userId, data.idempotency_key, () =>
+        placeOrder(data, context),
+      );
       return { ok: true as const, ...placed };
     } catch (error) {
       logOrderFailure({
@@ -132,21 +134,22 @@ async function insertOrderRow(payload: Record<string, unknown>): Promise<{
   duplicate: boolean;
 }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  let current = { ...payload };
-  for (let attempt = 0; attempt < 8; attempt++) {
-    const result = await supabaseAdmin.from("orders").insert(current as never).select("id").single();
-    if (!result.error) return { data: result.data, error: null, duplicate: false };
-    if (result.error.code === "23505" || /duplicate key/i.test(result.error.message)) {
-      return { data: null, error: result.error, duplicate: true };
-    }
-    const column = missingColumnName(result.error);
-    if (column && column in current) {
-      current = omitOrderColumn(current, column);
-      continue;
-    }
-    return { data: null, error: result.error, duplicate: false };
-  }
-  return { data: null, error: { message: "Sipariş oluşturulamadı." }, duplicate: false };
+  return insertOmittingUnknownColumns(
+    async (row) => {
+      const result = await supabaseAdmin.from("orders").insert(row as never).select("id").single();
+      return { data: result.data, error: result.error };
+    },
+    payload,
+    {
+      onOmit: (column) => {
+        console.warn("[order-create]", {
+          endpoint: "createOrder",
+          stage: "orders.insert.omit_column",
+          column,
+        });
+      },
+    },
+  );
 }
 
 async function restoreStockSnapshots(rows: Array<{ id: string; previous: number }>): Promise<void> {

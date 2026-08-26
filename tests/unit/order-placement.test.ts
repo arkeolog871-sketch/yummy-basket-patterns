@@ -50,6 +50,82 @@ describe("order placement column fallback", () => {
   it("uses cash_on_delivery as the only checkout payment method", () => {
     expect(CASH_ON_DELIVERY_PAYMENT_METHOD).toBe("cash_on_delivery");
   });
+
+  it("retries insert after production-missing idempotency_key then payment_method", async () => {
+    const { insertOmittingUnknownColumns } = await import("@/lib/order-placement");
+    const attempts: Array<Record<string, unknown>> = [];
+    const result = await insertOmittingUnknownColumns<{ id: string }>(
+      async (row) => {
+        attempts.push({ ...row });
+        if ("idempotency_key" in row) {
+          return {
+            data: null,
+            error: { code: "42703", message: "column orders.idempotency_key does not exist" },
+          };
+        }
+        if ("payment_method" in row) {
+          return {
+            data: null,
+            error: {
+              code: "42703",
+              message: "column orders.payment_method does not exist",
+            },
+          };
+        }
+        return { data: { id: "order-1" }, error: null };
+      },
+      {
+        user_id: "u1",
+        restaurant_id: "r1",
+        total: 2000,
+        payment_status: "unpaid",
+        payment_method: CASH_ON_DELIVERY_PAYMENT_METHOD,
+        idempotency_key: "k1",
+      },
+    );
+    expect(result.duplicate).toBe(false);
+    expect(result.data).toEqual({ id: "order-1" });
+    expect(result.omitted).toEqual(["idempotency_key", "payment_method"]);
+    expect(attempts).toHaveLength(3);
+    expect(attempts[2]).toEqual({
+      user_id: "u1",
+      restaurant_id: "r1",
+      total: 2000,
+      payment_status: "unpaid",
+    });
+  });
+
+  it("does not treat unique violation as a missing column", async () => {
+    const { insertOmittingUnknownColumns } = await import("@/lib/order-placement");
+    const result = await insertOmittingUnknownColumns(
+      async () => ({
+        data: null,
+        error: {
+          code: "23505",
+          message: 'duplicate key value violates unique constraint "orders_user_idempotency_key_uidx"',
+        },
+      }),
+      { idempotency_key: "k1", user_id: "u1" },
+    );
+    expect(result.duplicate).toBe(true);
+    expect(result.omitted).toEqual([]);
+  });
+
+  it("coalesces in-flight orders with the same idempotency key", async () => {
+    const { withOrderIdempotencyLock } = await import("@/lib/order-placement");
+    let runs = 0;
+    const work = () =>
+      new Promise<{ id: string; total: number }>((resolve) => {
+        runs += 1;
+        setTimeout(() => resolve({ id: "same", total: 2000 }), 20);
+      });
+    const [a, b] = await Promise.all([
+      withOrderIdempotencyLock("user-1", "key-1", work),
+      withOrderIdempotencyLock("user-1", "key-1", work),
+    ]);
+    expect(runs).toBe(1);
+    expect(a).toEqual(b);
+  });
 });
 
 describe("createOrder input validation", () => {

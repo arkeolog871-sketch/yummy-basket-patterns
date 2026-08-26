@@ -37,6 +37,7 @@ function CheckoutPage() {
   const submitOrder = useServerFn(createOrder);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  const submittingRef = useRef(false);
   const idempotencyKeyRef = useRef(
     typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}`,
   );
@@ -52,6 +53,7 @@ function CheckoutPage() {
 
   const place = useMutation({
     mutationFn: async () => {
+      submittingRef.current = true;
       const address = addresses.find((item) => item.id === selectedId);
       if (!address || !cart.restaurant) throw new Error("Adres veya sepet eksik.");
       const result = await submitOrder({
@@ -82,6 +84,9 @@ function CheckoutPage() {
       navigate({ to: "/siparis/$id", params: { id: result.id } });
     },
     onError: (error) => toast.error(toPublicErrorMessage(error, "Sipariş oluşturulamadı.")),
+    onSettled: () => {
+      submittingRef.current = false;
+    },
   });
 
   if (cart.lines.length === 0 || !cart.restaurant) {
@@ -189,7 +194,7 @@ function CheckoutPage() {
           size="lg"
           disabled={!selectedId || place.isPending || !cart.meetsMinimum}
           onClick={() => {
-            if (place.isPending) return;
+            if (place.isPending || submittingRef.current) return;
             place.mutate();
           }}
         >

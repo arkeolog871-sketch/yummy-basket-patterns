@@ -20,6 +20,8 @@ describe("order input cannot set payment or foreign identity", () => {
     expect(text).toMatch(/CASH_ON_DELIVERY_PAYMENT_METHOD/);
     expect(text).toMatch(/omitOrderColumn/);
     expect(text).toMatch(/isUnknownOrderColumnError/);
+    expect(text).toMatch(/insertOmittingUnknownColumns/);
+    expect(text).toMatch(/withOrderIdempotencyLock/);
     const orders = readFileSync(join(ROOT, "src/lib/orders.functions.ts"), "utf8");
     expect(orders).toMatch(/p_user_id: userId/);
     expect(orders).not.toMatch(/data\.user_id/);
@@ -41,6 +43,20 @@ describe("order input cannot set payment or foreign identity", () => {
     expect(text).not.toMatch(/stock_quantity:\s*data/);
     expect(text).not.toMatch(/p_user_id:\s*data/);
     expect(text).not.toMatch(/idempotency_key:\s*_ignored/);
-    expect(text).not.toMatch(/\.\.\.withoutKey/);
+    expect(text).toMatch(/insertOmittingUnknownColumns/);
+    expect(text).toMatch(/withOrderIdempotencyLock/);
+  });
+
+  it("clears the cart only after a successful createOrder response", () => {
+    const text = readFileSync(join(ROOT, "src/routes/odeme.tsx"), "utf8");
+    expect(text).toMatch(/onSuccess/);
+    expect(text).toMatch(/cart\.clear\(\)/);
+    const clearAt = text.indexOf("cart.clear()");
+    const successAt = text.indexOf("onSuccess");
+    expect(successAt).toBeGreaterThan(0);
+    expect(clearAt).toBeGreaterThan(successAt);
+    expect(text).toMatch(/place\.isPending/);
+    expect(text).toMatch(/submittingRef/);
+    expect(text).toMatch(/cash_on_delivery|Kapıda ödeme/);
   });
 });
