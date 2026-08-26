@@ -3,6 +3,16 @@ import { webkit, devices } from "@playwright/test";
 const ORIGIN = "https://uygulamamcebimde.online";
 const PASSWORD = "IosOtp-26a!xyz";
 
+const result = {
+  send: "BAŞARISIZ",
+  otpReceived: false,
+  verifyClicked: false,
+  home: false,
+  session: false,
+  logoutRelogin: false,
+  notes: [],
+};
+
 async function mailTmAccount() {
   const domains = await fetch("https://api.mail.tm/domains").then((r) => r.json());
   const domain = domains["hydra:member"][0].domain;
@@ -39,7 +49,7 @@ async function waitForOtp(token, timeoutMs = 90_000, usedCodes = new Set()) {
       if (match && !usedCodes.has(match[1])) {
         return {
           code: match[1],
-          subject: full.subject,
+          subject: String(full.subject || ""),
           from: full.from?.address || "",
         };
       }
@@ -66,79 +76,102 @@ async function dumpStorage(page) {
   });
 }
 
-async function waitLoggedIn(page, timeout = 30_000) {
-  await page.getByRole("button", { name: "Hesabım" }).waitFor({ timeout });
-  await page.waitForURL((url) => {
-    try {
-      const path = new URL(url).pathname;
-      return path === "/" || (path !== "/auth" && !path.startsWith("/auth"));
-    } catch {
-      return false;
-    }
-  }, { timeout: 20_000 });
-  await page.getByRole("button", { name: /^Doğrula$/ }).waitFor({ state: "hidden", timeout: 10_000 }).catch(() => {});
+async function openCustomerAuth(page) {
+  await page.goto(`${ORIGIN}/auth`, { waitUntil: "domcontentloaded" });
+  const customer = page.getByRole("button", { name: "Müşteri girişi" });
+  await customer.waitFor({ timeout: 20_000 });
+  await customer.click();
 }
 
-async function clickSignup(page) {
+async function openSignup(page) {
   const heading = page.locator("h1").first();
-  const toggle = page.getByRole("button", { name: /Hesabınız yok mu\? Kayıt olun|Zaten hesabınız var mı\? Giriş yapın/ });
-  await toggle.waitFor({ timeout: 20_000 });
+  await page
+    .getByRole("button", { name: /Hesabınız yok mu\? Kayıt olun|Zaten hesabınız var mı\? Giriş yapın/ })
+    .waitFor({ timeout: 20_000 });
   for (let i = 0; i < 8; i++) {
     const text = (await heading.innerText()).trim();
     if (text === "Hesap oluştur") return;
-    await page.getByRole("button", { name: /Hesabınız yok mu\? Kayıt olun/ }).click({ force: true }).catch(() => {});
-    await page.waitForTimeout(350);
+    await page.getByRole("button", { name: "Hesabınız yok mu? Kayıt olun" }).click().catch(() => {});
+    await page.waitForTimeout(300);
   }
   throw new Error("Kayıt ekranı açılmadı");
 }
 
+/**
+ * Live production: checkbox sits in <label for="…-terms">.
+ * Clicking the input on WebKit toggles twice. Space on focus toggles once.
+ */
 async function acceptTerms(page) {
   const terms = page.locator('input[name="termsAccepted"]');
   await terms.waitFor({ state: "visible", timeout: 20_000 });
   if (await terms.isChecked()) return;
-  await page.evaluate(() => {
-    const input = document.querySelector('input[name="termsAccepted"]');
-    if (!(input instanceof HTMLInputElement)) return;
-    const label = input.closest("label");
-    if (label?.hasAttribute("for")) label.removeAttribute("for");
-    input.disabled = false;
-    input.click();
-  });
-  await page.waitForTimeout(300);
+  await terms.focus();
+  await page.keyboard.press("Space");
+  await page.waitForTimeout(250);
   if (await terms.isChecked()) return;
-  await page.getByText(/okudum, kabul ediyorum/).click({ force: true }).catch(() => {});
-  await page.waitForTimeout(300);
+  await page.getByText(/'ni okudum, kabul ediyorum/).click();
+  await page.waitForTimeout(250);
+  if (!(await terms.isChecked())) {
+    throw new Error("KVKK onayı WebKit'te işaretlenemedi");
+  }
 }
 
-async function fillOtp(page, code) {
-  await acceptTerms(page);
+async function fillOtpCode(page, code) {
   const otp = page.getByLabel("6 haneli e-posta doğrulama kodu");
-  await otp.waitFor({ state: "visible", timeout: 10_000 });
+  await otp.waitFor({ state: "visible", timeout: 15_000 });
+  await otp.click();
   await otp.fill("");
-  await otp.fill(code);
-  try {
-    await waitLoggedIn(page, 8_000);
-    return;
-  } catch {
-    /* auto-verify may still be in flight or Doğrula is required */
-  }
-  if (!page.url().includes("/auth")) return;
-  const verify = page.getByRole("button", { name: /^Doğrula$/ });
-  if ((await verify.count()) === 0) return;
-  const visible = await verify.isVisible().catch(() => false);
-  const enabled = visible && (await verify.isEnabled().catch(() => false));
-  if (enabled) {
-    await verify.click({ force: true });
-  }
+  await otp.pressSequentially(code, { delay: 40 });
 }
 
-const result = {
-  send: "BAŞARISIZ",
-  verify: "BAŞARISIZ",
-  persist: "BAŞARISIZ",
-  relogin: "BAŞARISIZ",
-  notes: [],
-};
+async function clickVerify(page) {
+  if (!page.url().includes("/auth")) return false;
+  const verify = page.getByRole("button", { name: /^Doğrula$/ });
+  const appeared = await verify.waitFor({ state: "visible", timeout: 8_000 }).then(
+    () => true,
+    () => false,
+  );
+  if (!appeared) return false;
+  for (let i = 0; i < 25; i++) {
+    if (!page.url().includes("/auth")) return false;
+    if (await verify.isEnabled().catch(() => false)) {
+      await verify.click();
+      return true;
+    }
+    await page.waitForTimeout(160);
+  }
+  if (!page.url().includes("/auth")) return false;
+  throw new Error("Doğrula düğmesi etkinleşmedi");
+}
+
+async function assertHomeAndSession(page, timeout = 30_000) {
+  await page.waitForURL(
+    (url) => {
+      try {
+        return new URL(url).pathname === "/";
+      } catch {
+        return false;
+      }
+    },
+    { timeout },
+  );
+  await page.getByRole("button", { name: "Hesabım" }).waitFor({ timeout: 15_000 });
+  await page
+    .getByRole("button", { name: /^Doğrula$/ })
+    .waitFor({ state: "hidden", timeout: 8_000 })
+    .catch(() => {});
+  const keys = authStorageKeys(await dumpStorage(page));
+  if (!keys.length) throw new Error("Ana sayfada oturum anahtarı yok");
+  result.home = true;
+  result.session = true;
+  return keys.length;
+}
+
+async function logout(page) {
+  await page.getByRole("button", { name: "Hesabım" }).click();
+  await page.getByRole("menuitem", { name: "Çıkış yap" }).click();
+  await page.getByRole("link", { name: "Giriş yap" }).first().waitFor({ timeout: 20_000 });
+}
 
 const browser = await webkit.launch({ headless: true });
 const iphone = devices["iPhone 14"];
@@ -155,71 +188,68 @@ try {
   result.notes.push(`mailbox_domain=${box.address.split("@")[1]}`);
   result.notes.push(`ua=${iphone.userAgent.includes("iPhone") ? "iPhone" : "other"}`);
 
-  await page.goto(`${ORIGIN}/auth`, { waitUntil: "domcontentloaded" });
+  await openCustomerAuth(page);
   const publicEnv = await page.evaluate(() => window.__PUBLIC_ENV__ || {});
-  result.notes.push(`supabase_host=${new URL(publicEnv.VITE_SUPABASE_URL || "https://invalid.local").host}`);
+  result.notes.push(
+    `supabase_host=${new URL(publicEnv.VITE_SUPABASE_URL || "https://invalid.local").host}`,
+  );
   if (!String(publicEnv.VITE_SUPABASE_URL || "").includes("wxkyhwkcuiqxxxpawcid")) {
     throw new Error("iOS webview farklı Supabase host kullanıyor");
   }
 
-  const customerTab = page.getByRole("button", { name: "Müşteri girişi" });
-  await customerTab.waitFor({ timeout: 20_000 });
-  await customerTab.click({ force: true });
-  await clickSignup(page);
+  await openSignup(page);
   await page.locator("#fullName").fill("iOS OTP Test");
   await page.locator("#phone").fill("05551234567");
   await page.locator("#email").fill(box.address);
   await page.locator("#password").fill(PASSWORD);
   await page.getByRole("button", { name: "Kayıt ol" }).click();
-
-  const otpHeading = page.getByText(/e-posta doğrulanmadı|6 haneli kodu girerek/i);
-  await otpHeading.waitFor({ timeout: 30_000 });
-  result.send = "API_OK_WAIT_MAIL";
-
-  const mail = await waitForOtp(box.token);
-  result.notes.push(`mail_from_notify=${mail.from.includes("notify.uygulamamcebimde.online")}`);
-  result.notes.push(`mail_subject_ok=${/doğrulayın|giriş kodunuz/i.test(mail.subject)}`);
+  await page.getByText(/e-posta doğrulanmadı|6 haneli kodu girerek/i).waitFor({ timeout: 30_000 });
   result.send = "BAŞARILI";
 
-  await fillOtp(page, mail.code);
-  await waitLoggedIn(page);
-  const afterVerify = await dumpStorage(page);
-  const keys = authStorageKeys(afterVerify);
-  result.notes.push(`session_keys=${keys.length}`);
-  if (!keys.length) throw new Error("setSession sonrası localStorage boş");
-  result.verify = "BAŞARILI";
+  const mail = await waitForOtp(box.token);
+  result.otpReceived = /^\d{6}$/.test(mail.code);
+  result.notes.push(`mail_from_notify=${mail.from.includes("notify.uygulamamcebimde.online")}`);
+  result.notes.push(`mail_subject_ok=${/doğrulayın|giriş kodunuz/i.test(mail.subject)}`);
+  result.notes.push(`otp_len=${mail.code.length}`);
+  if (!result.otpReceived) throw new Error("OTP 6 haneli değil");
+
+  await acceptTerms(page);
+  await fillOtpCode(page, mail.code);
+  result.verifyClicked = await clickVerify(page);
+  result.notes.push(`verify_clicked=${result.verifyClicked}`);
+  const sessionKeys = await assertHomeAndSession(page);
+  result.notes.push(`session_keys=${sessionKeys}`);
 
   await page.reload({ waitUntil: "domcontentloaded" });
-  await waitLoggedIn(page, 20_000);
-  const afterReload = await dumpStorage(page);
-  result.notes.push(`persist_keys=${authStorageKeys(afterReload).length}`);
-  result.persist = "BAŞARILI";
+  await assertHomeAndSession(page, 20_000);
 
-  await page.getByRole("button", { name: "Hesabım" }).click();
-  await page.getByRole("menuitem", { name: "Çıkış yap" }).click();
-  await page.getByRole("link", { name: "Giriş yap" }).first().waitFor({ timeout: 20_000 });
+  await logout(page);
 
-  await page.goto(`${ORIGIN}/auth`, { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: "Müşteri girişi" }).click({ force: true });
-  await page.getByRole("button", { name: "E-posta kodu ile" }).click({ force: true });
+  await openCustomerAuth(page);
+  await page.getByRole("button", { name: "E-posta kodu ile" }).click();
   await page.locator("#user-otp-email").fill(box.address);
   await page.getByRole("button", { name: "Doğrulama kodu gönder" }).click();
   await page.getByLabel("6 haneli e-posta doğrulama kodu").waitFor({ timeout: 20_000 });
   const loginMail = await waitForOtp(box.token, 90_000, new Set([mail.code]));
-  await fillOtp(page, loginMail.code);
-  await waitLoggedIn(page);
-  const afterRelogin = await dumpStorage(page);
-  result.notes.push(`relogin_keys=${authStorageKeys(afterRelogin).length}`);
-  if (!authStorageKeys(afterRelogin).length) throw new Error("yeniden girişte oturum yok");
-  result.relogin = "BAŞARILI";
-  await page.screenshot({
-    path: "/opt/cursor/artifacts/ios_otp_home_after_relogin.png",
-    fullPage: true,
-  }).catch(() => {});
+  result.notes.push(`relogin_otp_len=${loginMail.code.length}`);
+
+  await acceptTerms(page);
+  await fillOtpCode(page, loginMail.code);
+  const reloginClicked = await clickVerify(page);
+  result.notes.push(`relogin_verify_clicked=${reloginClicked}`);
+  const reloginKeys = await assertHomeAndSession(page);
+  result.notes.push(`relogin_keys=${reloginKeys}`);
+  result.logoutRelogin = true;
+
+  await page
+    .screenshot({
+      path: "/opt/cursor/artifacts/ios_webkit_otp_home.png",
+      fullPage: true,
+    })
+    .catch(() => {});
 } catch (error) {
   result.notes.push(`error=${error instanceof Error ? error.message : String(error)}`);
-  const url = page.url();
-  result.notes.push(`url=${url}`);
+  result.notes.push(`url=${page.url()}`);
   const body = await page.locator("body").innerText().catch(() => "");
   result.notes.push(`body=${body.slice(0, 400).replace(/\s+/g, " ")}`);
 } finally {
@@ -227,6 +257,11 @@ try {
 }
 
 console.log(JSON.stringify(result, null, 2));
-if (result.send !== "BAŞARILI" || result.verify !== "BAŞARILI" || result.persist !== "BAŞARILI" || result.relogin !== "BAŞARILI") {
-  process.exit(1);
-}
+
+const passed =
+  result.send === "BAŞARILI" &&
+  result.otpReceived &&
+  result.home &&
+  result.session &&
+  result.logoutRelogin;
+if (!passed) process.exit(1);
