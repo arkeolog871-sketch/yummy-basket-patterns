@@ -34,8 +34,12 @@ export const createOrder = createServerFn({ method: "POST" })
     await enforceSensitiveRateLimit("order-create", 20, 60 * 1000);
     try {
       const placed = await placeOrder(data, context);
-      const { notifyVendorOfNewOrder } = await import("./order-vendor-alert.server");
-      void notifyVendorOfNewOrder(placed.id);
+      try {
+        const { notifyVendorOfNewOrder } = await import("./order-vendor-alert.server");
+        void notifyVendorOfNewOrder(placed.id);
+      } catch {
+        console.error("[order-vendor-alert] bildirim başlatılamadı", { orderId: placed.id });
+      }
       return { ok: true as const, ...placed };
     } catch (error) {
       return { ok: false as const, error: toPublicErrorMessage(error) };

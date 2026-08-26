@@ -20,6 +20,7 @@ describe("vendor new-order alerts", () => {
     expect(notifyAt).toBeGreaterThan(placedAt);
     expect(returnAt).toBeGreaterThan(notifyAt);
     expect(text).not.toMatch(/await notifyVendorOfNewOrder/);
+    expect(text).toMatch(/bildirim başlatılamadı/);
   });
 
   it("loads restaurant email and order rows from the database, not the client payload", () => {
