@@ -80,5 +80,14 @@ describe("production release contract (no secrets)", () => {
     expect(placeSql).not.toMatch(/DISABLE ROW LEVEL SECURITY/);
     expect(placeSql).not.toMatch(/GRANT INSERT ON public\.orders TO (anon|PUBLIC)/);
     expect(placeSql).not.toMatch(/DROP POLICY/);
+    const verify = readFileSync(join(ROOT, "docs/go-live/PRODUCTION_ORDER_SQL_VERIFY.sql"), "utf8");
+    const verifySql = verify
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("--"))
+      .join("\n");
+    expect(verifySql).toMatch(/idempotency_key/);
+    expect(verifySql).toMatch(/payment_method/);
+    expect(verifySql).toMatch(/place_customer_order/);
+    expect(verifySql).not.toMatch(/\b(INSERT INTO|UPDATE |DELETE FROM|ALTER TABLE|DROP TABLE|DROP POLICY|GRANT |REVOKE )\b/i);
   });
 });
