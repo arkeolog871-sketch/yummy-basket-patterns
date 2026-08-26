@@ -5,7 +5,11 @@ import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { runServerFn, toPublicErrorMessage } from "./public-error";
 import { planStockDecrement } from "./orders-stock";
-import { isMissingRpcError, shouldUseOrderPlacementFallback } from "./rpc-fallback";
+import {
+  isMissingRpcError,
+  shouldRetryPlaceOrderRpcWithServiceRole,
+  shouldUseOrderPlacementFallback,
+} from "./rpc-fallback";
 import {
   CASH_ON_DELIVERY_PAYMENT_METHOD,
   createOrderSchema,
@@ -82,7 +86,18 @@ async function placeOrder(
     p_note: data.note ?? null,
     p_idempotency_key: data.idempotency_key ?? null,
   };
-  const rpc = await supabaseAdmin.rpc("place_customer_order", rpcArgs);
+  // Oturum JWT'si (role=authenticated). p_user_id = claims.sub; fonksiyon auth.uid() ile doğrular.
+  // EXECUTE yoksa veya PostgREST fonksiyonu bu role göstermiyorsa service_role dener.
+  let rpc = await supabase.rpc("place_customer_order", rpcArgs);
+  if (rpc.error && shouldRetryPlaceOrderRpcWithServiceRole(rpc.error)) {
+    logOrderFailure({
+      stage: "place_customer_order.authenticated_rpc",
+      userId,
+      restaurantId: restaurant.id,
+      error: rpc.error,
+    });
+    rpc = await supabaseAdmin.rpc("place_customer_order", rpcArgs);
+  }
 
   if (!rpc.error) {
     const result = rpc.data as { ok?: boolean; id?: string; total?: number; error?: string } | null;

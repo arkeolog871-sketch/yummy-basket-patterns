@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { toPublicErrorMessage } from "@/lib/public-error";
-import { isMissingRpcError, shouldUseOrderPlacementFallback } from "@/lib/rpc-fallback";
+import {
+  isMissingRpcError,
+  isRpcExecuteDeniedError,
+  shouldRetryPlaceOrderRpcWithServiceRole,
+  shouldUseOrderPlacementFallback,
+} from "@/lib/rpc-fallback";
 
 describe("public error sanitization", () => {
   it("hides stack traces, SQL, and secret-like text", () => {
@@ -66,5 +71,32 @@ describe("RPC rollout fallback", () => {
     expect(shouldUseOrderPlacementFallback({ message: "Minimum sepet tutarına ulaşılmadı." })).toBe(
       false,
     );
+    expect(isRpcExecuteDeniedError({ code: "42501", message: "permission denied" })).toBe(true);
+    expect(
+      isRpcExecuteDeniedError({
+        message: "permission denied for function place_customer_order",
+      }),
+    ).toBe(true);
+    expect(isRpcExecuteDeniedError({ code: "PGRST202", message: "Could not find the function" })).toBe(
+      false,
+    );
+    expect(
+      shouldRetryPlaceOrderRpcWithServiceRole({
+        code: "42501",
+        message: "permission denied",
+      }),
+    ).toBe(true);
+    expect(
+      shouldRetryPlaceOrderRpcWithServiceRole({
+        code: "PGRST202",
+        message: "Could not find the function",
+      }),
+    ).toBe(true);
+    expect(
+      shouldRetryPlaceOrderRpcWithServiceRole({
+        code: "42703",
+        message: 'column "payment_method" does not exist',
+      }),
+    ).toBe(false);
   });
 });

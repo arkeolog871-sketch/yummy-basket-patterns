@@ -25,6 +25,11 @@ describe("order input cannot set payment or foreign identity", () => {
     const orders = readFileSync(join(ROOT, "src/lib/orders.functions.ts"), "utf8");
     expect(orders).toMatch(/p_user_id: userId/);
     expect(orders).not.toMatch(/data\.user_id/);
+    expect(orders).toMatch(/supabase\.rpc\("place_customer_order"/);
+    expect(orders).toMatch(/supabaseAdmin\.rpc\("place_customer_order"/);
+    expect(orders.indexOf('supabase.rpc("place_customer_order"')).toBeLessThan(
+      orders.indexOf('supabaseAdmin.rpc("place_customer_order"'),
+    );
   });
 
   it("vendor mutations ignore client restaurant_id and use assertVendor", () => {

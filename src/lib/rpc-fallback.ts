@@ -15,6 +15,19 @@ export function isMissingRpcError(error: RpcError): boolean {
   );
 }
 
+/** PostgREST/Postgres EXECUTE yok (authenticated GRANT henüz yoksa veya role=anon). Tablo INSERT açmaz. */
+export function isRpcExecuteDeniedError(error: RpcError): boolean {
+  if (!error) return false;
+  if (error.code === "42501") return true;
+  const message = error.message ?? "";
+  return /permission denied for (function|schema)/i.test(message);
+}
+
+/** Kullanıcı JWT RPC'si EXECUTE/önbellek yüzünden düşerse service_role dener; INSERT yedeği açılmaz. */
+export function shouldRetryPlaceOrderRpcWithServiceRole(error: RpcError): boolean {
+  return isMissingRpcError(error) || isRpcExecuteDeniedError(error);
+}
+
 /**
  * PostgREST şema önbelleği Postgres'ten gerideyse RPC görünür ama INSERT
  * payment_method/idempotency_key kolonunda 42703/PGRST204 döner. Bu durumda
