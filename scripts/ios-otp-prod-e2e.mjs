@@ -1,0 +1,185 @@
+import { chromium, devices } from "@playwright/test";
+
+const ORIGIN = "https://uygulamamcebimde.online";
+const PASSWORD = "IosOtp-26a!xyz";
+
+async function mailTmAccount() {
+  const domains = await fetch("https://api.mail.tm/domains").then((r) => r.json());
+  const domain = domains["hydra:member"][0].domain;
+  const address = `iosotp${Date.now()}@${domain}`;
+  const password = "IosMail-26a!";
+  const created = await fetch("https://api.mail.tm/accounts", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ address, password }),
+  });
+  if (!created.ok) throw new Error(`mailbox create ${created.status}`);
+  const tokenRes = await fetch("https://api.mail.tm/token", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ address, password }),
+  });
+  const { token } = await tokenRes.json();
+  return { address, token };
+}
+
+async function waitForOtp(token, timeoutMs = 90_000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const list = await fetch("https://api.mail.tm/messages", {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((r) => r.json());
+    const messages = list["hydra:member"] || [];
+    if (messages.length) {
+      const full = await fetch(`https://api.mail.tm/messages/${messages[0].id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then((r) => r.json());
+      const text = String(full.text || "");
+      const match = text.match(/(?<!\d)(\d{6})(?!\d)/);
+      if (match) {
+        return {
+          code: match[1],
+          subject: full.subject,
+          from: full.from?.address || "",
+        };
+      }
+    }
+    await new Promise((r) => setTimeout(r, 4000));
+  }
+  throw new Error("OTP e-postası gelmedi");
+}
+
+function authStorageKeys(localStorageDump) {
+  return Object.keys(localStorageDump).filter(
+    (k) => k.startsWith("sb-") && k.includes("auth-token"),
+  );
+}
+
+async function dumpStorage(page) {
+  return page.evaluate(() => {
+    const out = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k) out[k] = localStorage.getItem(k) ? "present" : "empty";
+    }
+    return out;
+  });
+}
+
+async function clickSignup(page) {
+  const heading = page.locator("h1").first();
+  const toggle = page.getByRole("button", { name: /Hesabınız yok mu\? Kayıt olun|Zaten hesabınız var mı\? Giriş yapın/ });
+  await toggle.waitFor({ timeout: 20_000 });
+  for (let i = 0; i < 8; i++) {
+    const text = (await heading.innerText()).trim();
+    if (text === "Hesap oluştur") return;
+    await page.getByRole("button", { name: /Hesabınız yok mu\? Kayıt olun/ }).click({ force: true }).catch(() => {});
+    await page.waitForTimeout(350);
+  }
+  throw new Error("Kayıt ekranı açılmadı");
+}
+
+async function fillOtp(page, code) {
+  const terms = page.locator('input[name="termsAccepted"]');
+  await terms.waitFor({ state: "visible", timeout: 20_000 });
+  if (!(await terms.isChecked())) {
+    await page.getByText(/okudum, kabul ediyorum/).click({ force: true });
+  }
+  if (!(await terms.isChecked())) {
+    await terms.click({ force: true });
+  }
+  const otp = page.getByLabel("6 haneli e-posta doğrulama kodu");
+  await otp.waitFor({ state: "visible", timeout: 10_000 });
+  await otp.click({ force: true });
+  await otp.fill(code);
+}
+
+const result = {
+  send: "BAŞARISIZ",
+  verify: "BAŞARISIZ",
+  persist: "BAŞARISIZ",
+  relogin: "BAŞARISIZ",
+  notes: [],
+};
+
+const browser = await chromium.launch({ headless: true });
+const iphone = devices["iPhone 14"];
+const context = await browser.newContext({
+  ...iphone,
+  locale: "tr-TR",
+  timezoneId: "Europe/Istanbul",
+});
+const page = await context.newPage();
+page.setDefaultTimeout(25_000);
+
+try {
+  const box = await mailTmAccount();
+  result.notes.push(`mailbox_domain=${box.address.split("@")[1]}`);
+  result.notes.push(`ua=${iphone.userAgent.includes("iPhone") ? "iPhone" : "other"}`);
+
+  await page.goto(`${ORIGIN}/auth`, { waitUntil: "domcontentloaded" });
+  const publicEnv = await page.evaluate(() => window.__PUBLIC_ENV__ || {});
+  result.notes.push(`supabase_host=${new URL(publicEnv.VITE_SUPABASE_URL || "https://invalid.local").host}`);
+  if (!String(publicEnv.VITE_SUPABASE_URL || "").includes("wxkyhwkcuiqxxxpawcid")) {
+    throw new Error("iOS webview farklı Supabase host kullanıyor");
+  }
+
+  const customerTab = page.getByRole("button", { name: "Müşteri girişi" });
+  await customerTab.waitFor({ timeout: 20_000 });
+  await customerTab.click({ force: true });
+  await clickSignup(page);
+  await page.locator("#fullName").fill("iOS OTP Test");
+  await page.locator("#phone").fill("05551234567");
+  await page.locator("#email").fill(box.address);
+  await page.locator("#password").fill(PASSWORD);
+  await page.getByRole("button", { name: "Kayıt ol" }).click();
+
+  const otpHeading = page.getByText(/e-posta doğrulanmadı|6 haneli kodu girerek/i);
+  await otpHeading.waitFor({ timeout: 30_000 });
+  result.send = "API_OK_WAIT_MAIL";
+
+  const mail = await waitForOtp(box.token);
+  result.notes.push(`mail_from_notify=${mail.from.includes("notify.uygulamamcebimde.online")}`);
+  result.notes.push(`mail_subject_ok=${/doğrulayın/i.test(mail.subject)}`);
+  result.send = "BAŞARILI";
+
+  await fillOtp(page, mail.code);
+  await page.getByRole("button", { name: "Hesabım" }).waitFor({ timeout: 30_000 });
+  const afterVerify = await dumpStorage(page);
+  const keys = authStorageKeys(afterVerify);
+  result.notes.push(`session_keys=${keys.length}`);
+  if (!keys.length) throw new Error("setSession sonrası localStorage boş");
+  result.verify = "BAŞARILI";
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Hesabım" }).waitFor({ timeout: 20_000 });
+  result.persist = "BAŞARILI";
+
+  await page.getByRole("button", { name: "Hesabım" }).click();
+  await page.getByRole("menuitem", { name: "Çıkış yap" }).click();
+  await page.getByRole("link", { name: "Giriş yap" }).first().waitFor({ timeout: 20_000 });
+
+  await page.goto(`${ORIGIN}/auth`, { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Müşteri girişi" }).click({ force: true });
+  await page.getByRole("button", { name: "E-posta kodu ile" }).click({ force: true });
+  await page.locator("#user-otp-email").fill(box.address);
+  await page.getByRole("button", { name: "Doğrulama kodu gönder" }).click();
+  await page.getByLabel("6 haneli e-posta doğrulama kodu").waitFor({ timeout: 20_000 });
+  const loginMail = await waitForOtp(box.token);
+  await fillOtp(page, loginMail.code);
+  await page.getByRole("button", { name: "Hesabım" }).waitFor({ timeout: 30_000 });
+  result.relogin = "BAŞARILI";
+} catch (error) {
+  result.notes.push(`error=${error instanceof Error ? error.message : String(error)}`);
+  const url = page.url();
+  result.notes.push(`url=${url}`);
+  const body = await page.locator("body").innerText().catch(() => "");
+  result.notes.push(`body=${body.slice(0, 400).replace(/\s+/g, " ")}`);
+} finally {
+  await browser.close();
+}
+
+console.log(JSON.stringify(result, null, 2));
+if (result.send !== "BAŞARILI" || result.verify !== "BAŞARILI" || result.persist !== "BAŞARILI" || result.relogin !== "BAŞARILI") {
+  process.exit(1);
+}

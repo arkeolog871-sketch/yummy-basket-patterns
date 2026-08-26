@@ -24,7 +24,7 @@ export function LegalConsentCheckbox({ id, checked, disabled, onCheckedChange }:
 
   return (
     <div className="mt-3 w-full rounded-xl border border-primary/40 bg-background p-3 shadow-sm">
-      <label htmlFor={id} className="flex min-h-11 cursor-pointer items-start gap-3 touch-manipulation">
+      <label className="flex min-h-11 cursor-pointer items-start gap-3 touch-manipulation">
         <input
           id={id}
           name="termsAccepted"
@@ -32,8 +32,9 @@ export function LegalConsentCheckbox({ id, checked, disabled, onCheckedChange }:
           required
           checked={checked}
           disabled={disabled}
+          onClick={(event) => event.stopPropagation()}
           onChange={(event) => onCheckedChange(event.target.checked)}
-          className="mt-0.5 size-6 shrink-0 accent-primary"
+          className="mt-0.5 size-6 min-h-6 min-w-6 shrink-0 accent-primary"
         />
         <span className="text-[16px] leading-6 text-foreground">
           <LegalDocButton docId="terms" onOpen={setOpenDoc} />

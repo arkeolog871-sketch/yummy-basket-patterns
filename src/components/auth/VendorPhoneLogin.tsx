@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { KeyRound, Smartphone } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { persistVerifiedSession } from "@/lib/auth-session";
 import { requestVendorLoginCode, verifyVendorLoginCode } from "@/lib/vendor-auth.functions";
 import { OTP_RESEND_COOLDOWN_SECONDS, isCompleteOtpCode, parseExactOtpCode } from "@/lib/otp";
 import { TERMS_ACCEPTANCE_REQUIRED } from "@/lib/legal";
@@ -72,11 +72,10 @@ export function VendorPhoneLogin() {
       if (!tokens.ok) {
         throw new Error(tokens.error);
       }
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: tokens.accessToken,
-        refresh_token: tokens.refreshToken,
+      await persistVerifiedSession({
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
       });
-      if (sessionError) throw new Error(sessionError.message);
       toast.success("Giriş başarılı!");
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Kod doğrulanamadı.";
@@ -132,7 +131,10 @@ export function VendorPhoneLogin() {
               setError(null);
             }}
             onComplete={(next) => {
-              if (!termsAcceptedRef.current) return;
+              if (!termsAcceptedRef.current) {
+                setError(TERMS_ACCEPTANCE_REQUIRED);
+                return;
+              }
               void verify(next);
             }}
           />

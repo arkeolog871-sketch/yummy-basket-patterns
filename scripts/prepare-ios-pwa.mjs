@@ -35,6 +35,8 @@ mustContain("src/components/auth/OtpCodeInput.tsx", [
   "one-time-code",
   "inputMode",
   "text-[16px]",
+  "isIosDevice",
+  "[0-9]*",
 ]);
 mustContain("src/components/legal/LegalConsentCheckbox.tsx", [
   "type=\"checkbox\"",

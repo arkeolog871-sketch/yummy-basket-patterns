@@ -13,6 +13,13 @@ describe("user registration validation", () => {
     expect(registerSchema.parse(valid)).toEqual(valid);
   });
 
+  it("lowercases emails so iOS autocapitalize cannot split the account", () => {
+    expect(registerSchema.parse({ ...valid, email: "Yeni@Example.COM" }).email).toBe(
+      "yeni@example.com",
+    );
+    expect(sendOtpSchema.parse({ email: "  Ali@Ex.COM " }).email).toBe("ali@ex.com");
+  });
+
   it("rejects invalid email", () => {
     expect(() => registerSchema.parse({ ...valid, email: "not-an-email" })).toThrow(/e-posta/i);
     expect(() => registerSchema.parse({ ...valid, email: "" })).toThrow();

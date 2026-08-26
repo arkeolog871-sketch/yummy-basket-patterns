@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { KeyRound, MailCheck } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { supabase } from "@/integrations/supabase/client";
 import { sendEmailVerificationCode, verifyEmailVerificationCode } from "@/lib/otp.functions";
 import {
   OTP_CODE_LENGTH,
@@ -16,6 +15,7 @@ import { LegalConsentCheckbox } from "@/components/legal/LegalConsentCheckbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { persistVerifiedSession } from "@/lib/auth-session";
 import { TERMS_ACCEPTANCE_REQUIRED } from "@/lib/legal";
 
 type Props = {
@@ -110,11 +110,10 @@ export function EmailCodeLogin({
         setCode("");
         return;
       }
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: result.accessToken,
-        refresh_token: result.refreshToken,
+      await persistVerifiedSession({
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
       });
-      if (sessionError) throw new Error(sessionError.message);
       await onVerified?.(result.userId, email.trim());
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Kod doğrulanamadı.";
@@ -170,7 +169,10 @@ export function EmailCodeLogin({
               setError(null);
             }}
             onComplete={(next) => {
-              if (!termsAcceptedRef.current) return;
+              if (!termsAcceptedRef.current) {
+                setError(TERMS_ACCEPTANCE_REQUIRED);
+                return;
+              }
               void verify(next);
             }}
           />

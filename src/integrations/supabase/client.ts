@@ -2,7 +2,17 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 import { brokeredPreviewStorage } from "./previewAuthStorage";
+import { wrapDurableStorage } from "@/lib/durable-storage";
 import { getPublicSupabaseEnv } from "@/lib/public-env";
+
+function clientAuthStorage() {
+  const storage = brokeredPreviewStorage();
+  if (!storage) return undefined;
+  if (typeof window !== "undefined" && storage === window.localStorage) {
+    return wrapDurableStorage(window.localStorage);
+  }
+  return storage;
+}
 
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith("sb_publishable_") || value.startsWith("sb_secret_");
@@ -110,7 +120,7 @@ function createSupabaseClient(): SupabaseClient<Database> {
       fetch: createSupabaseFetch(SUPABASE_PUBLISHABLE_KEY),
     },
     auth: {
-      storage: brokeredPreviewStorage(),
+      storage: clientAuthStorage(),
       persistSession: true,
       autoRefreshToken: true,
       // Google PKCE `?code&state=sc1.` Supabase oturum kodu değildir; karıştırmayı.
