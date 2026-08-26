@@ -60,5 +60,8 @@ describe("production release contract (no secrets)", () => {
       "utf8",
     );
     expect(rate).toMatch(/consume_request_rate_limit/);
+    expect(
+      existsSync(join(ROOT, "supabase/migrations/20260826183000_place_order_idempotency_payment.sql")),
+    ).toBe(true);
   });
 });

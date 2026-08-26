@@ -6,25 +6,17 @@ import type { Database } from "@/integrations/supabase/types";
 import { runServerFn, toPublicErrorMessage } from "./public-error";
 import { planStockDecrement } from "./orders-stock";
 import { isMissingRpcError } from "./rpc-fallback";
-
-const createOrderSchema = z.object({
-  restaurant_id: z.string().uuid(),
-  items: z
-    .array(z.object({ menu_item_id: z.string().uuid(), quantity: z.number().int().min(1).max(20) }))
-    .min(1)
-    .max(40),
-  recipient_name: z.string().trim().min(2).max(80),
-  phone: z.string().trim().min(7).max(25),
-  city: z.string().trim().min(2).max(60),
-  district: z.string().trim().min(2).max(60),
-  street: z.string().trim().min(4).max(200),
-  directions: z.string().trim().max(300).optional().nullable(),
-  note: z.string().trim().max(300).optional().nullable(),
-  idempotency_key: z.string().uuid().optional(),
-});
+import {
+  CASH_ON_DELIVERY_PAYMENT_METHOD,
+  createOrderSchema,
+  isUnknownOrderColumnError,
+  logOrderFailure,
+  missingColumnName,
+  omitOrderColumn,
+  type CreateOrderInput,
+} from "./order-placement";
 
 type AuthContext = { supabase: SupabaseClient<Database>; userId: string };
-type OrderInput = z.infer<typeof createOrderSchema>;
 
 export const createOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -36,12 +28,18 @@ export const createOrder = createServerFn({ method: "POST" })
       const placed = await placeOrder(data, context);
       return { ok: true as const, ...placed };
     } catch (error) {
+      logOrderFailure({
+        stage: "createOrder",
+        userId: context.userId,
+        restaurantId: data.restaurant_id,
+        error,
+      });
       return { ok: false as const, error: toPublicErrorMessage(error) };
     }
   });
 
 async function placeOrder(
-  data: OrderInput,
+  data: CreateOrderInput,
   context: AuthContext,
 ): Promise<{ id: string; total: number }> {
   const { supabase, userId } = context;
@@ -55,7 +53,15 @@ async function placeOrder(
     .select("id, delivery_fee, min_order, is_active, opens_at, closes_at, is_open_manual")
     .eq("id", data.restaurant_id)
     .maybeSingle();
-  if (restaurantError) throw new Error(restaurantError.message);
+  if (restaurantError) {
+    logOrderFailure({
+      stage: "restaurants.select",
+      userId,
+      restaurantId: data.restaurant_id,
+      error: restaurantError,
+    });
+    throw new Error(restaurantError.message);
+  }
   if (!restaurant || !restaurant.is_active) throw new Error("Restoran şu anda sipariş almıyor.");
 
   const { isBusinessOpen, closedReason } = await import("./hours");
@@ -80,9 +86,21 @@ async function placeOrder(
     if (result?.ok && result.id && result.total != null) {
       return { id: result.id, total: Number(result.total) };
     }
+    logOrderFailure({
+      stage: "place_customer_order.result",
+      userId,
+      restaurantId: restaurant.id,
+      error: result?.error || "Sipariş oluşturulamadı.",
+    });
     throw new Error(result?.error || "Sipariş oluşturulamadı.");
   }
   if (!isMissingRpcError(rpc.error)) {
+    logOrderFailure({
+      stage: "place_customer_order.rpc",
+      userId,
+      restaurantId: restaurant.id,
+      error: rpc.error,
+    });
     throw new Error(rpc.error.message);
   }
 
@@ -100,9 +118,35 @@ async function findIdempotentOrder(
     .eq("user_id", userId)
     .eq("idempotency_key", key)
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (isUnknownOrderColumnError(error, "idempotency_key")) return null;
+    throw new Error(error.message);
+  }
   if (!data?.id) return null;
   return { id: data.id, total: Number(data.total) };
+}
+
+async function insertOrderRow(payload: Record<string, unknown>): Promise<{
+  data: { id: string } | null;
+  error: { message: string; code?: string } | null;
+  duplicate: boolean;
+}> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  let current = { ...payload };
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const result = await supabaseAdmin.from("orders").insert(current as never).select("id").single();
+    if (!result.error) return { data: result.data, error: null, duplicate: false };
+    if (result.error.code === "23505" || /duplicate key/i.test(result.error.message)) {
+      return { data: null, error: result.error, duplicate: true };
+    }
+    const column = missingColumnName(result.error);
+    if (column && column in current) {
+      current = omitOrderColumn(current, column);
+      continue;
+    }
+    return { data: null, error: result.error, duplicate: false };
+  }
+  return { data: null, error: { message: "Sipariş oluşturulamadı." }, duplicate: false };
 }
 
 async function restoreStockSnapshots(rows: Array<{ id: string; previous: number }>): Promise<void> {
@@ -117,7 +161,7 @@ async function restoreStockSnapshots(rows: Array<{ id: string; previous: number 
 }
 
 async function placeOrderFallback(
-  data: OrderInput,
+  data: CreateOrderInput,
   context: AuthContext,
   restaurantId: string,
 ): Promise<{ id: string; total: number }> {
@@ -199,7 +243,7 @@ async function placeOrderFallback(
       decremented.push({ id: line.menu_item_id, previous: line.previousStock });
     }
 
-    const insertPayload: Database["public"]["Tables"]["orders"]["Insert"] = {
+    const insertPayload: Record<string, unknown> = {
       user_id: userId,
       restaurant_id: restaurant.id,
       recipient_name: data.recipient_name,
@@ -213,17 +257,27 @@ async function placeOrderFallback(
       delivery_fee: deliveryFee,
       total,
       status: "confirmed",
+      payment_status: "unpaid",
+      payment_method: CASH_ON_DELIVERY_PAYMENT_METHOD,
       idempotency_key: data.idempotency_key ?? null,
     };
 
-    const firstTry = await supabaseAdmin.from("orders").insert(insertPayload).select("id").single();
-    if (firstTry.error && data.idempotency_key && /idempotency_key/i.test(firstTry.error.message)) {
+    const firstTry = await insertOrderRow(insertPayload);
+    if (firstTry.duplicate && data.idempotency_key) {
       await restoreStockSnapshots(decremented);
       const existing = await findIdempotentOrder(userId, data.idempotency_key);
       if (existing) return existing;
       throw new Error("Sipariş oluşturulamadı.");
     }
-    if (firstTry.error) throw new Error(firstTry.error.message);
+    if (firstTry.error) {
+      logOrderFailure({
+        stage: "orders.insert",
+        userId,
+        restaurantId: restaurant.id,
+        error: firstTry.error,
+      });
+      throw new Error(firstTry.error.message);
+    }
     const order = firstTry.data;
     if (!order) throw new Error("Sipariş oluşturulamadı.");
 
@@ -237,6 +291,13 @@ async function placeOrderFallback(
       })),
     );
     if (linesError) {
+      logOrderFailure({
+        stage: "order_items.insert",
+        userId,
+        restaurantId: restaurant.id,
+        orderId: order.id,
+        error: linesError,
+      });
       await supabaseAdmin.from("orders").delete().eq("id", order.id).eq("user_id", userId);
       throw new Error(linesError.message);
     }

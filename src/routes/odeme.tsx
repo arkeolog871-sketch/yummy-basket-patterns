@@ -188,9 +188,12 @@ function CheckoutPage() {
           className="mt-5 w-full rounded-full"
           size="lg"
           disabled={!selectedId || place.isPending || !cart.meetsMinimum}
-          onClick={() => place.mutate()}
+          onClick={() => {
+            if (place.isPending) return;
+            place.mutate();
+          }}
         >
-          Siparişi onayla · Kapıda ödeme
+          {place.isPending ? "Sipariş gönderiliyor…" : "Siparişi onayla · Kapıda ödeme"}
         </Button>
       </div>
     </div>

@@ -6,10 +6,10 @@ const ROOT = join(import.meta.dirname, "../..");
 
 describe("order input cannot set payment or foreign identity", () => {
   it("rejects client-supplied totals and payment fields at the Zod boundary", () => {
-    const text = readFileSync(join(ROOT, "src/lib/orders.functions.ts"), "utf8");
+    const text = readFileSync(join(ROOT, "src/lib/order-placement.ts"), "utf8");
     const schema = text.slice(
-      text.indexOf("const createOrderSchema"),
-      text.indexOf("type AuthContext"),
+      text.indexOf("export const createOrderSchema"),
+      text.indexOf("export type CreateOrderInput"),
     );
     expect(schema).toMatch(/z\.object/);
     expect(schema).not.toMatch(/payment_status/);
@@ -17,8 +17,12 @@ describe("order input cannot set payment or foreign identity", () => {
     expect(schema).not.toMatch(/\btotal\b/);
     expect(schema).not.toMatch(/delivery_fee/);
     expect(schema).not.toMatch(/user_id/);
-    expect(text).toMatch(/p_user_id: userId/);
-    expect(text).not.toMatch(/data\.user_id/);
+    expect(text).toMatch(/CASH_ON_DELIVERY_PAYMENT_METHOD/);
+    expect(text).toMatch(/omitOrderColumn/);
+    expect(text).toMatch(/isUnknownOrderColumnError/);
+    const orders = readFileSync(join(ROOT, "src/lib/orders.functions.ts"), "utf8");
+    expect(orders).toMatch(/p_user_id: userId/);
+    expect(orders).not.toMatch(/data\.user_id/);
   });
 
   it("vendor mutations ignore client restaurant_id and use assertVendor", () => {
