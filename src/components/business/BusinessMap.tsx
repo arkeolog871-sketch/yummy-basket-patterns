@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { MapPin, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-import { directionsLinkUrl, openDirections, resolveBusinessCoords, type BusinessLocation } from "@/lib/maps";
+import { directionsLinkUrl, openDirections, resolveBusinessCoords, businessDetailPath, type BusinessLocation } from "@/lib/maps";
 import { LiveMapCanvas } from "@/components/business/LiveMapCanvas";
 
 export function BusinessMap({ business }: { business: BusinessLocation }) {
@@ -18,10 +18,11 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
               lng: longitude,
               title: business.name,
               address: business.address ?? null,
+              href: business.slug ? businessDetailPath(business.slug) : undefined,
             },
           ]
         : [],
-    [business.address, business.name, latitude, longitude],
+    [business.address, business.name, business.slug, latitude, longitude],
   );
 
   if (!point) {

@@ -1,5 +1,6 @@
 export type BusinessLocation = {
   name: string;
+  slug?: string | null;
   address?: string | null;
   district?: string | null;
   city?: string | null;
@@ -7,6 +8,11 @@ export type BusinessLocation = {
   longitude?: number | string | null;
   maps_url?: string | null;
 };
+
+/** Canonical storefront path: `/restoran/$slug`. */
+export function businessDetailPath(slug: string) {
+  return `/restoran/${encodeURIComponent(slug)}`;
+}
 
 export function toCoord(value: number | string | null | undefined) {
   if (value === null || value === undefined || value === "") return null;
@@ -204,19 +210,12 @@ export function directionsLinkUrl(business: BusinessLocation) {
 }
 
 /**
- * Builds a Google Maps directions URL. WhatsApp konum paylaşımlarındaki
- * Google Maps / geo linklerinden koordinat çıkarılır; ham wa.me açılmaz.
+ * Builds a Google Maps directions URL from latitude/longitude, then address.
+ * `maps_url` is not a location source.
  */
 export function buildMapsUrl(business: BusinessLocation) {
   const coords = resolveBusinessCoords(business);
   if (coords) return googleMapsDirUrl(`${coords.lat},${coords.lng}`);
-
-  const share = firstGoogleMapsUrl(business.maps_url);
-  if (share) {
-    const fromShare = coordsFromMapsUrl(share);
-    if (fromShare) return googleMapsDirUrl(`${fromShare.lat},${fromShare.lng}`);
-    return toSafeHttpsMapsUrl(share) ?? share;
-  }
 
   const destination = destinationQuery(business);
   if (!destination) return null;
@@ -258,10 +257,10 @@ export function coordsFromMapsUrl(url: string | null | undefined) {
   return null;
 }
 
-/** İşletme kaydından harita noktası. Koordinat yoksa maps_url içinden okunur. */
+/** Harita pini yalnızca kayıttaki latitude + longitude değerinden oluşur. */
 export function resolveBusinessCoords(business: BusinessLocation) {
   const lat = toCoord(business.latitude);
   const lng = toCoord(business.longitude);
   if (lat !== null && lng !== null) return { lat, lng };
-  return coordsFromMapsUrl(business.maps_url);
+  return null;
 }
