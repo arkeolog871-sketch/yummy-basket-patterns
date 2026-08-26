@@ -15,9 +15,14 @@ export function businessDetailPath(slug: string) {
 }
 
 export function toCoord(value: number | string | null | undefined) {
-  if (value === null || value === undefined || value === "") return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed === "") return null;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return Number.isFinite(value) ? value : null;
 }
 
 /** Human readable location label, or null when the business has no location data. */
@@ -261,6 +266,7 @@ export function coordsFromMapsUrl(url: string | null | undefined) {
 export function resolveBusinessCoords(business: BusinessLocation) {
   const lat = toCoord(business.latitude);
   const lng = toCoord(business.longitude);
-  if (lat !== null && lng !== null) return { lat, lng };
-  return null;
+  if (lat === null || lng === null) return null;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return { lat, lng };
 }
