@@ -18,7 +18,7 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
               lng: longitude,
               title: business.name,
               address: business.address ?? null,
-              href: business.slug ? businessDetailPath(business.slug) : undefined,
+              ...(business.slug ? { href: businessDetailPath(business.slug) } : {}),
             },
           ]
         : [],
