@@ -66,6 +66,19 @@ async function dumpStorage(page) {
   });
 }
 
+async function waitLoggedIn(page, timeout = 30_000) {
+  await page.getByRole("button", { name: "Hesabım" }).waitFor({ timeout });
+  await page.waitForURL((url) => {
+    try {
+      const path = new URL(url).pathname;
+      return path === "/" || (path !== "/auth" && !path.startsWith("/auth"));
+    } catch {
+      return false;
+    }
+  }, { timeout: 20_000 });
+  await page.getByRole("button", { name: /^Doğrula$/ }).waitFor({ state: "hidden", timeout: 10_000 }).catch(() => {});
+}
+
 async function clickSignup(page) {
   const heading = page.locator("h1").first();
   const toggle = page.getByRole("button", { name: /Hesabınız yok mu\? Kayıt olun|Zaten hesabınız var mı\? Giriş yapın/ });
@@ -103,9 +116,8 @@ async function fillOtp(page, code) {
   await otp.waitFor({ state: "visible", timeout: 10_000 });
   await otp.fill("");
   await otp.fill(code);
-  const loggedIn = page.getByRole("button", { name: "Hesabım" });
   try {
-    await loggedIn.waitFor({ timeout: 8_000 });
+    await waitLoggedIn(page, 8_000);
     return;
   } catch {
     /* auto-verify may still be in flight or Doğrula is required */
@@ -170,8 +182,7 @@ try {
   result.send = "BAŞARILI";
 
   await fillOtp(page, mail.code);
-  const loggedIn = page.getByRole("button", { name: "Hesabım" });
-  await loggedIn.waitFor({ timeout: 30_000 });
+  await waitLoggedIn(page);
   const afterVerify = await dumpStorage(page);
   const keys = authStorageKeys(afterVerify);
   result.notes.push(`session_keys=${keys.length}`);
@@ -179,7 +190,7 @@ try {
   result.verify = "BAŞARILI";
 
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: "Hesabım" }).waitFor({ timeout: 20_000 });
+  await waitLoggedIn(page, 20_000);
   const afterReload = await dumpStorage(page);
   result.notes.push(`persist_keys=${authStorageKeys(afterReload).length}`);
   result.persist = "BAŞARILI";
@@ -196,10 +207,13 @@ try {
   await page.getByLabel("6 haneli e-posta doğrulama kodu").waitFor({ timeout: 20_000 });
   const loginMail = await waitForOtp(box.token, 90_000, new Set([mail.code]));
   await fillOtp(page, loginMail.code);
-  await page.getByRole("button", { name: "Hesabım" }).waitFor({ timeout: 30_000 });
+  await waitLoggedIn(page);
+  const afterRelogin = await dumpStorage(page);
+  result.notes.push(`relogin_keys=${authStorageKeys(afterRelogin).length}`);
+  if (!authStorageKeys(afterRelogin).length) throw new Error("yeniden girişte oturum yok");
   result.relogin = "BAŞARILI";
   await page.screenshot({
-    path: "/opt/cursor/artifacts/ios_otp_webkit_logged_in.png",
+    path: "/opt/cursor/artifacts/ios_otp_home_after_relogin.png",
     fullPage: true,
   }).catch(() => {});
 } catch (error) {
