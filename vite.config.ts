@@ -64,7 +64,10 @@ function assetlinksHeadersPlugin(): Plugin {
 
 function apkLinkRevPlugin(): Plugin {
   const stamp = (html: string) =>
-    html.replace(/\/silvan-cebimde\.apk(?:\?v=[^"'\s]*)?/g, `/silvan-cebimde.apk?v=${encodeURIComponent(apkRev())}`);
+    html.replace(
+      /\/silvan-cebimde\.apk(?:\?v=[^"'\s]*)?/g,
+      `/silvan-cebimde.apk?v=${encodeURIComponent(apkRev())}`,
+    );
 
   return {
     name: "apk-link-rev",

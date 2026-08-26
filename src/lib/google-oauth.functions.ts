@@ -36,7 +36,8 @@ export const sealGoogleOAuthState = createServerFn({ method: "POST" })
     if (!isGoogleOAuthStateConfigured()) {
       return {
         ok: false as const,
-        error: "Google OAuth durum anahtarı yapılandırılmadı. GOOGLE_OAUTH_STATE_SECRET veya GOOGLE_OAUTH_CLIENT_SECRET tanımlayın.",
+        error:
+          "Google OAuth durum anahtarı yapılandırılmadı. GOOGLE_OAUTH_STATE_SECRET veya GOOGLE_OAUTH_CLIENT_SECRET tanımlayın.",
       };
     }
     if (!isAllowedGoogleRedirectUri(data.redirectUri)) {

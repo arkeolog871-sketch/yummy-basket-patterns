@@ -6,7 +6,8 @@ const ROOT = join(import.meta.dirname, "../..");
 
 function walk(dir: string, acc: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
-    if (entry === "node_modules" || entry === ".git" || entry === "dist" || entry === ".output") continue;
+    if (entry === "node_modules" || entry === ".git" || entry === "dist" || entry === ".output")
+      continue;
     const full = join(dir, entry);
     const stat = statSync(full);
     if (stat.isDirectory()) walk(full, acc);
@@ -105,18 +106,26 @@ describe("static secret and authorization controls", () => {
   });
 
   it("defines atomic OTP and order RPCs as service-role only", () => {
-    const sql = readFileSync(join(ROOT, "supabase/migrations/20260825223000_otp_order_atomic_rpc.sql"), "utf8");
+    const sql = readFileSync(
+      join(ROOT, "supabase/migrations/20260825223000_otp_order_atomic_rpc.sql"),
+      "utf8",
+    );
     expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public.issue_email_otp/);
     expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public.consume_email_otp/);
     expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public.place_customer_order/);
     expect(sql).toMatch(/FOR UPDATE/);
     expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public.issue_email_otp/);
     expect(sql).toMatch(/REVOKE ALL ON FUNCTION public.place_customer_order/);
-    expect(sql).not.toMatch(/GRANT EXECUTE ON FUNCTION public.place_customer_order[\s\S]*TO authenticated/);
+    expect(sql).not.toMatch(
+      /GRANT EXECUTE ON FUNCTION public.place_customer_order[\s\S]*TO authenticated/,
+    );
   });
 
   it("locks OTP issue/consume/failure with an advisory transaction lock and CAS consume", () => {
-    const sql = readFileSync(join(ROOT, "supabase/migrations/20260825230000_otp_advisory_lock_cas.sql"), "utf8");
+    const sql = readFileSync(
+      join(ROOT, "supabase/migrations/20260825230000_otp_advisory_lock_cas.sql"),
+      "utf8",
+    );
     expect(sql).toMatch(/pg_advisory_xact_lock/);
     expect(sql).toMatch(/GET DIAGNOSTICS v_updated = ROW_COUNT/);
     expect(sql).toMatch(/code_hash IS NOT DISTINCT FROM p_code_hash/);

@@ -5,7 +5,8 @@ export const SECURITY_HEADERS: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "X-Permitted-Cross-Domain-Policies": "none",
-  "Permissions-Policy": "geolocation=(self), camera=(self), microphone=(), payment=(), usb=(), interest-cohort=()",
+  "Permissions-Policy":
+    "geolocation=(self), camera=(self), microphone=(), payment=(), usb=(), interest-cohort=()",
   "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
   "X-DNS-Prefetch-Control": "off",
   "X-Frame-Options": "SAMEORIGIN",

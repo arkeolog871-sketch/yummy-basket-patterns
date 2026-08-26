@@ -9,7 +9,10 @@ describe("Android wrapper static controls", () => {
     join(ROOT, "android-wrapper/app/src/main/java/online/uygulamamcebimde/app/MainActivity.java"),
     "utf8",
   );
-  const manifest = readFileSync(join(ROOT, "android-wrapper/app/src/main/AndroidManifest.xml"), "utf8");
+  const manifest = readFileSync(
+    join(ROOT, "android-wrapper/app/src/main/AndroidManifest.xml"),
+    "utf8",
+  );
   const gradle = readFileSync(join(ROOT, "android-wrapper/app/build.gradle.kts"), "utf8");
 
   it("loads the production host over HTTPS", () => {

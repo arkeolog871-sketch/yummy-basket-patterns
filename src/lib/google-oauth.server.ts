@@ -141,7 +141,10 @@ export async function exchangeGoogleAuthorizationCode(input: {
     error_description?: string;
   };
   if (!response.ok || !json.id_token) {
-    return { ok: false, error: humanizeGoogleTokenError(json.error_description || json.error || "") };
+    return {
+      ok: false,
+      error: humanizeGoogleTokenError(json.error_description || json.error || ""),
+    };
   }
   if (json.access_token) {
     return { ok: true, idToken: json.id_token, accessToken: json.access_token };
@@ -157,7 +160,11 @@ export function humanizeGoogleTokenError(message: string): string {
   if (text.includes("invalid_grant") || text.includes("code_verifier")) {
     return "Google yetkilendirme kodu doğrulanamadı. Aynı tarayıcıda tekrar deneyin.";
   }
-  if (text.includes("invalid_client") || text.includes("client_secret") || text.includes("unauthorized")) {
+  if (
+    text.includes("invalid_client") ||
+    text.includes("client_secret") ||
+    text.includes("unauthorized")
+  ) {
     return "Google OAuth istemci gizli anahtarı eksik veya hatalı. GOOGLE_OAUTH_CLIENT_SECRET değerini kontrol edin.";
   }
   return message || "Google jetonu alınamadı. Lütfen tekrar deneyin.";

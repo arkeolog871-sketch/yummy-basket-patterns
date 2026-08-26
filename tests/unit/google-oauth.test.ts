@@ -1,8 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  googleOAuthRedirectUriForOrigin,
-  PRODUCTION_OAUTH_ORIGIN,
-} from "@/lib/google-oauth";
+import { googleOAuthRedirectUriForOrigin, PRODUCTION_OAUTH_ORIGIN } from "@/lib/google-oauth";
 import {
   isAllowedGoogleRedirectUri,
   isGoogleOAuthStateConfigured,
@@ -47,7 +44,9 @@ describe("Google OAuth production redirect pinning", () => {
   });
 
   it("keeps preview and localhost on same-origin /auth", () => {
-    expect(googleOAuthRedirectUriForOrigin("http://localhost:5173")).toBe("http://localhost:5173/auth");
+    expect(googleOAuthRedirectUriForOrigin("http://localhost:5173")).toBe(
+      "http://localhost:5173/auth",
+    );
     expect(googleOAuthRedirectUriForOrigin("https://preview.lovable.app")).toBe(
       "https://preview.lovable.app/auth",
     );
@@ -90,7 +89,9 @@ describe("Google OAuth redirect allowlist", () => {
   it("allows production apex and www /auth only as exact paths", () => {
     expect(isAllowedGoogleRedirectUri("https://uygulamamcebimde.online/auth")).toBe(true);
     expect(isAllowedGoogleRedirectUri("https://www.uygulamamcebimde.online/auth")).toBe(true);
-    expect(isAllowedGoogleRedirectUri("https://uygulamamcebimde.online/auth?next=/admin")).toBe(false);
+    expect(isAllowedGoogleRedirectUri("https://uygulamamcebimde.online/auth?next=/admin")).toBe(
+      false,
+    );
     expect(isAllowedGoogleRedirectUri("https://evil.example/auth")).toBe(false);
   });
 });

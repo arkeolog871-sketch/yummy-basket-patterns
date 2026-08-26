@@ -46,7 +46,9 @@ export function isInAppBrowser(): boolean {
 export function googleOAuthRedirectUriForOrigin(origin: string): string {
   const trimmed = origin.replace(/\/$/, "");
   try {
-    const host = new URL(trimmed.includes("://") ? trimmed : `https://${trimmed}`).hostname.toLowerCase();
+    const host = new URL(
+      trimmed.includes("://") ? trimmed : `https://${trimmed}`,
+    ).hostname.toLowerCase();
     if (host === "uygulamamcebimde.online" || host === "www.uygulamamcebimde.online") {
       return `${PRODUCTION_OAUTH_ORIGIN}/auth`;
     }
@@ -138,14 +140,17 @@ export function clearGoogleOAuthPkce() {
   }
 }
 
-export function isGoogleOAuthCallbackParams(search = typeof window === "undefined" ? "" : window.location.search) {
+export function isGoogleOAuthCallbackParams(
+  search = typeof window === "undefined" ? "" : window.location.search,
+) {
   if (typeof window === "undefined") return false;
   const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
   const state = params.get("state") || "";
   const code = params.get("code") || "";
   const oauthError = params.get("error") || "";
   const storedNonce = readGoogleOAuthPkce()?.nonce;
-  if (oauthError && (state.startsWith(GOOGLE_OAUTH_STATE_PREFIX) || Boolean(storedNonce))) return true;
+  if (oauthError && (state.startsWith(GOOGLE_OAUTH_STATE_PREFIX) || Boolean(storedNonce)))
+    return true;
   return Boolean(code && (state.startsWith(GOOGLE_OAUTH_STATE_PREFIX) || storedNonce === state));
 }
 
@@ -186,7 +191,10 @@ export async function startGoogleOAuth(): Promise<{ ok: true } | { ok: false; er
   }
 
   try {
-    sessionStorage.setItem("silvan-oauth-return", `${window.location.pathname}${window.location.search}`);
+    sessionStorage.setItem(
+      "silvan-oauth-return",
+      `${window.location.pathname}${window.location.search}`,
+    );
   } catch {
     /* private mode */
   }
@@ -279,7 +287,9 @@ export async function completeGoogleOAuthFromCallback(): Promise<
     handledCodes.delete(code);
     return {
       ok: false,
-      error: humanizeOAuthError(error instanceof Error ? error.message : "Google girişi tamamlanamadı."),
+      error: humanizeOAuthError(
+        error instanceof Error ? error.message : "Google girişi tamamlanamadı.",
+      ),
     };
   }
 }
@@ -287,9 +297,11 @@ export async function completeGoogleOAuthFromCallback(): Promise<
 export function stripOAuthCallbackFromUrl() {
   if (typeof window === "undefined") return;
   const url = new URL(window.location.href);
-  ["code", "state", "error", "error_description", "scope", "authuser", "prompt", "hd"].forEach((key) => {
-    url.searchParams.delete(key);
-  });
+  ["code", "state", "error", "error_description", "scope", "authuser", "prompt", "hd"].forEach(
+    (key) => {
+      url.searchParams.delete(key);
+    },
+  );
   const next = `${url.pathname}${url.search}${url.hash}`;
   window.history.replaceState({}, document.title, next || "/auth");
 }
@@ -299,7 +311,12 @@ export function humanizeOAuthError(message: string): string {
   if (text.includes("unsupported provider") || text.includes("missing oauth secret")) {
     return "Supabase Auth → Google sağlayıcısına aynı Web istemci kimliği ve gizli anahtar eklenmeli.";
   }
-  if (text.includes("invalid_request") || text.includes("state") || text.includes("csrf") || text.includes("durum")) {
+  if (
+    text.includes("invalid_request") ||
+    text.includes("state") ||
+    text.includes("csrf") ||
+    text.includes("durum")
+  ) {
     return "Google yetkilendirmesi tarayıcı çerezi yüzünden kesilmesin diye artık kendi alan adımızda PKCE kullanılıyor. Chrome veya Safari’de tekrar deneyin.";
   }
   if (text.includes("popup")) {

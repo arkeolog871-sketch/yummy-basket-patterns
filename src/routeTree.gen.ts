@@ -28,6 +28,7 @@ import { Route as SepetRouteImport } from './routes/sepet'
 import { Route as SifreSifirlamaRouteImport } from './routes/sifre-sifirlama'
 import { Route as SiparislerimRouteImport } from './routes/siparislerim'
 import { Route as SistemHatalariRouteImport } from './routes/sistem-hatalari'
+import { Route as DotwellKnownAssetlinksDotjsonRouteImport } from './routes/[.]well-known.assetlinks[.]json'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminSplatRouteImport } from './routes/admin.$'
 import { Route as RestoranSlugRouteImport } from './routes/restoran.$slug'
@@ -135,6 +136,12 @@ const SistemHatalariRoute = SistemHatalariRouteImport.update({
   path: '/sistem-hatalari',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DotwellKnownAssetlinksDotjsonRoute =
+  DotwellKnownAssetlinksDotjsonRouteImport.update({
+    id: '/.well-known/assetlinks.json',
+    path: '/.well-known/assetlinks.json',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
@@ -211,6 +218,7 @@ export interface FileRoutesByFullPath {
   '/sifre-sifirlama': typeof SifreSifirlamaRoute
   '/siparislerim': typeof SiparislerimRoute
   '/sistem-hatalari': typeof SistemHatalariRoute
+  '/.well-known/assetlinks.json': typeof DotwellKnownAssetlinksDotjsonRoute
   '/admin/$': typeof AdminSplatRoute
   '/restoran/$slug': typeof RestoranSlugRoute
   '/siparis/$id': typeof SiparisIdRoute
@@ -243,6 +251,7 @@ export interface FileRoutesByTo {
   '/sifre-sifirlama': typeof SifreSifirlamaRoute
   '/siparislerim': typeof SiparislerimRoute
   '/sistem-hatalari': typeof SistemHatalariRoute
+  '/.well-known/assetlinks.json': typeof DotwellKnownAssetlinksDotjsonRoute
   '/admin/$': typeof AdminSplatRoute
   '/restoran/$slug': typeof RestoranSlugRoute
   '/siparis/$id': typeof SiparisIdRoute
@@ -276,6 +285,7 @@ export interface FileRoutesById {
   '/sifre-sifirlama': typeof SifreSifirlamaRoute
   '/siparislerim': typeof SiparislerimRoute
   '/sistem-hatalari': typeof SistemHatalariRoute
+  '/.well-known/assetlinks.json': typeof DotwellKnownAssetlinksDotjsonRoute
   '/admin/$': typeof AdminSplatRoute
   '/restoran/$slug': typeof RestoranSlugRoute
   '/siparis/$id': typeof SiparisIdRoute
@@ -310,6 +320,7 @@ export interface FileRouteTypes {
     | '/sifre-sifirlama'
     | '/siparislerim'
     | '/sistem-hatalari'
+    | '/.well-known/assetlinks.json'
     | '/admin/$'
     | '/restoran/$slug'
     | '/siparis/$id'
@@ -342,6 +353,7 @@ export interface FileRouteTypes {
     | '/sifre-sifirlama'
     | '/siparislerim'
     | '/sistem-hatalari'
+    | '/.well-known/assetlinks.json'
     | '/admin/$'
     | '/restoran/$slug'
     | '/siparis/$id'
@@ -374,6 +386,7 @@ export interface FileRouteTypes {
     | '/sifre-sifirlama'
     | '/siparislerim'
     | '/sistem-hatalari'
+    | '/.well-known/assetlinks.json'
     | '/admin/$'
     | '/restoran/$slug'
     | '/siparis/$id'
@@ -407,6 +420,7 @@ export interface RootRouteChildren {
   SifreSifirlamaRoute: typeof SifreSifirlamaRoute
   SiparislerimRoute: typeof SiparislerimRoute
   SistemHatalariRoute: typeof SistemHatalariRoute
+  DotwellKnownAssetlinksDotjsonRoute: typeof DotwellKnownAssetlinksDotjsonRoute
   AdminSplatRoute: typeof AdminSplatRoute
   RestoranSlugRoute: typeof RestoranSlugRoute
   SiparisIdRoute: typeof SiparisIdRoute
@@ -554,6 +568,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SistemHatalariRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/assetlinks.json': {
+      id: '/.well-known/assetlinks.json'
+      path: '/.well-known/assetlinks.json'
+      fullPath: '/.well-known/assetlinks.json'
+      preLoaderRoute: typeof DotwellKnownAssetlinksDotjsonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/': {
       id: '/admin/'
       path: '/admin'
@@ -666,6 +687,7 @@ const rootRouteChildren: RootRouteChildren = {
   SifreSifirlamaRoute: SifreSifirlamaRoute,
   SiparislerimRoute: SiparislerimRoute,
   SistemHatalariRoute: SistemHatalariRoute,
+  DotwellKnownAssetlinksDotjsonRoute: DotwellKnownAssetlinksDotjsonRoute,
   AdminSplatRoute: AdminSplatRoute,
   RestoranSlugRoute: RestoranSlugRoute,
   SiparisIdRoute: SiparisIdRoute,
