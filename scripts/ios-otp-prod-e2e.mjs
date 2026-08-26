@@ -116,32 +116,30 @@ async function acceptTerms(page) {
   }
 }
 
-/**
- * 5 hane + KVKK sonrası Doğrula hâlâ disabled. 6. hane yazılır yazılmaz
- * düğme etkinleşir; tıklama o ana hizalanır ki onComplete yarışını kaybetmeyelim.
- */
-async function enterOtpAndClickVerify(page, code) {
-  const digits = String(code);
-  await acceptTerms(page);
+async function fillOtpCode(page, code) {
   const otp = page.getByLabel("6 haneli e-posta doğrulama kodu");
   await otp.waitFor({ state: "visible", timeout: 15_000 });
   await otp.click();
   await otp.fill("");
-  await otp.pressSequentially(digits.slice(0, 5), { delay: 50 });
+  await otp.pressSequentially(String(code), { delay: 40 });
+}
 
+async function clickVerifyIfPresent(page) {
+  if (!page.url().includes("/auth")) return false;
   const verify = page.getByRole("button", { name: /^Doğrula$/ });
-  await verify.waitFor({ state: "visible", timeout: 8_000 });
-  const clickPromise = verify.click({ timeout: 12_000 });
-  await otp.pressSequentially(digits.slice(5), { delay: 20 });
-  try {
-    await clickPromise;
-    return true;
-  } catch (error) {
-    if (!page.url().includes("/auth")) return false;
-    throw new Error(
-      `Doğrula tıklanamadı: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
+  const visible = await verify.isVisible().catch(() => false);
+  if (!visible) return false;
+  const enabled = await verify.isEnabled().catch(() => false);
+  if (!enabled) return false;
+  await verify.click();
+  return true;
+}
+
+async function enterOtpAndVerify(page, code) {
+  await acceptTerms(page);
+  await fillOtpCode(page, code);
+  const clicked = await clickVerifyIfPresent(page);
+  return clicked;
 }
 
 async function assertHomeAndSession(page, timeout = 30_000) {
@@ -213,8 +211,9 @@ try {
   result.notes.push(`otp_len=${mail.code.length}`);
   if (!result.otpReceived) throw new Error("OTP 6 haneli değil");
 
-  result.verifyClicked = await enterOtpAndClickVerify(page, mail.code);
+  result.verifyClicked = await enterOtpAndVerify(page, mail.code);
   result.notes.push(`verify_clicked=${result.verifyClicked}`);
+  result.notes.push(`verify_path=${result.verifyClicked ? "dogrula-click" : "auto-onComplete"}`);
   const sessionKeys = await assertHomeAndSession(page);
   result.notes.push(`session_keys=${sessionKeys}`);
 
@@ -231,9 +230,8 @@ try {
   const loginMail = await waitForOtp(box.token, 90_000, new Set([mail.code]));
   result.notes.push(`relogin_otp_len=${loginMail.code.length}`);
 
-  const reloginClicked = await enterOtpAndClickVerify(page, loginMail.code);
+  const reloginClicked = await enterOtpAndVerify(page, loginMail.code);
   result.notes.push(`relogin_verify_clicked=${reloginClicked}`);
-  result.verifyClicked = result.verifyClicked && reloginClicked;
   const reloginKeys = await assertHomeAndSession(page);
   result.notes.push(`relogin_keys=${reloginKeys}`);
   result.logoutRelogin = true;
@@ -258,7 +256,6 @@ console.log(JSON.stringify(result, null, 2));
 const passed =
   result.send === "BAŞARILI" &&
   result.otpReceived &&
-  result.verifyClicked &&
   result.home &&
   result.session &&
   result.logoutRelogin;
