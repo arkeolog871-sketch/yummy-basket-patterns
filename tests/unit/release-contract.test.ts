@@ -73,7 +73,14 @@ describe("production release contract (no secrets)", () => {
       .join("\n");
     expect(placeSql).toMatch(/ADD COLUMN IF NOT EXISTS idempotency_key/);
     expect(placeSql).toMatch(/ADD COLUMN IF NOT EXISTS payment_method/);
+    expect(placeSql).toMatch(/ADD COLUMN IF NOT EXISTS opens_at/);
     expect(placeSql).toMatch(/cash_on_delivery/);
+    expect(placeSql).toMatch(/orders_user_idempotency_key_uidx/);
+    expect(placeSql).toMatch(/auth\.uid\(\)/);
+    expect(placeSql).toMatch(/is_open_manual/);
+    expect(placeSql).toMatch(/v_menu\.price/);
+    expect(placeSql).toMatch(/v_restaurant\.delivery_fee/);
+    expect(placeSql).toMatch(/FOR UPDATE/);
     expect(placeSql).toMatch(/GRANT EXECUTE[\s\S]*TO service_role/);
     expect(placeSql).toMatch(/REVOKE ALL[\s\S]*FROM PUBLIC, anon, authenticated/);
     expect(placeSql).toMatch(/ENABLE ROW LEVEL SECURITY/);

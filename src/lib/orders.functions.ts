@@ -69,7 +69,7 @@ async function placeOrder(
   const { isBusinessOpen, closedReason } = await import("./hours");
   if (!isBusinessOpen(restaurant)) throw new Error(closedReason(restaurant));
 
-  const rpc = await supabaseAdmin.rpc("place_customer_order", {
+  const rpcArgs: Database["public"]["Functions"]["place_customer_order"]["Args"] = {
     p_user_id: userId,
     p_restaurant_id: restaurant.id,
     p_items: data.items,
@@ -81,7 +81,8 @@ async function placeOrder(
     p_directions: data.directions ?? null,
     p_note: data.note ?? null,
     p_idempotency_key: data.idempotency_key ?? null,
-  });
+  };
+  const rpc = await supabaseAdmin.rpc("place_customer_order", rpcArgs);
 
   if (!rpc.error) {
     const result = rpc.data as { ok?: boolean; id?: string; total?: number; error?: string } | null;
@@ -106,6 +107,12 @@ async function placeOrder(
     throw new Error(rpc.error.message);
   }
 
+  logOrderFailure({
+    stage: "place_customer_order.missing_rpc_fallback",
+    userId,
+    restaurantId: restaurant.id,
+    error: rpc.error,
+  });
   return placeOrderFallback(data, context, restaurant.id);
 }
 

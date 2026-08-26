@@ -487,6 +487,7 @@ export type Database = {
           id: string;
           idempotency_key: string | null;
           note: string | null;
+          payment_method: string;
           payment_reference: string | null;
           payment_status: Database["public"]["Enums"]["payment_status"];
           phone: string;
@@ -508,6 +509,7 @@ export type Database = {
           id?: string;
           idempotency_key?: string | null;
           note?: string | null;
+          payment_method?: string;
           payment_reference?: string | null;
           payment_status?: Database["public"]["Enums"]["payment_status"];
           phone: string;
@@ -529,6 +531,7 @@ export type Database = {
           id?: string;
           idempotency_key?: string | null;
           note?: string | null;
+          payment_method?: string;
           payment_reference?: string | null;
           payment_status?: Database["public"]["Enums"]["payment_status"];
           phone?: string;

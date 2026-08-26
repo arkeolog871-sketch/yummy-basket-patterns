@@ -38,5 +38,9 @@ describe("RPC rollout fallback", () => {
       }),
     ).toBe(true);
     expect(isMissingRpcError({ message: "stock_quantity check failed" })).toBe(false);
+    expect(isMissingRpcError({ code: "PGRST204", message: "Could not find the column" })).toBe(
+      false,
+    );
+    expect(isMissingRpcError({ code: "42501", message: "permission denied" })).toBe(false);
   });
 });

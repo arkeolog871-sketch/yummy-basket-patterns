@@ -20,6 +20,14 @@ CREATE TABLE IF NOT EXISTS auth.users (
   id uuid PRIMARY KEY
 );
 
+CREATE OR REPLACE FUNCTION auth.uid()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
+$$;
+
 CREATE TABLE public.email_otp_guard (
   email_hash text PRIMARY KEY,
   last_sent_at timestamptz,
