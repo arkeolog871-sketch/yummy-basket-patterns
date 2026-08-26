@@ -32,7 +32,13 @@ export const createOrder = createServerFn({ method: "POST" })
       const placed = await withOrderIdempotencyLock(context.userId, data.idempotency_key, () =>
         placeOrder(data, context),
       );
-      return { ok: true as const, ...placed };
+      try {
+        const { finishPlacedOrder } = await import("./order-vendor-alert.server");
+        return await finishPlacedOrder(placed);
+      } catch {
+        console.error("[order-vendor-alert] bildirim başlatılamadı", { orderId: placed.id });
+        return { ok: true as const, ...placed };
+      }
     } catch (error) {
       logOrderFailure({
         stage: "createOrder",

@@ -44,7 +44,7 @@ export const getVendorDashboard = createServerFn({ method: "GET" })
       const { supabase } = context;
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-      const [restaurant, items, orders, categories, media] = await Promise.all([
+      const [restaurant, items, orders, categories, media, alerts] = await Promise.all([
         supabase
           .from("restaurants")
           .select(
@@ -77,6 +77,14 @@ export const getVendorDashboard = createServerFn({ method: "GET" })
           .select("id, url, kind, position, created_at")
           .eq("restaurant_id", restaurantId)
           .order("created_at", { ascending: false }),
+        supabase
+          .from("order_vendor_alerts")
+          .select("id, order_id, title, body, created_at, read_at")
+          .eq("restaurant_id", restaurantId)
+          .eq("channel", "in_app")
+          .is("read_at", null)
+          .order("created_at", { ascending: false })
+          .limit(20),
       ]);
 
       const firstError =
@@ -90,6 +98,7 @@ export const getVendorDashboard = createServerFn({ method: "GET" })
         orders: orders.data ?? [],
         categories: categories.data ?? [],
         media: media.data ?? [],
+        alerts: alerts.error ? [] : (alerts.data ?? []),
       };
     }),
   );
@@ -197,5 +206,27 @@ export const setVendorItemAvailability = createServerFn({ method: "POST" })
           return { ok: true };
         },
       );
+    }),
+  );
+
+/** Uygulama içi Yeni Sipariş bildirimini okundu işaretler. */
+export const markVendorOrderAlertRead = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) =>
+    runServerFn(async () => {
+      const { assertVendor } = await import("./vendor.server");
+      const restaurantId = await assertVendor(context.supabase, context.userId);
+      const { error } = await context.supabase
+        .from("order_vendor_alerts")
+        .update({ read_at: new Date().toISOString() })
+        .eq("id", data.id)
+        .eq("restaurant_id", restaurantId)
+        .eq("channel", "in_app");
+      if (error) {
+        if (/does not exist|schema cache|42P01|PGRST205/i.test(error.message)) return { ok: true };
+        throw new Error(error.message);
+      }
+      return { ok: true };
     }),
   );

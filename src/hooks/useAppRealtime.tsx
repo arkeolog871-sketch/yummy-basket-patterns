@@ -58,6 +58,9 @@ export function AppRealtimeBridge() {
         .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, () => {
           invalidateAll(queryClient, ORDER_KEYS);
         })
+        .on("postgres_changes", { event: "*", schema: "public", table: "order_vendor_alerts" }, () => {
+          invalidateAll(queryClient, ORDER_KEYS);
+        })
         .on("postgres_changes", { event: "*", schema: "public", table: "addresses" }, () => {
           void queryClient.invalidateQueries({ queryKey: ["addresses"] });
         })
