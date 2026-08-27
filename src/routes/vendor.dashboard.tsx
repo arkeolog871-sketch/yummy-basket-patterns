@@ -46,7 +46,17 @@ import { changeVendorPassword } from "@/lib/vendor-auth.functions";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+type VendorDashboardSearch = { order?: string };
+
+const ORDER_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export const Route = createFileRoute("/vendor/dashboard")({
+  validateSearch: (search: Record<string, unknown>): VendorDashboardSearch => {
+    const order = search["order"];
+    if (typeof order === "string" && ORDER_ID_RE.test(order)) return { order };
+    return {};
+  },
   head: () => ({
     meta: [
       { title: "İşletme Paneli — SİLVAN CEBİMDE" },
@@ -219,6 +229,8 @@ function VendorDashboard() {
 
   const unreadAlerts = dashboard.data?.alerts ?? [];
   const toastedAlertIds = useRef(new Set<string>());
+  const focusOrderId = Route.useSearch().order;
+  const listedOrderCount = dashboard.data?.orders?.length ?? 0;
 
   useEffect(() => {
     for (const alert of unreadAlerts) {
@@ -227,6 +239,12 @@ function VendorDashboard() {
       toast.success("Yeni sipariş", { description: alert.body });
     }
   }, [unreadAlerts]);
+
+  useEffect(() => {
+    if (!focusOrderId || listedOrderCount === 0) return;
+    const node = document.getElementById(`vendor-order-${focusOrderId}`);
+    node?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusOrderId, listedOrderCount]);
 
   async function handleSignOut() {
     await queryClient.cancelQueries();
@@ -380,6 +398,7 @@ function VendorDashboard() {
               orders.map((order) => (
                 <div
                   key={order.id}
+                  id={`vendor-order-${order.id}`}
                   className={`rounded-3xl border bg-card p-5 shadow-card ${
                     unreadOrderIds.has(order.id) ? "border-primary/50" : "border-border"
                   }`}

@@ -10,8 +10,8 @@ android {
         applicationId = "online.uygulamamcebimde.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 9
-        versionName = "1.8"
+        versionCode = 10
+        versionName = "1.9"
     }
 
     val signingStore = providers.gradleProperty("android.keystorePath")
@@ -63,4 +63,10 @@ android {
 dependencies {
     implementation("androidx.core:core:1.13.1")
     implementation("androidx.browser:browser:1.8.0")
+    implementation("com.google.firebase:firebase-messaging:24.1.1")
+}
+
+val googleServicesFile = file("google-services.json")
+if (googleServicesFile.exists()) {
+    apply(plugin = "com.google.gms.google-services")
 }

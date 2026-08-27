@@ -42,6 +42,15 @@ export async function notifyVendorOfNewOrder(orderId: string): Promise<void> {
       code: error && typeof error === "object" && "code" in error ? error.code : undefined,
     });
   }
+  try {
+    const { notifyVendorFcmPush } = await import("./vendor-fcm.server");
+    await notifyVendorFcmPush(orderId);
+  } catch (error) {
+    console.error("[vendor-fcm] bildirim gönderilemedi", {
+      orderId,
+      code: error && typeof error === "object" && "code" in error ? error.code : undefined,
+    });
+  }
 }
 
 /** DB kaydı bittikten sonra çağrılır; bildirim hatası her zaman ok:true döner. */

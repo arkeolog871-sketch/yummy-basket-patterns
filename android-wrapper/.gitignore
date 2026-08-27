@@ -6,3 +6,4 @@ local.properties
 captures/
 .cxx/
 dist/
+google-services.json
