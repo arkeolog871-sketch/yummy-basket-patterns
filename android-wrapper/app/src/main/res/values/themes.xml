@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.SilvanCebimde" parent="@android:style/Theme.Material.Light.NoActionBar">
-        <item name="android:statusBarColor">#C8341F</item>
-        <item name="android:navigationBarColor">#FFFFFF</item>
-        <item name="android:windowBackground">#C8341F</item>
-        <item name="android:colorPrimary">#C8341F</item>
+        <item name="android:statusBarColor">@color/brand</item>
+        <item name="android:navigationBarColor">@color/brand</item>
+        <item name="android:windowBackground">@color/brand</item>
+        <item name="android:colorPrimary">@color/brand</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

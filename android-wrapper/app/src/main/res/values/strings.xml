@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">SİLVAN CEBİMDE</string>
+    <string name="loading_title">SİLVAN CEBİMDE</string>
+    <string name="load_error_title">Bağlantı kurulamadı</string>
+    <string name="load_error_body">Uygulama https://uygulamamcebimde.online adresine bağlanamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.</string>
+    <string name="retry">Tekrar dene</string>
+    <string name="order_channel_name">Sipariş bildirimleri</string>
+    <string name="order_channel_desc">Yeni sipariş ve sipariş güncellemeleri</string>
 </resources>

@@ -1,6 +1,7 @@
 # SİLVAN CEBİMDE Android wrapper
 
-This folder builds a signed WebView APK that opens https://uygulamamcebimde.online/.
+This folder is the production Android client. It is a native WebView wrapper (not Capacitor) so the TanStack Start server functions, Supabase session, auth, and orders keep running on https://uygulamamcebimde.online/. Bundling a local `www` folder would show a blank screen because those server routes are not in the APK.
+
 The signing keystore and passwords are intentionally not stored in this repository.
 
 ```bash
@@ -17,6 +18,14 @@ cp app/build/outputs/apk/release/app-release.apk ../public/silvan-cebimde.apk
 `build-apk.sh` refuses to create a release APK unless all four signing
 variables are present. Keep the keystore outside the checkout and rotate the
 previously exposed signing credentials before publishing a new release.
+
+Debug (unsigned, sideload) APK:
+
+```bash
+export ANDROID_HOME="$HOME/android-sdk"
+printf 'sdk.dir=%s\n' "$ANDROID_HOME" > local.properties
+./gradlew :app:assembleDebug
+```
 
 ## WebView session and OAuth
 
