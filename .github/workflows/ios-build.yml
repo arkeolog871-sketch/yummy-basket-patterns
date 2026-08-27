@@ -1,0 +1,83 @@
+# Unsigned iOS Simulator compile check. No Apple certs, profiles, or Firebase/APNs secrets.
+name: iOS Simulator build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "ios/**"
+      - "public/**"
+      - "capacitor.config.ts"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/ios-build.yml"
+  push:
+    branches: [main]
+    paths:
+      - "ios/**"
+      - "public/**"
+      - "capacitor.config.ts"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/ios-build.yml"
+
+concurrency:
+  group: ios-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  simulator:
+    name: Unsigned simulator compile
+    runs-on: macos-14
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install JS dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Sync Capacitor iOS
+        run: bunx cap sync ios
+
+      - name: Verify production Capacitor config
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          cfg = json.loads(Path("ios/App/App/capacitor.config.json").read_text())
+          assert cfg.get("appId") == "online.uygulamamcebimde.app", cfg.get("appId")
+          assert cfg.get("server", {}).get("url") == "https://uygulamamcebimde.online", cfg.get("server")
+          print("appId", cfg["appId"])
+          print("server.url", cfg["server"]["url"])
+          PY
+
+      - name: Show Xcode and schemes
+        run: |
+          xcodebuild -version
+          xcodebuild -list -project ios/App/App.xcodeproj
+
+      - name: Build App for iOS Simulator (unsigned)
+        run: |
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath ios/App/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
