@@ -869,6 +869,44 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_push_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          platform: string
+          restaurant_id: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          platform?: string
+          restaurant_id: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          platform?: string
+          restaurant_id?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_push_tokens_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendor_assignments: {
         Row: {
           created_at: string

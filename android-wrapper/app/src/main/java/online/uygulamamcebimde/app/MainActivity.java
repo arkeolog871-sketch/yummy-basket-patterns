@@ -92,6 +92,7 @@ public class MainActivity extends Activity {
         webView.setBackgroundColor(Color.parseColor("#C8341F"));
         applySafeAreaInsets();
         createOrderNotificationChannel();
+        SilvanFcm.start(this);
 
         CookieManager cookies = CookieManager.getInstance();
         cookies.setAcceptCookie(true);
@@ -152,6 +153,18 @@ public class MainActivity extends Activity {
         }
     }
 
+    @Override
+    protected void onStart() {
+        super.onStart();
+        SilvanFcm.onActivityStarted();
+    }
+
+    @Override
+    protected void onStop() {
+        SilvanFcm.onActivityStopped();
+        super.onStop();
+    }
+
     private final class SilvanWebViewClient extends WebViewClient {
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
@@ -189,6 +202,7 @@ public class MainActivity extends Activity {
                 hideLoadingOverlay();
                 hideErrorOverlay();
                 requestNotificationPermissionIfNeeded();
+                injectFcmTokenToPage();
             }
         }
 
@@ -715,6 +729,11 @@ public class MainActivity extends Activity {
         public void requestNotifications() {
             runOnUiThread(() -> requestNotificationPermissionIfNeeded());
         }
+
+        @JavascriptInterface
+        public String getFcmToken() {
+            return SilvanFcm.getToken(MainActivity.this);
+        }
     }
 
     private static final String OPEN_VENDOR_ORDER_ACTION =
@@ -722,7 +741,6 @@ public class MainActivity extends Activity {
 
     private boolean loadIncomingVendorNotification(Intent intent) {
         if (intent == null || webView == null) return false;
-        if (!OPEN_VENDOR_ORDER_ACTION.equals(intent.getAction())) return false;
         String raw = intent.getStringExtra("open_url");
         if (raw == null || raw.isEmpty()) return false;
         Uri uri = Uri.parse(raw);
@@ -733,6 +751,17 @@ public class MainActivity extends Activity {
         webView.loadUrl(uri.toString());
         scheduleLoadTimeout();
         return true;
+    }
+
+    private void injectFcmTokenToPage() {
+        if (webView == null) return;
+        String token = SilvanFcm.getToken(this);
+        if (token.isEmpty()) return;
+        String js =
+                "window.dispatchEvent(new CustomEvent('silvan-fcm-token',{detail:"
+                        + org.json.JSONObject.quote(token)
+                        + "}));";
+        webView.evaluateJavascript(js, null);
     }
 
     private boolean isTrustedVendorOrderUrl(Uri uri) {

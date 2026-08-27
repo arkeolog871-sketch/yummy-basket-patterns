@@ -81,4 +81,12 @@ describe("Android wrapper static controls", () => {
     expect(activity).toMatch(/\/vendor\/dashboard/);
     expect(activity).not.toMatch(/localhost/);
   });
+
+  it("wires Firebase Messaging without embedding a service account", () => {
+    expect(manifest).toMatch(/SilvanFcmService/);
+    expect(manifest).toMatch(/com.google.firebase.MESSAGING_EVENT/);
+    expect(activity).toMatch(/getFcmToken/);
+    expect(activity).not.toMatch(/BEGIN PRIVATE KEY/);
+    expect(activity).not.toMatch(/FIREBASE_SERVICE_ACCOUNT/);
+  });
 });

@@ -14,6 +14,7 @@ export type VendorMobileOrderPayload = {
 type SilvanNativeNotify = {
   showNotification?: (title: string, body: string, url: string) => void;
   requestNotifications?: () => void;
+  getFcmToken?: () => string;
 };
 
 export function isOrderId(value: string | null | undefined): value is string {
