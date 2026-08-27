@@ -828,6 +828,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      consume_email_otp: {
+        Args: { p_code_hash: string; p_email_hash: string; p_now?: string }
+        Returns: string
+      }
       expire_stale_advertisements: { Args: never; Returns: number }
       get_active_banners: {
         Args: never
@@ -850,6 +854,14 @@ export type Database = {
       is_vendor_of: {
         Args: { _restaurant_id: string; _user_id: string }
         Returns: boolean
+      }
+      issue_email_otp: {
+        Args: { p_code_hash: string; p_email_hash: string; p_now?: string }
+        Returns: Json
+      }
+      register_email_otp_failure: {
+        Args: { p_email_hash: string; p_now?: string }
+        Returns: number
       }
       track_advertisement: {
         Args: { p_id: string; p_type: string }
