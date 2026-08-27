@@ -132,6 +132,7 @@ function VendorGate() {
 function VendorDashboard() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { restaurantId } = useAccess();
   const fetchDashboard = useServerFn(getVendorDashboard);
   const updateStatus = useServerFn(setVendorOrderStatus);
   const updateStore = useServerFn(setVendorStoreOpen);
@@ -149,6 +150,40 @@ function VendorDashboard() {
     void queryClient.invalidateQueries({ queryKey: ["restaurants"] });
     void queryClient.invalidateQueries({ queryKey: ["orders"] });
   }
+
+  useEffect(() => {
+    if (!restaurantId) return;
+    const channel = supabase
+      .channel(`vendor-new-order:${restaurantId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "order_vendor_alerts",
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        () => {
+          void queryClient.invalidateQueries({ queryKey: ["vendor-dashboard"] });
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "orders",
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        () => {
+          void queryClient.invalidateQueries({ queryKey: ["vendor-dashboard"] });
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [queryClient, restaurantId]);
 
   const statusMutation = useMutation({
     mutationFn: (input: { id: string; status: VendorStatus }) => updateStatus({ data: input }),

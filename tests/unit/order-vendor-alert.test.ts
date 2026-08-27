@@ -209,6 +209,30 @@ describe("vendor new-order alerts", () => {
     expect(sql).not.toMatch(/DISABLE ROW LEVEL SECURITY/);
   });
 
+  it("inserts in-app alerts in the same transaction as orders and publishes realtime", () => {
+    const sql = readFileSync(
+      join(ROOT, "supabase/migrations/20260827020000_order_vendor_alerts_realtime_trigger.sql"),
+      "utf8",
+    );
+    expect(sql).toMatch(/CREATE TRIGGER order_vendor_alerts_on_order_insert/);
+    expect(sql).toMatch(/AFTER INSERT ON public\.orders/);
+    expect(sql).toMatch(/ON CONFLICT \(order_id, channel\) DO NOTHING/);
+    expect(sql).toMatch(/ALTER PUBLICATION supabase_realtime ADD TABLE public\.order_vendor_alerts/);
+    expect(sql).toMatch(/REPLICA IDENTITY FULL/);
+    expect(sql).toMatch(/GRANT SELECT, UPDATE \(read_at\) ON TABLE public\.order_vendor_alerts TO authenticated/);
+    expect(sql).not.toMatch(/GRANT INSERT/);
+    expect(sql).not.toMatch(/TO anon;/);
+    expect(sql).not.toMatch(/DISABLE ROW LEVEL SECURITY/);
+  });
+
+  it("subscribes the vendor dashboard to INSERT on order_vendor_alerts", () => {
+    const text = readFileSync(join(ROOT, "src/routes/vendor.dashboard.tsx"), "utf8");
+    expect(text).toMatch(/event: "INSERT"/);
+    expect(text).toMatch(/table: "order_vendor_alerts"/);
+    expect(text).toMatch(/filter: `restaurant_id=eq\.\$\{restaurantId\}`/);
+    expect(text).toMatch(/vendor-new-order:/);
+  });
+
   it("scopes mark-read to the assigned restaurant", () => {
     const text = readFileSync(join(ROOT, "src/lib/vendor.functions.ts"), "utf8");
     expect(text).toMatch(/markVendorOrderAlertRead/);
