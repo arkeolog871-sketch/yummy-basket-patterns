@@ -73,4 +73,12 @@ describe("Android wrapper static controls", () => {
   it("declares notification permission for Android 13+", () => {
     expect(manifest).toMatch(/POST_NOTIFICATIONS/);
   });
+
+  it("opens the vendor order URL from a native notification tap", () => {
+    expect(activity).toMatch(/OPEN_VENDOR_ORDER/);
+    expect(activity).toMatch(/showNotification\(final String title, final String body, final String url\)/);
+    expect(activity).toMatch(/isTrustedVendorOrderUrl/);
+    expect(activity).toMatch(/\/vendor\/dashboard/);
+    expect(activity).not.toMatch(/localhost/);
+  });
 });
