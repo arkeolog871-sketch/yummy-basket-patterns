@@ -10,13 +10,14 @@ const config: CapacitorConfig = {
   webDir: "public",
   server: {
     url: "https://uygulamamcebimde.online",
-    androidScheme: "https",
-    iosScheme: "https",
   },
   ios: {
     contentInset: "automatic",
     preferredContentMode: "mobile",
-    scheme: "Uygulamam Cebimde",
+    // Xcode target/scheme name (not the display name).
+    scheme: "App",
+    // AppDelegate owns UNUserNotificationCenter for Firebase Messaging.
+    handleApplicationNotifications: false,
   },
 };
 
