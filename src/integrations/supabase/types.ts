@@ -584,6 +584,27 @@ export type Database = {
         }
         Relationships: []
       }
+      request_rate_limit: {
+        Row: {
+          bucket_key: string
+          hit_count: number
+          reset_at: string
+          updated_at: string
+        }
+        Insert: {
+          bucket_key: string
+          hit_count?: number
+          reset_at: string
+          updated_at?: string
+        }
+        Update: {
+          bucket_key?: string
+          hit_count?: number
+          reset_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       restaurants: {
         Row: {
           address: string | null
@@ -831,6 +852,15 @@ export type Database = {
       consume_email_otp: {
         Args: { p_code_hash: string; p_email_hash: string; p_now?: string }
         Returns: string
+      }
+      consume_request_rate_limit: {
+        Args: {
+          p_bucket_key: string
+          p_limit: number
+          p_now?: string
+          p_window_seconds: number
+        }
+        Returns: boolean
       }
       expire_stale_advertisements: { Args: never; Returns: number }
       get_active_banners: {
