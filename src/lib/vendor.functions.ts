@@ -77,7 +77,7 @@ export const getVendorDashboard = createServerFn({ method: "GET" })
           .select("id, url, kind, position, created_at")
           .eq("restaurant_id", restaurantId)
           .order("created_at", { ascending: false }),
-        supabase
+        supabaseAdmin
           .from("order_vendor_alerts")
           .select("id, order_id, title, body, created_at, read_at")
           .eq("restaurant_id", restaurantId)
@@ -217,7 +217,8 @@ export const markVendorOrderAlertRead = createServerFn({ method: "POST" })
     runServerFn(async () => {
       const { assertVendor } = await import("./vendor.server");
       const restaurantId = await assertVendor(context.supabase, context.userId);
-      const { error } = await context.supabase
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { error } = await supabaseAdmin
         .from("order_vendor_alerts")
         .update({ read_at: new Date().toISOString() })
         .eq("id", data.id)
