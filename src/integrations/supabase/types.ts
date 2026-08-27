@@ -483,6 +483,57 @@ export type Database = {
           },
         ]
       }
+      order_vendor_alerts: {
+        Row: {
+          body: string
+          channel: string
+          created_at: string
+          id: string
+          order_id: string
+          read_at: string | null
+          restaurant_id: string
+          sent_at: string | null
+          title: string
+        }
+        Insert: {
+          body: string
+          channel: string
+          created_at?: string
+          id?: string
+          order_id: string
+          read_at?: string | null
+          restaurant_id: string
+          sent_at?: string | null
+          title: string
+        }
+        Update: {
+          body?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          order_id?: string
+          read_at?: string | null
+          restaurant_id?: string
+          sent_at?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_vendor_alerts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_vendor_alerts_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           city: string
@@ -491,7 +542,9 @@ export type Database = {
           directions: string | null
           district: string
           id: string
+          idempotency_key: string | null
           note: string | null
+          payment_method: string
           payment_reference: string | null
           payment_status: Database["public"]["Enums"]["payment_status"]
           phone: string
@@ -511,7 +564,9 @@ export type Database = {
           directions?: string | null
           district: string
           id?: string
+          idempotency_key?: string | null
           note?: string | null
+          payment_method?: string
           payment_reference?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
           phone: string
@@ -531,7 +586,9 @@ export type Database = {
           directions?: string | null
           district?: string
           id?: string
+          idempotency_key?: string | null
           note?: string | null
+          payment_method?: string
           payment_reference?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
           phone?: string
@@ -887,6 +944,22 @@ export type Database = {
       }
       issue_email_otp: {
         Args: { p_code_hash: string; p_email_hash: string; p_now?: string }
+        Returns: Json
+      }
+      place_customer_order: {
+        Args: {
+          p_city: string
+          p_directions: string
+          p_district: string
+          p_idempotency_key: string
+          p_items: Json
+          p_note: string
+          p_phone: string
+          p_recipient_name: string
+          p_restaurant_id: string
+          p_street: string
+          p_user_id: string
+        }
         Returns: Json
       }
       register_email_otp_failure: {
