@@ -46,7 +46,7 @@ describe("iOS native shell static controls", () => {
     expect(pbxproj).toContain("productName = FirebaseCore;");
     expect(pbxproj).toContain("productName = FirebaseMessaging;");
     expect(pbxproj).toContain("kind = exactVersion;");
-    expect(pbxproj).toContain("version = 11.15.0;");
+    expect(pbxproj).toContain("version = 11.13.0;");
     expect(infoPlist).toContain("remote-notification");
   });
 
