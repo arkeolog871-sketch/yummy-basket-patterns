@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { toPublicErrorMessage } from "@/lib/public-error";
+import { LATITUDE_FIELD_PLACEHOLDER, LONGITUDE_FIELD_PLACEHOLDER } from "@/lib/location";
 import {
   Crown,
   Plus,
@@ -785,12 +786,12 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Input
-              placeholder="Enlem (38.1423)"
+              placeholder={LATITUDE_FIELD_PLACEHOLDER}
               value={form.latitude}
               onChange={(event) => setForm({ ...form, latitude: event.target.value })}
             />
             <Input
-              placeholder="Boylam (41.0021)"
+              placeholder={LONGITUDE_FIELD_PLACEHOLDER}
               value={form.longitude}
               onChange={(event) => setForm({ ...form, longitude: event.target.value })}
             />
