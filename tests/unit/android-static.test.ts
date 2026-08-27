@@ -62,4 +62,15 @@ describe("Android wrapper static controls", () => {
     expect(gradle).not.toMatch(/storePassword\s*=\s*"/);
     expect(gradle).toMatch(/ANDROID_KEYSTORE/);
   });
+
+  it("loads only the production HTTPS origin, never localhost", () => {
+    expect(activity).toMatch(/APP_URL = "https:\/\/uygulamamcebimde\.online\/"/);
+    expect(activity).not.toMatch(/localhost/);
+    expect(activity).not.toMatch(/127\.0\.0\.1/);
+    expect(activity).not.toMatch(/lovable\.app/);
+  });
+
+  it("declares notification permission for Android 13+", () => {
+    expect(manifest).toMatch(/POST_NOTIFICATIONS/);
+  });
 });

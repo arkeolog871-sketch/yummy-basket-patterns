@@ -4,18 +4,24 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.net.Uri;
 import android.net.http.SslError;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.provider.MediaStore;
 import android.provider.Settings;
+import android.view.View;
 import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
@@ -25,6 +31,7 @@ import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -33,8 +40,13 @@ import android.widget.Toast;
 import androidx.browser.customtabs.CustomTabsClient;
 import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.core.app.ActivityCompat;
+import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -46,8 +58,13 @@ public class MainActivity extends Activity {
     private static final int CAMERA_PERMISSION_REQUEST = 1003;
     private static final int LOCATION_PERMISSION_REQUEST = 1004;
     private static final int WEB_CAMERA_PERMISSION_REQUEST = 1005;
+    private static final int NOTIFICATION_PERMISSION_REQUEST = 1006;
+    private static final String ORDER_CHANNEL_ID = "orders";
+    private static final int LOAD_TIMEOUT_MS = 25000;
 
     private WebView webView;
+    private View loadingOverlay;
+    private View errorOverlay;
     private ValueCallback<Uri[]> fileChooserCallback;
     private WebChromeClient.FileChooserParams pendingChooserParams;
     private Uri imageCaptureUri;
@@ -55,14 +72,25 @@ public class MainActivity extends Activity {
     private String geolocationOrigin;
     private GeolocationPermissions.Callback geolocationCallback;
     private PermissionRequest webPermissionRequest;
+    private boolean askedNotificationPermission;
+    private boolean pageReady;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final Runnable loadTimeout = this::showLoadError;
 
     @Override
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        webView = new WebView(this);
-        setContentView(webView);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
+        setContentView(R.layout.activity_main);
+        webView = findViewById(R.id.webView);
+        loadingOverlay = findViewById(R.id.loadingOverlay);
+        errorOverlay = findViewById(R.id.errorOverlay);
+        findViewById(R.id.retryButton).setOnClickListener(v -> retryProductionLoad());
+        webView.setBackgroundColor(Color.parseColor("#C8341F"));
+        applySafeAreaInsets();
+        createOrderNotificationChannel();
 
         CookieManager cookies = CookieManager.getInstance();
         cookies.setAcceptCookie(true);
@@ -106,10 +134,11 @@ public class MainActivity extends Activity {
 
         if (savedInstanceState == null) {
             if (!loadIncomingOAuthIntent(getIntent())) {
-                webView.loadUrl(APP_URL);
+                loadProductionApp();
             }
         } else {
             webView.restoreState(savedInstanceState);
+            hideLoadingOverlay();
         }
     }
 
@@ -152,6 +181,12 @@ public class MainActivity extends Activity {
         @Override
         public void onPageFinished(WebView view, String url) {
             CookieManager.getInstance().flush();
+            if (url != null && isTrustedWebOrigin(Uri.parse(url))) {
+                pageReady = true;
+                hideLoadingOverlay();
+                hideErrorOverlay();
+                requestNotificationPermissionIfNeeded();
+            }
         }
 
         @Override
@@ -162,18 +197,30 @@ public class MainActivity extends Activity {
         @Override
         public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
             if (request == null || error == null || !request.isForMainFrame()) return;
-            if (error.getErrorCode() != WebViewClient.ERROR_UNSUPPORTED_SCHEME) return;
             String failing = request.getUrl() != null ? request.getUrl().toString() : "";
-            if (keepOAuthIntentInWebView(failing)) return;
-            leaveWebView(view, failing);
+            if (error.getErrorCode() == WebViewClient.ERROR_UNSUPPORTED_SCHEME) {
+                if (keepOAuthIntentInWebView(failing)) return;
+                leaveWebView(view, failing);
+                return;
+            }
+            showLoadError();
         }
 
         @Override
         @SuppressWarnings("deprecation")
         public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-            if (errorCode != WebViewClient.ERROR_UNSUPPORTED_SCHEME) return;
-            if (keepOAuthIntentInWebView(failingUrl)) return;
-            leaveWebView(view, failingUrl);
+            if (errorCode == WebViewClient.ERROR_UNSUPPORTED_SCHEME) {
+                if (keepOAuthIntentInWebView(failingUrl)) return;
+                leaveWebView(view, failingUrl);
+                return;
+            }
+            showLoadError();
+        }
+
+        @Override
+        public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse errorResponse) {
+            if (request == null || errorResponse == null || !request.isForMainFrame()) return;
+            if (errorResponse.getStatusCode() >= 500) showLoadError();
         }
     }
 
@@ -369,6 +416,10 @@ public class MainActivity extends Activity {
                 showCameraDeniedMessage();
                 request.deny();
             }
+            return;
+        }
+        if (requestCode == NOTIFICATION_PERMISSION_REQUEST) {
+            return;
         }
     }
 
@@ -614,18 +665,29 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onDestroy() {
+        mainHandler.removeCallbacks(loadTimeout);
+        super.onDestroy();
+    }
+
+    @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         webView.saveState(outState);
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public void onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack();
-        } else {
+        if (errorOverlay != null && errorOverlay.getVisibility() == View.VISIBLE) {
             super.onBackPressed();
+            return;
         }
+        if (webView != null && webView.canGoBack()) {
+            webView.goBack();
+            return;
+        }
+        super.onBackPressed();
     }
 
     private final class SilvanNativeBridge {
@@ -640,13 +702,27 @@ public class MainActivity extends Activity {
             if (!isGoogleAuthorizeUrl(Uri.parse(url))) return;
             runOnUiThread(() -> openOAuthInCustomTab(url));
         }
+
+        @JavascriptInterface
+        public void showNotification(final String title, final String body) {
+            runOnUiThread(() -> postOrderNotification(title, body));
+        }
+
+        @JavascriptInterface
+        public void requestNotifications() {
+            runOnUiThread(() -> requestNotificationPermissionIfNeeded());
+        }
     }
 
     private boolean loadIncomingOAuthIntent(Intent intent) {
         if (intent == null || webView == null) return false;
         String https = httpsUrlForOAuthCallback(intent.getData());
         if (https == null) return false;
+        pageReady = false;
+        hideErrorOverlay();
+        if (loadingOverlay != null) loadingOverlay.setVisibility(View.VISIBLE);
         webView.loadUrl(https);
+        scheduleLoadTimeout();
         return true;
     }
 
@@ -997,6 +1073,98 @@ public class MainActivity extends Activity {
             );
         } catch (Exception ignored) {
             // Galeri sağlayıcıları kalıcı izin vermeyebilir; anlık grant yeterlidir.
+        }
+    }
+
+    private void applySafeAreaInsets() {
+        View root = findViewById(R.id.root);
+        if (root == null) return;
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            return insets;
+        });
+        ViewCompat.requestApplyInsets(root);
+    }
+
+    private void createOrderNotificationChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+        NotificationChannel channel = new NotificationChannel(
+                ORDER_CHANNEL_ID,
+                getString(R.string.order_channel_name),
+                NotificationManager.IMPORTANCE_HIGH
+        );
+        channel.setDescription(getString(R.string.order_channel_desc));
+        channel.enableVibration(true);
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        if (manager != null) manager.createNotificationChannel(channel);
+    }
+
+    private void loadProductionApp() {
+        pageReady = false;
+        hideErrorOverlay();
+        if (loadingOverlay != null) loadingOverlay.setVisibility(View.VISIBLE);
+        webView.loadUrl(APP_URL);
+        scheduleLoadTimeout();
+    }
+
+    private void retryProductionLoad() {
+        loadProductionApp();
+    }
+
+    private void scheduleLoadTimeout() {
+        mainHandler.removeCallbacks(loadTimeout);
+        mainHandler.postDelayed(loadTimeout, LOAD_TIMEOUT_MS);
+    }
+
+    private void hideLoadingOverlay() {
+        mainHandler.removeCallbacks(loadTimeout);
+        if (loadingOverlay != null) loadingOverlay.setVisibility(View.GONE);
+    }
+
+    private void hideErrorOverlay() {
+        if (errorOverlay != null) errorOverlay.setVisibility(View.GONE);
+    }
+
+    private void showLoadError() {
+        if (pageReady) return;
+        mainHandler.removeCallbacks(loadTimeout);
+        if (loadingOverlay != null) loadingOverlay.setVisibility(View.GONE);
+        if (errorOverlay != null) errorOverlay.setVisibility(View.VISIBLE);
+    }
+
+    private void requestNotificationPermissionIfNeeded() {
+        if (askedNotificationPermission) return;
+        if (Build.VERSION.SDK_INT < 33) return;
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        askedNotificationPermission = true;
+        ActivityCompat.requestPermissions(
+                this,
+                new String[] { Manifest.permission.POST_NOTIFICATIONS },
+                NOTIFICATION_PERMISSION_REQUEST
+        );
+    }
+
+    private void postOrderNotification(String title, String body) {
+        if (title == null || title.trim().isEmpty()) return;
+        if (Build.VERSION.SDK_INT >= 33
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            requestNotificationPermissionIfNeeded();
+            return;
+        }
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, ORDER_CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_stat_notify)
+                .setContentTitle(title.trim())
+                .setContentText(body == null ? "" : body.trim())
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_HIGH);
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        if (manager != null) {
+            manager.notify((int) System.currentTimeMillis(), builder.build());
         }
     }
 }
