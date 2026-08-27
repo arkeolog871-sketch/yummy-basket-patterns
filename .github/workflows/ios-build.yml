@@ -59,8 +59,14 @@ jobs:
           cfg = json.loads(Path("ios/App/App/capacitor.config.json").read_text())
           assert cfg.get("appId") == "online.uygulamamcebimde.app", cfg.get("appId")
           assert cfg.get("server", {}).get("url") == "https://uygulamamcebimde.online", cfg.get("server")
+          resolved = json.loads(
+              Path("ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved").read_text()
+          )
+          pins = {p["identity"]: p["state"].get("version") for p in resolved.get("pins", [])}
+          assert pins.get("firebase-ios-sdk") == "11.11.0", pins
           print("appId", cfg["appId"])
           print("server.url", cfg["server"]["url"])
+          print("firebase-ios-sdk", pins["firebase-ios-sdk"])
           PY
 
       - name: Show Xcode and schemes

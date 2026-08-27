@@ -46,8 +46,13 @@ describe("iOS native shell static controls", () => {
     expect(pbxproj).toContain("productName = FirebaseCore;");
     expect(pbxproj).toContain("productName = FirebaseMessaging;");
     expect(pbxproj).toContain("kind = exactVersion;");
-    expect(pbxproj).toContain("version = 11.13.0;");
+    expect(pbxproj).toContain("version = 11.11.0;");
     expect(infoPlist).toContain("remote-notification");
+    const resolved = readFileSync(
+      join(ROOT, "ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"),
+      "utf8",
+    );
+    expect(resolved).toContain('"version" : "11.11.0"');
   });
 
   it("does not add a Capacitor Android platform next to android-wrapper", () => {
