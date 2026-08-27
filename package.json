@@ -20,9 +20,12 @@
     "order:prod-migrate": "node scripts/production-apply-order-migration.mjs",
     "staging:migrate": "node scripts/staging-migrate.mjs",
     "ios:prepare": "node scripts/prepare-ios-pwa.mjs",
-    "build:ios": "node scripts/prepare-ios-pwa.mjs && vite build"
+    "build:ios": "node scripts/prepare-ios-pwa.mjs && vite build",
+    "cap:sync": "cap sync ios",
+    "ios:open": "cap open ios"
   },
   "dependencies": {
+    "@capacitor/core": "^8.5.0",
     "@hookform/resolvers": "^5.2.2",
     "@lovable.dev/cloud-auth-js": "^1.0.0",
     "@lovable.dev/email-js": "0.1.0",
@@ -83,6 +86,8 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/ios": "^8.5.0",
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "^2.15.0",
     "@playwright/test": "^1.62.1",
