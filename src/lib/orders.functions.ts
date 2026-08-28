@@ -92,7 +92,7 @@ async function placeOrder(
     p_directions: data.directions ?? null,
     p_note: data.note ?? null,
     p_idempotency_key: data.idempotency_key ?? null,
-  };
+  } as unknown as Database["public"]["Functions"]["place_customer_order"]["Args"];
   // Oturum JWT'si (role=authenticated). p_user_id = claims.sub; fonksiyon auth.uid() ile doğrular.
   // EXECUTE yoksa veya PostgREST fonksiyonu bu role göstermiyorsa service_role dener.
   let rpc = await supabase.rpc("place_customer_order", rpcArgs);
