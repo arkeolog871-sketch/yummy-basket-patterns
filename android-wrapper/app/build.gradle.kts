@@ -1,5 +1,29 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
+}
+
+val googleServicesFile = file("google-services.json")
+if (googleServicesFile.exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
+val signingProps = Properties().apply {
+    val signingFile = rootProject.file("signing.properties")
+    if (signingFile.exists()) {
+        signingFile.inputStream().use { stream -> load(stream) }
+    }
+}
+
+fun signingValue(propertyName: String, envName: String): String? {
+    val fromGradle = providers.gradleProperty(propertyName).orNull
+    if (!fromGradle.isNullOrBlank()) return fromGradle
+    val fromFile = signingProps.getProperty(propertyName)?.trim()
+    if (!fromFile.isNullOrBlank()) return fromFile
+    val fromEnv = providers.environmentVariable(envName).orNull
+    if (!fromEnv.isNullOrBlank()) return fromEnv
+    return null
 }
 
 android {
@@ -14,18 +38,10 @@ android {
         versionName = "1.8"
     }
 
-    val signingStore = providers.gradleProperty("android.keystorePath")
-        .orElse(providers.environmentVariable("ANDROID_KEYSTORE_PATH"))
-        .orNull
-    val signingStorePassword = providers.gradleProperty("android.keystorePassword")
-        .orElse(providers.environmentVariable("ANDROID_KEYSTORE_PASSWORD"))
-        .orNull
-    val signingKeyAlias = providers.gradleProperty("android.keyAlias")
-        .orElse(providers.environmentVariable("ANDROID_KEY_ALIAS"))
-        .orNull
-    val signingKeyPassword = providers.gradleProperty("android.keyPassword")
-        .orElse(providers.environmentVariable("ANDROID_KEY_PASSWORD"))
-        .orNull
+    val signingStore = signingValue("android.keystorePath", "ANDROID_KEYSTORE_PATH")
+    val signingStorePassword = signingValue("android.keystorePassword", "ANDROID_KEYSTORE_PASSWORD")
+    val signingKeyAlias = signingValue("android.keyAlias", "ANDROID_KEY_ALIAS")
+    val signingKeyPassword = signingValue("android.keyPassword", "ANDROID_KEY_PASSWORD")
     val hasReleaseSigning = listOf(
         signingStore,
         signingStorePassword,
@@ -36,7 +52,7 @@ android {
     if (hasReleaseSigning) {
         signingConfigs {
             create("release") {
-                storeFile = file(signingStore!!)
+                storeFile = rootProject.file(signingStore!!)
                 storePassword = signingStorePassword
                 keyAlias = signingKeyAlias
                 keyPassword = signingKeyPassword
@@ -63,4 +79,6 @@ android {
 dependencies {
     implementation("androidx.core:core:1.13.1")
     implementation("androidx.browser:browser:1.8.0")
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-messaging")
 }

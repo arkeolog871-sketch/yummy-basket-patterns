@@ -74,6 +74,8 @@ public class MainActivity extends Activity {
     private PermissionRequest webPermissionRequest;
     private boolean askedNotificationPermission;
     private boolean pageReady;
+    private String cachedFcmToken;
+    private static MainActivity activeInstance;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Runnable loadTimeout = this::showLoadError;
 
@@ -91,6 +93,8 @@ public class MainActivity extends Activity {
         webView.setBackgroundColor(Color.parseColor("#C8341F"));
         applySafeAreaInsets();
         createOrderNotificationChannel();
+        activeInstance = this;
+        initFirebaseMessaging();
 
         CookieManager cookies = CookieManager.getInstance();
         cookies.setAcceptCookie(true);
@@ -133,7 +137,7 @@ public class MainActivity extends Activity {
         webView.setWebChromeClient(new SilvanWebChromeClient());
 
         if (savedInstanceState == null) {
-            if (!loadIncomingOAuthIntent(getIntent())) {
+            if (!loadIncomingOAuthIntent(getIntent()) && !loadIncomingPushRoute(getIntent())) {
                 loadProductionApp();
             }
         } else {
@@ -146,7 +150,9 @@ public class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        loadIncomingOAuthIntent(intent);
+        if (!loadIncomingOAuthIntent(intent)) {
+            loadIncomingPushRoute(intent);
+        }
     }
 
     private final class SilvanWebViewClient extends WebViewClient {
@@ -667,7 +673,41 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         mainHandler.removeCallbacks(loadTimeout);
+        if (activeInstance == this) activeInstance = null;
         super.onDestroy();
+    }
+
+    static void deliverFcmTokenToWeb(android.content.Context context, String token) {
+        if (token == null || token.trim().isEmpty()) return;
+        MainActivity activity = activeInstance;
+        if (activity != null) {
+            activity.cachedFcmToken = token.trim();
+            activity.pushFcmTokenToWeb(token.trim());
+            return;
+        }
+        // Activity henüz hazır değilse bir sonraki açılışta getFcmToken ile okunur.
+    }
+
+    private void initFirebaseMessaging() {
+        try {
+            com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken()
+                    .addOnCompleteListener(task -> {
+                        if (!task.isSuccessful() || task.getResult() == null) return;
+                        cachedFcmToken = task.getResult();
+                        pushFcmTokenToWeb(cachedFcmToken);
+                    });
+        } catch (Exception ignored) {
+            // google-services.json yoksa veya Firebase yapılandırılmadıysa yerel bildirim köprüsü çalışır.
+        }
+    }
+
+    private void pushFcmTokenToWeb(String token) {
+        if (webView == null || token == null || token.isEmpty()) return;
+        String escaped = token.replace("\\", "\\\\").replace("'", "\\'");
+        webView.post(() -> webView.evaluateJavascript(
+                "window.__onNativeFcmToken && window.__onNativeFcmToken('" + escaped + "');",
+                null
+        ));
     }
 
     @Override
@@ -712,6 +752,26 @@ public class MainActivity extends Activity {
         public void requestNotifications() {
             runOnUiThread(() -> requestNotificationPermissionIfNeeded());
         }
+
+        @JavascriptInterface
+        public String getFcmToken() {
+            return cachedFcmToken == null ? "" : cachedFcmToken;
+        }
+    }
+
+    private boolean loadIncomingPushRoute(Intent intent) {
+        if (intent == null || webView == null) return false;
+        String route = intent.getStringExtra("deep_link_route");
+        if (route == null || route.trim().isEmpty()) return false;
+        String normalized = route.trim();
+        if (!normalized.startsWith("/")) normalized = "/" + normalized;
+        pageReady = false;
+        hideErrorOverlay();
+        if (loadingOverlay != null) loadingOverlay.setVisibility(View.VISIBLE);
+        webView.loadUrl(APP_URL.replaceAll("/$", "") + normalized);
+        scheduleLoadTimeout();
+        intent.removeExtra("deep_link_route");
+        return true;
     }
 
     private boolean loadIncomingOAuthIntent(Intent intent) {

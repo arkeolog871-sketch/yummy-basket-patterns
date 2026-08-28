@@ -16,7 +16,14 @@ const CATALOG_KEYS = [
 
 const MEMBERSHIP_KEYS = [["access-context"], ["my-roles"], ["admin-users"], ["admin-data"]] as const;
 
-const ORDER_KEYS = [["orders"], ["order"], ["vendor-dashboard"], ["admin-data"]] as const;
+const ORDER_KEYS = [
+  ["orders"],
+  ["order"],
+  ["vendor-dashboard"],
+  ["admin-data"],
+  ["notifications"],
+  ["notification-unread-count"],
+] as const;
 
 function invalidateAll(queryClient: ReturnType<typeof useQueryClient>, keys: readonly (readonly string[])[]) {
   for (const queryKey of keys) {
@@ -60,6 +67,10 @@ export function AppRealtimeBridge() {
         })
         .on("postgres_changes", { event: "*", schema: "public", table: "order_vendor_alerts" }, () => {
           invalidateAll(queryClient, ORDER_KEYS);
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "user_notifications" }, () => {
+          void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+          void queryClient.invalidateQueries({ queryKey: ["notification-unread-count"] });
         })
         .on("postgres_changes", { event: "*", schema: "public", table: "addresses" }, () => {
           void queryClient.invalidateQueries({ queryKey: ["addresses"] });

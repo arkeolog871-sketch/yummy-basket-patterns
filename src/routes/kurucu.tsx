@@ -55,6 +55,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AuditLogPanel } from "@/components/founder/AuditLogPanel";
+import { NotificationsPanel } from "@/components/founder/NotificationsPanel";
+import { unregisterDevicePushToken } from "@/lib/vendor-mobile-notification.functions";
+import { unregisterMobilePushTokenOnSignOut } from "@/lib/vendor-mobile-notification";
 
 export const Route = createFileRoute("/kurucu")({
   head: () => ({
@@ -80,8 +83,10 @@ function FounderRoute() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const unregisterPushToken = useServerFn(unregisterDevicePushToken);
 
   async function handleSignOut() {
+    await unregisterMobilePushTokenOnSignOut(unregisterPushToken);
     await queryClient.cancelQueries();
     queryClient.clear();
     clearTwoFactorFlag();
@@ -312,6 +317,7 @@ function FounderDashboard() {
           <TabsTrigger value="kullanicilar">Kullanıcılar</TabsTrigger>
           <TabsTrigger value="guvenlik">Güvenlik</TabsTrigger>
           <TabsTrigger value="siparisler">Siparişler</TabsTrigger>
+          <TabsTrigger value="bildirimler">Bildirim Gönder</TabsTrigger>
           <TabsTrigger value="denetim">Denetim kaydı</TabsTrigger>
           <TabsTrigger value="hatalar">Sistem hataları</TabsTrigger>
         </TabsList>
@@ -392,6 +398,10 @@ function FounderDashboard() {
             error={data.isError}
             onDone={() => void queryClient.invalidateQueries({ queryKey: ["admin-data"] })}
           />
+        </TabsContent>
+
+        <TabsContent value="bildirimler" className="mt-6">
+          <NotificationsPanel />
         </TabsContent>
 
         <TabsContent value="denetim" className="mt-6">

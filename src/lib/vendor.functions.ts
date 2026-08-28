@@ -135,6 +135,9 @@ export const setVendorOrderStatus = createServerFn({ method: "POST" })
             .maybeSingle();
           if (error) throw new Error(error.message);
           if (!updated) throw new Error("Bu sipariş işletmenize ait değil");
+          void import("./notifications.server").then((mod) =>
+            mod.afterOrderStatusUpdated(data.id, data.status),
+          );
           return { ok: true };
         },
       );

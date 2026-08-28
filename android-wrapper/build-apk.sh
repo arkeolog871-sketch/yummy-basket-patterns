@@ -28,6 +28,9 @@ export JAVA_HOME="$(dirname "$(dirname "$JAVA_BIN")")"
 
 printf 'sdk.dir=%s\n' "$ANDROID_HOME" > "$ROOT/local.properties"
 
+# Mevcut iOS Firebase plist'ten Android google-services.json üret (gitignore).
+node "$(cd "$ROOT/.." && pwd)/scripts/sync-android-firebase-config.mjs"
+
 if [[ -x "$ROOT/gradlew" ]]; then
   "$ROOT/gradlew" --no-daemon :app:assembleRelease
 else

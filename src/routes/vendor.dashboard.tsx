@@ -23,6 +23,9 @@ import { MediaPanel } from "@/components/vendor/MediaPanel";
 import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { useAccess } from "@/hooks/useAccess";
 import { useAuth } from "@/hooks/useAuth";
+import { useVendorMobileOrderNotification } from "@/hooks/useVendorMobileOrderNotification";
+import { unregisterDevicePushToken } from "@/lib/vendor-mobile-notification.functions";
+import { unregisterMobilePushTokenOnSignOut } from "@/lib/vendor-mobile-notification";
 
 import {
   getVendorDashboard,
@@ -133,11 +136,13 @@ function VendorDashboard() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { restaurantId } = useAccess();
+  useVendorMobileOrderNotification(true);
   const fetchDashboard = useServerFn(getVendorDashboard);
   const updateStatus = useServerFn(setVendorOrderStatus);
   const updateStore = useServerFn(setVendorStoreOpen);
   const updateItem = useServerFn(setVendorItemAvailability);
   const markAlertRead = useServerFn(markVendorOrderAlertRead);
+  const unregisterPushToken = useServerFn(unregisterDevicePushToken);
 
   const dashboard = useQuery({
     queryKey: ["vendor-dashboard"],
@@ -229,6 +234,7 @@ function VendorDashboard() {
   }, [unreadAlerts]);
 
   async function handleSignOut() {
+    await unregisterMobilePushTokenOnSignOut(unregisterPushToken);
     await queryClient.cancelQueries();
     queryClient.clear();
     await supabase.auth.signOut();
