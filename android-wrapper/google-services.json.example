@@ -7,7 +7,7 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:690305033747:android:REPLACE_WITH_FIREBASE_CONSOLE_APP_ID",
+        "mobilesdk_app_id": "1:690305033747:android:e90857c010be5a46fc01e6",
         "android_client_info": {
           "package_name": "online.uygulamamcebimde.app"
         }

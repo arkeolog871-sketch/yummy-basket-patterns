@@ -1,14 +1,34 @@
 #!/usr/bin/env node
 /**
- * Mevcut iOS GoogleService-Info.plist'ten Android google-services.json üretir.
- * Yeni Firebase projesi oluşturmaz; repodaki gerçek plist değerlerini kullanır.
+ * Android google-services.json hazırlar.
+ * Gerçek dosya zaten varsa (Firebase Console'dan) üzerine yazmaz.
+ * Yoksa iOS GoogleService-Info.plist'ten yalnızca proje metadata ile iskelet üretir.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = join(import.meta.dirname, "..");
 const plistPath = join(ROOT, "ios/App/App/GoogleService-Info.plist");
 const outPath = join(ROOT, "android-wrapper/app/google-services.json");
+
+if (existsSync(outPath)) {
+  try {
+    const existing = JSON.parse(readFileSync(outPath, "utf8"));
+    const appId = existing?.client?.[0]?.client_info?.mobilesdk_app_id;
+    const pkg = existing?.client?.[0]?.client_info?.android_client_info?.package_name;
+    if (
+      typeof appId === "string" &&
+      appId.includes(":android:") &&
+      pkg === "online.uygulamamcebimde.app" &&
+      !appId.includes("REPLACE")
+    ) {
+      console.log(`[firebase] keep existing ${outPath} (appId=${appId})`);
+      process.exit(0);
+    }
+  } catch {
+    // Bozuk dosya varsa aşağıda yeniden üret.
+  }
+}
 
 function readPlistValue(key) {
   const plist = readFileSync(plistPath, "utf8");
@@ -19,36 +39,9 @@ function readPlistValue(key) {
 
 const projectNumber = readPlistValue("GCM_SENDER_ID");
 const projectId = readPlistValue("PROJECT_ID");
-const apiKey = readPlistValue("API_KEY");
-const iosAppId = readPlistValue("GOOGLE_APP_ID");
-const androidAppId = iosAppId.replace(":ios:", ":android:");
 const storageBucket = readPlistValue("STORAGE_BUCKET");
 
-const config = {
-  project_info: {
-    project_number: projectNumber,
-    project_id: projectId,
-    storage_bucket: storageBucket,
-  },
-  client: [
-    {
-      client_info: {
-        mobilesdk_app_id: androidAppId,
-        android_client_info: {
-          package_name: "online.uygulamamcebimde.app",
-        },
-      },
-      oauth_client: [],
-      api_key: [{ current_key: apiKey }],
-      services: {
-        appinvite_service: {
-          other_platform_oauth_client: [],
-        },
-      },
-    },
-  ],
-  configuration_version: "1",
-};
-
-writeFileSync(outPath, `${JSON.stringify(config, null, 2)}\n`);
-console.log(`[firebase] wrote ${outPath} (appId=${androidAppId})`);
+console.error(
+  `[firebase] ${outPath} yok veya geçersiz. Firebase Console Android google-services.json gerekli (package: online.uygulamamcebimde.app, project: ${projectId}/${projectNumber}, bucket: ${storageBucket}).`,
+);
+process.exit(1);

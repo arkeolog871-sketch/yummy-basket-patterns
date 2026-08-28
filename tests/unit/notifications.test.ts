@@ -85,8 +85,11 @@ describe("notifications infrastructure", () => {
     expect(plist).toMatch(/silvan-cebimde/);
     expect(plist).toMatch(/690305033747/);
     const syncScript = readFileSync(join(ROOT, "scripts/sync-android-firebase-config.mjs"), "utf8");
-    expect(syncScript).toMatch(/GoogleService-Info.plist/);
-    expect(syncScript).toMatch(/android-wrapper\/app\/google-services.json/);
+    expect(syncScript).toMatch(/google-services.json/);
+    expect(syncScript).toMatch(/keep existing/);
+    const example = readFileSync(join(ROOT, "android-wrapper/google-services.json.example"), "utf8");
+    expect(example).toMatch(/online\.uygulamamcebimde\.app/);
+    expect(example).toMatch(/1:690305033747:android:e90857c010be5a46fc01e6/);
   });
 
   it("supports founder broadcast targets", () => {
