@@ -25,9 +25,11 @@ describe("production release contract (no secrets)", () => {
     expect(example).not.toMatch(/sk_live_/);
   });
 
-  it("keeps Android package and empty SHA-256 placeholder", () => {
+  it("keeps Android package and the Play App Signing SHA-256", () => {
     expect(ANDROID_APP_PACKAGE_NAME).toBe("online.uygulamamcebimde.app");
-    expect(ANDROID_ASSETLINKS[0]?.target.sha256_cert_fingerprints).toEqual([]);
+    expect(ANDROID_ASSETLINKS[0]?.target.sha256_cert_fingerprints).toEqual([
+      "52:F0:37:72:53:80:CE:26:86:61:AF:3F:D3:70:FD:D9:27:67:D1:D6:FF:EC:8B:9D:14:85:03:92:FF:81:CE:A3",
+    ]);
   });
 
   it("pins Google production redirect to apex /auth", () => {
