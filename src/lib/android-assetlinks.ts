@@ -18,7 +18,7 @@ export const ANDROID_ASSETLINKS = [
     target: {
       namespace: "android_app",
       package_name: ANDROID_APP_PACKAGE_NAME,
-      sha256_cert_fingerprints: [] as string[],
+      sha256_cert_fingerprints: [ANDROID_PLAY_APP_SIGNING_SHA256] as string[],
     },
   },
 ];
