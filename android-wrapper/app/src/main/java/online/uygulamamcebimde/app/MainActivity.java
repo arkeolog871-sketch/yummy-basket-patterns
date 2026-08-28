@@ -6,6 +6,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -133,7 +134,7 @@ public class MainActivity extends Activity {
         webView.setWebChromeClient(new SilvanWebChromeClient());
 
         if (savedInstanceState == null) {
-            if (!loadIncomingOAuthIntent(getIntent())) {
+            if (!loadIncomingVendorNotification(getIntent()) && !loadIncomingOAuthIntent(getIntent())) {
                 loadProductionApp();
             }
         } else {
@@ -146,7 +147,9 @@ public class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        loadIncomingOAuthIntent(intent);
+        if (!loadIncomingVendorNotification(intent)) {
+            loadIncomingOAuthIntent(intent);
+        }
     }
 
     private final class SilvanWebViewClient extends WebViewClient {
@@ -704,14 +707,42 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public void showNotification(final String title, final String body) {
-            runOnUiThread(() -> postOrderNotification(title, body));
+        public void showNotification(final String title, final String body, final String url) {
+            runOnUiThread(() -> postOrderNotification(title, body, url));
         }
 
         @JavascriptInterface
         public void requestNotifications() {
             runOnUiThread(() -> requestNotificationPermissionIfNeeded());
         }
+    }
+
+    private static final String OPEN_VENDOR_ORDER_ACTION =
+            "online.uygulamamcebimde.app.OPEN_VENDOR_ORDER";
+
+    private boolean loadIncomingVendorNotification(Intent intent) {
+        if (intent == null || webView == null) return false;
+        if (!OPEN_VENDOR_ORDER_ACTION.equals(intent.getAction())) return false;
+        String raw = intent.getStringExtra("open_url");
+        if (raw == null || raw.isEmpty()) return false;
+        Uri uri = Uri.parse(raw);
+        if (!isTrustedVendorOrderUrl(uri)) return false;
+        pageReady = false;
+        hideErrorOverlay();
+        if (loadingOverlay != null) loadingOverlay.setVisibility(View.VISIBLE);
+        webView.loadUrl(uri.toString());
+        scheduleLoadTimeout();
+        return true;
+    }
+
+    private boolean isTrustedVendorOrderUrl(Uri uri) {
+        if (!isTrustedWebOrigin(uri)) return false;
+        String path = uri.getPath();
+        if (path == null || !"/vendor/dashboard".equals(path)) return false;
+        String order = uri.getQueryParameter("order");
+        return order != null && order.matches(
+                "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+        );
     }
 
     private boolean loadIncomingOAuthIntent(Intent intent) {
@@ -1148,7 +1179,7 @@ public class MainActivity extends Activity {
         );
     }
 
-    private void postOrderNotification(String title, String body) {
+    private void postOrderNotification(String title, String body, String url) {
         if (title == null || title.trim().isEmpty()) return;
         if (Build.VERSION.SDK_INT >= 33
                 && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
@@ -1156,12 +1187,31 @@ public class MainActivity extends Activity {
             requestNotificationPermissionIfNeeded();
             return;
         }
+        String text = body == null ? "" : body.trim();
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, ORDER_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_notify)
                 .setContentTitle(title.trim())
-                .setContentText(body == null ? "" : body.trim())
+                .setContentText(text)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(text))
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH);
+        Uri target = url != null && !url.isEmpty() ? Uri.parse(url) : null;
+        if (target != null && isTrustedVendorOrderUrl(target)) {
+            Intent tap = new Intent(this, MainActivity.class);
+            tap.setAction(OPEN_VENDOR_ORDER_ACTION);
+            tap.putExtra("open_url", target.toString());
+            tap.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                flags |= PendingIntent.FLAG_IMMUTABLE;
+            }
+            int notifyId = target.toString().hashCode();
+            PendingIntent pending = PendingIntent.getActivity(this, notifyId, tap, flags);
+            builder.setContentIntent(pending);
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            if (manager != null) manager.notify(notifyId, builder.build());
+            return;
+        }
         NotificationManager manager = getSystemService(NotificationManager.class);
         if (manager != null) {
             manager.notify((int) System.currentTimeMillis(), builder.build());
