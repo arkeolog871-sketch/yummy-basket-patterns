@@ -302,7 +302,7 @@ async function claimAlert(input: {
     .select("id, sent_at")
     .maybeSingle();
 
-  if (!inserted.error) return decideClaimAfterInsert({ insertError: null, markSent: input.markSent });
+  if (!inserted.error) return input.markSent ? "already_sent" : "claimed";
   const fromInsert = decideClaimAfterInsert({
     insertError: inserted.error,
     markSent: input.markSent,
@@ -319,11 +319,12 @@ async function claimAlert(input: {
     if (isMissingRelationError(existing.error)) return "missing_table";
     throw existing.error;
   }
-  return decideClaimAfterInsert({
+  const decided = decideClaimAfterInsert({
     insertError: inserted.error,
     markSent: input.markSent,
     existingSentAt: existing.data?.sent_at ?? null,
   });
+  return decided === "check_existing" ? "already_sent" : decided;
 }
 
 function decideClaimAfterInsert(input: {
