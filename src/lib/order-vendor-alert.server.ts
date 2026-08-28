@@ -302,7 +302,7 @@ async function claimAlert(input: {
     .select("id, sent_at")
     .maybeSingle();
 
-  if (!inserted.error) return decideClaimAfterInsert({ insertError: null, markSent: input.markSent });
+  if (!inserted.error) return input.markSent ? "already_sent" : "claimed";
   const fromInsert = decideClaimAfterInsert({
     insertError: inserted.error,
     markSent: input.markSent,
