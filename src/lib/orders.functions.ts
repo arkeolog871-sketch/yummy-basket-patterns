@@ -79,7 +79,8 @@ async function placeOrder(
   const { isBusinessOpen, closedReason } = await import("./hours");
   if (!isBusinessOpen(restaurant)) throw new Error(closedReason(restaurant));
 
-  const rpcArgs: Database["public"]["Functions"]["place_customer_order"]["Args"] = {
+  // Opsiyonel alanlar SQL tarafında NULL kabul ediyor; üretilen tipler bunları string olarak görüyor.
+  const rpcArgs = {
     p_user_id: userId,
     p_restaurant_id: restaurant.id,
     p_items: data.items,
