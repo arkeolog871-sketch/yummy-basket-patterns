@@ -1,5 +1,6 @@
 package online.uygulamamcebimde.app;
 
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
@@ -16,6 +17,7 @@ public class AppFirebaseMessagingService extends FirebaseMessagingService {
 
     @Override
     public void onMessageReceived(RemoteMessage message) {
+        ensureOrderChannel();
         String title = message.getNotification() != null
                 ? message.getNotification().getTitle()
                 : valueFromData(message, "title");
@@ -54,6 +56,19 @@ public class AppFirebaseMessagingService extends FirebaseMessagingService {
     @Override
     public void onNewToken(String token) {
         MainActivity.deliverFcmTokenToWeb(getApplicationContext(), token);
+    }
+
+    private void ensureOrderChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+        NotificationChannel channel = new NotificationChannel(
+                ORDER_CHANNEL_ID,
+                getString(R.string.order_channel_name),
+                NotificationManager.IMPORTANCE_HIGH
+        );
+        channel.setDescription(getString(R.string.order_channel_desc));
+        channel.enableVibration(true);
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        if (manager != null) manager.createNotificationChannel(channel);
     }
 
     private String valueFromData(RemoteMessage message, String key) {
