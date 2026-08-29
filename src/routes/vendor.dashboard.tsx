@@ -12,9 +12,16 @@ import {
   Package,
   ExternalLink,
   KeyRound,
+  Bell,
   Image as ImageIcon,
 } from "lucide-react";
+import {
+  showNativeNotification,
+  loadSeenAlertIds,
+  saveSeenAlertIds,
+} from "@/lib/native-notify";
 import { supabase } from "@/integrations/supabase/client";
+
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import { AccessDenied } from "@/components/auth/AccessDenied";
 import { EmptyState } from "@/components/vendor/EmptyState";
