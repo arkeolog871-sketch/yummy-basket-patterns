@@ -217,16 +217,26 @@ function VendorDashboard() {
     onSuccess: () => invalidate(),
   });
 
-  const unreadAlerts = dashboard.data?.alerts ?? [];
-  const toastedAlertIds = useRef(new Set<string>());
+  const allAlerts = dashboard.data?.alerts ?? [];
+  const unreadAlerts = allAlerts.filter((alert) => !alert.read_at);
+  const notifiedAlertIds = useRef<Set<string> | null>(null);
 
   useEffect(() => {
-    for (const alert of unreadAlerts) {
-      if (toastedAlertIds.current.has(alert.id)) continue;
-      toastedAlertIds.current.add(alert.id);
-      toast.success("Yeni sipariş", { description: alert.body });
+    if (!notifiedAlertIds.current) {
+      notifiedAlertIds.current = new Set(loadSeenAlertIds());
     }
+    const seen = notifiedAlertIds.current;
+    let changed = false;
+    for (const alert of unreadAlerts) {
+      if (seen.has(alert.id)) continue;
+      seen.add(alert.id);
+      changed = true;
+      toast.success(alert.title || "Yeni sipariş", { description: alert.body });
+      showNativeNotification(alert.title || "Yeni sipariş", alert.body);
+    }
+    if (changed) saveSeenAlertIds(seen);
   }, [unreadAlerts]);
+
 
   async function handleSignOut() {
     await queryClient.cancelQueries();
