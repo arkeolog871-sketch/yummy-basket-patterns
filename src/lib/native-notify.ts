@@ -1,6 +1,9 @@
+/** İşletme paneli Siparişler sekmesi — bildirim tıklanınca buraya gidilir. */
+export const VENDOR_ORDERS_ROUTE = "/vendor/dashboard?tab=siparisler";
+
 /** Android WebView köprüsü ile gerçek cihaz bildirimi; tarayıcıda sessizce atlanır. */
 type NativeNotifyBridge = {
-  showNotification?: (title: string, body: string) => void;
+  showNotification?: (title: string, body: string, route?: string) => void;
 };
 
 function bridge(): NativeNotifyBridge | null {
@@ -11,11 +14,15 @@ function bridge(): NativeNotifyBridge | null {
 }
 
 /** Android uygulaması içindeyse cihaz bildirimi gösterir, değilse false döner. */
-export function showNativeNotification(title: string, body: string): boolean {
+export function showNativeNotification(
+  title: string,
+  body: string,
+  route: string = VENDOR_ORDERS_ROUTE,
+): boolean {
   const native = bridge();
   if (!native?.showNotification) return false;
   try {
-    native.showNotification(title, body);
+    native.showNotification(title, body, route);
     return true;
   } catch {
     return false;

@@ -1,5 +1,7 @@
+import { VENDOR_ORDERS_ROUTE } from "@/lib/native-notify";
+
 type SilvanNativeBridge = {
-  showNotification?: (title: string, body: string) => void;
+  showNotification?: (title: string, body: string, route?: string) => void;
   requestNotifications?: () => void;
   getFcmToken?: () => string;
 };
@@ -24,10 +26,14 @@ export function requestMobileNotificationPermission(): void {
   }
 }
 
-export function showMobileNotification(title: string, body: string): void {
+export function showMobileNotification(
+  title: string,
+  body: string,
+  route: string = VENDOR_ORDERS_ROUTE,
+): void {
   if (!title.trim()) return;
   try {
-    window.SilvanNative?.showNotification?.(title, body);
+    window.SilvanNative?.showNotification?.(title, body, route);
   } catch {
     // Web tarayıcısında native köprü yok.
   }

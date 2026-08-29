@@ -28,16 +28,21 @@ public class AppFirebaseMessagingService extends FirebaseMessagingService {
 
         Intent launch = new Intent(this, MainActivity.class);
         launch.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        String route = valueFromData(message, "route");
+        String route = valueFromData(message, "deep_link_route");
+        if (route == null || route.isEmpty()) {
+            route = valueFromData(message, "route");
+        }
         if (route != null && !route.isEmpty()) {
             launch.putExtra("deep_link_route", route);
+            launch.putExtra("route", route);
         }
 
         int flags = PendingIntent.FLAG_UPDATE_CURRENT;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             flags |= PendingIntent.FLAG_IMMUTABLE;
         }
-        PendingIntent pending = PendingIntent.getActivity(this, 0, launch, flags);
+        int requestCode = route != null ? route.hashCode() : 0;
+        PendingIntent pending = PendingIntent.getActivity(this, requestCode, launch, flags);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, ORDER_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_notify)

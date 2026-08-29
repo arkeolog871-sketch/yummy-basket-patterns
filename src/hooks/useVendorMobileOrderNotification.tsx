@@ -57,13 +57,18 @@ export function useVendorMobileOrderNotification(enabled: boolean) {
             id?: string;
             title?: string;
             body?: string;
+            route?: string | null;
+            kind?: string;
           };
           if (!row.id || seenIds.current.has(row.id)) return;
           seenIds.current.add(row.id);
           void queryClient.invalidateQueries({ queryKey: ["notifications"] });
           void queryClient.invalidateQueries({ queryKey: ["notification-unread-count"] });
           if (isAndroidShell()) {
-            showMobileNotification(row.title ?? "Bildirim", row.body ?? "");
+            const route =
+              (row.route && row.route.trim()) ||
+              (row.kind === "order_new_vendor" ? "/vendor/dashboard?tab=siparisler" : "/bildirimler");
+            showMobileNotification(row.title ?? "Bildirim", row.body ?? "", route);
           }
         },
       )
