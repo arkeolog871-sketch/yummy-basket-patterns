@@ -12,6 +12,7 @@ import {
   ChevronDown,
   Crown,
   Store,
+  Bell,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,6 +20,10 @@ import { useAccess } from "@/hooks/useAccess";
 import { useCart } from "@/hooks/useCart";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useAppCategories, useServiceAreas, areaLabel } from "@/hooks/useTaxonomy";
+import { useNotificationBridge } from "@/hooks/useNotificationBridge";
+import { useServerFn } from "@tanstack/react-start";
+import { unregisterDevicePushToken } from "@/lib/vendor-mobile-notification.functions";
+import { unregisterMobilePushTokenOnSignOut } from "@/lib/vendor-mobile-notification";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TextPrefsPanel } from "@/components/layout/TextPrefsPanel";
@@ -38,10 +43,12 @@ export function Header() {
   const { itemCount } = useCart();
   const { settings, isFounder, founderExists } = useSiteSettings();
   const access = useAccess();
+  const { unreadCount } = useNotificationBridge();
   const { categories } = useAppCategories();
   const { areas } = useServiceAreas();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const unregisterPushToken = useServerFn(unregisterDevicePushToken);
   const [city, setCity] = useState<string>("");
   const [hydrated, setHydrated] = useState(false);
   const [term, setTerm] = useState("");
@@ -60,6 +67,7 @@ export function Header() {
   }
 
   async function handleSignOut() {
+    await unregisterMobilePushTokenOnSignOut(unregisterPushToken);
     await queryClient.cancelQueries();
     queryClient.clear();
     await supabase.auth.signOut();
@@ -148,6 +156,19 @@ export function Header() {
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <TextPrefsPanel />
+          {user ? (
+            <Button asChild variant="outline" className="relative rounded-full">
+              <Link to="/bildirimler">
+                <Bell className="size-4" />
+                <span className="hidden sm:inline">Bildirimler</span>
+                {unreadCount > 0 ? (
+                  <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-accent text-[11px] font-semibold text-accent-foreground">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                ) : null}
+              </Link>
+            </Button>
+          ) : null}
           <Button asChild variant="secondary" className="relative rounded-full">
             <Link to="/sepet">
               <ShoppingBag className="size-4" />
@@ -172,6 +193,11 @@ export function Header() {
                   {user.email}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/bildirimler">
+                    <Bell className="size-4" /> Bildirimler
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to="/siparislerim">
                     <ClipboardList className="size-4" /> Siparişlerim

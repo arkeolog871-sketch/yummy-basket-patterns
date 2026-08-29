@@ -132,6 +132,21 @@ async function notifyVendorOfNewOrderUnsafe(orderId: string): Promise<void> {
     });
   }
 
+  try {
+    const { notifyVendorUsersOfNewOrder } = await import("./notifications.server");
+    await notifyVendorUsersOfNewOrder({
+      orderId: order.id,
+      restaurantId: restaurant.id,
+      title,
+      body,
+    });
+  } catch (error) {
+    console.error("[order-vendor-alert] push bildirim başarısız", {
+      orderId: order.id,
+      code: error && typeof error === "object" && "code" in error ? error.code : undefined,
+    });
+  }
+
   const to = (restaurant.contact_email ?? "").trim().toLowerCase();
   if (!looksLikeEmail(to)) return;
 

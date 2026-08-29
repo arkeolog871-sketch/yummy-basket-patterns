@@ -1,8 +1,12 @@
 .gradle/
 **/build/
 local.properties
+signing.properties
+signing/
 *.iml
 .idea/
 captures/
 .cxx/
 dist/
+app/src/main/assets/adi-registration.properties
+google-services.json

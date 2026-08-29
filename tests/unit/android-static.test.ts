@@ -73,4 +73,9 @@ describe("Android wrapper static controls", () => {
   it("declares notification permission for Android 13+", () => {
     expect(manifest).toMatch(/POST_NOTIFICATIONS/);
   });
+
+  it("registers Firebase messaging service for background push", () => {
+    expect(manifest).toMatch(/AppFirebaseMessagingService/);
+    expect(activity).toMatch(/getFcmToken/);
+  });
 });

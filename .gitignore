@@ -45,3 +45,9 @@ android-wrapper/app/*.keystore
 android-wrapper/app/*.jks
 android-wrapper/app/local.properties
 android-wrapper/app/google-services.json
+android-wrapper/local.properties
+android-wrapper/signing.properties
+android-wrapper/signing/
+upload-keystore.jks
+*.jks
+android-wrapper/app/src/main/assets/adi-registration.properties

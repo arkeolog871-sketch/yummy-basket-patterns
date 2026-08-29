@@ -473,6 +473,9 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
             .update({ status: data.status })
             .eq("id", data.id);
           if (error) throw new Error(error.message);
+          void import("./notifications.server").then((mod) =>
+            mod.afterOrderStatusUpdated(data.id, data.status),
+          );
           return { ok: true };
         },
       );

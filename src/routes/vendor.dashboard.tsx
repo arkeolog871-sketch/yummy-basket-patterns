@@ -30,6 +30,9 @@ import { MediaPanel } from "@/components/vendor/MediaPanel";
 import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { useAccess } from "@/hooks/useAccess";
 import { useAuth } from "@/hooks/useAuth";
+import { useVendorMobileOrderNotification } from "@/hooks/useVendorMobileOrderNotification";
+import { unregisterDevicePushToken } from "@/lib/vendor-mobile-notification.functions";
+import { unregisterMobilePushTokenOnSignOut } from "@/lib/vendor-mobile-notification";
 
 import {
   getVendorDashboard,
@@ -140,11 +143,13 @@ function VendorDashboard() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { restaurantId } = useAccess();
+  useVendorMobileOrderNotification(true);
   const fetchDashboard = useServerFn(getVendorDashboard);
   const updateStatus = useServerFn(setVendorOrderStatus);
   const updateStore = useServerFn(setVendorStoreOpen);
   const updateItem = useServerFn(setVendorItemAvailability);
   const markAlertRead = useServerFn(markVendorOrderAlertRead);
+  const unregisterPushToken = useServerFn(unregisterDevicePushToken);
 
   const dashboard = useQuery({
     queryKey: ["vendor-dashboard"],
@@ -242,7 +247,7 @@ function VendorDashboard() {
       toast.success(alert.title || "Yeni sipariş", { description: alert.body });
       const order = ordersById.get(alert.order_id);
       const body = order
-        ? `${order.recipient_name} · ${order.phone} · ${order.order_items
+        ? `${order.recipient_name} · ${order.phone} · ${(order.order_items ?? [])
             .map((line) => `${line.quantity}x ${line.name}`)
             .join(", ")} · ${formatPrice(Number(order.total))}`.slice(0, 220)
         : alert.body;
@@ -253,6 +258,7 @@ function VendorDashboard() {
 
 
   async function handleSignOut() {
+    await unregisterMobilePushTokenOnSignOut(unregisterPushToken);
     await queryClient.cancelQueries();
     queryClient.clear();
     await supabase.auth.signOut();
@@ -415,7 +421,7 @@ function VendorDashboard() {
                           {formatDateTime(order.created_at)}
                         </p>
                         <p>
-                          {order.order_items
+                          {(order.order_items ?? [])
                             .map((line) => `${line.quantity}x ${line.name}`)
                             .join(", ")}
                         </p>
@@ -446,7 +452,8 @@ function VendorDashboard() {
                     </Button>
                   )}
                 </div>
-              ))
+                );
+              })
             )}
           </TabsContent>
 
