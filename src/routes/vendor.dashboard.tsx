@@ -279,6 +279,7 @@ function VendorDashboard() {
   const restaurant = dashboard.data?.restaurant ?? null;
   const items = dashboard.data?.items ?? [];
   const orders = dashboard.data?.orders ?? [];
+  const ordersById = new Map(orders.map((order) => [order.id, order]));
   const unreadOrderIds = new Set(unreadAlerts.map((alert) => alert.order_id));
   const activeOrders = orders.filter(
     (order) => order.status !== "delivered" && order.status !== "cancelled",
