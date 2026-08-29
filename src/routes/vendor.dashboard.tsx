@@ -233,16 +233,23 @@ function VendorDashboard() {
       notifiedAlertIds.current = new Set(loadSeenAlertIds());
     }
     const seen = notifiedAlertIds.current;
+    const ordersById = new Map((dashboard.data?.orders ?? []).map((order) => [order.id, order]));
     let changed = false;
     for (const alert of unreadAlerts) {
       if (seen.has(alert.id)) continue;
       seen.add(alert.id);
       changed = true;
       toast.success(alert.title || "Yeni sipariş", { description: alert.body });
-      showNativeNotification(alert.title || "Yeni sipariş", alert.body);
+      const order = ordersById.get(alert.order_id);
+      const body = order
+        ? `${order.recipient_name} · ${order.phone} · ${order.order_items
+            .map((line) => `${line.quantity}x ${line.name}`)
+            .join(", ")} · ${formatPrice(Number(order.total))}`.slice(0, 220)
+        : alert.body;
+      showNativeNotification("Yeni sipariş", body);
     }
     if (changed) saveSeenAlertIds(seen);
-  }, [unreadAlerts]);
+  }, [unreadAlerts, dashboard.data?.orders]);
 
 
   async function handleSignOut() {
