@@ -19,6 +19,7 @@ import {
   showNativeNotification,
   loadSeenAlertIds,
   saveSeenAlertIds,
+  VENDOR_ORDERS_ROUTE,
 } from "@/lib/native-notify";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -56,7 +57,21 @@ import { changeVendorPassword } from "@/lib/vendor-auth.functions";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+const VENDOR_TABS = ["siparisler", "bildirimler", "urunler", "gorseller", "guvenlik"] as const;
+type VendorTab = (typeof VENDOR_TABS)[number];
+
+function parseVendorTab(value: unknown): VendorTab {
+  return typeof value === "string" && (VENDOR_TABS as readonly string[]).includes(value)
+    ? (value as VendorTab)
+    : "siparisler";
+}
+
 export const Route = createFileRoute("/vendor/dashboard")({
+  validateSearch: (search: Record<string, unknown>): { tab?: VendorTab } => {
+    const raw = search["tab"];
+    if (raw === undefined || raw === null || raw === "") return {};
+    return { tab: parseVendorTab(raw) };
+  },
   head: () => ({
     meta: [
       { title: "İşletme Paneli — SİLVAN CEBİMDE" },
@@ -142,6 +157,8 @@ function VendorGate() {
 function VendorDashboard() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { tab: tabFromSearch } = Route.useSearch();
+  const activeTab: VendorTab = tabFromSearch ?? "siparisler";
   const { restaurantId } = useAccess();
   useVendorMobileOrderNotification(true);
   const fetchDashboard = useServerFn(getVendorDashboard);
@@ -246,12 +263,23 @@ function VendorDashboard() {
       changed = true;
       toast.success(alert.title || "Yeni sipariş", { description: alert.body });
       const order = ordersById.get(alert.order_id);
+      const orderNo = alert.order_id.replace(/-/g, "").slice(0, 8);
+      const title = order
+        ? `Yeni sipariş #${orderNo}`
+        : alert.title || `Yeni sipariş #${orderNo}`;
       const body = order
-        ? `${order.recipient_name} · ${order.phone} · ${(order.order_items ?? [])
-            .map((line) => `${line.quantity}x ${line.name}`)
-            .join(", ")} · ${formatPrice(Number(order.total))}`.slice(0, 220)
+        ? [
+            formatPrice(Number(order.total)),
+            order.recipient_name,
+            (order.order_items ?? [])
+              .map((line) => `${line.quantity}x ${line.name}`)
+              .join(", "),
+          ]
+            .filter(Boolean)
+            .join(" · ")
+            .slice(0, 220)
         : alert.body;
-      showNativeNotification("Yeni sipariş", body);
+      showNativeNotification(title, body, VENDOR_ORDERS_ROUTE);
     }
     if (changed) saveSeenAlertIds(seen);
   }, [unreadAlerts, dashboard.data?.orders]);
@@ -364,7 +392,17 @@ function VendorDashboard() {
           <StatCard label="Ürün sayısı" value={String(items.length)} />
         </div>
 
-        <Tabs defaultValue="siparisler" className="mt-8">
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => {
+            void navigate({
+              to: "/vendor/dashboard",
+              search: { tab: parseVendorTab(value) },
+              replace: true,
+            });
+          }}
+          className="mt-8"
+        >
           <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
             <TabsTrigger value="siparisler">
               <ClipboardList className="size-4" /> Siparişler

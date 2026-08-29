@@ -6,6 +6,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -60,6 +61,7 @@ public class MainActivity extends Activity {
     private static final int WEB_CAMERA_PERMISSION_REQUEST = 1005;
     private static final int NOTIFICATION_PERMISSION_REQUEST = 1006;
     private static final String ORDER_CHANNEL_ID = "orders";
+    private static final String VENDOR_ORDERS_ROUTE = "/vendor/dashboard?tab=siparisler";
     private static final int LOAD_TIMEOUT_MS = 25000;
 
     private WebView webView;
@@ -745,7 +747,14 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void showNotification(final String title, final String body) {
-            runOnUiThread(() -> postOrderNotification(title, body));
+            runOnUiThread(() -> postOrderNotification(title, body, VENDOR_ORDERS_ROUTE));
+        }
+
+        @JavascriptInterface
+        public void showNotification(final String title, final String body, final String route) {
+            final String resolved =
+                    route == null || route.trim().isEmpty() ? VENDOR_ORDERS_ROUTE : route.trim();
+            runOnUiThread(() -> postOrderNotification(title, body, resolved));
         }
 
         @JavascriptInterface
@@ -762,6 +771,15 @@ public class MainActivity extends Activity {
     private boolean loadIncomingPushRoute(Intent intent) {
         if (intent == null || webView == null) return false;
         String route = intent.getStringExtra("deep_link_route");
+        if (route == null || route.trim().isEmpty()) {
+            route = intent.getStringExtra("route");
+        }
+        // FCM sistem tepsisi bazen extras'ı Bundle içinde tutar.
+        if ((route == null || route.trim().isEmpty()) && intent.getExtras() != null) {
+            Object nested = intent.getExtras().get("deep_link_route");
+            if (nested == null) nested = intent.getExtras().get("route");
+            if (nested != null) route = String.valueOf(nested);
+        }
         if (route == null || route.trim().isEmpty()) return false;
         String normalized = route.trim();
         if (!normalized.startsWith("/")) normalized = "/" + normalized;
@@ -771,6 +789,7 @@ public class MainActivity extends Activity {
         webView.loadUrl(APP_URL.replaceAll("/$", "") + normalized);
         scheduleLoadTimeout();
         intent.removeExtra("deep_link_route");
+        intent.removeExtra("route");
         return true;
     }
 
@@ -1208,7 +1227,7 @@ public class MainActivity extends Activity {
         );
     }
 
-    private void postOrderNotification(String title, String body) {
+    private void postOrderNotification(String title, String body, String route) {
         if (title == null || title.trim().isEmpty()) return;
         if (Build.VERSION.SDK_INT >= 33
                 && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
@@ -1216,12 +1235,30 @@ public class MainActivity extends Activity {
             requestNotificationPermissionIfNeeded();
             return;
         }
+        String resolvedRoute =
+                route == null || route.trim().isEmpty() ? VENDOR_ORDERS_ROUTE : route.trim();
+        if (!resolvedRoute.startsWith("/")) resolvedRoute = "/" + resolvedRoute;
+
+        Intent launch = new Intent(this, MainActivity.class);
+        launch.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        launch.putExtra("deep_link_route", resolvedRoute);
+        launch.putExtra("route", resolvedRoute);
+
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            flags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+        // requestCode: farklı rotaların PendingIntent çakışmasını azalt.
+        int requestCode = resolvedRoute.hashCode();
+        PendingIntent pending = PendingIntent.getActivity(this, requestCode, launch, flags);
+
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, ORDER_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_notify)
                 .setContentTitle(title.trim())
                 .setContentText(body == null ? "" : body.trim())
                 .setAutoCancel(true)
-                .setPriority(NotificationCompat.PRIORITY_HIGH);
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setContentIntent(pending);
         NotificationManager manager = getSystemService(NotificationManager.class);
         if (manager != null) {
             manager.notify((int) System.currentTimeMillis(), builder.build());

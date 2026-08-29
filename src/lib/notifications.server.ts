@@ -97,7 +97,7 @@ export async function notifyVendorUsersOfNewOrder(input: {
         body: input.body,
         orderId: input.orderId,
         restaurantId: input.restaurantId,
-        route: "/vendor/dashboard",
+        route: "/vendor/dashboard?tab=siparisler",
         dedupKey: `order-new-vendor:${input.orderId}:${userId}`,
       }),
     ),
@@ -356,6 +356,7 @@ async function sendFcmMessage(
           },
           data: {
             route: payload.route ?? "/bildirimler",
+            deep_link_route: payload.route ?? "/bildirimler",
             title: payload.title,
             body: payload.body,
           },

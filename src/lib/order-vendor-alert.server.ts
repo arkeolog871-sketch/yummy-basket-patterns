@@ -32,6 +32,11 @@ function joinAddress(parts: Array<string | null | undefined>): string {
   return parts.map((part) => (part ?? "").trim()).filter(Boolean).join(", ");
 }
 
+/** Sipariş kartlarıyla uyumlu kısa numara (UUID ilk 8 karakter). */
+function shortOrderNumber(orderId: string): string {
+  return orderId.replace(/-/g, "").slice(0, 8);
+}
+
 /** Sipariş kaydından sonra işletmeye in-app + e-posta. Hata siparişi geri almaz. */
 export async function notifyVendorOfNewOrder(orderId: string): Promise<void> {
   try {
@@ -115,8 +120,20 @@ async function notifyVendorOfNewOrderUnsafe(orderId: string): Promise<void> {
   }));
   const address = joinAddress([order.street, order.district, order.city, order.directions]);
   const totalLabel = formatPrice(Number(order.total));
-  const title = "Yeni sipariş";
-  const body = `${restaurant.name} · ${totalLabel} · ${order.recipient_name}`;
+  const orderNo = shortOrderNumber(order.id);
+  const itemSummary = lines
+    .slice(0, 4)
+    .map((line) => `${line.quantity}x ${line.name}`)
+    .join(", ");
+  const title = `Yeni sipariş #${orderNo}`;
+  const body = [
+    totalLabel,
+    (order.recipient_name ?? "").trim() || null,
+    itemSummary || null,
+  ]
+    .filter(Boolean)
+    .join(" · ")
+    .slice(0, 280);
 
   try {
     await deliverInAppAlert({
