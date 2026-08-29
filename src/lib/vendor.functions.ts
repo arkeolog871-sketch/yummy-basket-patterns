@@ -82,9 +82,9 @@ export const getVendorDashboard = createServerFn({ method: "GET" })
           .select("id, order_id, title, body, created_at, read_at")
           .eq("restaurant_id", restaurantId)
           .eq("channel", "in_app")
-          .is("read_at", null)
           .order("created_at", { ascending: false })
-          .limit(20),
+          .limit(40),
+
       ]);
 
       const firstError =

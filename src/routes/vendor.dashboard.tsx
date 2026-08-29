@@ -12,9 +12,16 @@ import {
   Package,
   ExternalLink,
   KeyRound,
+  Bell,
   Image as ImageIcon,
 } from "lucide-react";
+import {
+  showNativeNotification,
+  loadSeenAlertIds,
+  saveSeenAlertIds,
+} from "@/lib/native-notify";
 import { supabase } from "@/integrations/supabase/client";
+
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import { AccessDenied } from "@/components/auth/AccessDenied";
 import { EmptyState } from "@/components/vendor/EmptyState";
@@ -222,16 +229,33 @@ function VendorDashboard() {
     onSuccess: () => invalidate(),
   });
 
-  const unreadAlerts = dashboard.data?.alerts ?? [];
-  const toastedAlertIds = useRef(new Set<string>());
+  const allAlerts = dashboard.data?.alerts ?? [];
+  const unreadAlerts = allAlerts.filter((alert) => !alert.read_at);
+  const notifiedAlertIds = useRef<Set<string> | null>(null);
 
   useEffect(() => {
-    for (const alert of unreadAlerts) {
-      if (toastedAlertIds.current.has(alert.id)) continue;
-      toastedAlertIds.current.add(alert.id);
-      toast.success("Yeni sipariş", { description: alert.body });
+    if (!notifiedAlertIds.current) {
+      notifiedAlertIds.current = new Set(loadSeenAlertIds());
     }
-  }, [unreadAlerts]);
+    const seen = notifiedAlertIds.current;
+    const ordersById = new Map((dashboard.data?.orders ?? []).map((order) => [order.id, order]));
+    let changed = false;
+    for (const alert of unreadAlerts) {
+      if (seen.has(alert.id)) continue;
+      seen.add(alert.id);
+      changed = true;
+      toast.success(alert.title || "Yeni sipariş", { description: alert.body });
+      const order = ordersById.get(alert.order_id);
+      const body = order
+        ? `${order.recipient_name} · ${order.phone} · ${order.order_items
+            .map((line) => `${line.quantity}x ${line.name}`)
+            .join(", ")} · ${formatPrice(Number(order.total))}`.slice(0, 220)
+        : alert.body;
+      showNativeNotification("Yeni sipariş", body);
+    }
+    if (changed) saveSeenAlertIds(seen);
+  }, [unreadAlerts, dashboard.data?.orders]);
+
 
   async function handleSignOut() {
     await unregisterMobilePushTokenOnSignOut(unregisterPushToken);
@@ -261,6 +285,7 @@ function VendorDashboard() {
   const restaurant = dashboard.data?.restaurant ?? null;
   const items = dashboard.data?.items ?? [];
   const orders = dashboard.data?.orders ?? [];
+  const ordersById = new Map(orders.map((order) => [order.id, order]));
   const unreadOrderIds = new Set(unreadAlerts.map((alert) => alert.order_id));
   const activeOrders = orders.filter(
     (order) => order.status !== "delivered" && order.status !== "cancelled",
@@ -344,6 +369,14 @@ function VendorDashboard() {
             <TabsTrigger value="siparisler">
               <ClipboardList className="size-4" /> Siparişler
             </TabsTrigger>
+            <TabsTrigger value="bildirimler">
+              <Bell className="size-4" /> Bildirimler
+              {unreadAlerts.length > 0 ? (
+                <span className="ml-1 inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+                  {unreadAlerts.length}
+                </span>
+              ) : null}
+            </TabsTrigger>
             <TabsTrigger value="urunler">
               <Package className="size-4" /> Ürünler ve stok
             </TabsTrigger>
@@ -351,10 +384,78 @@ function VendorDashboard() {
               <ImageIcon className="size-4" /> Görseller
             </TabsTrigger>
             <TabsTrigger value="guvenlik">
-
               <KeyRound className="size-4" /> Şifre
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="bildirimler" className="mt-6 space-y-3">
+            {allAlerts.length === 0 ? (
+              <EmptyState
+                title="Bildirim yok"
+                description="Yeni sipariş geldiğinde bildirimler burada anlık olarak listelenir."
+              />
+            ) : (
+              allAlerts.map((alert) => {
+                const order = ordersById.get(alert.order_id);
+                return (
+                <div
+                  key={alert.id}
+                  className={`flex flex-wrap items-center justify-between gap-3 rounded-3xl border p-4 ${
+                    alert.read_at ? "border-border bg-card" : "border-primary/40 bg-primary/5"
+                  }`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold">
+                      {order ? order.recipient_name : alert.title || "Yeni sipariş"}
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        {alert.read_at ? "Okundu" : "Okunmadı"}
+                      </span>
+                    </p>
+                    {order ? (
+                      <div className="mt-1 space-y-1 text-sm text-muted-foreground">
+                        <p>
+                          <span className="font-medium text-foreground">{order.phone}</span>
+                          {" · "}
+                          Sipariş #{alert.order_id.slice(0, 8)}
+                          {" · "}
+                          {formatDateTime(order.created_at)}
+                        </p>
+                        <p>
+                          {order.order_items
+                            .map((line) => `${line.quantity}x ${line.name}`)
+                            .join(", ")}
+                        </p>
+                        <p className="font-medium text-foreground">
+                          Toplam: {formatPrice(Number(order.total))}
+                        </p>
+                        <p>
+                          {order.street}, {order.district} / {order.city}
+                        </p>
+                        {order.note ? <p>Müşteri notu: {order.note}</p> : null}
+                      </div>
+                    ) : (
+                      <p className="mt-1 text-sm text-muted-foreground">{alert.body}</p>
+                    )}
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {formatDateTime(alert.created_at)}
+                    </p>
+                  </div>
+                  {alert.read_at ? null : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-full"
+                      disabled={alertReadMutation.isPending}
+                      onClick={() => alertReadMutation.mutate(alert.id)}
+                    >
+                      Okundu
+                    </Button>
+                  )}
+                </div>
+              ))
+            )}
+          </TabsContent>
+
 
           <TabsContent value="siparisler" className="mt-6 space-y-3">
             {unreadAlerts.map((alert) => (
