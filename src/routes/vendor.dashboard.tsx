@@ -12,9 +12,16 @@ import {
   Package,
   ExternalLink,
   KeyRound,
+  Bell,
   Image as ImageIcon,
 } from "lucide-react";
+import {
+  showNativeNotification,
+  loadSeenAlertIds,
+  saveSeenAlertIds,
+} from "@/lib/native-notify";
 import { supabase } from "@/integrations/supabase/client";
+
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import { AccessDenied } from "@/components/auth/AccessDenied";
 import { EmptyState } from "@/components/vendor/EmptyState";
@@ -217,16 +224,26 @@ function VendorDashboard() {
     onSuccess: () => invalidate(),
   });
 
-  const unreadAlerts = dashboard.data?.alerts ?? [];
-  const toastedAlertIds = useRef(new Set<string>());
+  const allAlerts = dashboard.data?.alerts ?? [];
+  const unreadAlerts = allAlerts.filter((alert) => !alert.read_at);
+  const notifiedAlertIds = useRef<Set<string> | null>(null);
 
   useEffect(() => {
-    for (const alert of unreadAlerts) {
-      if (toastedAlertIds.current.has(alert.id)) continue;
-      toastedAlertIds.current.add(alert.id);
-      toast.success("Yeni sipariş", { description: alert.body });
+    if (!notifiedAlertIds.current) {
+      notifiedAlertIds.current = new Set(loadSeenAlertIds());
     }
+    const seen = notifiedAlertIds.current;
+    let changed = false;
+    for (const alert of unreadAlerts) {
+      if (seen.has(alert.id)) continue;
+      seen.add(alert.id);
+      changed = true;
+      toast.success(alert.title || "Yeni sipariş", { description: alert.body });
+      showNativeNotification(alert.title || "Yeni sipariş", alert.body);
+    }
+    if (changed) saveSeenAlertIds(seen);
   }, [unreadAlerts]);
+
 
   async function handleSignOut() {
     await queryClient.cancelQueries();
@@ -338,6 +355,14 @@ function VendorDashboard() {
             <TabsTrigger value="siparisler">
               <ClipboardList className="size-4" /> Siparişler
             </TabsTrigger>
+            <TabsTrigger value="bildirimler">
+              <Bell className="size-4" /> Bildirimler
+              {unreadAlerts.length > 0 ? (
+                <span className="ml-1 inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+                  {unreadAlerts.length}
+                </span>
+              ) : null}
+            </TabsTrigger>
             <TabsTrigger value="urunler">
               <Package className="size-4" /> Ürünler ve stok
             </TabsTrigger>
@@ -345,10 +370,52 @@ function VendorDashboard() {
               <ImageIcon className="size-4" /> Görseller
             </TabsTrigger>
             <TabsTrigger value="guvenlik">
-
               <KeyRound className="size-4" /> Şifre
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="bildirimler" className="mt-6 space-y-3">
+            {allAlerts.length === 0 ? (
+              <EmptyState
+                title="Bildirim yok"
+                description="Yeni sipariş geldiğinde bildirimler burada anlık olarak listelenir."
+              />
+            ) : (
+              allAlerts.map((alert) => (
+                <div
+                  key={alert.id}
+                  className={`flex flex-wrap items-center justify-between gap-3 rounded-3xl border p-4 ${
+                    alert.read_at ? "border-border bg-card" : "border-primary/40 bg-primary/5"
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <p className="font-semibold">
+                      {alert.title || "Yeni sipariş"}
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        {alert.read_at ? "Okundu" : "Okunmadı"}
+                      </span>
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">{alert.body}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {formatDateTime(alert.created_at)}
+                    </p>
+                  </div>
+                  {alert.read_at ? null : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-full"
+                      disabled={alertReadMutation.isPending}
+                      onClick={() => alertReadMutation.mutate(alert.id)}
+                    >
+                      Okundu
+                    </Button>
+                  )}
+                </div>
+              ))
+            )}
+          </TabsContent>
+
 
           <TabsContent value="siparisler" className="mt-6 space-y-3">
             {unreadAlerts.map((alert) => (
