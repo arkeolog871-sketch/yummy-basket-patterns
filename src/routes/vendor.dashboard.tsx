@@ -242,7 +242,7 @@ function VendorDashboard() {
       toast.success(alert.title || "Yeni sipariş", { description: alert.body });
       const order = ordersById.get(alert.order_id);
       const body = order
-        ? `${order.recipient_name} · ${order.phone} · ${order.order_items
+        ? `${order.recipient_name} · ${order.phone} · ${(order.order_items ?? [])
             .map((line) => `${line.quantity}x ${line.name}`)
             .join(", ")} · ${formatPrice(Number(order.total))}`.slice(0, 220)
         : alert.body;
@@ -392,61 +392,62 @@ function VendorDashboard() {
               allAlerts.map((alert) => {
                 const order = ordersById.get(alert.order_id);
                 return (
-                <div
-                  key={alert.id}
-                  className={`flex flex-wrap items-center justify-between gap-3 rounded-3xl border p-4 ${
-                    alert.read_at ? "border-border bg-card" : "border-primary/40 bg-primary/5"
-                  }`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold">
-                      {order ? order.recipient_name : alert.title || "Yeni sipariş"}
-                      <span className="ml-2 text-xs font-normal text-muted-foreground">
-                        {alert.read_at ? "Okundu" : "Okunmadı"}
-                      </span>
-                    </p>
-                    {order ? (
-                      <div className="mt-1 space-y-1 text-sm text-muted-foreground">
-                        <p>
-                          <span className="font-medium text-foreground">{order.phone}</span>
-                          {" · "}
-                          Sipariş #{alert.order_id.slice(0, 8)}
-                          {" · "}
-                          {formatDateTime(order.created_at)}
-                        </p>
-                        <p>
-                          {order.order_items
-                            .map((line) => `${line.quantity}x ${line.name}`)
-                            .join(", ")}
-                        </p>
-                        <p className="font-medium text-foreground">
-                          Toplam: {formatPrice(Number(order.total))}
-                        </p>
-                        <p>
-                          {order.street}, {order.district} / {order.city}
-                        </p>
-                        {order.note ? <p>Müşteri notu: {order.note}</p> : null}
-                      </div>
-                    ) : (
-                      <p className="mt-1 text-sm text-muted-foreground">{alert.body}</p>
+                  <div
+                    key={alert.id}
+                    className={`flex flex-wrap items-center justify-between gap-3 rounded-3xl border p-4 ${
+                      alert.read_at ? "border-border bg-card" : "border-primary/40 bg-primary/5"
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold">
+                        {order ? order.recipient_name : alert.title || "Yeni sipariş"}
+                        <span className="ml-2 text-xs font-normal text-muted-foreground">
+                          {alert.read_at ? "Okundu" : "Okunmadı"}
+                        </span>
+                      </p>
+                      {order ? (
+                        <div className="mt-1 space-y-1 text-sm text-muted-foreground">
+                          <p>
+                            <span className="font-medium text-foreground">{order.phone}</span>
+                            {" · "}
+                            Sipariş #{alert.order_id.slice(0, 8)}
+                            {" · "}
+                            {formatDateTime(order.created_at)}
+                          </p>
+                          <p>
+                            {(order.order_items ?? [])
+                              .map((line) => `${line.quantity}x ${line.name}`)
+                              .join(", ")}
+                          </p>
+                          <p className="font-medium text-foreground">
+                            Toplam: {formatPrice(Number(order.total))}
+                          </p>
+                          <p>
+                            {order.street}, {order.district} / {order.city}
+                          </p>
+                          {order.note ? <p>Müşteri notu: {order.note}</p> : null}
+                        </div>
+                      ) : (
+                        <p className="mt-1 text-sm text-muted-foreground">{alert.body}</p>
+                      )}
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {formatDateTime(alert.created_at)}
+                      </p>
+                    </div>
+                    {alert.read_at ? null : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-full"
+                        disabled={alertReadMutation.isPending}
+                        onClick={() => alertReadMutation.mutate(alert.id)}
+                      >
+                        Okundu
+                      </Button>
                     )}
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {formatDateTime(alert.created_at)}
-                    </p>
                   </div>
-                  {alert.read_at ? null : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="rounded-full"
-                      disabled={alertReadMutation.isPending}
-                      onClick={() => alertReadMutation.mutate(alert.id)}
-                    >
-                      Okundu
-                    </Button>
-                  )}
-                </div>
-              ))
+                );
+              })
             )}
           </TabsContent>
 
