@@ -157,9 +157,10 @@ export function Header() {
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <TextPrefsPanel />
           {user ? (
-            <Button asChild variant="outline" size="icon" className="relative rounded-full" aria-label="Bildirimler">
+            <Button asChild variant="outline" className="relative rounded-full">
               <Link to="/bildirimler">
                 <Bell className="size-4" />
+                <span className="hidden sm:inline">Bildirimler</span>
                 {unreadCount > 0 ? (
                   <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-accent text-[11px] font-semibold text-accent-foreground">
                     {unreadCount > 9 ? "9+" : unreadCount}

@@ -7,7 +7,7 @@ type SilvanNativeBridge = {
 declare global {
   interface Window {
     SilvanNative?: SilvanNativeBridge;
-    __onNativeFcmToken?: (token: string) => void;
+    __onNativeFcmToken?: ((token: string) => void) | undefined;
   }
 }
 

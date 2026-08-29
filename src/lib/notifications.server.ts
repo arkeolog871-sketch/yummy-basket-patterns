@@ -43,7 +43,7 @@ export async function deliverUserNotification(input: CreateNotificationInput): P
     void sendPushToUsers([input.userId], {
       title: input.title,
       body: input.body,
-      route: input.route,
+      route: input.route ?? null,
     }).catch((error) => {
       console.error("[notifications] push dispatch failed", {
         kind: input.kind,

@@ -247,7 +247,7 @@ function VendorDashboard() {
       toast.success(alert.title || "Yeni sipariş", { description: alert.body });
       const order = ordersById.get(alert.order_id);
       const body = order
-        ? `${order.recipient_name} · ${order.phone} · ${order.order_items
+        ? `${order.recipient_name} · ${order.phone} · ${(order.order_items ?? [])
             .map((line) => `${line.quantity}x ${line.name}`)
             .join(", ")} · ${formatPrice(Number(order.total))}`.slice(0, 220)
         : alert.body;
@@ -421,7 +421,7 @@ function VendorDashboard() {
                           {formatDateTime(order.created_at)}
                         </p>
                         <p>
-                          {order.order_items
+                          {(order.order_items ?? [])
                             .map((line) => `${line.quantity}x ${line.name}`)
                             .join(", ")}
                         </p>
@@ -452,7 +452,8 @@ function VendorDashboard() {
                     </Button>
                   )}
                 </div>
-              ))
+                );
+              })
             )}
           </TabsContent>
 
