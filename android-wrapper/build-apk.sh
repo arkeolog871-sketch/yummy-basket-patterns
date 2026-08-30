@@ -28,8 +28,14 @@ export JAVA_HOME="$(dirname "$(dirname "$JAVA_BIN")")"
 
 printf 'sdk.dir=%s\n' "$ANDROID_HOME" > "$ROOT/local.properties"
 
-# Mevcut iOS Firebase plist'ten Android google-services.json üret (gitignore).
-node "$(cd "$ROOT/.." && pwd)/scripts/sync-android-firebase-config.mjs"
+# google-services.json varsa doğrula; yoksa FCM kapalı derlemeye izin ver (secret uydurma).
+if node "$(cd "$ROOT/.." && pwd)/scripts/sync-android-firebase-config.mjs"; then
+  echo "Firebase Android config hazır."
+else
+  echo "UYARI: android-wrapper/app/google-services.json yok veya geçersiz." >&2
+  echo "UYARI: Release APK yerel bildirimle derlenir; kapalı-uygulama FCM bu pakette çalışmaz." >&2
+  echo "UYARI: Firebase Console'dan gerçek google-services.json ekleyin (gitignore'da)." >&2
+fi
 
 if [[ -x "$ROOT/gradlew" ]]; then
   "$ROOT/gradlew" --no-daemon :app:assembleRelease

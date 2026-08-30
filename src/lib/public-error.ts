@@ -47,11 +47,14 @@ function sanitizeMessage(message: string, fallback: string): string {
     return "Bu işlem için yetkiniz yok.";
   }
   if (
-    /permission denied|PGRST|JWT|column|relation|violates|supabase|stack|ECONN|fetch failed|nosuchbucket|bucket not found|service[_-]?role|LOVABLE_API_KEY|GOOGLE_OAUTH_CLIENT_SECRET|SUPABASE_SERVICE_ROLE|Bearer\s+eyJ|(?:sk|pk)_live/i.test(
+    /permission denied|PGRST|JWT|column|relation|violates|supabase|stack|ECONN|fetch failed|nosuchbucket|bucket not found|service[_-]?role|LOVABLE_API_KEY|GOOGLE_OAUTH_CLIENT_SECRET|SUPABASE_SERVICE_ROLE|FIREBASE_(?:CLIENT_EMAIL|PRIVATE_KEY|PROJECT_ID)|PRIVATE_KEY|BEGIN PRIVATE KEY|firebase-adminsdk|Bearer\s+eyJ|(?:sk|pk)_live/i.test(
       text,
     )
   ) {
     return fallback;
+  }
+  if (/push yapılandırması|cihaz bildirimi gönderilemedi|fcm/i.test(text)) {
+    return "Bildirim kaydı alındı ancak cihaz bildirimi şu an gönderilemiyor. Daha sonra tekrar deneyin.";
   }
   if (text.startsWith("<!doctype") || text.startsWith("<html")) {
     return fallback;

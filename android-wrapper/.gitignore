@@ -10,3 +10,7 @@ captures/
 dist/
 app/src/main/assets/adi-registration.properties
 google-services.json
+**/google-services.json
+*-firebase-adminsdk-*.json
+*firebase-adminsdk*.json
+*service-account*.json

@@ -107,9 +107,9 @@ export function NotificationsPanel() {
           description: `Hedeflenen: ${result.targetCount} · Başarılı: ${result.successCount} · Başarısız: ${result.failureCount}`,
         });
         if (!result.pushConfigured) {
-          toast.message("Push yapılandırması eksik", {
+          toast.message("Cihaz bildirimi gönderilemedi", {
             description:
-              "FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY tanımlı değil. Uygulama içi kayıt oluştu; cihaz push'u atlandı.",
+              "Uygulama içi bildirim kaydı oluştu. Sunucu push yapılandırması henüz tamamlanmadığı için telefon bildirimi atlandı.",
           });
         }
         setTitle("");

@@ -19,6 +19,33 @@ cp app/build/outputs/apk/release/app-release.apk ../public/silvan-cebimde.apk
 variables are present. Keep the keystore outside the checkout and rotate the
 previously exposed signing credentials before publishing a new release.
 
+## Firebase / FCM (Android)
+
+Kapalı uygulama push için Firebase Android config gerekir. **Gerçek dosyayı
+repoya commit etmeyin** (`.gitignore` engeller).
+
+1. Firebase Console → project `silvan-cebimde` → Android app
+   (`online.uygulamamcebimde.app`) → `google-services.json` indirin.
+2. Dosyayı şuraya koyun (gitignore):
+
+```bash
+cp /secure/path/google-services.json android-wrapper/app/google-services.json
+```
+
+3. Doğrulama (secret yazdırmaz):
+
+```bash
+npm run android:firebase-config
+# veya production kapısı:
+npm run notification:preflight -- --strict
+```
+
+`app/build.gradle.kts` yalnızca dosya varsa `google-services` plugin'ini
+uygular; dosya yokken debug/release derlemesi çökmez, FCM token alınamaz
+ve yerel `SilvanNative.showNotification` köprüsü çalışmaya devam eder.
+
+Örnek şablon (placeholder API key): `android-wrapper/google-services.json.example`.
+
 Debug (unsigned, sideload) APK:
 
 ```bash

@@ -84,6 +84,8 @@ describe("notifications infrastructure", () => {
     expect(panel).toMatch(/AlertDialog/);
     expect(panel).toMatch(/idempotencyKey/);
     expect(panel).toMatch(/Gönderim geçmişi/);
+    expect(panel).toMatch(/Cihaz bildirimi gönderilemedi/);
+    expect(panel).not.toMatch(/FIREBASE_CLIENT_EMAIL|FIREBASE_PRIVATE_KEY/);
     expect(source("src/routes/bildirimler.tsx")).toMatch(/Bildirimler/);
     expect(source("src/routes/kurucu.tsx")).toMatch(/NotificationsPanel/);
     expect(source("src/lib/vendor-mobile-notification.functions.ts")).toMatch(
