@@ -446,7 +446,9 @@ function VendorDashboard() {
                     </Button>
                   )}
                 </div>
-              ))
+                );
+              })
+
             )}
           </TabsContent>
 
