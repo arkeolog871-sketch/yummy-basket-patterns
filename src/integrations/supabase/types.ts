@@ -325,6 +325,123 @@ export type Database = {
         }
         Relationships: []
       }
+      device_push_tokens: {
+        Row: {
+          id: string
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          platform: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          platform?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notification_broadcasts: {
+        Row: {
+          audience: string
+          body: string
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          failure_count: number
+          id: string
+          idempotency_key: string
+          restaurant_id: string | null
+          status: string
+          success_count: number
+          target_count: number
+          target_user_id: string | null
+          title: string
+        }
+        Insert: {
+          audience: string
+          body: string
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          failure_count?: number
+          id?: string
+          idempotency_key: string
+          restaurant_id?: string | null
+          status?: string
+          success_count?: number
+          target_count?: number
+          target_user_id?: string | null
+          title: string
+        }
+        Update: {
+          audience?: string
+          body?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          failure_count?: number
+          id?: string
+          idempotency_key?: string
+          restaurant_id?: string | null
+          status?: string
+          success_count?: number
+          target_count?: number
+          target_user_id?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      user_notifications: {
+        Row: {
+          body: string
+          created_at: string
+          dedup_key: string
+          id: string
+          kind: string
+          order_id: string | null
+          read_at: string | null
+          restaurant_id: string | null
+          route: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          dedup_key: string
+          id?: string
+          kind: string
+          order_id?: string | null
+          read_at?: string | null
+          restaurant_id?: string | null
+          route?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          dedup_key?: string
+          id?: string
+          kind?: string
+          order_id?: string | null
+          read_at?: string | null
+          restaurant_id?: string | null
+          route?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       maps_config: {
         Row: {
           allowed_referrers: string | null

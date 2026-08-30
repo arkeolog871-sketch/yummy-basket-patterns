@@ -1,0 +1,7 @@
+# Copy to signing.properties (gitignored) and fill with your local keystore paths.
+# Never commit signing.properties or the keystore file.
+#
+# android.keystorePath=signing/release.keystore
+# android.keystorePassword=YOUR_STORE_PASSWORD
+# android.keyAlias=release
+# android.keyPassword=YOUR_KEY_PASSWORD

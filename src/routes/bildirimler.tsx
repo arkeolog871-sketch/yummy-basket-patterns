@@ -1,101 +1,145 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Bell } from "lucide-react";
-import { listMyOrders } from "@/lib/orders.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { Bell, CheckCheck } from "lucide-react";
 import { RequireAuth } from "@/components/auth/RequireAuth";
-import { formatPrice, formatDateTime, ORDER_STATUS_LABELS } from "@/lib/format";
+import { useNotifications } from "@/hooks/useNotifications";
+import { getMyOrder } from "@/lib/orders.functions";
+import { formatDateTime, formatPrice, ORDER_STATUS_LABELS } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/bildirimler")({
   head: () => ({
-    meta: [
-      { title: "Bildirimler — SİLVAN CEBİMDE" },
-      { name: "description", content: "Sipariş durumu bildirimlerinizi SİLVAN CEBİMDE üzerinden takip edin." },
-      { property: "og:title", content: "Bildirimler — SİLVAN CEBİMDE" },
-      { property: "og:description", content: "Sipariş durumu bildirimlerinizi görüntüleyin." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
+    meta: [{ title: "Bildirimler — SİLVAN CEBİMDE" }, { name: "robots", content: "noindex" }],
   }),
   component: () => (
-    <RequireAuth requireVerified>
+    <RequireAuth>
       <NotificationsPage />
     </RequireAuth>
   ),
 });
 
 function NotificationsPage() {
-  const fetchOrders = useServerFn(listMyOrders);
-  const { data: orders = [], isLoading, isError, refetch } = useQuery({
-    queryKey: ["orders"],
-    queryFn: () => fetchOrders(),
-    refetchInterval: 15000,
-  });
-
-  const active = orders.filter((o) => o.status !== "delivered" && o.status !== "cancelled");
+  const { items, unreadCount, loading, markRead, markAllRead } = useNotifications();
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-10">
-      <h1 className="flex items-center gap-2 text-3xl">
-        <Bell className="size-7 text-accent" /> Bildirimler
-      </h1>
-
-      {isLoading ? (
-        <p className="mt-6 text-sm text-muted-foreground">Yükleniyor…</p>
-      ) : isError ? (
-        <div className="mt-10 rounded-3xl border border-dashed border-border bg-card p-10 text-center">
-          <p className="font-semibold">Bildirimler yüklenemedi</p>
-          <Button className="mt-5 rounded-full" onClick={() => void refetch()}>
-            Tekrar dene
-          </Button>
-        </div>
-      ) : orders.length === 0 ? (
-        <div className="mt-10 rounded-3xl border border-dashed border-border bg-card p-10 text-center">
-          <p className="font-semibold">Henüz bildiriminiz yok</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Sipariş verdiğinizde durum bildirimleri burada görünür.
-          </p>
-          <Button asChild className="mt-5 rounded-full">
-            <Link to="/restoranlar">Restoranları keşfet</Link>
-          </Button>
-        </div>
-      ) : (
-        <div className="mt-6 space-y-3">
-          {active.length > 0 ? (
-            <p className="text-sm font-medium text-muted-foreground">
-              {active.length} aktif sipariş bildirimi
-            </p>
+    <div className="mx-auto w-full max-w-2xl px-4 py-8">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Bell className="size-6 text-primary" />
+          <h1 className="font-display text-2xl font-semibold">Bildirimler</h1>
+          {unreadCount > 0 ? (
+            <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
+              {unreadCount}
+            </span>
           ) : null}
-          {orders.map((order) => (
-            <Link
-              key={order.id}
-              to="/siparis/$id"
-              params={{ id: order.id }}
-              className="flex items-start gap-4 rounded-3xl border border-border/70 bg-card p-4 shadow-card transition-colors hover:border-primary/40"
-            >
-              <span
-                className={`mt-1 size-2.5 shrink-0 rounded-full ${
-                  order.status === "delivered" || order.status === "cancelled"
-                    ? "bg-border"
-                    : "bg-accent"
-                }`}
-                aria-hidden
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">
-                  {order.restaurants?.name ?? "Restoran"} —{" "}
-                  {ORDER_STATUS_LABELS[order.status] ?? order.status}
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {formatDateTime(order.created_at)}
-                </p>
-              </div>
-              <p className="font-semibold">{formatPrice(Number(order.total))}</p>
-            </Link>
-          ))}
         </div>
+        {unreadCount > 0 ? (
+          <Button variant="outline" size="sm" onClick={() => void markAllRead()}>
+            <CheckCheck className="mr-1 size-4" />
+            Tümünü okundu işaretle
+          </Button>
+        ) : null}
+      </div>
+
+      {loading ? (
+        <p className="mt-8 text-sm text-muted-foreground">Yükleniyor…</p>
+      ) : items.length === 0 ? (
+        <p className="mt-8 text-sm text-muted-foreground">Henüz bildiriminiz yok.</p>
+      ) : (
+        <ul className="mt-6 space-y-3">
+          {items.map((item) => (
+            <NotificationCard key={item.id} item={item} onMarkRead={() => void markRead(item.id)} />
+          ))}
+        </ul>
       )}
     </div>
+  );
+}
+
+type NotificationItem = {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  order_id: string | null;
+  route: string | null;
+  read_at: string | null;
+  created_at: string;
+};
+
+function NotificationCard({
+  item,
+  onMarkRead,
+}: {
+  item: NotificationItem;
+  onMarkRead: () => void;
+}) {
+  const fetchOrder = useServerFn(getMyOrder);
+  const orderQuery = useQuery({
+    queryKey: ["notification-order", item.order_id],
+    queryFn: () => fetchOrder({ data: { id: item.order_id! } }),
+    enabled: Boolean(item.order_id),
+  });
+  const order = orderQuery.data;
+
+  return (
+    <li
+      className={`rounded-2xl border p-4 ${item.read_at ? "border-border/60 bg-card" : "border-primary/30 bg-primary/5"}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="font-medium">
+            {item.title}
+            <span className="ml-2 text-xs font-normal text-muted-foreground">
+              {item.read_at ? "Okundu" : "Okunmadı"}
+            </span>
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{item.body}</p>
+          {order ? (
+            <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+              <p>
+                Sipariş #{order.id.slice(0, 8)}
+                {" · "}
+                {formatDateTime(order.created_at)}
+                {" · "}
+                {ORDER_STATUS_LABELS[order.status] ?? order.status}
+              </p>
+              {(order.order_items ?? []).length > 0 ? (
+                <p>
+                  {(order.order_items ?? [])
+                    .map((line) => `${line.quantity}x ${line.name}`)
+                    .join(", ")}
+                </p>
+              ) : null}
+              <p className="font-medium text-foreground">
+                Toplam: {formatPrice(Number(order.total))}
+              </p>
+              {order.street ? (
+                <p>{[order.street, order.district, order.city].filter(Boolean).join(", ")}</p>
+              ) : null}
+              {order.note ? <p>Not: {order.note}</p> : null}
+            </div>
+          ) : null}
+          <p className="mt-2 text-xs text-muted-foreground">{formatDateTime(item.created_at)}</p>
+        </div>
+        {!item.read_at ? (
+          <Button variant="ghost" size="sm" onClick={onMarkRead}>
+            Okundu
+          </Button>
+        ) : null}
+      </div>
+      {item.route ? (
+        <a
+          href={item.route}
+          className="mt-3 inline-block text-sm font-medium text-primary hover:underline"
+          onClick={() => {
+            if (!item.read_at) onMarkRead();
+          }}
+        >
+          Detaya git →
+        </a>
+      ) : null}
+    </li>
   );
 }
