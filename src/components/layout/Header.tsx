@@ -159,6 +159,12 @@ export function Header() {
               ) : null}
             </Link>
           </Button>
+          <Button asChild variant="secondary" className="rounded-full">
+            <Link to="/bildirimler" aria-label="Bildirimler">
+              <Bell className="size-4" />
+              <span className="hidden sm:inline">Bildirimler</span>
+            </Link>
+          </Button>
 
           {user ? (
             <DropdownMenu>
