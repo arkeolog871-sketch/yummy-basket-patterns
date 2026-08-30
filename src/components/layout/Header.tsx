@@ -12,6 +12,7 @@ import {
   ChevronDown,
   Crown,
   Store,
+  Bell,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -157,6 +158,12 @@ export function Header() {
                   {itemCount}
                 </span>
               ) : null}
+            </Link>
+          </Button>
+          <Button asChild variant="secondary" className="rounded-full">
+            <Link to="/bildirimler" aria-label="Bildirimler">
+              <Bell className="size-4" />
+              <span className="hidden sm:inline">Bildirimler</span>
             </Link>
           </Button>
 
