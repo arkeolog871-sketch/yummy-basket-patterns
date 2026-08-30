@@ -14,6 +14,7 @@ import { Route as SplatRouteImport } from './routes/$'
 import { Route as AdreslerimRouteImport } from './routes/adreslerim'
 import { Route as AndroidRouteImport } from './routes/android'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as BildirimlerRouteImport } from './routes/bildirimler'
 import { Route as GizlilikPolitikasiRouteImport } from './routes/gizlilik-politikasi'
 import { Route as IndirRouteImport } from './routes/indir'
 import { Route as IphoneRouteImport } from './routes/iphone'
@@ -64,6 +65,11 @@ const AndroidRoute = AndroidRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BildirimlerRoute = BildirimlerRouteImport.update({
+  id: '/bildirimler',
+  path: '/bildirimler',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GizlilikPolitikasiRoute = GizlilikPolitikasiRouteImport.update({
@@ -204,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/adreslerim': typeof AdreslerimRoute
   '/android': typeof AndroidRoute
   '/auth': typeof AuthRoute
+  '/bildirimler': typeof BildirimlerRoute
   '/gizlilik-politikasi': typeof GizlilikPolitikasiRoute
   '/indir': typeof IndirRoute
   '/iphone': typeof IphoneRoute
@@ -237,6 +244,7 @@ export interface FileRoutesByTo {
   '/adreslerim': typeof AdreslerimRoute
   '/android': typeof AndroidRoute
   '/auth': typeof AuthRoute
+  '/bildirimler': typeof BildirimlerRoute
   '/gizlilik-politikasi': typeof GizlilikPolitikasiRoute
   '/indir': typeof IndirRoute
   '/iphone': typeof IphoneRoute
@@ -271,6 +279,7 @@ export interface FileRoutesById {
   '/adreslerim': typeof AdreslerimRoute
   '/android': typeof AndroidRoute
   '/auth': typeof AuthRoute
+  '/bildirimler': typeof BildirimlerRoute
   '/gizlilik-politikasi': typeof GizlilikPolitikasiRoute
   '/indir': typeof IndirRoute
   '/iphone': typeof IphoneRoute
@@ -306,6 +315,7 @@ export interface FileRouteTypes {
     | '/adreslerim'
     | '/android'
     | '/auth'
+    | '/bildirimler'
     | '/gizlilik-politikasi'
     | '/indir'
     | '/iphone'
@@ -339,6 +349,7 @@ export interface FileRouteTypes {
     | '/adreslerim'
     | '/android'
     | '/auth'
+    | '/bildirimler'
     | '/gizlilik-politikasi'
     | '/indir'
     | '/iphone'
@@ -372,6 +383,7 @@ export interface FileRouteTypes {
     | '/adreslerim'
     | '/android'
     | '/auth'
+    | '/bildirimler'
     | '/gizlilik-politikasi'
     | '/indir'
     | '/iphone'
@@ -406,6 +418,7 @@ export interface RootRouteChildren {
   AdreslerimRoute: typeof AdreslerimRoute
   AndroidRoute: typeof AndroidRoute
   AuthRoute: typeof AuthRoute
+  BildirimlerRoute: typeof BildirimlerRoute
   GizlilikPolitikasiRoute: typeof GizlilikPolitikasiRoute
   IndirRoute: typeof IndirRoute
   IphoneRoute: typeof IphoneRoute
@@ -468,6 +481,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bildirimler': {
+      id: '/bildirimler'
+      path: '/bildirimler'
+      fullPath: '/bildirimler'
+      preLoaderRoute: typeof BildirimlerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/gizlilik-politikasi': {
@@ -673,6 +693,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdreslerimRoute: AdreslerimRoute,
   AndroidRoute: AndroidRoute,
   AuthRoute: AuthRoute,
+  BildirimlerRoute: BildirimlerRoute,
   GizlilikPolitikasiRoute: GizlilikPolitikasiRoute,
   IndirRoute: IndirRoute,
   IphoneRoute: IphoneRoute,
