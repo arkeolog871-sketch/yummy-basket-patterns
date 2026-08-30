@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
- * Apply user_notifications + device_push_tokens migration to production Supabase.
+ * Apply notification migrations to production Supabase:
+ *   1) user_notifications + device_push_tokens
+ *   2) notification_broadcasts + token uniqueness
  * Refuses unless:
  *   ALLOW_PRODUCTION_ORDER_MIGRATION=YES
  *   PRODUCTION_DATABASE_URL=postgresql://...wxkyhwkcuiqxxxpawcid...
@@ -13,12 +15,18 @@ import { fileURLToPath } from "node:url";
 import { PRODUCTION_PROJECT_REF, looksLikeProduction } from "./lib/env-safety.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const FILE = join(ROOT, "supabase/migrations/20260828200000_user_notifications_push.sql");
+const FILE_PUSH = join(ROOT, "supabase/migrations/20260828200000_user_notifications_push.sql");
+const FILE_BROADCASTS = join(
+  ROOT,
+  "supabase/migrations/20260830120000_notification_broadcasts.sql",
+);
 const url = process.env.PRODUCTION_DATABASE_URL || "";
 const allowed = process.env.ALLOW_PRODUCTION_ORDER_MIGRATION === "YES";
 
 if (!allowed) {
-  console.error("BLOCKED: set ALLOW_PRODUCTION_ORDER_MIGRATION=YES to apply this file to production.");
+  console.error(
+    "BLOCKED: set ALLOW_PRODUCTION_ORDER_MIGRATION=YES to apply this file to production.",
+  );
   process.exit(3);
 }
 if (!url) {
@@ -46,7 +54,7 @@ function scalar(sql) {
 }
 
 console.log("Preflight: user_notifications (no data rewrite).");
-psql(["-f", FILE]);
+psql(["-f", FILE_PUSH]);
 
 const notifTable = scalar(
   "SELECT count(*) FROM pg_class WHERE relname = 'user_notifications' AND relnamespace = 'public'::regnamespace;",
@@ -86,3 +94,40 @@ if (
   process.exit(1);
 }
 console.log("Applied 20260828200000_user_notifications_push.sql");
+
+console.log("Preflight: notification_broadcasts (no data rewrite).");
+psql(["-f", FILE_BROADCASTS]);
+
+const broadcastTable = scalar(
+  "SELECT count(*) FROM pg_class WHERE relname = 'notification_broadcasts' AND relnamespace = 'public'::regnamespace;",
+);
+const idempotency = scalar(`
+  SELECT count(*) FROM pg_constraint
+  WHERE conrelid = 'public.notification_broadcasts'::regclass
+    AND contype = 'u'
+    AND pg_get_constraintdef(oid) ILIKE '%idempotency_key%';
+`);
+const rlsBroadcast = scalar(
+  "SELECT relrowsecurity FROM pg_class WHERE relname = 'notification_broadcasts' AND relnamespace = 'public'::regnamespace;",
+);
+const tokenUnique = scalar(`
+  SELECT count(*) FROM pg_indexes
+  WHERE schemaname = 'public'
+    AND tablename = 'device_push_tokens'
+    AND indexname = 'device_push_tokens_token_unique';
+`);
+
+console.log(
+  `notification_broadcasts=${broadcastTable} idempotency=${idempotency} rls_broadcast=${rlsBroadcast} token_unique=${tokenUnique}`,
+);
+
+if (
+  broadcastTable !== "1" ||
+  idempotency !== "1" ||
+  rlsBroadcast !== "t" ||
+  tokenUnique !== "1"
+) {
+  console.error("FAIL notification_broadcasts migration postconditions.");
+  process.exit(1);
+}
+console.log("Applied 20260830120000_notification_broadcasts.sql");
