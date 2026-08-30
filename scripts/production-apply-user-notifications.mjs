@@ -121,12 +121,7 @@ console.log(
   `notification_broadcasts=${broadcastTable} idempotency=${idempotency} rls_broadcast=${rlsBroadcast} token_unique=${tokenUnique}`,
 );
 
-if (
-  broadcastTable !== "1" ||
-  idempotency !== "1" ||
-  rlsBroadcast !== "t" ||
-  tokenUnique !== "1"
-) {
+if (broadcastTable !== "1" || idempotency !== "1" || rlsBroadcast !== "t" || tokenUnique !== "1") {
   console.error("FAIL notification_broadcasts migration postconditions.");
   process.exit(1);
 }
