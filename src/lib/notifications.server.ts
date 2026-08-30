@@ -436,40 +436,89 @@ export async function listFounderBroadcasts(limit = 40): Promise<
   return data ?? [];
 }
 
+/** Hedef kitleyi sunucu tarafında saf filtreler (client’a güvenmez). */
+export function filterAudienceUserIds(input: {
+  target: "all" | "all_vendors" | "all_customers" | "restaurant" | "user";
+  allUserIds: string[];
+  vendorUserIds: string[];
+  restaurantVendorIds?: string[];
+  userId?: string | null;
+}): string[] {
+  if (input.target === "user") {
+    return input.userId ? [input.userId] : [];
+  }
+  if (input.target === "restaurant") {
+    return [...new Set((input.restaurantVendorIds ?? []).filter(Boolean))];
+  }
+  if (input.target === "all_vendors") {
+    return [...new Set(input.vendorUserIds.filter(Boolean))];
+  }
+  if (input.target === "all") {
+    return [...new Set(input.allUserIds.filter(Boolean))];
+  }
+  if (input.target === "all_customers") {
+    const vendorIds = new Set(input.vendorUserIds.filter(Boolean));
+    return [...new Set(input.allUserIds.filter((id) => id && !vendorIds.has(id)))];
+  }
+  return [...new Set(input.allUserIds.filter(Boolean))];
+}
+
 async function resolveFounderTargetUserIds(input: {
   target: "all" | "all_vendors" | "all_customers" | "restaurant" | "user";
   restaurantId?: string | null;
   userId?: string | null;
 }): Promise<string[]> {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   if (input.target === "user") {
-    if (!input.userId) return [];
-    return [input.userId];
+    return filterAudienceUserIds({
+      target: "user",
+      allUserIds: [],
+      vendorUserIds: [],
+      userId: input.userId,
+    });
   }
   if (input.target === "restaurant") {
     if (!input.restaurantId) return [];
-    return await vendorUserIdsForRestaurant(input.restaurantId);
+    const restaurantVendorIds = await vendorUserIdsForRestaurant(input.restaurantId);
+    return filterAudienceUserIds({
+      target: "restaurant",
+      allUserIds: [],
+      vendorUserIds: [],
+      restaurantVendorIds,
+    });
   }
   if (input.target === "all_vendors") {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin.from("vendor_assignments").select("user_id");
     if (error) {
       if (isMissingRelationError(error)) return [];
       throw error;
     }
-    return [...new Set((data ?? []).map((row) => row.user_id).filter(Boolean))];
+    return filterAudienceUserIds({
+      target: "all_vendors",
+      allUserIds: [],
+      vendorUserIds: (data ?? []).map((row) => row.user_id),
+    });
   }
   const allUserIds = await listAllAuthUserIds();
-  if (input.target === "all") return allUserIds;
+  if (input.target === "all") {
+    return filterAudienceUserIds({ target: "all", allUserIds, vendorUserIds: [] });
+  }
   if (input.target === "all_customers") {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin.from("vendor_assignments").select("user_id");
     if (error) {
-      if (isMissingRelationError(error)) return allUserIds;
+      if (isMissingRelationError(error)) {
+        return filterAudienceUserIds({ target: "all", allUserIds, vendorUserIds: [] });
+      }
       throw error;
     }
-    const vendorIds = new Set((data ?? []).map((row) => row.user_id).filter(Boolean));
-    return allUserIds.filter((id) => !vendorIds.has(id));
+    return filterAudienceUserIds({
+      target: "all_customers",
+      allUserIds,
+      vendorUserIds: (data ?? []).map((row) => row.user_id),
+    });
   }
-  return allUserIds;
+  return filterAudienceUserIds({ target: "all", allUserIds, vendorUserIds: [] });
 }
 
 async function listAllAuthUserIds(): Promise<string[]> {
@@ -640,10 +689,7 @@ async function sendFcmMessage(
     status: response.status,
     text: text.slice(0, 200),
   });
-  if (
-    response.status === 404 ||
-    /UNREGISTERED|NOT_FOUND|INVALID_ARGUMENT|Requested entity was not found/i.test(text)
-  ) {
+  if (response.status === 404 || isStaleFcmErrorText(text)) {
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       await supabaseAdmin.from("device_push_tokens").delete().eq("token", deviceToken);
@@ -680,7 +726,14 @@ function pemToArrayBuffer(pem: string): ArrayBuffer {
   return bytes.buffer;
 }
 
+/** FCM yanıt metninden geçersiz/eski token tespiti (tek başarısız gönderim tüm batch’i durdurmaz). */
+export function isStaleFcmErrorText(text: string): boolean {
+  return /UNREGISTERED|NOT_FOUND|INVALID_ARGUMENT|Requested entity was not found/i.test(text);
+}
+
 export const __notificationsTest = {
   isUniqueViolation,
   isMissingRelationError,
+  filterAudienceUserIds,
+  isStaleFcmErrorText,
 };
