@@ -54,7 +54,29 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     }
 
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        _ = fcmToken
+        guard let token = fcmToken, !token.isEmpty else { return }
+        UserDefaults.standard.set(token, forKey: "silvan_fcm_token")
+        DispatchQueue.main.async {
+            Self.injectFcmTokenIntoWebView(token)
+        }
+    }
+
+    private static func injectFcmTokenIntoWebView(_ token: String) {
+        guard let bridge = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .flatMap({ $0.windows })
+            .compactMap({ $0.rootViewController as? CAPBridgeViewController })
+            .first else {
+            return
+        }
+        let escaped = token
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "'", with: "\\'")
+        let js = """
+        window.__SILVAN_FCM_TOKEN__='\(escaped)';
+        if (typeof window.__onNativeFcmToken === 'function') { window.__onNativeFcmToken('\(escaped)'); }
+        """
+        bridge.webView?.evaluateJavaScript(js, completionHandler: nil)
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter,

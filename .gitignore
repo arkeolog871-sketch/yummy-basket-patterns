@@ -45,3 +45,14 @@ android-wrapper/app/*.keystore
 android-wrapper/app/*.jks
 android-wrapper/app/local.properties
 android-wrapper/app/google-services.json
+android-wrapper/**/google-services.json
+
+# Firebase / Google service account JSON — never commit.
+*-firebase-adminsdk-*.json
+*firebase-adminsdk*.json
+*service-account*.json
+**/serviceAccount*.json
+
+.signing/
+*.aab
+app-release.aab
