@@ -79,6 +79,7 @@ function createUnavailableClient(): SupabaseClient<Database> {
     signUp: async () => ({ data: { user: null, session: null }, error: unavailable }),
     signInWithOtp: async () => ({ data: { user: null, session: null }, error: unavailable }),
     verifyOtp: async () => ({ data: { user: null, session: null }, error: unavailable }),
+    signInWithIdToken: async () => ({ data: { user: null, session: null }, error: unavailable }),
     resetPasswordForEmail: async () => ({ data: {}, error: unavailable }),
     updateUser: async () => ({ data: { user: null }, error: unavailable }),
   };
@@ -126,7 +127,7 @@ function createSupabaseClient(): SupabaseClient<Database> {
       // Google PKCE `?code&state=sc1.` Supabase oturum kodu değildir; karıştırmayı.
       detectSessionInUrl:
         typeof window === "undefined"
-          ? true
+          ? false
           : !(new URLSearchParams(window.location.search).get("state") || "").startsWith("sc1."),
     },
   });
