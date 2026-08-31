@@ -16,8 +16,11 @@ import { Route as AndroidRouteImport } from './routes/android'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BildirimlerRouteImport } from './routes/bildirimler'
 import { Route as GizlilikPolitikasiRouteImport } from './routes/gizlilik-politikasi'
+import { Route as HesabimRouteImport } from './routes/hesabim'
+import { Route as HizmetSaglayiciBilgileriRouteImport } from './routes/hizmet-saglayici-bilgileri'
 import { Route as IndirRouteImport } from './routes/indir'
 import { Route as IphoneRouteImport } from './routes/iphone'
+import { Route as IptalVeIadeRouteImport } from './routes/iptal-ve-iade'
 import { Route as KullanimKosullariRouteImport } from './routes/kullanim-kosullari'
 import { Route as KurucuRouteImport } from './routes/kurucu'
 import { Route as KurucuGirisRouteImport } from './routes/kurucu-giris'
@@ -77,6 +80,17 @@ const GizlilikPolitikasiRoute = GizlilikPolitikasiRouteImport.update({
   path: '/gizlilik-politikasi',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HesabimRoute = HesabimRouteImport.update({
+  id: '/hesabim',
+  path: '/hesabim',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HizmetSaglayiciBilgileriRoute =
+  HizmetSaglayiciBilgileriRouteImport.update({
+    id: '/hizmet-saglayici-bilgileri',
+    path: '/hizmet-saglayici-bilgileri',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const IndirRoute = IndirRouteImport.update({
   id: '/indir',
   path: '/indir',
@@ -85,6 +99,11 @@ const IndirRoute = IndirRouteImport.update({
 const IphoneRoute = IphoneRouteImport.update({
   id: '/iphone',
   path: '/iphone',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IptalVeIadeRoute = IptalVeIadeRouteImport.update({
+  id: '/iptal-ve-iade',
+  path: '/iptal-ve-iade',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KullanimKosullariRoute = KullanimKosullariRouteImport.update({
@@ -212,8 +231,11 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/bildirimler': typeof BildirimlerRoute
   '/gizlilik-politikasi': typeof GizlilikPolitikasiRoute
+  '/hesabim': typeof HesabimRoute
+  '/hizmet-saglayici-bilgileri': typeof HizmetSaglayiciBilgileriRoute
   '/indir': typeof IndirRoute
   '/iphone': typeof IphoneRoute
+  '/iptal-ve-iade': typeof IptalVeIadeRoute
   '/kullanim-kosullari': typeof KullanimKosullariRoute
   '/kurucu': typeof KurucuRoute
   '/kurucu-giris': typeof KurucuGirisRoute
@@ -246,8 +268,11 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/bildirimler': typeof BildirimlerRoute
   '/gizlilik-politikasi': typeof GizlilikPolitikasiRoute
+  '/hesabim': typeof HesabimRoute
+  '/hizmet-saglayici-bilgileri': typeof HizmetSaglayiciBilgileriRoute
   '/indir': typeof IndirRoute
   '/iphone': typeof IphoneRoute
+  '/iptal-ve-iade': typeof IptalVeIadeRoute
   '/kullanim-kosullari': typeof KullanimKosullariRoute
   '/kurucu': typeof KurucuRoute
   '/kurucu-giris': typeof KurucuGirisRoute
@@ -281,8 +306,11 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/bildirimler': typeof BildirimlerRoute
   '/gizlilik-politikasi': typeof GizlilikPolitikasiRoute
+  '/hesabim': typeof HesabimRoute
+  '/hizmet-saglayici-bilgileri': typeof HizmetSaglayiciBilgileriRoute
   '/indir': typeof IndirRoute
   '/iphone': typeof IphoneRoute
+  '/iptal-ve-iade': typeof IptalVeIadeRoute
   '/kullanim-kosullari': typeof KullanimKosullariRoute
   '/kurucu': typeof KurucuRoute
   '/kurucu-giris': typeof KurucuGirisRoute
@@ -317,8 +345,11 @@ export interface FileRouteTypes {
     | '/auth'
     | '/bildirimler'
     | '/gizlilik-politikasi'
+    | '/hesabim'
+    | '/hizmet-saglayici-bilgileri'
     | '/indir'
     | '/iphone'
+    | '/iptal-ve-iade'
     | '/kullanim-kosullari'
     | '/kurucu'
     | '/kurucu-giris'
@@ -351,8 +382,11 @@ export interface FileRouteTypes {
     | '/auth'
     | '/bildirimler'
     | '/gizlilik-politikasi'
+    | '/hesabim'
+    | '/hizmet-saglayici-bilgileri'
     | '/indir'
     | '/iphone'
+    | '/iptal-ve-iade'
     | '/kullanim-kosullari'
     | '/kurucu'
     | '/kurucu-giris'
@@ -385,8 +419,11 @@ export interface FileRouteTypes {
     | '/auth'
     | '/bildirimler'
     | '/gizlilik-politikasi'
+    | '/hesabim'
+    | '/hizmet-saglayici-bilgileri'
     | '/indir'
     | '/iphone'
+    | '/iptal-ve-iade'
     | '/kullanim-kosullari'
     | '/kurucu'
     | '/kurucu-giris'
@@ -420,8 +457,11 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   BildirimlerRoute: typeof BildirimlerRoute
   GizlilikPolitikasiRoute: typeof GizlilikPolitikasiRoute
+  HesabimRoute: typeof HesabimRoute
+  HizmetSaglayiciBilgileriRoute: typeof HizmetSaglayiciBilgileriRoute
   IndirRoute: typeof IndirRoute
   IphoneRoute: typeof IphoneRoute
+  IptalVeIadeRoute: typeof IptalVeIadeRoute
   KullanimKosullariRoute: typeof KullanimKosullariRoute
   KurucuRoute: typeof KurucuRoute
   KurucuGirisRoute: typeof KurucuGirisRoute
@@ -497,6 +537,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GizlilikPolitikasiRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/hesabim': {
+      id: '/hesabim'
+      path: '/hesabim'
+      fullPath: '/hesabim'
+      preLoaderRoute: typeof HesabimRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hizmet-saglayici-bilgileri': {
+      id: '/hizmet-saglayici-bilgileri'
+      path: '/hizmet-saglayici-bilgileri'
+      fullPath: '/hizmet-saglayici-bilgileri'
+      preLoaderRoute: typeof HizmetSaglayiciBilgileriRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/indir': {
       id: '/indir'
       path: '/indir'
@@ -509,6 +563,13 @@ declare module '@tanstack/react-router' {
       path: '/iphone'
       fullPath: '/iphone'
       preLoaderRoute: typeof IphoneRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/iptal-ve-iade': {
+      id: '/iptal-ve-iade'
+      path: '/iptal-ve-iade'
+      fullPath: '/iptal-ve-iade'
+      preLoaderRoute: typeof IptalVeIadeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/kullanim-kosullari': {
@@ -695,8 +756,11 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   BildirimlerRoute: BildirimlerRoute,
   GizlilikPolitikasiRoute: GizlilikPolitikasiRoute,
+  HesabimRoute: HesabimRoute,
+  HizmetSaglayiciBilgileriRoute: HizmetSaglayiciBilgileriRoute,
   IndirRoute: IndirRoute,
   IphoneRoute: IphoneRoute,
+  IptalVeIadeRoute: IptalVeIadeRoute,
   KullanimKosullariRoute: KullanimKosullariRoute,
   KurucuRoute: KurucuRoute,
   KurucuGirisRoute: KurucuGirisRoute,

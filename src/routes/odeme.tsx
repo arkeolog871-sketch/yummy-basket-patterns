@@ -189,6 +189,15 @@ function CheckoutPage() {
           </div>
         </div>
         <p className="mt-3 text-xs text-muted-foreground">Ödeme: kapıda ödeme</p>
+        <p className="mt-3 text-xs leading-5 text-muted-foreground">
+          Siparişi onayladığınızda toplam tutarı ödeme yükümlülüğü doğar. Ödemeyi kurye teslim
+          sırasında nakit veya kredi kartıyla yaparsınız; sipariş, seçtiğiniz işletme tarafından
+          hazırlanır. İptal, cayma hakkı ve iade koşulları için{" "}
+          <Link to="/iptal-ve-iade" className="underline underline-offset-4">
+            İptal ve İade Politikası
+          </Link>{" "}
+          sayfasını inceleyin.
+        </p>
         <Button
           className="mt-5 w-full rounded-full"
           size="lg"
