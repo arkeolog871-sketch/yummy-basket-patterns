@@ -19,6 +19,7 @@ import { Route as GizlilikPolitikasiRouteImport } from './routes/gizlilik-politi
 import { Route as HizmetSaglayiciBilgileriRouteImport } from './routes/hizmet-saglayici-bilgileri'
 import { Route as IndirRouteImport } from './routes/indir'
 import { Route as IphoneRouteImport } from './routes/iphone'
+import { Route as IptalVeIadeRouteImport } from './routes/iptal-ve-iade'
 import { Route as KullanimKosullariRouteImport } from './routes/kullanim-kosullari'
 import { Route as KurucuRouteImport } from './routes/kurucu'
 import { Route as KurucuGirisRouteImport } from './routes/kurucu-giris'
@@ -92,6 +93,11 @@ const IndirRoute = IndirRouteImport.update({
 const IphoneRoute = IphoneRouteImport.update({
   id: '/iphone',
   path: '/iphone',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IptalVeIadeRoute = IptalVeIadeRouteImport.update({
+  id: '/iptal-ve-iade',
+  path: '/iptal-ve-iade',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KullanimKosullariRoute = KullanimKosullariRouteImport.update({
@@ -222,6 +228,7 @@ export interface FileRoutesByFullPath {
   '/hizmet-saglayici-bilgileri': typeof HizmetSaglayiciBilgileriRoute
   '/indir': typeof IndirRoute
   '/iphone': typeof IphoneRoute
+  '/iptal-ve-iade': typeof IptalVeIadeRoute
   '/kullanim-kosullari': typeof KullanimKosullariRoute
   '/kurucu': typeof KurucuRoute
   '/kurucu-giris': typeof KurucuGirisRoute
@@ -257,6 +264,7 @@ export interface FileRoutesByTo {
   '/hizmet-saglayici-bilgileri': typeof HizmetSaglayiciBilgileriRoute
   '/indir': typeof IndirRoute
   '/iphone': typeof IphoneRoute
+  '/iptal-ve-iade': typeof IptalVeIadeRoute
   '/kullanim-kosullari': typeof KullanimKosullariRoute
   '/kurucu': typeof KurucuRoute
   '/kurucu-giris': typeof KurucuGirisRoute
@@ -293,6 +301,7 @@ export interface FileRoutesById {
   '/hizmet-saglayici-bilgileri': typeof HizmetSaglayiciBilgileriRoute
   '/indir': typeof IndirRoute
   '/iphone': typeof IphoneRoute
+  '/iptal-ve-iade': typeof IptalVeIadeRoute
   '/kullanim-kosullari': typeof KullanimKosullariRoute
   '/kurucu': typeof KurucuRoute
   '/kurucu-giris': typeof KurucuGirisRoute
@@ -330,6 +339,7 @@ export interface FileRouteTypes {
     | '/hizmet-saglayici-bilgileri'
     | '/indir'
     | '/iphone'
+    | '/iptal-ve-iade'
     | '/kullanim-kosullari'
     | '/kurucu'
     | '/kurucu-giris'
@@ -365,6 +375,7 @@ export interface FileRouteTypes {
     | '/hizmet-saglayici-bilgileri'
     | '/indir'
     | '/iphone'
+    | '/iptal-ve-iade'
     | '/kullanim-kosullari'
     | '/kurucu'
     | '/kurucu-giris'
@@ -400,6 +411,7 @@ export interface FileRouteTypes {
     | '/hizmet-saglayici-bilgileri'
     | '/indir'
     | '/iphone'
+    | '/iptal-ve-iade'
     | '/kullanim-kosullari'
     | '/kurucu'
     | '/kurucu-giris'
@@ -436,6 +448,7 @@ export interface RootRouteChildren {
   HizmetSaglayiciBilgileriRoute: typeof HizmetSaglayiciBilgileriRoute
   IndirRoute: typeof IndirRoute
   IphoneRoute: typeof IphoneRoute
+  IptalVeIadeRoute: typeof IptalVeIadeRoute
   KullanimKosullariRoute: typeof KullanimKosullariRoute
   KurucuRoute: typeof KurucuRoute
   KurucuGirisRoute: typeof KurucuGirisRoute
@@ -530,6 +543,13 @@ declare module '@tanstack/react-router' {
       path: '/iphone'
       fullPath: '/iphone'
       preLoaderRoute: typeof IphoneRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/iptal-ve-iade': {
+      id: '/iptal-ve-iade'
+      path: '/iptal-ve-iade'
+      fullPath: '/iptal-ve-iade'
+      preLoaderRoute: typeof IptalVeIadeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/kullanim-kosullari': {
@@ -719,6 +739,7 @@ const rootRouteChildren: RootRouteChildren = {
   HizmetSaglayiciBilgileriRoute: HizmetSaglayiciBilgileriRoute,
   IndirRoute: IndirRoute,
   IphoneRoute: IphoneRoute,
+  IptalVeIadeRoute: IptalVeIadeRoute,
   KullanimKosullariRoute: KullanimKosullariRoute,
   KurucuRoute: KurucuRoute,
   KurucuGirisRoute: KurucuGirisRoute,
