@@ -72,6 +72,18 @@ export function Footer() {
           KVKK Aydınlatma Metni
         </Link>
         {" · "}
+        <Link to="/iptal-ve-iade" className="underline-offset-4 hover:underline">
+          İptal ve İade
+        </Link>
+        {" · "}
+        <Link to="/hizmet-saglayici-bilgileri" className="underline-offset-4 hover:underline">
+          Hizmet Sağlayıcı Bilgileri
+        </Link>
+        {" · "}
+        <Link to="/hesabim" className="underline-offset-4 hover:underline">
+          Hesabımı Sil
+        </Link>
+        {" · "}
         <Link to="/kurucu-giris" className="underline-offset-4 hover:underline">
           Kurucu girişi
         </Link>

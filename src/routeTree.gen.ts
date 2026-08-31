@@ -16,6 +16,7 @@ import { Route as AndroidRouteImport } from './routes/android'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BildirimlerRouteImport } from './routes/bildirimler'
 import { Route as GizlilikPolitikasiRouteImport } from './routes/gizlilik-politikasi'
+import { Route as HesabimRouteImport } from './routes/hesabim'
 import { Route as HizmetSaglayiciBilgileriRouteImport } from './routes/hizmet-saglayici-bilgileri'
 import { Route as IndirRouteImport } from './routes/indir'
 import { Route as IphoneRouteImport } from './routes/iphone'
@@ -77,6 +78,11 @@ const BildirimlerRoute = BildirimlerRouteImport.update({
 const GizlilikPolitikasiRoute = GizlilikPolitikasiRouteImport.update({
   id: '/gizlilik-politikasi',
   path: '/gizlilik-politikasi',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HesabimRoute = HesabimRouteImport.update({
+  id: '/hesabim',
+  path: '/hesabim',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HizmetSaglayiciBilgileriRoute =
@@ -225,6 +231,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/bildirimler': typeof BildirimlerRoute
   '/gizlilik-politikasi': typeof GizlilikPolitikasiRoute
+  '/hesabim': typeof HesabimRoute
   '/hizmet-saglayici-bilgileri': typeof HizmetSaglayiciBilgileriRoute
   '/indir': typeof IndirRoute
   '/iphone': typeof IphoneRoute
@@ -261,6 +268,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/bildirimler': typeof BildirimlerRoute
   '/gizlilik-politikasi': typeof GizlilikPolitikasiRoute
+  '/hesabim': typeof HesabimRoute
   '/hizmet-saglayici-bilgileri': typeof HizmetSaglayiciBilgileriRoute
   '/indir': typeof IndirRoute
   '/iphone': typeof IphoneRoute
@@ -298,6 +306,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/bildirimler': typeof BildirimlerRoute
   '/gizlilik-politikasi': typeof GizlilikPolitikasiRoute
+  '/hesabim': typeof HesabimRoute
   '/hizmet-saglayici-bilgileri': typeof HizmetSaglayiciBilgileriRoute
   '/indir': typeof IndirRoute
   '/iphone': typeof IphoneRoute
@@ -336,6 +345,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/bildirimler'
     | '/gizlilik-politikasi'
+    | '/hesabim'
     | '/hizmet-saglayici-bilgileri'
     | '/indir'
     | '/iphone'
@@ -372,6 +382,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/bildirimler'
     | '/gizlilik-politikasi'
+    | '/hesabim'
     | '/hizmet-saglayici-bilgileri'
     | '/indir'
     | '/iphone'
@@ -408,6 +419,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/bildirimler'
     | '/gizlilik-politikasi'
+    | '/hesabim'
     | '/hizmet-saglayici-bilgileri'
     | '/indir'
     | '/iphone'
@@ -445,6 +457,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   BildirimlerRoute: typeof BildirimlerRoute
   GizlilikPolitikasiRoute: typeof GizlilikPolitikasiRoute
+  HesabimRoute: typeof HesabimRoute
   HizmetSaglayiciBilgileriRoute: typeof HizmetSaglayiciBilgileriRoute
   IndirRoute: typeof IndirRoute
   IphoneRoute: typeof IphoneRoute
@@ -522,6 +535,13 @@ declare module '@tanstack/react-router' {
       path: '/gizlilik-politikasi'
       fullPath: '/gizlilik-politikasi'
       preLoaderRoute: typeof GizlilikPolitikasiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hesabim': {
+      id: '/hesabim'
+      path: '/hesabim'
+      fullPath: '/hesabim'
+      preLoaderRoute: typeof HesabimRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/hizmet-saglayici-bilgileri': {
@@ -736,6 +756,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   BildirimlerRoute: BildirimlerRoute,
   GizlilikPolitikasiRoute: GizlilikPolitikasiRoute,
+  HesabimRoute: HesabimRoute,
   HizmetSaglayiciBilgileriRoute: HizmetSaglayiciBilgileriRoute,
   IndirRoute: IndirRoute,
   IphoneRoute: IphoneRoute,
