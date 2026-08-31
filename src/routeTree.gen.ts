@@ -16,6 +16,7 @@ import { Route as AndroidRouteImport } from './routes/android'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BildirimlerRouteImport } from './routes/bildirimler'
 import { Route as GizlilikPolitikasiRouteImport } from './routes/gizlilik-politikasi'
+import { Route as HizmetSaglayiciBilgileriRouteImport } from './routes/hizmet-saglayici-bilgileri'
 import { Route as IndirRouteImport } from './routes/indir'
 import { Route as IphoneRouteImport } from './routes/iphone'
 import { Route as KullanimKosullariRouteImport } from './routes/kullanim-kosullari'
@@ -77,6 +78,12 @@ const GizlilikPolitikasiRoute = GizlilikPolitikasiRouteImport.update({
   path: '/gizlilik-politikasi',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HizmetSaglayiciBilgileriRoute =
+  HizmetSaglayiciBilgileriRouteImport.update({
+    id: '/hizmet-saglayici-bilgileri',
+    path: '/hizmet-saglayici-bilgileri',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const IndirRoute = IndirRouteImport.update({
   id: '/indir',
   path: '/indir',
@@ -212,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/bildirimler': typeof BildirimlerRoute
   '/gizlilik-politikasi': typeof GizlilikPolitikasiRoute
+  '/hizmet-saglayici-bilgileri': typeof HizmetSaglayiciBilgileriRoute
   '/indir': typeof IndirRoute
   '/iphone': typeof IphoneRoute
   '/kullanim-kosullari': typeof KullanimKosullariRoute
@@ -246,6 +254,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/bildirimler': typeof BildirimlerRoute
   '/gizlilik-politikasi': typeof GizlilikPolitikasiRoute
+  '/hizmet-saglayici-bilgileri': typeof HizmetSaglayiciBilgileriRoute
   '/indir': typeof IndirRoute
   '/iphone': typeof IphoneRoute
   '/kullanim-kosullari': typeof KullanimKosullariRoute
@@ -281,6 +290,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/bildirimler': typeof BildirimlerRoute
   '/gizlilik-politikasi': typeof GizlilikPolitikasiRoute
+  '/hizmet-saglayici-bilgileri': typeof HizmetSaglayiciBilgileriRoute
   '/indir': typeof IndirRoute
   '/iphone': typeof IphoneRoute
   '/kullanim-kosullari': typeof KullanimKosullariRoute
@@ -317,6 +327,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/bildirimler'
     | '/gizlilik-politikasi'
+    | '/hizmet-saglayici-bilgileri'
     | '/indir'
     | '/iphone'
     | '/kullanim-kosullari'
@@ -351,6 +362,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/bildirimler'
     | '/gizlilik-politikasi'
+    | '/hizmet-saglayici-bilgileri'
     | '/indir'
     | '/iphone'
     | '/kullanim-kosullari'
@@ -385,6 +397,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/bildirimler'
     | '/gizlilik-politikasi'
+    | '/hizmet-saglayici-bilgileri'
     | '/indir'
     | '/iphone'
     | '/kullanim-kosullari'
@@ -420,6 +433,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   BildirimlerRoute: typeof BildirimlerRoute
   GizlilikPolitikasiRoute: typeof GizlilikPolitikasiRoute
+  HizmetSaglayiciBilgileriRoute: typeof HizmetSaglayiciBilgileriRoute
   IndirRoute: typeof IndirRoute
   IphoneRoute: typeof IphoneRoute
   KullanimKosullariRoute: typeof KullanimKosullariRoute
@@ -495,6 +509,13 @@ declare module '@tanstack/react-router' {
       path: '/gizlilik-politikasi'
       fullPath: '/gizlilik-politikasi'
       preLoaderRoute: typeof GizlilikPolitikasiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hizmet-saglayici-bilgileri': {
+      id: '/hizmet-saglayici-bilgileri'
+      path: '/hizmet-saglayici-bilgileri'
+      fullPath: '/hizmet-saglayici-bilgileri'
+      preLoaderRoute: typeof HizmetSaglayiciBilgileriRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/indir': {
@@ -695,6 +716,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   BildirimlerRoute: BildirimlerRoute,
   GizlilikPolitikasiRoute: GizlilikPolitikasiRoute,
+  HizmetSaglayiciBilgileriRoute: HizmetSaglayiciBilgileriRoute,
   IndirRoute: IndirRoute,
   IphoneRoute: IphoneRoute,
   KullanimKosullariRoute: KullanimKosullariRoute,
