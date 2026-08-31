@@ -1,1 +1,50 @@
-ContactSection.tsx
+import { Phone, Mail } from "lucide-react";
+
+const PHONE_DISPLAY = "0546 696 31 33";
+const PHONE_TEL = "+905466963133";
+const EMAIL = "arkeolog871@gmail.com";
+
+export function ContactSection() {
+  return (
+    <section className="mx-auto w-full max-w-6xl px-4 pb-16">
+      <div className="rounded-3xl border border-border/70 bg-card p-6 shadow-card sm:p-8">
+        <h2 className="text-2xl">Bize Ulaşın</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Soru, öneri ve taleplerinizi doğrudan bize iletebilirsiniz.
+        </p>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <a
+            href={`tel:${PHONE_TEL}`}
+            aria-label={`Telefonla ara: ${PHONE_DISPLAY}`}
+            className="flex items-center gap-4 rounded-2xl border border-border bg-background p-4 transition-colors hover:bg-warm hover:text-warm-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Phone className="size-5" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-xs font-medium text-muted-foreground">Telefon</span>
+              <span className="block truncate text-base font-semibold">{PHONE_DISPLAY}</span>
+            </span>
+          </a>
+
+          <a
+            href={`mailto:${EMAIL}`}
+            aria-label={`E-posta gönder: ${EMAIL}`}
+            className="flex items-center gap-4 rounded-2xl border border-border bg-background p-4 transition-colors hover:bg-warm hover:text-warm-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Mail className="size-5" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-xs font-medium text-muted-foreground">E-posta</span>
+              <span className="block truncate text-base font-semibold">{EMAIL}</span>
+            </span>
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default ContactSection;
