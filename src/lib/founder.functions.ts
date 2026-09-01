@@ -115,6 +115,64 @@ export const updateFounderContact = createServerFn({ method: "POST" })
     );
   });
 
+const adminMessageSchema = z
+  .object({
+    target_type: z.enum(["all", "customers", "vendors", "restaurant"]),
+    restaurant_id: z.string().uuid().nullable().default(null),
+    title: z.string().trim().min(2).max(120),
+    body: z.string().trim().min(2).max(1000),
+  })
+  .refine((data) => data.target_type !== "restaurant" || Boolean(data.restaurant_id), {
+    message: "Belirli bir işletme seçmelisiniz",
+    path: ["restaurant_id"],
+  });
+
+export const sendAdminMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => adminMessageSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { assertFounder } = await import("./founder.server");
+    const { audited } = await import("./audit.server");
+    await assertFounder(context.supabase, context.userId, context.claims as never);
+    const restaurantId = data.target_type === "restaurant" ? data.restaurant_id : null;
+    return audited(
+      {
+        actorId: context.userId,
+        actorEmail: (context.claims as { email?: string } | null)?.email ?? null,
+        action: "message.send",
+        entity: "admin_messages",
+        detail: { target_type: data.target_type, restaurant_id: restaurantId, title: data.title },
+      },
+      async () => {
+        const { error } = await context.supabase.from("admin_messages").insert({
+          sender_id: context.userId,
+          target_type: data.target_type,
+          restaurant_id: restaurantId,
+          title: data.title,
+          body: data.body,
+        });
+        if (error) throw new Error(error.message);
+        return { ok: true };
+      },
+    );
+  });
+
+export const listAdminMessages = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) =>
+    runServerFn(async () => {
+      const { assertFounder } = await import("./founder.server");
+      await assertFounder(context.supabase, context.userId, context.claims as never);
+      const { data, error } = await context.supabase
+        .from("admin_messages")
+        .select("id, target_type, restaurant_id, title, body, created_at, restaurants(name)")
+        .order("created_at", { ascending: false })
+        .limit(30);
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    }),
+  );
+
 const businessSchema = z.object({
   id: z.string().uuid().optional(),
   slug: z

@@ -27,6 +27,7 @@ import { TypographyPanel } from "@/components/founder/TypographyPanel";
 import { BrandingPanel } from "@/components/founder/BrandingPanel";
 import { HeroContentPanel } from "@/components/founder/HeroContentPanel";
 import { ContactPanel } from "@/components/founder/ContactPanel";
+import { NotificationsPanel } from "@/components/founder/NotificationsPanel";
 import { AdsPanel } from "@/components/founder/AdsPanel";
 import { MapsPanel } from "@/components/founder/MapsPanel";
 import { CategoryPanel } from "@/components/founder/CategoryPanel";
@@ -305,6 +306,7 @@ function FounderDashboard() {
           <TabsTrigger value="gorseller">Görseller</TabsTrigger>
           <TabsTrigger value="anasayfa">Ana sayfa</TabsTrigger>
           <TabsTrigger value="iletisim">İletişim</TabsTrigger>
+          <TabsTrigger value="bildirimler">Bildirimler</TabsTrigger>
           <TabsTrigger value="reklamlar">Reklamlar</TabsTrigger>
           <TabsTrigger value="harita">Harita</TabsTrigger>
           <TabsTrigger value="sektorler">Kategoriler</TabsTrigger>
@@ -337,6 +339,10 @@ function FounderDashboard() {
 
         <TabsContent value="iletisim" className="mt-6">
           <ContactPanel />
+        </TabsContent>
+
+        <TabsContent value="bildirimler" className="mt-6">
+          <NotificationsPanel businesses={data.data?.businesses ?? []} />
         </TabsContent>
 
         <TabsContent value="reklamlar" className="mt-6">

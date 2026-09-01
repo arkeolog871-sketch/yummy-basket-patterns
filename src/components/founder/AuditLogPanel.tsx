@@ -17,6 +17,7 @@ const ACTION_LABELS: Record<string, string> = {
   "founder.login": "Sayfa yöneticisi girişi",
   "founder.claim": "Sayfa yöneticisi yetkisi alma",
   "founder_contact.update": "Sayfa yöneticisi iletişim bilgisi güncelleme",
+  "message.send": "Duyuru/mesaj gönderme",
   "settings.update": "Tema/ayar güncelleme",
   "business.create": "İşletme ekleme",
   "business.update": "İşletme güncelleme",

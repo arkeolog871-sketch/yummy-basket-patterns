@@ -22,14 +22,13 @@ export function showNativeNotification(title: string, body: string): boolean {
   }
 }
 
-const SEEN_KEY = "silvan.vendor.seenAlertIds";
 const SEEN_LIMIT = 200;
 
 /** Aynı bildirimin sayfa yenilense bile tekrar tekrar gösterilmesini engeller. */
-export function loadSeenAlertIds(): string[] {
+function loadSeenIds(storageKey: string): string[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem(SEEN_KEY);
+    const raw = window.localStorage.getItem(storageKey);
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
@@ -38,12 +37,20 @@ export function loadSeenAlertIds(): string[] {
   }
 }
 
-export function saveSeenAlertIds(ids: Iterable<string>): void {
+function saveSeenIds(storageKey: string, ids: Iterable<string>): void {
   if (typeof window === "undefined") return;
   try {
     const list = Array.from(ids).slice(-SEEN_LIMIT);
-    window.localStorage.setItem(SEEN_KEY, JSON.stringify(list));
+    window.localStorage.setItem(storageKey, JSON.stringify(list));
   } catch {
     // storage kapalıysa bildirim yine gösterilir, sadece kalıcılık olmaz
   }
 }
+
+const ALERT_SEEN_KEY = "silvan.vendor.seenAlertIds";
+export const loadSeenAlertIds = () => loadSeenIds(ALERT_SEEN_KEY);
+export const saveSeenAlertIds = (ids: Iterable<string>) => saveSeenIds(ALERT_SEEN_KEY, ids);
+
+const MESSAGE_SEEN_KEY = "silvan.seenAdminMessageIds";
+export const loadSeenMessageIds = () => loadSeenIds(MESSAGE_SEEN_KEY);
+export const saveSeenMessageIds = (ids: Iterable<string>) => saveSeenIds(MESSAGE_SEEN_KEY, ids);
