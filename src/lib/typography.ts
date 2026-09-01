@@ -603,6 +603,6 @@ export function isMissingColumnError(
 }
 
 export const SITE_SETTINGS_BASE_COLUMNS =
-  "id, brand_name, primary_color, accent_color, secondary_color, background_color, logo_url, favicon_url, banner_url, theme_mode, layout_variant, hero_badge, hero_title, hero_title_accent, hero_subtitle, founder_contact_phone, founder_contact_email, footer_tagline, footer_delivery_hours";
+  "id, brand_name, primary_color, accent_color, secondary_color, background_color, warm_color, logo_url, favicon_url, banner_url, theme_mode, layout_variant, hero_badge, hero_title, hero_title_accent, hero_subtitle, founder_contact_phone, founder_contact_email, footer_tagline, footer_delivery_hours";
 
 export const SITE_SETTINGS_COLUMNS_WITH_TYPOGRAPHY = `${SITE_SETTINGS_BASE_COLUMNS}, typography`;

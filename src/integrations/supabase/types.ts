@@ -886,6 +886,7 @@ export type Database = {
           theme_mode: string
           typography: Json
           updated_at: string
+          warm_color: string
         }
         Insert: {
           accent_color?: string
@@ -910,6 +911,7 @@ export type Database = {
           theme_mode?: string
           typography?: Json
           updated_at?: string
+          warm_color?: string
         }
         Update: {
           accent_color?: string
@@ -934,6 +936,7 @@ export type Database = {
           theme_mode?: string
           typography?: Json
           updated_at?: string
+          warm_color?: string
         }
         Relationships: []
       }

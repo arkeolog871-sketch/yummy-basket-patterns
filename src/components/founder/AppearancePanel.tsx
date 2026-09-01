@@ -24,6 +24,7 @@ type Preset = {
   accent_color: string;
   secondary_color: string;
   background_color: string;
+  warm_color: string;
 };
 
 const PRESETS: Preset[] = [
@@ -37,6 +38,7 @@ const PRESETS: Preset[] = [
     accent_color: "#e63946",
     secondary_color: "#ffe9d6",
     background_color: "#fff8f0",
+    warm_color: "#f3dfc0",
   },
   {
     id: "fresh-light",
@@ -48,6 +50,7 @@ const PRESETS: Preset[] = [
     accent_color: "#f2b705",
     secondary_color: "#e4f5ec",
     background_color: "#f7fdf9",
+    warm_color: "#d9f0df",
   },
   {
     id: "night-dark",
@@ -59,6 +62,7 @@ const PRESETS: Preset[] = [
     accent_color: "#ff5d73",
     secondary_color: "#2a2320",
     background_color: "#17130f",
+    warm_color: "#3a2e24",
   },
   {
     id: "backup-compact",
@@ -70,6 +74,7 @@ const PRESETS: Preset[] = [
     accent_color: "#0ea5e9",
     secondary_color: "#e2ecff",
     background_color: "#f6f9ff",
+    warm_color: "#dbe8ff",
   },
   {
     id: "backup-spotlight",
@@ -81,6 +86,7 @@ const PRESETS: Preset[] = [
     accent_color: "#f59e0b",
     secondary_color: "#fbe6ef",
     background_color: "#fff7fa",
+    warm_color: "#fbe0ec",
   },
 ];
 
@@ -95,6 +101,7 @@ const COLOR_FIELDS = [
   { key: "secondary_color", label: "İkincil renk (secondary)" },
   { key: "accent_color", label: "Vurgu rengi (accent)" },
   { key: "background_color", label: "Arka plan rengi" },
+  { key: "warm_color", label: "Sıcak ton (rozet, logo, ana sayfa üst alanı)" },
 ] as const;
 
 export function AppearancePanel() {
@@ -106,6 +113,7 @@ export function AppearancePanel() {
     accent_color: settings.accent_color,
     secondary_color: settings.secondary_color,
     background_color: settings.background_color,
+    warm_color: settings.warm_color,
     theme_mode: settings.theme_mode as ThemeMode,
     layout_variant: settings.layout_variant as LayoutVariant,
   });
@@ -126,6 +134,7 @@ export function AppearancePanel() {
       accent_color: preset.accent_color,
       secondary_color: preset.secondary_color,
       background_color: preset.background_color,
+      warm_color: preset.warm_color,
       theme_mode: preset.theme_mode,
       layout_variant: preset.layout_variant,
     };
@@ -159,6 +168,7 @@ export function AppearancePanel() {
                   preset.secondary_color,
                   preset.accent_color,
                   preset.background_color,
+                  preset.warm_color,
                 ].map((color) => (
                   <span
                     key={color}

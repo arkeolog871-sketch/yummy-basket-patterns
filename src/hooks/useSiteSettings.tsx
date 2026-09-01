@@ -20,6 +20,7 @@ export type SiteSettings = {
   accent_color: string;
   secondary_color: string;
   background_color: string;
+  warm_color: string;
   logo_url: string | null;
   favicon_url: string | null;
   banner_url: string | null;
@@ -53,6 +54,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   accent_color: "#e63946",
   secondary_color: "#ffe9d6",
   background_color: "#fff8f0",
+  warm_color: "#f3dfc0",
   logo_url: null,
   favicon_url: null,
   banner_url: null,
@@ -193,6 +195,15 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     root.style.setProperty("--accent", settings.accent_color);
     root.style.setProperty("--secondary", settings.secondary_color);
     root.style.setProperty("--background", settings.background_color);
+    root.style.setProperty("--warm", settings.warm_color);
+    root.style.setProperty(
+      "--gradient-warm",
+      `linear-gradient(120deg, ${settings.warm_color} 0%, ${settings.accent_color} 100%)`,
+    );
+    root.style.setProperty(
+      "--gradient-hero",
+      `linear-gradient(145deg, ${settings.background_color} 0%, ${settings.warm_color} 100%)`,
+    );
     root.classList.toggle("dark", settings.theme_mode === "dark");
     root.dataset["layout"] = settings.layout_variant;
   }, [
@@ -200,6 +211,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     settings.accent_color,
     settings.secondary_color,
     settings.background_color,
+    settings.warm_color,
     settings.theme_mode,
     settings.layout_variant,
   ]);
