@@ -1,13 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { CheckCircle2, CircleAlert } from "lucide-react";
 import { RequireAuth } from "@/components/auth/RequireAuth";
+import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { getMyDeletionRequest, requestAccountDeletion } from "@/lib/account.functions";
+import { getMyProfile, updateMyProfile } from "@/lib/profile.functions";
 import { toPublicErrorMessage } from "@/lib/public-error";
 
 const DELETION_CONFIRMATION =
@@ -35,11 +40,140 @@ export const Route = createFileRoute("/hesabim")({
   ),
 });
 
-function AccountPage() {
+function VerificationBadge({ verified, label }: { verified: boolean; label: string }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+        verified ? "bg-success/15 text-success" : "bg-warm text-warm-foreground"
+      }`}
+    >
+      {verified ? <CheckCircle2 className="size-3.5" /> : <CircleAlert className="size-3.5" />}
+      {label}
+    </span>
+  );
+}
+
+function ProfileSection() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const fetchProfile = useServerFn(getMyProfile);
+  const saveProfile = useServerFn(updateMyProfile);
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [showEmailVerify, setShowEmailVerify] = useState(false);
+
+  const { data: profile, isLoading } = useQuery({
+    queryKey: ["my-profile"],
+    queryFn: () => fetchProfile(),
+  });
+
+  useEffect(() => {
+    if (!profile) return;
+    setFullName(profile.full_name ?? "");
+    setPhone(profile.phone ?? "");
+  }, [profile]);
+
+  const save = useMutation({
+    mutationFn: () =>
+      saveProfile({ data: { full_name: fullName.trim() || null, phone: phone.trim() } }),
+    onSuccess: () => {
+      toast.success("Profil bilgileri güncellendi");
+      void queryClient.invalidateQueries({ queryKey: ["my-profile"] });
+    },
+    onError: (error) => toast.error(toPublicErrorMessage(error, "Profil güncellenemedi.")),
+  });
+
+  return (
+    <section className="mt-6 rounded-3xl border border-border/70 bg-card p-5 shadow-card">
+      <p className="font-semibold">Profil bilgileri</p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Sipariş verebilmek için e-posta adresinizin doğrulanmış olması zorunludur.
+      </p>
+
+      {isLoading ? (
+        <p className="mt-4 text-sm text-muted-foreground">Yükleniyor…</p>
+      ) : (
+        <div className="mt-4 space-y-4">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium">{user?.email ?? "—"}</span>
+              <VerificationBadge
+                verified={Boolean(profile?.email_verified)}
+                label={profile?.email_verified ? "E-posta doğrulandı" : "E-posta doğrulanmadı"}
+              />
+            </div>
+            {!profile?.email_verified ? (
+              showEmailVerify ? (
+                <div className="mt-3 max-w-sm rounded-2xl border border-border/70 bg-muted/30 p-4">
+                  <EmailCodeLogin
+                    idPrefix="account-email-verify"
+                    allowSignUp={false}
+                    initialEmail={user?.email ?? ""}
+                    onVerified={async () => {
+                      toast.success("E-posta doğrulandı");
+                      setShowEmailVerify(false);
+                      void queryClient.invalidateQueries({ queryKey: ["my-profile"] });
+                    }}
+                  />
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 rounded-full"
+                  onClick={() => setShowEmailVerify(true)}
+                >
+                  E-postamı doğrula
+                </Button>
+              )
+            ) : null}
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="profile-full-name">Ad soyad</Label>
+              <Input
+                id="profile-full-name"
+                value={fullName}
+                onChange={(event) => setFullName(event.target.value)}
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="profile-phone">Telefon</Label>
+                <VerificationBadge
+                  verified={Boolean(profile?.phone_verified)}
+                  label={profile?.phone_verified ? "Doğrulandı" : "Doğrulanmadı"}
+                />
+              </div>
+              <Input
+                id="profile-phone"
+                type="tel"
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                placeholder="05xx xxx xx xx"
+                className="rounded-xl"
+              />
+              <p className="text-xs text-muted-foreground">
+                SMS ile telefon doğrulaması yakında eklenecek.
+              </p>
+            </div>
+          </div>
+
+          <Button className="rounded-full" disabled={save.isPending} onClick={() => save.mutate()}>
+            {save.isPending ? "Kaydediliyor…" : "Kaydet"}
+          </Button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function AccountPage() {
   const fetchRequest = useServerFn(getMyDeletionRequest);
   const submitRequest = useServerFn(requestAccountDeletion);
+  const queryClient = useQueryClient();
   const [reason, setReason] = useState("");
   const [confirmed, setConfirmed] = useState(false);
 
@@ -65,14 +199,15 @@ function AccountPage() {
     <div className="mx-auto w-full max-w-3xl px-4 py-10">
       <h1 className="text-3xl">Hesabım</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Hesap bilgilerinizi görüntüleyin, siparişlerinize ulaşın veya hesabınızın silinmesini talep
+        Profil bilgilerinizi düzenleyin, siparişlerinize ulaşın veya hesabınızın silinmesini talep
         edin.
       </p>
 
+      <ProfileSection />
+
       <section className="mt-6 rounded-3xl border border-border/70 bg-card p-5 shadow-card">
-        <p className="font-semibold">Hesap bilgileri</p>
-        <p className="mt-2 text-sm text-muted-foreground">E-posta: {user?.email ?? "—"}</p>
-        <div className="mt-4 flex flex-wrap gap-2">
+        <p className="font-semibold">Bağlantılar</p>
+        <div className="mt-3 flex flex-wrap gap-2">
           <Button asChild variant="outline" className="rounded-full">
             <Link to="/siparislerim">Siparişlerim</Link>
           </Button>
