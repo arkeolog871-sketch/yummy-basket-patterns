@@ -111,7 +111,7 @@ export function Header() {
             </DropdownMenuRadioGroup>
             {areaOptions.length === 0 ? (
               <p className="px-2 py-2 text-xs text-muted-foreground">
-                Henüz teslimat bölgesi tanımlanmadı. Kurucu panelinden ekleyebilirsiniz.
+                Henüz teslimat bölgesi tanımlanmadı. Sayfa yöneticisi panelinden ekleyebilirsiniz.
               </p>
             ) : null}
           </DropdownMenuContent>
@@ -199,7 +199,7 @@ export function Header() {
                 {isFounder || (!founderExists && !access.isVendor) ? (
                   <DropdownMenuItem asChild>
                     <Link to="/kurucu">
-                      <Crown className="size-4" /> Kurucu paneli
+                      <Crown className="size-4" /> Sayfa yöneticisi paneli
                     </Link>
                   </DropdownMenuItem>
                 ) : null}

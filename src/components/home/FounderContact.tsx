@@ -3,19 +3,19 @@ import { Mail, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPhoneDisplay, toTelNumber } from "@/lib/phone";
 import { openTelHref } from "@/lib/ios";
-
-const FOUNDER_PHONE = "0546 696 31 33";
-const FOUNDER_EMAIL = "arkeolog871@gmail.com";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 function gmailComposeHref(email: string, subject: string): string {
   return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(subject)}`;
 }
 
 export function FounderContact() {
-  const telefonNumarasi = toTelNumber(FOUNDER_PHONE);
+  const { founderContact } = useSiteSettings();
+  const { founder_contact_phone: phone, founder_contact_email: email } = founderContact;
+  const telefonNumarasi = toTelNumber(phone);
   const telHref = telefonNumarasi ? `tel:${telefonNumarasi}` : undefined;
-  const display = formatPhoneDisplay(FOUNDER_PHONE);
-  const mailHref = gmailComposeHref(FOUNDER_EMAIL, "SİLVAN CEBİMDE hakkında");
+  const display = formatPhoneDisplay(phone);
+  const mailHref = gmailComposeHref(email, "SİLVAN CEBİMDE hakkında");
 
   function handleCall(event: MouseEvent<HTMLAnchorElement>) {
     if (!telHref) return;
@@ -28,10 +28,10 @@ export function FounderContact() {
       <div className="rounded-3xl border border-border/70 bg-card p-6 sm:p-10">
         <div className="max-w-xl">
           <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            Kurucu ile iletişim
+            Sayfa yöneticisi ile iletişim
           </h2>
           <p className="mt-3 text-sm text-muted-foreground">
-            Görüş, öneri, iş birliği veya destek talepleriniz için kurucumuza doğrudan
+            Görüş, öneri, iş birliği veya destek talepleriniz için sayfa yöneticimize doğrudan
             ulaşabilirsiniz.
           </p>
         </div>
@@ -42,7 +42,7 @@ export function FounderContact() {
               href={telHref}
               onClick={handleCall}
               className="min-h-11 min-w-0 touch-manipulation text-foreground no-underline"
-              aria-label={`Kurucuyu ara: ${display}`}
+              aria-label={`Sayfa yöneticisini ara: ${display}`}
             >
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                 Telefon
@@ -60,7 +60,7 @@ export function FounderContact() {
                 href={telHref}
                 onClick={handleCall}
                 className="touch-manipulation"
-                aria-label="Kurucuyu ara"
+                aria-label="Sayfa yöneticisini ara"
               >
                 <Phone className="size-5" />
                 Ara
@@ -74,7 +74,7 @@ export function FounderContact() {
                 E-posta
               </p>
               <p className="font-display mt-1 truncate text-xl font-bold leading-tight sm:text-2xl">
-                {FOUNDER_EMAIL}
+                {email}
               </p>
             </div>
             <Button
@@ -88,7 +88,7 @@ export function FounderContact() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="touch-manipulation"
-                aria-label="Kurucuya e-posta gönder"
+                aria-label="Sayfa yöneticisine e-posta gönder"
               >
                 <Mail className="size-5" />
                 E-posta gönder

@@ -16,13 +16,14 @@ import { Label } from "@/components/ui/label";
 export const Route = createFileRoute("/kurucu-giris")({
   head: () => ({
     meta: [
-      { title: "Kurucu Girişi — SİLVAN CEBİMDE" },
+      { title: "Sayfa Yöneticisi Girişi — SİLVAN CEBİMDE" },
       {
         name: "description",
-        content: "SİLVAN CEBİMDE kurucu yönetim portalına iki adımlı doğrulamalı güvenli giriş.",
+        content:
+          "SİLVAN CEBİMDE sayfa yöneticisi yönetim portalına iki adımlı doğrulamalı güvenli giriş.",
       },
-      { property: "og:title", content: "Kurucu Girişi — SİLVAN CEBİMDE" },
-      { property: "og:description", content: "Kurucu yönetim portalı girişi." },
+      { property: "og:title", content: "Sayfa Yöneticisi Girişi — SİLVAN CEBİMDE" },
+      { property: "og:description", content: "Sayfa yöneticisi yönetim portalı girişi." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },
@@ -88,10 +89,10 @@ function FounderLoginPage() {
     const state = await readFounderState(userId);
     if (!state.isFounder && state.founderExists) {
       void logFounderLoginAttempt({
-        data: { email: loginEmail, status: "denied", reason: "Kurucu yetkisi yok" },
+        data: { email: loginEmail, status: "denied", reason: "Sayfa yöneticisi yetkisi yok" },
       }).catch(() => {});
       await supabase.auth.signOut();
-      toast.error("Bu hesabın kurucu yetkisi yok.");
+      toast.error("Bu hesabın sayfa yöneticisi yetkisi yok.");
       return;
     }
 
@@ -106,7 +107,11 @@ function FounderLoginPage() {
     void logFounderLoginAttempt({
       data: { email: loginEmail, status: "success" },
     }).catch(() => {});
-    toast.success(state.isFounder ? "Kurucu paneline hoş geldiniz" : "Kurucu profili tanımlanabilir");
+    toast.success(
+      state.isFounder
+        ? "Sayfa yöneticisi paneline hoş geldiniz"
+        : "Sayfa yöneticisi profili tanımlanabilir",
+    );
     navigate({ to: "/kurucu", replace: true });
   }
 
@@ -144,7 +149,10 @@ function FounderLoginPage() {
         markBackupCodeVerified(currentUser.id);
       } else {
         if (!factorId) throw new Error("Doğrulama yöntemi bulunamadı.");
-        const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code: otp.trim() });
+        const { error } = await supabase.auth.mfa.challengeAndVerify({
+          factorId,
+          code: otp.trim(),
+        });
         if (error) throw error;
       }
 
@@ -153,7 +161,6 @@ function FounderLoginPage() {
           email: currentUser.email ?? email,
           status: "success",
           reason: useBackup ? "Yedek kod ile doğrulandı" : "2FA doğrulandı",
-          
         },
       }).catch(() => {});
       toast.success("Doğrulama tamamlandı");
@@ -198,110 +205,120 @@ function FounderLoginPage() {
             <Crown className="size-6" />
           </span>
           <h1 className="mt-5 text-3xl">
-            {step === "forgot" ? "Şifremi unuttum" : step === "mfa" ? "İki adımlı doğrulama" : "Kurucu girişi"}
+            {step === "forgot"
+              ? "Şifremi unuttum"
+              : step === "mfa"
+                ? "İki adımlı doğrulama"
+                : "Sayfa yöneticisi girişi"}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {step === "forgot"
-              ? "Kurucu e-postanızı girin, güvenli sıfırlama bağlantısını gönderelim."
+              ? "Sayfa yöneticisi e-postanızı girin, güvenli sıfırlama bağlantısını gönderelim."
               : step === "mfa"
                 ? "Doğrulama uygulamanızdaki 6 haneli kodu ya da yedek kodlarınızdan birini girin."
-                : "Bu portal yalnızca kurucu hesabı içindir ve normal kullanıcı girişinden bağımsızdır."}
+                : "Bu portal yalnızca sayfa yöneticisi hesabı içindir ve normal kullanıcı girişinden bağımsızdır."}
           </p>
         </div>
 
         {step === "password" ? (
           <>
-          <div className="mt-6 grid grid-cols-2 gap-1 rounded-full bg-muted p-1 text-sm">
-            {(
-              [
-                ["password", "Şifre ile"],
-                ["code", "E-posta kodu ile"],
-              ] as const
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setMethod(value)}
-                className={`rounded-full px-3 py-2 transition ${
-                  method === value
-                    ? "bg-card font-medium shadow-card"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+            <div className="mt-6 grid grid-cols-2 gap-1 rounded-full bg-muted p-1 text-sm">
+              {(
+                [
+                  ["password", "Şifre ile"],
+                  ["code", "E-posta kodu ile"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setMethod(value)}
+                  className={`rounded-full px-3 py-2 transition ${
+                    method === value
+                      ? "bg-card font-medium shadow-card"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {method === "code" ? (
+              <div className="mt-5 rounded-3xl border border-border/70 bg-card p-6 shadow-card">
+                <EmailCodeLogin
+                  idPrefix="founder-otp"
+                  allowSignUp={false}
+                  initialEmail={email}
+                  onVerified={async (userId, verifiedEmail) => {
+                    setEmail(verifiedEmail);
+                    await continueAfterAuth(userId, verifiedEmail);
+                  }}
+                  onFailed={(failedEmail, message) => {
+                    void logFounderLoginAttempt({
+                      data: {
+                        email: failedEmail || email,
+                        status: "error",
+                        reason: `E-posta kodu: ${message}`.slice(0, 200),
+                      },
+                    }).catch(() => {});
+                  }}
+                />
+                <p className="mt-4 text-xs text-muted-foreground">
+                  Kod yalnızca kayıtlı sayfa yöneticisi e-postasına gönderilir; yetkisiz hesaplar
+                  otomatik olarak çıkış yapılır.
+                </p>
+              </div>
+            ) : (
+              <form
+                onSubmit={(event) => void handleSubmit(event)}
+                className="mt-5 space-y-4 rounded-3xl border border-border/70 bg-card p-6 shadow-card"
               >
-                {label}
-              </button>
-            ))}
-          </div>
-          {method === "code" ? (
-            <div className="mt-5 rounded-3xl border border-border/70 bg-card p-6 shadow-card">
-              <EmailCodeLogin
-                idPrefix="founder-otp"
-                allowSignUp={false}
-                initialEmail={email}
-                onVerified={async (userId, verifiedEmail) => {
-                  setEmail(verifiedEmail);
-                  await continueAfterAuth(userId, verifiedEmail);
-                }}
-                onFailed={(failedEmail, message) => {
-                  void logFounderLoginAttempt({
-                    data: {
-                      email: failedEmail || email,
-                      status: "error",
-                      reason: `E-posta kodu: ${message}`.slice(0, 200),
-                    },
-                  }).catch(() => {});
-                }}
-              />
-              <p className="mt-4 text-xs text-muted-foreground">
-                Kod yalnızca kayıtlı kurucu e-postasına gönderilir; yetkisiz hesaplar otomatik
-                olarak çıkış yapılır.
-              </p>
-            </div>
-          ) : (
-          <form
-            onSubmit={(event) => void handleSubmit(event)}
-            className="mt-5 space-y-4 rounded-3xl border border-border/70 bg-card p-6 shadow-card"
-          >
-            <div className="space-y-2">
-              <Label htmlFor="founder-email">Kurucu e-postası</Label>
-              <Input
-                id="founder-email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-                className="rounded-xl"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="founder-password">Şifre</Label>
-              <Input
-                id="founder-password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                minLength={6}
-                required
-                className="rounded-xl"
-              />
-            </div>
-            <Button type="submit" size="lg" disabled={busy || checking} className="w-full rounded-full">
-              <Lock className="size-4" /> {busy ? "Doğrulanıyor…" : "Kurucu olarak giriş yap"}
-            </Button>
-            <button
-              type="button"
-              className="w-full text-center text-sm text-muted-foreground underline-offset-4 hover:underline"
-              onClick={() => setStep("forgot")}
-            >
-              Şifremi unuttum
-            </button>
-            <p className="text-xs text-muted-foreground">
-              Yetkisiz hesaplarla yapılan girişler otomatik olarak kapatılır.
-            </p>
-          </form>
-          )}
+                <div className="space-y-2">
+                  <Label htmlFor="founder-email">Sayfa yöneticisi e-postası</Label>
+                  <Input
+                    id="founder-email"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    required
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="founder-password">Şifre</Label>
+                  <Input
+                    id="founder-password"
+                    type="password"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    minLength={6}
+                    required
+                    className="rounded-xl"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  size="lg"
+                  disabled={busy || checking}
+                  className="w-full rounded-full"
+                >
+                  <Lock className="size-4" />{" "}
+                  {busy ? "Doğrulanıyor…" : "Sayfa yöneticisi olarak giriş yap"}
+                </Button>
+                <button
+                  type="button"
+                  className="w-full text-center text-sm text-muted-foreground underline-offset-4 hover:underline"
+                  onClick={() => setStep("forgot")}
+                >
+                  Şifremi unuttum
+                </button>
+                <p className="text-xs text-muted-foreground">
+                  Yetkisiz hesaplarla yapılan girişler otomatik olarak kapatılır.
+                </p>
+              </form>
+            )}
           </>
         ) : null}
 
@@ -311,7 +328,7 @@ function FounderLoginPage() {
             className="mt-8 space-y-4 rounded-3xl border border-border/70 bg-card p-6 shadow-card"
           >
             <div className="space-y-2">
-              <Label htmlFor="forgot-email">Kurucu e-postası</Label>
+              <Label htmlFor="forgot-email">Sayfa yöneticisi e-postası</Label>
               <Input
                 id="forgot-email"
                 type="email"

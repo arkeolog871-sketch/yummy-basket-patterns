@@ -143,7 +143,7 @@ function ResetPasswordPage() {
             to="/kurucu-giris"
             className="text-muted-foreground underline-offset-4 hover:underline"
           >
-            Kurucu girişi
+            Sayfa yöneticisi girişi
           </Link>
           <Link to="/" className="text-muted-foreground underline-offset-4 hover:underline">
             Siteye dön

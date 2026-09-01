@@ -20,12 +20,12 @@ export const Route = createFileRoute("/sistem-hatalari")({
       {
         name: "description",
         content:
-          "Kurucu paneli sistem hata kayıtları: uygulamada oluşan çalışma zamanı hatalarını görüntüleyin, çözüldü olarak işaretleyin veya silin.",
+          "Sayfa yöneticisi paneli sistem hata kayıtları: uygulamada oluşan çalışma zamanı hatalarını görüntüleyin, çözüldü olarak işaretleyin veya silin.",
       },
       { property: "og:title", content: "Sistem Hataları — SİLVAN CEBİMDE" },
       {
         property: "og:description",
-        content: "Uygulamada oluşan sistem hatalarının kurucu görünümü.",
+        content: "Uygulamada oluşan sistem hatalarının sayfa yöneticisi görünümü.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -82,10 +82,7 @@ function SystemErrorsPage() {
     const list = errors.data ?? [];
     if (!term) return list;
     return list.filter((row) =>
-      [row.message, row.path ?? "", row.source]
-        .join(" ")
-        .toLocaleLowerCase("tr")
-        .includes(term),
+      [row.message, row.path ?? "", row.source].join(" ").toLocaleLowerCase("tr").includes(term),
     );
   }, [errors.data, search]);
 
@@ -94,7 +91,7 @@ function SystemErrorsPage() {
   }
 
   if (!isFounder) {
-    return <AccessDenied message="Sistem hata kayıtlarını yalnızca kurucu görebilir." />;
+    return <AccessDenied message="Sistem hata kayıtlarını yalnızca sayfa yöneticisi görebilir." />;
   }
 
   return (
@@ -179,9 +176,7 @@ function SystemErrorsPage() {
                   variant="outline"
                   className="rounded-full"
                   disabled={toggleResolved.isPending}
-                  onClick={() =>
-                    toggleResolved.mutate({ id: row.id, resolved: !row.resolved })
-                  }
+                  onClick={() => toggleResolved.mutate({ id: row.id, resolved: !row.resolved })}
                 >
                   {row.resolved ? (
                     <>

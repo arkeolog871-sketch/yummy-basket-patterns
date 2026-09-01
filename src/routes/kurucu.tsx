@@ -26,6 +26,7 @@ import { AppearancePanel } from "@/components/founder/AppearancePanel";
 import { TypographyPanel } from "@/components/founder/TypographyPanel";
 import { BrandingPanel } from "@/components/founder/BrandingPanel";
 import { HeroContentPanel } from "@/components/founder/HeroContentPanel";
+import { ContactPanel } from "@/components/founder/ContactPanel";
 import { AdsPanel } from "@/components/founder/AdsPanel";
 import { MapsPanel } from "@/components/founder/MapsPanel";
 import { CategoryPanel } from "@/components/founder/CategoryPanel";
@@ -59,13 +60,13 @@ import { AuditLogPanel } from "@/components/founder/AuditLogPanel";
 export const Route = createFileRoute("/kurucu")({
   head: () => ({
     meta: [
-      { title: "Kurucu Paneli — SİLVAN CEBİMDE" },
+      { title: "Sayfa Yöneticisi Paneli — SİLVAN CEBİMDE" },
       {
         name: "description",
         content:
-          "Kurucu profili: tema ve renk ayarları, işletme, kategori, ürün, kullanıcı ve sipariş yönetimi.",
+          "Sayfa yöneticisi profili: tema ve renk ayarları, işletme, kategori, ürün, kullanıcı ve sipariş yönetimi.",
       },
-      { property: "og:title", content: "Kurucu Paneli — SİLVAN CEBİMDE" },
+      { property: "og:title", content: "Sayfa Yöneticisi Paneli — SİLVAN CEBİMDE" },
       {
         property: "og:description",
         content: "Tüm işletme, ürün, kullanıcı ve tasarım ayarlarını tek panelden yönetin.",
@@ -137,8 +138,8 @@ function TwoFactorGate({ children }: { children: React.ReactNode }) {
         </span>
         <h1 className="mt-5 text-3xl">İki adımlı doğrulama gerekli</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Bu oturum ikinci adımı geçmedi. Kurucu girişinden doğrulama kodunuzu veya bir yedek kodu
-          girin.
+          Bu oturum ikinci adımı geçmedi. Sayfa yöneticisi girişinden doğrulama kodunuzu veya bir
+          yedek kodu girin.
         </p>
         <Button asChild className="mt-6 rounded-full">
           <Link to="/kurucu-giris">Doğrulamaya git</Link>
@@ -171,12 +172,12 @@ function FounderShell({
         <span className="mx-auto flex size-14 items-center justify-center rounded-3xl bg-warm text-warm-foreground">
           <Crown className="size-6" />
         </span>
-        <h1 className="mt-5 text-3xl">Kurucu girişi gerekli</h1>
+        <h1 className="mt-5 text-3xl">Sayfa yöneticisi girişi gerekli</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Bu çalışma alanı yalnızca kurucu portalından erişilebilir.
+          Bu çalışma alanı yalnızca sayfa yöneticisi portalından erişilebilir.
         </p>
         <Button asChild className="mt-6 rounded-full">
-          <Link to="/kurucu-giris">Kurucu girişine git</Link>
+          <Link to="/kurucu-giris">Sayfa yöneticisi girişine git</Link>
         </Button>
       </div>
     );
@@ -191,7 +192,7 @@ function FounderShell({
               <Crown className="size-4" />
             </span>
             <div className="leading-tight">
-              <p className="font-display text-sm font-semibold">Kurucu çalışma alanı</p>
+              <p className="font-display text-sm font-semibold">Sayfa yöneticisi çalışma alanı</p>
               <p className="text-xs text-muted-foreground">{email}</p>
             </div>
           </div>
@@ -225,10 +226,10 @@ function FounderPage() {
     return <div className="px-4 py-24 text-center text-sm text-muted-foreground">Yükleniyor…</div>;
   }
 
-  // İşletme hesapları kurucu URL'ine elle girse bile 403 alır ve kendi paneline döner.
+  // İşletme hesapları sayfa yöneticisi URL'ine elle girse bile 403 alır ve kendi paneline döner.
   if (!isFounder && access.isVendor) {
     return (
-      <AccessDenied message="Kurucu paneli işletme hesaplarına kapalıdır. İşletme panelinize yönlendiriliyorsunuz." />
+      <AccessDenied message="Sayfa yöneticisi paneli işletme hesaplarına kapalıdır. İşletme panelinize yönlendiriliyorsunuz." />
     );
   }
 
@@ -238,15 +239,16 @@ function FounderPage() {
         <span className="mx-auto flex size-14 items-center justify-center rounded-3xl bg-warm text-warm-foreground">
           <Crown className="size-6" />
         </span>
-        <h1 className="mt-5 text-3xl">Kurucu profili</h1>
+        <h1 className="mt-5 text-3xl">Sayfa yöneticisi profili</h1>
         {founderExists ? (
           <p className="mt-3 text-sm text-muted-foreground">
-            Bu panel yalnızca kurucu hesabına açıktır. Yetki almak için kurucu ile iletişime geçin.
+            Bu panel yalnızca sayfa yöneticisi hesabına açıktır. Yetki almak için sayfa yöneticisi
+            ile iletişime geçin.
           </p>
         ) : (
           <p className="mt-3 text-sm text-muted-foreground">
-            Henüz kurucu hesabı tanımlı değil. Kurucu hesabı yalnızca deployment yöneticisi
-            tarafından yetkilendirilebilir.
+            Henüz sayfa yöneticisi hesabı tanımlı değil. Sayfa yöneticisi hesabı yalnızca deployment
+            yöneticisi tarafından yetkilendirilebilir.
           </p>
         )}
         <div className="mt-4">
@@ -283,7 +285,7 @@ function FounderDashboard() {
           <Crown className="size-5" />
         </span>
         <div>
-          <h1 className="text-3xl">Kurucu paneli</h1>
+          <h1 className="text-3xl">Sayfa yöneticisi paneli</h1>
           <p className="text-sm text-muted-foreground">
             Tema, tipografi, işletme, kategori, ürün, kullanıcı ve sipariş yönetimi
           </p>
@@ -302,6 +304,7 @@ function FounderDashboard() {
           <TabsTrigger value="tipografi">Tipografi</TabsTrigger>
           <TabsTrigger value="gorseller">Görseller</TabsTrigger>
           <TabsTrigger value="anasayfa">Ana sayfa</TabsTrigger>
+          <TabsTrigger value="iletisim">İletişim</TabsTrigger>
           <TabsTrigger value="reklamlar">Reklamlar</TabsTrigger>
           <TabsTrigger value="harita">Harita</TabsTrigger>
           <TabsTrigger value="sektorler">Kategoriler</TabsTrigger>
@@ -315,7 +318,6 @@ function FounderDashboard() {
           <TabsTrigger value="denetim">Denetim kaydı</TabsTrigger>
           <TabsTrigger value="hatalar">Sistem hataları</TabsTrigger>
         </TabsList>
-
 
         <TabsContent value="gorunum" className="mt-6">
           <AppearancePanel />
@@ -331,6 +333,10 @@ function FounderDashboard() {
 
         <TabsContent value="anasayfa" className="mt-6">
           <HeroContentPanel />
+        </TabsContent>
+
+        <TabsContent value="iletisim" className="mt-6">
+          <ContactPanel />
         </TabsContent>
 
         <TabsContent value="reklamlar" className="mt-6">
@@ -414,7 +420,6 @@ function FounderDashboard() {
         </TabsContent>
       </Tabs>
     </div>
-
   );
 }
 
@@ -1453,7 +1458,7 @@ function UserPanel({
               }
               className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm"
             >
-              <option value="founder">Kurucu</option>
+              <option value="founder">Sayfa Yöneticisi</option>
               <option value="admin">Yönetici</option>
               <option value="vendor">İşletme</option>
               <option value="user">Kullanıcı</option>
@@ -1524,6 +1529,7 @@ function UserPanel({
               <div className="flex flex-wrap gap-1">
                 {(["admin", "founder"] as const).map((roleName) => {
                   const has = user.roles.includes(roleName);
+                  const roleLabel = roleName === "founder" ? "sayfa yöneticisi" : roleName;
                   return (
                     <Button
                       key={roleName}
@@ -1535,7 +1541,7 @@ function UserPanel({
                         roleMutation.mutate({ userId: user.id, role: roleName, grant: !has })
                       }
                     >
-                      {has ? `${roleName} kaldır` : `${roleName} ver`}
+                      {has ? `${roleLabel} kaldır` : `${roleLabel} ver`}
                     </Button>
                   );
                 })}

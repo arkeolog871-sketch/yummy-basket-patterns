@@ -47,8 +47,8 @@ export function AllBusinessesMap({ businesses }: AllBusinessesMapProps) {
           <MapPin className="size-4 text-primary" /> İşletmelerimiz
         </h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          Henüz konum bilgisi girilmiş işletme yok. Kurucu panelinden işletmelere enlem/boylam veya
-          Google Maps bağlantısı ekleyin; harita otomatik görünecek.
+          Henüz konum bilgisi girilmiş işletme yok. Sayfa yöneticisi panelinden işletmelere
+          enlem/boylam veya Google Maps bağlantısı ekleyin; harita otomatik görünecek.
         </p>
       </div>
     );

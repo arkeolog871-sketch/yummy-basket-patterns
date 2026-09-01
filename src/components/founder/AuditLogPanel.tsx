@@ -14,8 +14,9 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const ACTION_LABELS: Record<string, string> = {
-  "founder.login": "Kurucu girişi",
-  "founder.claim": "Kurucu yetkisi alma",
+  "founder.login": "Sayfa yöneticisi girişi",
+  "founder.claim": "Sayfa yöneticisi yetkisi alma",
+  "founder_contact.update": "Sayfa yöneticisi iletişim bilgisi güncelleme",
   "settings.update": "Tema/ayar güncelleme",
   "business.create": "İşletme ekleme",
   "business.update": "İşletme güncelleme",
@@ -70,7 +71,7 @@ export function AuditLogPanel() {
         <div className="mr-auto">
           <h2 className="text-xl">Denetim kaydı</h2>
           <p className="text-sm text-muted-foreground">
-            Tüm yönetim işlemleri ve kurucu giriş denemeleri
+            Tüm yönetim işlemleri ve sayfa yöneticisi giriş denemeleri
           </p>
         </div>
         <Button

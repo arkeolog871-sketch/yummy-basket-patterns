@@ -15,14 +15,7 @@ export type TypeScaleRatioKey =
   | "golden";
 
 export type FontFamilyKey =
-  | "inter"
-  | "roboto"
-  | "plusJakarta"
-  | "playfair"
-  | "merriweather"
-  | "fraunces"
-  | "mono"
-  | "system";
+  "inter" | "roboto" | "plusJakarta" | "playfair" | "merriweather" | "fraunces" | "mono" | "system";
 
 export type TextTransform = "none" | "uppercase" | "lowercase" | "capitalize";
 
@@ -109,7 +102,8 @@ export const FONT_FAMILIES: Record<
   fraunces: {
     label: "Fraunces",
     stack: '"Fraunces", ui-serif, Georgia, serif',
-    google: "Fraunces:ital,opsz,wght@0,9..144,100;0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,400;1,9..144,700",
+    google:
+      "Fraunces:ital,opsz,wght@0,9..144,100;0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,400;1,9..144,700",
     category: "Classic Serif",
   },
   mono: {
@@ -131,7 +125,10 @@ export const COLOR_PALETTES: Record<
   {
     label: string;
     hint: string;
-    colors: Pick<TypographySettings, "primaryText" | "mutedText" | "headingText" | "accent" | "accentHover">;
+    colors: Pick<
+      TypographySettings,
+      "primaryText" | "mutedText" | "headingText" | "accent" | "accentHover"
+    >;
   }
 > = {
   corporateDark: {
@@ -269,7 +266,12 @@ export function parseTypography(raw: unknown): TypographySettings {
       typeof scale === "string" && scale in TYPE_SCALE_RATIOS
         ? (scale as TypeScaleRatioKey)
         : DEFAULT_TYPOGRAPHY.scaleRatio,
-    letterSpacingPx: num(o["letterSpacingPx"], DEFAULT_TYPOGRAPHY.letterSpacingPx, LETTER_MIN, LETTER_MAX),
+    letterSpacingPx: num(
+      o["letterSpacingPx"],
+      DEFAULT_TYPOGRAPHY.letterSpacingPx,
+      LETTER_MIN,
+      LETTER_MAX,
+    ),
     headingLetterSpacingPx: num(
       o["headingLetterSpacingPx"],
       DEFAULT_TYPOGRAPHY.headingLetterSpacingPx,
@@ -277,7 +279,12 @@ export function parseTypography(raw: unknown): TypographySettings {
       LETTER_MAX,
     ),
     lineHeight: num(o["lineHeight"], DEFAULT_TYPOGRAPHY.lineHeight, LH_MIN, LH_MAX),
-    headingLineHeight: num(o["headingLineHeight"], DEFAULT_TYPOGRAPHY.headingLineHeight, LH_MIN, LH_MAX),
+    headingLineHeight: num(
+      o["headingLineHeight"],
+      DEFAULT_TYPOGRAPHY.headingLineHeight,
+      LH_MIN,
+      LH_MAX,
+    ),
     primaryText: str(o["primaryText"], DEFAULT_TYPOGRAPHY.primaryText),
     mutedText: str(o["mutedText"], DEFAULT_TYPOGRAPHY.mutedText),
     headingText: str(o["headingText"], DEFAULT_TYPOGRAPHY.headingText),
@@ -291,14 +298,19 @@ export function parseTypography(raw: unknown): TypographySettings {
       typeof headingFamily === "string" && headingFamily in FONT_FAMILIES
         ? (headingFamily as FontFamilyKey)
         : DEFAULT_TYPOGRAPHY.headingFontFamily,
-    fontWeight: (WEIGHTS.includes(Math.round(weight / 100) * 100 as (typeof WEIGHTS)[number])
+    fontWeight: (WEIGHTS.includes((Math.round(weight / 100) * 100) as (typeof WEIGHTS)[number])
       ? Math.round(weight / 100) * 100
       : DEFAULT_TYPOGRAPHY.fontWeight) as number,
-    headingFontWeight: (WEIGHTS.includes(Math.round(headingWeight / 100) * 100 as (typeof WEIGHTS)[number])
+    headingFontWeight: (WEIGHTS.includes(
+      (Math.round(headingWeight / 100) * 100) as (typeof WEIGHTS)[number],
+    )
       ? Math.round(headingWeight / 100) * 100
       : DEFAULT_TYPOGRAPHY.headingFontWeight) as number,
     textTransform:
-      transform === "uppercase" || transform === "lowercase" || transform === "capitalize" || transform === "none"
+      transform === "uppercase" ||
+      transform === "lowercase" ||
+      transform === "capitalize" ||
+      transform === "none"
         ? transform
         : DEFAULT_TYPOGRAPHY.textTransform,
     headingTransform:
@@ -320,10 +332,10 @@ export function parseTypography(raw: unknown): TypographySettings {
   };
 }
 
-export function applyTypeScale(bodySizePx: number, ratioKey: TypeScaleRatioKey): Pick<
-  TypographySettings,
-  "h1SizeRem" | "h2SizeRem" | "h3SizeRem" | "h4SizeRem"
-> {
+export function applyTypeScale(
+  bodySizePx: number,
+  ratioKey: TypeScaleRatioKey,
+): Pick<TypographySettings, "h1SizeRem" | "h2SizeRem" | "h3SizeRem" | "h4SizeRem"> {
   const r = TYPE_SCALE_RATIOS[ratioKey].ratio;
   const bodyRem = bodySizePx / 16;
   return {
@@ -373,7 +385,10 @@ export function typographyToCssVars(t: TypographySettings): Record<string, strin
   };
 }
 
-export function applyTypographyCss(t: TypographySettings, target: HTMLElement = document.documentElement): void {
+export function applyTypographyCss(
+  t: TypographySettings,
+  target: HTMLElement = document.documentElement,
+): void {
   const vars = typographyToCssVars(t);
   for (const key of Object.keys(vars)) {
     target.style.setProperty(key, vars[key] as string);
@@ -434,7 +449,9 @@ function parseColorToRgb(input: string): { r: number; g: number; b: number; a: n
       return { r, g, b, a };
     }
   }
-  const rgba = /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)$/i.exec(s);
+  const rgba = /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)$/i.exec(
+    s,
+  );
   if (rgba) {
     return {
       r: Number(rgba[1]),
@@ -443,7 +460,8 @@ function parseColorToRgb(input: string): { r: number; g: number; b: number; a: n
       a: rgba[4] != null ? Number(rgba[4]) : 1,
     };
   }
-  const hsla = /^hsla?\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%(?:\s*,\s*([\d.]+))?\s*\)$/i.exec(s);
+  const hsla =
+    /^hsla?\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%(?:\s*,\s*([\d.]+))?\s*\)$/i.exec(s);
   if (hsla) {
     const rgb = hslToRgb(Number(hsla[1]), Number(hsla[2]) / 100, Number(hsla[3]) / 100);
     return { ...rgb, a: hsla[4] != null ? Number(hsla[4]) : 1 };
@@ -453,7 +471,7 @@ function parseColorToRgb(input: string): { r: number; g: number; b: number; a: n
 
 export function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
   const c = (1 - Math.abs(2 * l - 1)) * s;
-  const hp = ((h % 360) + 360) % 360 / 60;
+  const hp = (((h % 360) + 360) % 360) / 60;
   const x = c * (1 - Math.abs((hp % 2) - 1));
   let r = 0,
     g = 0,
@@ -490,13 +508,25 @@ export function rgbToHsl(r: number, g: number, b: number): { h: number; s: numbe
 }
 
 export function toHex(r: number, g: number, b: number, a = 1): string {
-  const hr = (n: number) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0");
+  const hr = (n: number) =>
+    Math.max(0, Math.min(255, Math.round(n)))
+      .toString(16)
+      .padStart(2, "0");
   const hex = `#${hr(r)}${hr(g)}${hr(b)}`;
   if (a >= 0.999) return hex;
   return `${hex}${hr(a * 255)}`;
 }
 
-export function decomposeColor(input: string): { hex: string; r: number; g: number; b: number; a: number; h: number; s: number; l: number } {
+export function decomposeColor(input: string): {
+  hex: string;
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+  h: number;
+  s: number;
+  l: number;
+} {
   const rgb = parseColorToRgb(input) ?? { r: 26, g: 26, b: 26, a: 1 };
   const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
   return {
@@ -521,7 +551,10 @@ function relativeLuminance(r: number, g: number, b: number): number {
 
 export type ContrastGrade = "fail" | "AA" | "AAA";
 
-export function contrastRatio(fg: string, bg: string): { ratio: number; body: ContrastGrade; large: ContrastGrade } {
+export function contrastRatio(
+  fg: string,
+  bg: string,
+): { ratio: number; body: ContrastGrade; large: ContrastGrade } {
   const a = parseColorToRgb(fg);
   const b = parseColorToRgb(bg);
   if (!a || !b) return { ratio: 0, body: "fail", large: "fail" };
@@ -570,6 +603,6 @@ export function isMissingColumnError(
 }
 
 export const SITE_SETTINGS_BASE_COLUMNS =
-  "id, brand_name, primary_color, accent_color, secondary_color, background_color, logo_url, favicon_url, banner_url, theme_mode, layout_variant, hero_badge, hero_title, hero_title_accent, hero_subtitle";
+  "id, brand_name, primary_color, accent_color, secondary_color, background_color, logo_url, favicon_url, banner_url, theme_mode, layout_variant, hero_badge, hero_title, hero_title_accent, hero_subtitle, founder_contact_phone, founder_contact_email";
 
 export const SITE_SETTINGS_COLUMNS_WITH_TYPOGRAPHY = `${SITE_SETTINGS_BASE_COLUMNS}, typography`;

@@ -1,7 +1,12 @@
 import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
-import { defaultAdDates, parseActionType, sanitizeActionValue, type AdActionType } from "@/lib/advertisements";
+import {
+  defaultAdDates,
+  parseActionType,
+  sanitizeActionValue,
+  type AdActionType,
+} from "@/lib/advertisements";
 import { BANNERS_BUCKET, contentTypeForBrandPath, MAX_AD_MEDIA_BYTES } from "@/lib/upload-limits";
 
 const SAFE_EXT = /^(png|jpg|jpeg|webp|gif|avif|bmp|svg|ico|heic|heif|mp4|mov|webm)$/i;
@@ -35,8 +40,7 @@ function bearerToken(request: Request): string {
 export async function founderClientFromRequest(request: Request) {
   const url = process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"];
   const key =
-    process.env["SUPABASE_PUBLISHABLE_KEY"] ||
-    process.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
+    process.env["SUPABASE_PUBLISHABLE_KEY"] || process.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
   if (!url || !key) throw new Error("Supabase ortam değişkenleri eksik");
 
   const token = bearerToken(request);
@@ -125,14 +129,22 @@ function storageUploadMessage(raw: string): string {
   const text = raw.trim();
   if (!text) return "Dosya yüklenemedi";
   const lower = text.toLowerCase();
-  if (lower.includes("mime") || lower.includes("not allowed") || lower.includes("invalid content")) {
+  if (
+    lower.includes("mime") ||
+    lower.includes("not allowed") ||
+    lower.includes("invalid content")
+  ) {
     return "Yalnızca görsel veya video yükleyin (PNG, JPEG, MP4, MOV, WEBM…)";
   }
   if (lower.includes("payload") || lower.includes("too large") || lower.includes("maximum")) {
     return `Dosya ${Math.round(MAX_AD_MEDIA_BYTES / (1024 * 1024))} MB sınırını aşıyor`;
   }
-  if (lower.includes("row-level security") || lower.includes("unauthorized") || lower.includes("403")) {
-    return "Yükleme yetkisi yok. Kurucu hesabıyla giriş yapın.";
+  if (
+    lower.includes("row-level security") ||
+    lower.includes("unauthorized") ||
+    lower.includes("403")
+  ) {
+    return "Yükleme yetkisi yok. Sayfa yöneticisi hesabıyla giriş yapın.";
   }
   return "Dosya yüklenemedi";
 }
@@ -156,8 +168,7 @@ function formInt(form: FormData, key: string, fallback: number): number {
   return Math.min(9999, Math.max(0, Math.round(n)));
 }
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export type AdvertisementSaveFields = {
   id?: string;
@@ -240,7 +251,9 @@ function fieldsFromForm(form: FormData, imageUrl: string): AdvertisementSaveFiel
   const title = formText(form, "title").slice(0, 120);
   if (!title) throw new Error("Başlık girin");
 
-  const actionType = parseActionType(formText(form, "action_type") || "internal_route") as AdActionType;
+  const actionType = parseActionType(
+    formText(form, "action_type") || "internal_route",
+  ) as AdActionType;
   const actionValue =
     sanitizeActionValue(actionType, formText(form, "action_value")) ||
     (actionType === "internal_route" ? "/" : "");
@@ -285,9 +298,7 @@ export async function uploadAndSaveFounderBanner(request: Request): Promise<{
   const { userId, email } = await founderClientFromRequest(request);
   const form = await request.formData();
   const uploaded = form.get("file");
-  let file:
-    | { bytes: Uint8Array; fileName: string; contentType: string }
-    | undefined;
+  let file: { bytes: Uint8Array; fileName: string; contentType: string } | undefined;
   if (isUploadBlob(uploaded)) {
     const bytes = new Uint8Array(await uploaded.arrayBuffer());
     file = {
