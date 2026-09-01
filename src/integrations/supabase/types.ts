@@ -92,6 +92,47 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          restaurant_id: string | null
+          sender_id: string | null
+          target_type: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          restaurant_id?: string | null
+          sender_id?: string | null
+          target_type: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          restaurant_id?: string | null
+          sender_id?: string | null
+          target_type?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_messages_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       advertisements: {
         Row: {
           action_type: Database["public"]["Enums"]["advertisement_action_type"]
