@@ -4,23 +4,33 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { Save, RotateCcw, Smartphone, Monitor, Lock } from "lucide-react";
-import { useSiteSettings, DEFAULT_HERO, type HeroContent } from "@/hooks/useSiteSettings";
+import {
+  useSiteSettings,
+  DEFAULT_HERO,
+  DEFAULT_FOOTER,
+  type HeroContent,
+  type FooterContent,
+} from "@/hooks/useSiteSettings";
 import { updateHeroContent } from "@/lib/founder.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+type ContentForm = HeroContent & FooterContent;
+
+const DEFAULT_CONTENT: ContentForm = { ...DEFAULT_HERO, ...DEFAULT_FOOTER };
+
 export function HeroContentPanel() {
-  const { hero, refresh, isFounder } = useSiteSettings();
+  const { hero, footer, refresh, isFounder } = useSiteSettings();
   const save = useServerFn(updateHeroContent);
-  const [form, setForm] = useState<HeroContent>(hero);
+  const [form, setForm] = useState<ContentForm>({ ...hero, ...footer });
   const [device, setDevice] = useState<"mobile" | "desktop">("desktop");
 
-  useEffect(() => setForm(hero), [hero]);
+  useEffect(() => setForm({ ...hero, ...footer }), [hero, footer]);
 
   const mutation = useMutation({
-    mutationFn: (values: HeroContent) => save({ data: values }),
+    mutationFn: (values: ContentForm) => save({ data: values }),
     onSuccess: () => {
-      toast.success("Ana sayfa metinleri güncellendi");
+      toast.success("Site metinleri güncellendi");
       refresh();
     },
     onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
@@ -33,14 +43,14 @@ export function HeroContentPanel() {
           <Lock className="size-5 text-muted-foreground" /> Yetkiniz yok
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Ana sayfa tanıtım metinlerini yalnızca sayfa yöneticisi rolüne sahip hesaplar
+          Ana sayfa ve alt bilgi metinlerini yalnızca sayfa yöneticisi rolüne sahip hesaplar
           düzenleyebilir.
         </p>
       </div>
     );
   }
 
-  function field(key: keyof HeroContent, label: string, hint: string) {
+  function field(key: keyof ContentForm, label: string, hint: string) {
     return (
       <label className="block">
         <span className="text-sm font-semibold">{label}</span>
@@ -74,6 +84,24 @@ export function HeroContentPanel() {
           "Renkli görünen kısım. Boş bırakabilirsiniz.",
         )}
         {field("hero_subtitle", "Açıklama", "Başlığın altındaki kısa tanıtım cümlesi.")}
+      </div>
+
+      <h3 className="mt-8 text-lg">Alt bilgi (footer)</h3>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Sitenin her sayfasının altında görünen tanıtım cümlesi ve teslimat saatleri metnini buradan
+        düzenleyin.
+      </p>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        {field(
+          "footer_tagline",
+          "Tanıtım cümlesi",
+          "Marka adının altında gösterilir. Örn: “Mahallenin en iyi ustalarından sıcak yemekler, kapınıza kadar.”",
+        )}
+        {field(
+          "footer_delivery_hours",
+          "Teslimat saatleri",
+          "“Teslimat saatleri” başlığı altında gösterilir. Örn: “Her gün 10:00 – 23:30”",
+        )}
       </div>
 
       <div className="mt-6 flex items-center justify-between gap-3">
@@ -133,7 +161,7 @@ export function HeroContentPanel() {
           <Save className="size-4" />
           {mutation.isPending ? "Kaydediliyor…" : "Kaydet"}
         </Button>
-        <Button variant="outline" className="rounded-full" onClick={() => setForm(DEFAULT_HERO)}>
+        <Button variant="outline" className="rounded-full" onClick={() => setForm(DEFAULT_CONTENT)}>
           <RotateCcw className="size-4" />
           Varsayılana dön
         </Button>

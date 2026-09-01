@@ -864,6 +864,10 @@ export type Database = {
           brand_name: string
           created_at: string
           favicon_url: string | null
+          footer_delivery_hours: string
+          footer_tagline: string
+          founder_contact_email: string
+          founder_contact_phone: string
           hero_badge: string
           hero_subtitle: string
           hero_title: string
@@ -884,6 +888,10 @@ export type Database = {
           brand_name?: string
           created_at?: string
           favicon_url?: string | null
+          footer_delivery_hours?: string
+          footer_tagline?: string
+          founder_contact_email?: string
+          founder_contact_phone?: string
           hero_badge?: string
           hero_subtitle?: string
           hero_title?: string
@@ -904,6 +912,10 @@ export type Database = {
           brand_name?: string
           created_at?: string
           favicon_url?: string | null
+          footer_delivery_hours?: string
+          footer_tagline?: string
+          founder_contact_email?: string
+          founder_contact_phone?: string
           hero_badge?: string
           hero_subtitle?: string
           hero_title?: string

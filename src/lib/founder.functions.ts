@@ -42,6 +42,8 @@ const heroSchema = z.object({
   hero_title: z.string().trim().min(2).max(120),
   hero_title_accent: z.string().trim().max(120),
   hero_subtitle: z.string().trim().min(2).max(300),
+  footer_tagline: z.string().trim().min(2).max(160),
+  footer_delivery_hours: z.string().trim().min(2).max(80),
 });
 
 export const updateHeroContent = createServerFn({ method: "POST" })

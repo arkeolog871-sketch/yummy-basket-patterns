@@ -41,6 +41,11 @@ export type FounderContactInfo = {
   founder_contact_email: string;
 };
 
+export type FooterContent = {
+  footer_tagline: string;
+  footer_delivery_hours: string;
+};
+
 export const DEFAULT_SETTINGS: SiteSettings = {
   id: "global",
   brand_name: "SİLVAN CEBİMDE",
@@ -70,10 +75,16 @@ export const DEFAULT_FOUNDER_CONTACT: FounderContactInfo = {
   founder_contact_email: "arkeolog871@gmail.com",
 };
 
+export const DEFAULT_FOOTER: FooterContent = {
+  footer_tagline: "Mahallenin en iyi ustalarından sıcak yemekler, kapınıza kadar.",
+  footer_delivery_hours: "Her gün 10:00 – 23:30",
+};
+
 type SiteSettingsContextValue = {
   settings: SiteSettings;
   hero: HeroContent;
   founderContact: FounderContactInfo;
+  footer: FooterContent;
   isFounder: boolean;
   founderExists: boolean;
   refresh: () => void;
@@ -83,6 +94,7 @@ const SiteSettingsContext = createContext<SiteSettingsContextValue>({
   settings: DEFAULT_SETTINGS,
   hero: DEFAULT_HERO,
   founderContact: DEFAULT_FOUNDER_CONTACT,
+  footer: DEFAULT_FOOTER,
   isFounder: false,
   founderExists: true,
   refresh: () => {},
@@ -90,7 +102,7 @@ const SiteSettingsContext = createContext<SiteSettingsContextValue>({
 
 function mergeSettings(
   row: Record<string, unknown> | null | undefined,
-): SiteSettings & HeroContent & FounderContactInfo {
+): SiteSettings & HeroContent & FounderContactInfo & FooterContent {
   const raw = row ?? {};
   const rest = { ...raw };
   delete rest["typography"];
@@ -98,10 +110,11 @@ function mergeSettings(
     ...DEFAULT_SETTINGS,
     ...DEFAULT_HERO,
     ...DEFAULT_FOUNDER_CONTACT,
+    ...DEFAULT_FOOTER,
     ...rest,
     typography: parseTypography(raw["typography"]),
     typographyConfigured: isTypographyConfigured(raw["typography"]),
-  } as SiteSettings & HeroContent & FounderContactInfo;
+  } as SiteSettings & HeroContent & FounderContactInfo & FooterContent;
 }
 
 export function SiteSettingsProvider({ children }: { children: ReactNode }) {
@@ -110,7 +123,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
 
   const settingsQuery = useQuery({
     queryKey: ["site-settings"],
-    queryFn: async (): Promise<SiteSettings & HeroContent & FounderContactInfo> => {
+    queryFn: async (): Promise<SiteSettings & HeroContent & FounderContactInfo & FooterContent> => {
       try {
         const withTypography = await supabase
           .from("site_settings")
@@ -223,6 +236,11 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
             merged.founder_contact_phone ?? DEFAULT_FOUNDER_CONTACT.founder_contact_phone,
           founder_contact_email:
             merged.founder_contact_email ?? DEFAULT_FOUNDER_CONTACT.founder_contact_email,
+        },
+        footer: {
+          footer_tagline: merged.footer_tagline ?? DEFAULT_FOOTER.footer_tagline,
+          footer_delivery_hours:
+            merged.footer_delivery_hours ?? DEFAULT_FOOTER.footer_delivery_hours,
         },
         isFounder: rolesQuery.data?.isFounder ?? false,
         founderExists: rolesQuery.data?.founderExists ?? true,

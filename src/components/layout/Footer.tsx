@@ -5,16 +5,14 @@ import { APK_DOWNLOAD, APK_URL } from "@/lib/android-apk";
 
 export function Footer() {
   const { areas } = useServiceAreas();
-  const { settings } = useSiteSettings();
+  const { settings, footer } = useSiteSettings();
   const areaText = areas.length > 0 ? areas.map(areaLabel).join(" · ") : "Bölgeler yakında";
   return (
     <footer className="mt-20 border-t border-border/70 bg-secondary/60 pb-[env(safe-area-inset-bottom)]">
       <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-12 sm:grid-cols-3">
         <div>
           <p className="font-display text-lg font-semibold">{settings.brand_name}</p>
-          <p className="mt-2 max-w-xs text-sm text-muted-foreground">
-            Mahallenin en iyi ustalarından sıcak yemekler, kapınıza kadar.
-          </p>
+          <p className="mt-2 max-w-xs text-sm text-muted-foreground">{footer.footer_tagline}</p>
         </div>
         <div className="text-sm">
           <p className="font-semibold">Keşfet</p>
@@ -52,7 +50,7 @@ export function Footer() {
         </div>
         <div className="text-sm text-muted-foreground">
           <p className="font-semibold text-foreground">Teslimat saatleri</p>
-          <p className="mt-3">Her gün 10:00 – 23:30</p>
+          <p className="mt-3">{footer.footer_delivery_hours}</p>
           <p className="mt-1" suppressHydrationWarning>
             {areaText}
           </p>
