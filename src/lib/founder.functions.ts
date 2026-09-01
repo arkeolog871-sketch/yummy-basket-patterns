@@ -424,10 +424,13 @@ export const listAdminData = createServerFn({ method: "GET" })
       // Kurucu doğrulandıktan sonra iletişim alanlarını da okuyabilmek için yetkili istemci.
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+      // Kurucu paneli tüm kataloğu tek seferde belleğe indirir; gerçek sayfalama
+      // henüz yok, bu yüzden aşırı büyümeye karşı cömert bir üst sınır konuldu.
+      const CATALOG_LIMIT = 1000;
       const [businesses, categories, items, orders] = await Promise.all([
-        supabaseAdmin.from("restaurants").select("*").order("name"),
-        context.supabase.from("menu_categories").select("*").order("position"),
-        supabaseAdmin.from("menu_items").select("*").order("name"),
+        supabaseAdmin.from("restaurants").select("*").order("name").limit(CATALOG_LIMIT),
+        context.supabase.from("menu_categories").select("*").order("position").limit(CATALOG_LIMIT),
+        supabaseAdmin.from("menu_items").select("*").order("name").limit(CATALOG_LIMIT),
         context.supabase
           .from("orders")
           .select(
