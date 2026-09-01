@@ -98,27 +98,30 @@ export type Database = {
           created_at: string
           id: string
           restaurant_id: string | null
-          sender_id: string
+          sender_id: string | null
           target_type: string
           title: string
+          updated_at: string
         }
         Insert: {
           body: string
           created_at?: string
           id?: string
           restaurant_id?: string | null
-          sender_id: string
+          sender_id?: string | null
           target_type: string
           title: string
+          updated_at?: string
         }
         Update: {
           body?: string
           created_at?: string
           id?: string
           restaurant_id?: string | null
-          sender_id?: string
+          sender_id?: string | null
           target_type?: string
           title?: string
+          updated_at?: string
         }
         Relationships: [
           {
