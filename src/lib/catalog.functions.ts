@@ -20,7 +20,8 @@ export const listRestaurants = createServerFn({ method: "GET" })
         "id, slug, name, tagline, category, sector, cuisines, rating, review_count, delivery_fee, delivery_minutes, min_order, cover_image_url, address, district, city, latitude, longitude, maps_url, opens_at, closes_at, is_open_manual",
       )
       .eq("is_active", true)
-      .order("rating", { ascending: false });
+      .order("rating", { ascending: false })
+      .limit(100);
 
     if (data.category) query = query.eq("category", data.category);
     if (data.sector) query = query.eq("sector", data.sector);
