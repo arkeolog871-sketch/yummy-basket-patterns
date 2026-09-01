@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { formatPhoneDisplay, toTelNumber } from "@/lib/phone";
 import { openTelHref } from "@/lib/ios";
 
-const FOUNDER_NAME = "İsmail Simpil";
 const FOUNDER_PHONE = "0546 696 31 33";
 const FOUNDER_EMAIL = "arkeolog871@gmail.com";
 
@@ -28,10 +27,9 @@ export function FounderContact() {
     <section className="mx-auto w-full max-w-6xl px-4 pb-16">
       <div className="rounded-3xl border border-border/70 bg-card p-6 sm:p-10">
         <div className="max-w-xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
             Kurucu ile iletişim
-          </p>
-          <h2 className="mt-2 text-2xl sm:text-3xl">{FOUNDER_NAME}</h2>
+          </h2>
           <p className="mt-3 text-sm text-muted-foreground">
             Görüş, öneri, iş birliği veya destek talepleriniz için kurucumuza doğrudan
             ulaşabilirsiniz.
