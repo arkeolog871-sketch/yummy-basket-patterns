@@ -7,6 +7,7 @@ import { homeQuery, type HomeSearch } from "@/lib/catalog.queries";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { fetchPublicBanners } from "@/lib/advertisements";
 import { HeroBannerSlider, legacySlidesToBanners } from "@/components/home/HeroBannerSlider";
+import { FounderContact } from "@/components/home/FounderContact";
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -234,6 +235,8 @@ function Index() {
           </Suspense>
         </ClientOnly>
       </section>
+
+      <FounderContact />
     </div>
   );
 }
