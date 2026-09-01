@@ -1,17 +1,28 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { Bell } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { toast } from "sonner";
+import { Bell, Megaphone } from "lucide-react";
 import { listMyOrders } from "@/lib/orders.functions";
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import { formatPrice, formatDateTime, ORDER_STATUS_LABELS } from "@/lib/format";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  showNativeNotification,
+  loadSeenMessageIds,
+  saveSeenMessageIds,
+} from "@/lib/native-notify";
 
 export const Route = createFileRoute("/bildirimler")({
   head: () => ({
     meta: [
       { title: "Bildirimler — SİLVAN CEBİMDE" },
-      { name: "description", content: "Sipariş durumu bildirimlerinizi SİLVAN CEBİMDE üzerinden takip edin." },
+      {
+        name: "description",
+        content: "Sipariş durumu bildirimlerinizi SİLVAN CEBİMDE üzerinden takip edin.",
+      },
       { property: "og:title", content: "Bildirimler — SİLVAN CEBİMDE" },
       { property: "og:description", content: "Sipariş durumu bildirimlerinizi görüntüleyin." },
       { property: "og:type", content: "website" },
@@ -27,11 +38,49 @@ export const Route = createFileRoute("/bildirimler")({
 
 function NotificationsPage() {
   const fetchOrders = useServerFn(listMyOrders);
-  const { data: orders = [], isLoading, isError, refetch } = useQuery({
+  const {
+    data: orders = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["orders"],
     queryFn: () => fetchOrders(),
     refetchInterval: 15000,
   });
+
+  const { data: announcements = [] } = useQuery({
+    queryKey: ["admin-messages", "customers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("admin_messages")
+        .select("id, title, body, created_at")
+        .in("target_type", ["all", "customers"])
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+    refetchInterval: 30000,
+  });
+
+  const notifiedMessageIds = useRef<Set<string> | null>(null);
+
+  useEffect(() => {
+    if (!notifiedMessageIds.current) {
+      notifiedMessageIds.current = new Set(loadSeenMessageIds());
+    }
+    const seen = notifiedMessageIds.current;
+    let changed = false;
+    for (const announcement of announcements) {
+      if (seen.has(announcement.id)) continue;
+      seen.add(announcement.id);
+      changed = true;
+      toast.info(announcement.title, { description: announcement.body });
+      showNativeNotification(announcement.title, announcement.body);
+    }
+    if (changed) saveSeenMessageIds(seen);
+  }, [announcements]);
 
   const active = orders.filter((o) => o.status !== "delivered" && o.status !== "cancelled");
 
@@ -40,6 +89,26 @@ function NotificationsPage() {
       <h1 className="flex items-center gap-2 text-3xl">
         <Bell className="size-7 text-accent" /> Bildirimler
       </h1>
+
+      {announcements.length > 0 ? (
+        <div className="mt-6 space-y-3">
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
+            <Megaphone className="size-4" /> Duyurular
+          </p>
+          {announcements.map((announcement) => (
+            <div
+              key={announcement.id}
+              className="rounded-3xl border border-accent/30 bg-accent/5 p-4"
+            >
+              <p className="font-semibold">{announcement.title}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{announcement.body}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {formatDateTime(announcement.created_at)}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       {isLoading ? (
         <p className="mt-6 text-sm text-muted-foreground">Yükleniyor…</p>

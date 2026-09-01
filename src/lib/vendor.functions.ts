@@ -44,48 +44,53 @@ export const getVendorDashboard = createServerFn({ method: "GET" })
       const { supabase } = context;
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-      const [restaurant, items, orders, categories, media, alerts] = await Promise.all([
-        supabase
-          .from("restaurants")
-          .select(
-            "id, name, slug, sector, category, delivery_fee, min_order, delivery_minutes, opens_at, closes_at, is_open_manual, is_active, city, district, logo_url, cover_image_url",
-          )
-          .eq("id", restaurantId)
-          .maybeSingle(),
-        supabaseAdmin
-          .from("menu_items")
-          .select(
-            "id, name, description, price, is_available, is_popular, category_id, image_url, stock_quantity",
-          )
-          .eq("restaurant_id", restaurantId)
-          .order("name"),
-        supabase
-          .from("orders")
-          .select(
-            "id, created_at, status, payment_status, total, subtotal, delivery_fee, recipient_name, phone, street, district, city, note, order_items(id, name, quantity, unit_price)",
-          )
-          .eq("restaurant_id", restaurantId)
-          .order("created_at", { ascending: false })
-          .limit(60),
-        supabase
-          .from("menu_categories")
-          .select("id, name, position")
-          .eq("restaurant_id", restaurantId)
-          .order("position"),
-        supabase
-          .from("business_media")
-          .select("id, url, kind, position, created_at")
-          .eq("restaurant_id", restaurantId)
-          .order("created_at", { ascending: false }),
-        supabaseAdmin
-          .from("order_vendor_alerts")
-          .select("id, order_id, title, body, created_at, read_at")
-          .eq("restaurant_id", restaurantId)
-          .eq("channel", "in_app")
-          .order("created_at", { ascending: false })
-          .limit(40),
-
-      ]);
+      const [restaurant, items, orders, categories, media, alerts, adminMessages] =
+        await Promise.all([
+          supabase
+            .from("restaurants")
+            .select(
+              "id, name, slug, sector, category, delivery_fee, min_order, delivery_minutes, opens_at, closes_at, is_open_manual, is_active, city, district, logo_url, cover_image_url",
+            )
+            .eq("id", restaurantId)
+            .maybeSingle(),
+          supabaseAdmin
+            .from("menu_items")
+            .select(
+              "id, name, description, price, is_available, is_popular, category_id, image_url, stock_quantity",
+            )
+            .eq("restaurant_id", restaurantId)
+            .order("name"),
+          supabase
+            .from("orders")
+            .select(
+              "id, created_at, status, payment_status, total, subtotal, delivery_fee, recipient_name, phone, street, district, city, note, order_items(id, name, quantity, unit_price)",
+            )
+            .eq("restaurant_id", restaurantId)
+            .order("created_at", { ascending: false })
+            .limit(60),
+          supabase
+            .from("menu_categories")
+            .select("id, name, position")
+            .eq("restaurant_id", restaurantId)
+            .order("position"),
+          supabase
+            .from("business_media")
+            .select("id, url, kind, position, created_at")
+            .eq("restaurant_id", restaurantId)
+            .order("created_at", { ascending: false }),
+          supabaseAdmin
+            .from("order_vendor_alerts")
+            .select("id, order_id, title, body, created_at, read_at")
+            .eq("restaurant_id", restaurantId)
+            .eq("channel", "in_app")
+            .order("created_at", { ascending: false })
+            .limit(40),
+          supabase
+            .from("admin_messages")
+            .select("id, target_type, title, body, created_at")
+            .order("created_at", { ascending: false })
+            .limit(20),
+        ]);
 
       const firstError =
         restaurant.error ?? items.error ?? orders.error ?? categories.error ?? media.error ?? null;
@@ -99,6 +104,7 @@ export const getVendorDashboard = createServerFn({ method: "GET" })
         categories: categories.data ?? [],
         media: media.data ?? [],
         alerts: alerts.error ? [] : (alerts.data ?? []),
+        adminMessages: adminMessages.error ? [] : (adminMessages.data ?? []),
       };
     }),
   );

@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { toPublicErrorMessage } from "@/lib/public-error";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Store,
   LogOut,
@@ -15,7 +15,13 @@ import {
   Bell,
   Image as ImageIcon,
 } from "lucide-react";
-import { showNativeNotification, loadSeenAlertIds, saveSeenAlertIds } from "@/lib/native-notify";
+import {
+  showNativeNotification,
+  loadSeenAlertIds,
+  saveSeenAlertIds,
+  loadSeenMessageIds,
+  saveSeenMessageIds,
+} from "@/lib/native-notify";
 import { supabase } from "@/integrations/supabase/client";
 
 import { RequireAuth } from "@/components/auth/RequireAuth";
@@ -247,6 +253,25 @@ function VendorDashboard() {
     if (changed) saveSeenAlertIds(seen);
   }, [unreadAlerts, dashboard.data?.orders]);
 
+  const adminMessages = useMemo(() => dashboard.data?.adminMessages ?? [], [dashboard.data]);
+  const notifiedMessageIds = useRef<Set<string> | null>(null);
+
+  useEffect(() => {
+    if (!notifiedMessageIds.current) {
+      notifiedMessageIds.current = new Set(loadSeenMessageIds());
+    }
+    const seen = notifiedMessageIds.current;
+    let changed = false;
+    for (const message of adminMessages) {
+      if (seen.has(message.id)) continue;
+      seen.add(message.id);
+      changed = true;
+      toast.info(message.title, { description: message.body });
+      showNativeNotification(message.title, message.body);
+    }
+    if (changed) saveSeenMessageIds(seen);
+  }, [adminMessages]);
+
   async function handleSignOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
@@ -378,7 +403,26 @@ function VendorDashboard() {
           </TabsList>
 
           <TabsContent value="bildirimler" className="mt-6 space-y-3">
-            {allAlerts.length === 0 ? (
+            {adminMessages.length > 0 ? (
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-muted-foreground">
+                  Sayfa yöneticisi duyuruları
+                </p>
+                {adminMessages.map((message) => (
+                  <div
+                    key={message.id}
+                    className="rounded-3xl border border-accent/30 bg-accent/5 p-4"
+                  >
+                    <p className="font-semibold">{message.title}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{message.body}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {formatDateTime(message.created_at)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {allAlerts.length === 0 && adminMessages.length === 0 ? (
               <EmptyState
                 title="Bildirim yok"
                 description="Yeni sipariş geldiğinde bildirimler burada anlık olarak listelenir."
