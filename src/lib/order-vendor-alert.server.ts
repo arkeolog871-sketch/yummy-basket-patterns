@@ -11,7 +11,7 @@ const ROOT_DOMAIN = "uygulamamcebimde.online";
 const SITE_URL = `https://${ROOT_DOMAIN}`;
 const DASHBOARD_URL = `${SITE_URL}/vendor/dashboard`;
 
-type AlertChannel = "in_app" | "email";
+type AlertChannel = "in_app" | "email" | "push";
 
 function looksLikeEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -132,6 +132,20 @@ async function notifyVendorOfNewOrderUnsafe(orderId: string): Promise<void> {
     });
   }
 
+  try {
+    await deliverPushAlert({
+      orderId: order.id,
+      restaurantId: restaurant.id,
+      title,
+      body,
+    });
+  } catch (error) {
+    console.error("[order-vendor-alert] push bildirimi başarısız", {
+      orderId: order.id,
+      code: error && typeof error === "object" && "code" in error ? error.code : undefined,
+    });
+  }
+
   const to = (restaurant.contact_email ?? "").trim().toLowerCase();
   if (!looksLikeEmail(to)) return;
 
@@ -174,6 +188,45 @@ async function deliverInAppAlert(input: {
       orderId: input.orderId,
     });
   }
+}
+
+/** Sekme/uygulama kapalıyken de ulaşsın diye: atanan işletme hesaplarına ve kurucuya push. */
+async function deliverPushAlert(input: {
+  orderId: string;
+  restaurantId: string;
+  title: string;
+  body: string;
+}): Promise<void> {
+  const claimed = await claimAlert({ ...input, channel: "push", markSent: false });
+  if (claimed === "already_sent" || claimed === "missing_table") return;
+
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const [{ data: vendorRows }, { data: founderRows }] = await Promise.all([
+    supabaseAdmin
+      .from("vendor_assignments")
+      .select("user_id")
+      .eq("restaurant_id", input.restaurantId),
+    supabaseAdmin.from("user_roles").select("user_id").eq("role", "founder"),
+  ]);
+  const recipientIds = [
+    ...(vendorRows ?? []).map((row) => row.user_id),
+    ...(founderRows ?? []).map((row) => row.user_id),
+  ];
+  if (recipientIds.length === 0) return;
+
+  const { sendPushToUserIds } = await import("./push.server");
+  await sendPushToUserIds(recipientIds, {
+    title: input.title,
+    body: input.body,
+    url: DASHBOARD_URL,
+  });
+
+  await supabaseAdmin
+    .from("order_vendor_alerts")
+    .update({ sent_at: new Date().toISOString() })
+    .eq("order_id", input.orderId)
+    .eq("channel", "push")
+    .is("sent_at", null);
 }
 
 async function deliverOrderEmail(input: {

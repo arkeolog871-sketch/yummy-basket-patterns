@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Bell, Megaphone } from "lucide-react";
 import { listMyOrders } from "@/lib/orders.functions";
 import { RequireAuth } from "@/components/auth/RequireAuth";
+import { PushNotificationButton } from "@/components/notifications/PushNotificationButton";
 import { formatPrice, formatDateTime, ORDER_STATUS_LABELS } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -86,9 +87,12 @@ function NotificationsPage() {
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-10">
-      <h1 className="flex items-center gap-2 text-3xl">
-        <Bell className="size-7 text-accent" /> Bildirimler
-      </h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="flex items-center gap-2 text-3xl">
+          <Bell className="size-7 text-accent" /> Bildirimler
+        </h1>
+        <PushNotificationButton />
+      </div>
 
       {announcements.length > 0 ? (
         <div className="mt-6 space-y-3">
