@@ -35,6 +35,7 @@ import { ServiceAreaPanel } from "@/components/founder/ServiceAreaPanel";
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { SECTORS } from "@/lib/sectors";
 import { formatPrice, formatDateTime, ORDER_STATUS_LABELS, slugify } from "@/lib/format";
+import { formatPhoneDisplay } from "@/lib/phone";
 import {
   listAdminData,
   listUsers,
@@ -1315,6 +1316,7 @@ function MenuItemPanel({
 type UserRow = {
   id: string;
   email: string;
+  phone: string | null;
   created_at: string;
   roles: string[];
   vendorRestaurantId: string | null;
@@ -1503,6 +1505,9 @@ function UserPanel({
             >
               <div className="min-w-0">
                 <p className="truncate font-medium">{user.email}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {user.phone ? formatPhoneDisplay(user.phone) : "Telefon yok"}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   {formatDateTime(user.created_at)} ·{" "}
                   {user.roles.length ? user.roles.join(", ") : "yetki yok"}
