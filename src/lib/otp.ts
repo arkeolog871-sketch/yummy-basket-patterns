@@ -16,6 +16,9 @@ export const OTP_LENGTH_MESSAGE = "Doğrulama kodu 6 haneli olmalıdır.";
 /** 5 hatalı deneme sonrası; kodun doğru olup olmadığını söylemez. */
 export const OTP_LOCK_MESSAGE =
   "Çok fazla hatalı deneme yaptınız. Mevcut kod geçersiz — yeni kod isteyin.";
+/** Telefon numarası kayıtlı olmadan e-posta doğrulaması tamamlanamaz. */
+export const PHONE_REQUIRED_MESSAGE =
+  "E-posta doğrulaması için önce telefon numaranızı girip kaydetmeniz gerekir.";
 
 export type OtpEmailPurpose = "login" | "signup";
 
