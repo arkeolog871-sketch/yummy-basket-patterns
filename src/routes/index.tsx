@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, ClientOnly } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useState, Suspense, lazy } from "react";
-import { Search, Clock, Sparkles } from "lucide-react";
+import { Search, Sparkles } from "lucide-react";
 import { RestaurantCard } from "@/components/restaurant/RestaurantCard";
 import { homeQuery, type HomeSearch } from "@/lib/catalog.queries";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -144,11 +144,6 @@ function Index() {
               </Button>
             </form>
 
-            <div className="mt-6 flex flex-wrap gap-5 text-sm text-muted-foreground">
-              <span className="flex items-center gap-2">
-                <Clock className="size-4" /> Ortalama 30 dk teslimat
-              </span>
-            </div>
             </div>
             {bannerSlides.length > 0 ? (
               <div className="order-1 lg:order-2">
