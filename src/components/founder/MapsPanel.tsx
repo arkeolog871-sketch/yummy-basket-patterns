@@ -42,8 +42,7 @@ export function MapsPanel() {
   useEffect(() => setHost(currentHost()), []);
 
   const mutation = useMutation({
-    mutationFn: (values: { api_key: string; allowed_referrers: string }) =>
-      save({ data: values }),
+    mutationFn: (values: { api_key: string; allowed_referrers: string }) => save({ data: values }),
     onSuccess: () => {
       toast.success("Harita ayarları kaydedildi. Sayfayı yenileyin.");
       refresh();
@@ -59,7 +58,7 @@ export function MapsPanel() {
           <Lock className="size-5 text-muted-foreground" /> Yetkiniz yok
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Harita ayarlarını yalnızca kurucu rolüne sahip hesaplar düzenleyebilir.
+          Harita ayarlarını yalnızca sayfa yöneticisi rolüne sahip hesaplar düzenleyebilir.
         </p>
       </div>
     );
@@ -75,8 +74,8 @@ export function MapsPanel() {
       <p className="mt-1 text-sm text-muted-foreground">
         Kendi alan adınızda haritaların çalışması için Google Cloud'da oluşturduğunuz tarayıcı
         (browser) API anahtarını buraya girin. Anahtar boş bırakılırsa Lovable'ın yönetilen anahtarı
-        kullanılır ve haritalar yalnızca <code className="rounded bg-muted px-1">*.lovable.app</code>{" "}
-        adreslerinde açılır.
+        kullanılır ve haritalar yalnızca{" "}
+        <code className="rounded bg-muted px-1">*.lovable.app</code> adreslerinde açılır.
       </p>
 
       <div className="mt-5 grid gap-4">

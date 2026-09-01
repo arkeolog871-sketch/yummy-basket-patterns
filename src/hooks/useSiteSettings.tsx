@@ -36,6 +36,11 @@ export type HeroContent = {
   hero_subtitle: string;
 };
 
+export type FounderContactInfo = {
+  founder_contact_phone: string;
+  founder_contact_email: string;
+};
+
 export const DEFAULT_SETTINGS: SiteSettings = {
   id: "global",
   brand_name: "SİLVAN CEBİMDE",
@@ -60,9 +65,15 @@ export const DEFAULT_HERO: HeroContent = {
     "Yemek, restoran, kafe, eğlence, market ve giyim: mahallenizdeki tüm işletmeler tek uygulamada.",
 };
 
+export const DEFAULT_FOUNDER_CONTACT: FounderContactInfo = {
+  founder_contact_phone: "0546 696 31 33",
+  founder_contact_email: "arkeolog871@gmail.com",
+};
+
 type SiteSettingsContextValue = {
   settings: SiteSettings;
   hero: HeroContent;
+  founderContact: FounderContactInfo;
   isFounder: boolean;
   founderExists: boolean;
   refresh: () => void;
@@ -71,22 +82,26 @@ type SiteSettingsContextValue = {
 const SiteSettingsContext = createContext<SiteSettingsContextValue>({
   settings: DEFAULT_SETTINGS,
   hero: DEFAULT_HERO,
+  founderContact: DEFAULT_FOUNDER_CONTACT,
   isFounder: false,
   founderExists: true,
   refresh: () => {},
 });
 
-function mergeSettings(row: Record<string, unknown> | null | undefined): SiteSettings & HeroContent {
+function mergeSettings(
+  row: Record<string, unknown> | null | undefined,
+): SiteSettings & HeroContent & FounderContactInfo {
   const raw = row ?? {};
   const rest = { ...raw };
   delete rest["typography"];
   return {
     ...DEFAULT_SETTINGS,
     ...DEFAULT_HERO,
+    ...DEFAULT_FOUNDER_CONTACT,
     ...rest,
     typography: parseTypography(raw["typography"]),
     typographyConfigured: isTypographyConfigured(raw["typography"]),
-  } as SiteSettings & HeroContent;
+  } as SiteSettings & HeroContent & FounderContactInfo;
 }
 
 export function SiteSettingsProvider({ children }: { children: ReactNode }) {
@@ -95,7 +110,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
 
   const settingsQuery = useQuery({
     queryKey: ["site-settings"],
-    queryFn: async (): Promise<SiteSettings & HeroContent> => {
+    queryFn: async (): Promise<SiteSettings & HeroContent & FounderContactInfo> => {
       try {
         const withTypography = await supabase
           .from("site_settings")
@@ -202,6 +217,12 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
           hero_title: merged.hero_title ?? DEFAULT_HERO.hero_title,
           hero_title_accent: merged.hero_title_accent ?? DEFAULT_HERO.hero_title_accent,
           hero_subtitle: merged.hero_subtitle ?? DEFAULT_HERO.hero_subtitle,
+        },
+        founderContact: {
+          founder_contact_phone:
+            merged.founder_contact_phone ?? DEFAULT_FOUNDER_CONTACT.founder_contact_phone,
+          founder_contact_email:
+            merged.founder_contact_email ?? DEFAULT_FOUNDER_CONTACT.founder_contact_email,
         },
         isFounder: rolesQuery.data?.isFounder ?? false,
         founderExists: rolesQuery.data?.founderExists ?? true,

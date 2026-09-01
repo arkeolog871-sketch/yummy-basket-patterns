@@ -85,7 +85,7 @@ export function Footer() {
         </Link>
         {" · "}
         <Link to="/kurucu-giris" className="underline-offset-4 hover:underline">
-          Kurucu girişi
+          Sayfa yöneticisi girişi
         </Link>
       </div>
     </footer>

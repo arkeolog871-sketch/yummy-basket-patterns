@@ -17,7 +17,9 @@ export function SecurityPanel() {
   const regenerate = useServerFn(regenerateBackupCodes);
 
   const [factors, setFactors] = useState<Factor[]>([]);
-  const [enrolling, setEnrolling] = useState<{ id: string; qr: string; secret: string } | null>(null);
+  const [enrolling, setEnrolling] = useState<{ id: string; qr: string; secret: string } | null>(
+    null,
+  );
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [codes, setCodes] = useState<string[] | null>(null);
@@ -40,7 +42,7 @@ export function SecurityPanel() {
     try {
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: "totp",
-        friendlyName: `Kurucu ${new Date().toISOString().slice(0, 10)}`,
+        friendlyName: `Sayfa Yöneticisi ${new Date().toISOString().slice(0, 10)}`,
       });
       if (error) throw error;
       setEnrolling({ id: data.id, qr: data.totp.qr_code, secret: data.totp.secret });
@@ -107,8 +109,8 @@ export function SecurityPanel() {
           <div>
             <h2 className="text-xl">İki adımlı doğrulama (2FA)</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Kurucu girişinde şifreden sonra doğrulama uygulamanızdaki (Google Authenticator, 1Password,
-              Authy) 6 haneli kod istenir.
+              Sayfa yöneticisi girişinde şifreden sonra doğrulama uygulamanızdaki (Google
+              Authenticator, 1Password, Authy) 6 haneli kod istenir.
             </p>
           </div>
         </div>
@@ -137,9 +139,7 @@ export function SecurityPanel() {
                 className="size-40 rounded-2xl border border-border bg-white p-2"
               />
               <div className="space-y-2 text-sm">
-                <p className="text-muted-foreground">
-                  QR kodu okutun veya bu anahtarı elle girin:
-                </p>
+                <p className="text-muted-foreground">QR kodu okutun veya bu anahtarı elle girin:</p>
                 <code className="block break-all rounded-xl bg-muted px-3 py-2 text-xs">
                   {enrolling.secret}
                 </code>
@@ -226,7 +226,12 @@ export function SecurityPanel() {
               >
                 Kopyala
               </Button>
-              <Button size="sm" variant="ghost" className="rounded-full" onClick={() => setCodes(null)}>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="rounded-full"
+                onClick={() => setCodes(null)}
+              >
                 Gizle
               </Button>
             </div>

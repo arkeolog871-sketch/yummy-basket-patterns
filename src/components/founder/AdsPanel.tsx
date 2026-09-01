@@ -39,12 +39,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -64,7 +59,19 @@ type Draft = ReturnType<typeof emptyAdvertisementDraft> & { id?: string };
 
 function toDraft(ad?: Advertisement | null): Draft {
   if (!ad) return emptyAdvertisementDraft();
-  const { id, title, client_name, client_phone, image_url, action_type, action_value, display_order, is_active, start_date, end_date } = ad;
+  const {
+    id,
+    title,
+    client_name,
+    client_phone,
+    image_url,
+    action_type,
+    action_value,
+    display_order,
+    is_active,
+    start_date,
+    end_date,
+  } = ad;
   return {
     id,
     title,
@@ -256,14 +263,16 @@ export function AdsPanel() {
     [items],
   );
   const livePreview =
-    liveBannersQuery.data && liveBannersQuery.data.length > 0 ? liveBannersQuery.data : tablePreview;
+    liveBannersQuery.data && liveBannersQuery.data.length > 0
+      ? liveBannersQuery.data
+      : tablePreview;
 
   if (!isFounder) {
     return (
       <div className="rounded-3xl border border-border bg-card p-6">
         <h2 className="text-xl">Reklam yönetimi</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Kayan reklam panosunu yalnızca kurucu hesaplar düzenleyebilir.
+          Kayan reklam panosunu yalnızca sayfa yöneticisi hesaplar düzenleyebilir.
         </p>
       </div>
     );
@@ -279,8 +288,9 @@ export function AdsPanel() {
               <h2 className="text-xl">Kayan reklam / banner</h2>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Galeriden seçilen görsel veya video `banners` kovasına yüklenir ve reklam kaydı yazılır.
-              Ana sayfa yayındaki slaytları gösterir. En fazla {MAX_ADVERTISEMENTS} kayıt önerilir.
+              Galeriden seçilen görsel veya video `banners` kovasına yüklenir ve reklam kaydı
+              yazılır. Ana sayfa yayındaki slaytları gösterir. En fazla {MAX_ADVERTISEMENTS} kayıt
+              önerilir.
             </p>
           </div>
           <Button
@@ -350,7 +360,9 @@ export function AdsPanel() {
                         </div>
                         <div>
                           <p className="font-medium">{ad.title}</p>
-                          <p className="text-[11px] text-muted-foreground">sıra {ad.display_order}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            sıra {ad.display_order}
+                          </p>
                         </div>
                       </div>
                     </TableCell>
@@ -360,11 +372,15 @@ export function AdsPanel() {
                     </TableCell>
                     <TableCell>
                       <p>{ACTION_LABELS[ad.action_type]}</p>
-                      <p className="max-w-[140px] truncate text-[11px] text-muted-foreground">{ad.action_value}</p>
+                      <p className="max-w-[140px] truncate text-[11px] text-muted-foreground">
+                        {ad.action_value}
+                      </p>
                     </TableCell>
                     <TableCell className="text-xs">
                       <p>{new Date(ad.start_date).toLocaleString("tr-TR")}</p>
-                      <p className="text-muted-foreground">{new Date(ad.end_date).toLocaleString("tr-TR")}</p>
+                      <p className="text-muted-foreground">
+                        {new Date(ad.end_date).toLocaleString("tr-TR")}
+                      </p>
                       {expired ? (
                         <span className="mt-1 inline-flex rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-destructive">
                           Süresi doldu
@@ -384,7 +400,9 @@ export function AdsPanel() {
                       <Switch
                         checked={ad.is_active && !expired}
                         disabled={expired || toggleMutation.isPending}
-                        onCheckedChange={(is_active) => toggleMutation.mutate({ id: ad.id, is_active })}
+                        onCheckedChange={(is_active) =>
+                          toggleMutation.mutate({ id: ad.id, is_active })
+                        }
                       />
                     </TableCell>
                     <TableCell className="text-right">
@@ -407,7 +425,8 @@ export function AdsPanel() {
                           variant="ghost"
                           className="text-destructive"
                           onClick={() => {
-                            if (window.confirm("Bu reklam silinsin mi?")) deleteMutation.mutate(ad.id);
+                            if (window.confirm("Bu reklam silinsin mi?"))
+                              deleteMutation.mutate(ad.id);
                           }}
                         >
                           <Trash2 className="size-4" />
@@ -532,11 +551,14 @@ function AdForm({
       </div>
       <div>
         <Label htmlFor="ad-media-pick">
-          Görsel veya video (PNG, JPEG, MP4, MOV, WEBM… en fazla {MAX_AD_IMAGE_MB} MB, 16:9 veya 3:1)
+          Görsel veya video (PNG, JPEG, MP4, MOV, WEBM… en fazla {MAX_AD_IMAGE_MB} MB, 16:9 veya
+          3:1)
         </Label>
         <div className="mt-1.5 flex flex-wrap items-center gap-3">
           <div className="h-16 w-28 overflow-hidden rounded-xl border bg-muted">
-            {previewSrc ? <AdMedia src={previewSrc} className="size-full object-cover" active /> : null}
+            {previewSrc ? (
+              <AdMedia src={previewSrc} className="size-full object-cover" active />
+            ) : null}
           </div>
           <Button id="ad-media-pick" type="button" className="rounded-full" onClick={onPickClick}>
             <ImageUp className="size-4" />

@@ -33,7 +33,8 @@ export function HeroContentPanel() {
           <Lock className="size-5 text-muted-foreground" /> Yetkiniz yok
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Ana sayfa tanıtım metinlerini yalnızca kurucu rolüne sahip hesaplar düzenleyebilir.
+          Ana sayfa tanıtım metinlerini yalnızca sayfa yöneticisi rolüne sahip hesaplar
+          düzenleyebilir.
         </p>
       </div>
     );
@@ -61,9 +62,17 @@ export function HeroContentPanel() {
       </p>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        {field("hero_badge", "Üst etiket", "İşletme sayısı otomatik eklenir. Örn: “işletme, dakikalar içinde kapınızda”")}
+        {field(
+          "hero_badge",
+          "Üst etiket",
+          "İşletme sayısı otomatik eklenir. Örn: “işletme, dakikalar içinde kapınızda”",
+        )}
         {field("hero_title", "Başlık", "Örn: “Mahalleniz hazır,”")}
-        {field("hero_title_accent", "Vurgulu başlık", "Renkli görünen kısım. Boş bırakabilirsiniz.")}
+        {field(
+          "hero_title_accent",
+          "Vurgulu başlık",
+          "Renkli görünen kısım. Boş bırakabilirsiniz.",
+        )}
         {field("hero_subtitle", "Açıklama", "Başlığın altındaki kısa tanıtım cümlesi.")}
       </div>
 
@@ -102,9 +111,7 @@ export function HeroContentPanel() {
           <span className="inline-flex items-center rounded-full bg-background/70 px-3 py-1 text-xs font-semibold text-muted-foreground">
             8 {form.hero_badge}
           </span>
-          <h3
-            className={`mt-3 leading-tight ${device === "mobile" ? "text-2xl" : "text-4xl"}`}
-          >
+          <h3 className={`mt-3 leading-tight ${device === "mobile" ? "text-2xl" : "text-4xl"}`}>
             {form.hero_title} <span className="text-accent">{form.hero_title_accent}</span>
           </h3>
           <p

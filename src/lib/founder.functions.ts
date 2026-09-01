@@ -22,6 +22,21 @@ const settingsSchema = z.object({
   layout_variant: z.enum(["classic", "compact", "spotlight"]),
 });
 
+const founderContactSchema = z.object({
+  founder_contact_phone: z
+    .string()
+    .trim()
+    .min(10, "Telefon numarası en az 10 haneli olmalı")
+    .max(30)
+    .regex(/^[0-9+()\s-]{10,30}$/, "Geçerli bir telefon numarası girin"),
+  founder_contact_email: z
+    .string()
+    .trim()
+    .max(160)
+    .email("Geçerli bir e-posta girin")
+    .transform((value) => value.toLowerCase()),
+});
+
 const heroSchema = z.object({
   hero_badge: z.string().trim().min(2).max(120),
   hero_title: z.string().trim().min(2).max(120),
@@ -47,15 +62,44 @@ export const updateHeroContent = createServerFn({ method: "POST" })
         entity: "site_settings",
         entityId: "global",
         status: "denied",
-        detail: { reason: error instanceof Error ? error.message : "Kurucu yetkisi yok" },
+        detail: { reason: error instanceof Error ? error.message : "Sayfa yöneticisi yetkisi yok" },
       });
-      throw error instanceof Error ? error : new Error("Bu işlem için kurucu yetkisi gerekiyor");
+      throw error instanceof Error
+        ? error
+        : new Error("Bu işlem için sayfa yöneticisi yetkisi gerekiyor");
     }
     return audited(
       {
         actorId: context.userId,
         actorEmail,
         action: "hero.update",
+        entity: "site_settings",
+        entityId: "global",
+        detail: { ...data },
+      },
+      async () => {
+        const { error } = await context.supabase
+          .from("site_settings")
+          .update(data)
+          .eq("id", "global");
+        if (error) throw new Error(error.message);
+        return { ok: true };
+      },
+    );
+  });
+
+export const updateFounderContact = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => founderContactSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { assertFounder } = await import("./founder.server");
+    const { audited } = await import("./audit.server");
+    await assertFounder(context.supabase, context.userId, context.claims as never);
+    return audited(
+      {
+        actorId: context.userId,
+        actorEmail: (context.claims as { email?: string } | null)?.email ?? null,
+        action: "founder_contact.update",
         entity: "site_settings",
         entityId: "global",
         detail: { ...data },
@@ -213,9 +257,11 @@ export const claimFounder = createServerFn({ method: "POST" })
         action: "founder.claim",
         entity: "user_roles",
         status: "denied",
-        detail: { reason: "Kurucu bootstrap allowlist dışında" },
+        detail: { reason: "Sayfa yöneticisi bootstrap allowlist dışında" },
       });
-      throw new Error("Kurucu hesabı deployment yöneticisi tarafından yetkilendirilmelidir.");
+      throw new Error(
+        "Sayfa yöneticisi hesabı deployment yöneticisi tarafından yetkilendirilmelidir.",
+      );
     }
     const { count, error } = await supabaseAdmin
       .from("user_roles")
@@ -229,9 +275,9 @@ export const claimFounder = createServerFn({ method: "POST" })
         action: "founder.claim",
         entity: "user_roles",
         status: "denied",
-        detail: { reason: "Kurucu profili zaten tanımlı" },
+        detail: { reason: "Sayfa yöneticisi profili zaten tanımlı" },
       });
-      throw new Error("Kurucu profili zaten tanımlı");
+      throw new Error("Sayfa yöneticisi profili zaten tanımlı");
     }
 
     const { error: insertError } = await supabaseAdmin
@@ -683,7 +729,7 @@ export const setUserRole = createServerFn({ method: "POST" })
     await assertFounder(context.supabase, context.userId, context.claims as never);
 
     if (data.role === "founder" && !data.grant && data.userId === context.userId) {
-      throw new Error("Kendi kurucu yetkinizi kaldıramazsınız");
+      throw new Error("Kendi sayfa yöneticisi yetkinizi kaldıramazsınız");
     }
 
     return audited(

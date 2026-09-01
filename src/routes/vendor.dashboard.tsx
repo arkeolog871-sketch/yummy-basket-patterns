@@ -15,11 +15,7 @@ import {
   Bell,
   Image as ImageIcon,
 } from "lucide-react";
-import {
-  showNativeNotification,
-  loadSeenAlertIds,
-  saveSeenAlertIds,
-} from "@/lib/native-notify";
+import { showNativeNotification, loadSeenAlertIds, saveSeenAlertIds } from "@/lib/native-notify";
 import { supabase } from "@/integrations/supabase/client";
 
 import { RequireAuth } from "@/components/auth/RequireAuth";
@@ -101,8 +97,8 @@ function VendorGate() {
       <AccessDenied
         message={
           isFounder
-            ? "Bu panel işletme hesaplarına özeldir. Kurucu yönetimi için kurucu panelini kullanın."
-            : "Hesabınıza bağlı bir işletme bulunmuyor. İşletme yetkisi için kurucu ile iletişime geçin."
+            ? "Bu panel işletme hesaplarına özeldir. Sayfa yöneticisi yönetimi için sayfa yöneticisi panelini kullanın."
+            : "Hesabınıza bağlı bir işletme bulunmuyor. İşletme yetkisi için sayfa yöneticisi ile iletişime geçin."
         }
       />
     );
@@ -251,7 +247,6 @@ function VendorDashboard() {
     if (changed) saveSeenAlertIds(seen);
   }, [unreadAlerts, dashboard.data?.orders]);
 
-
   async function handleSignOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
@@ -291,7 +286,7 @@ function VendorDashboard() {
       <div className="mx-auto w-full max-w-3xl px-4 py-16">
         <EmptyState
           title="İşletme kaydı bulunamadı"
-          description="Atandığınız işletme kaldırılmış olabilir. Kurucu ile iletişime geçin."
+          description="Atandığınız işletme kaldırılmış olabilir. Sayfa yöneticisi ile iletişime geçin."
         />
       </div>
     );
@@ -392,66 +387,64 @@ function VendorDashboard() {
               allAlerts.map((alert) => {
                 const order = ordersById.get(alert.order_id);
                 return (
-                <div
-                  key={alert.id}
-                  className={`flex flex-wrap items-center justify-between gap-3 rounded-3xl border p-4 ${
-                    alert.read_at ? "border-border bg-card" : "border-primary/40 bg-primary/5"
-                  }`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold">
-                      {order ? order.recipient_name : alert.title || "Yeni sipariş"}
-                      <span className="ml-2 text-xs font-normal text-muted-foreground">
-                        {alert.read_at ? "Okundu" : "Okunmadı"}
-                      </span>
-                    </p>
-                    {order ? (
-                      <div className="mt-1 space-y-1 text-sm text-muted-foreground">
-                        <p>
-                          <span className="font-medium text-foreground">{order.phone}</span>
-                          {" · "}
-                          Sipariş #{alert.order_id.slice(0, 8)}
-                          {" · "}
-                          {formatDateTime(order.created_at)}
-                        </p>
-                        <p>
-                          {order.order_items
-                            .map((line) => `${line.quantity}x ${line.name}`)
-                            .join(", ")}
-                        </p>
-                        <p className="font-medium text-foreground">
-                          Toplam: {formatPrice(Number(order.total))}
-                        </p>
-                        <p>
-                          {order.street}, {order.district} / {order.city}
-                        </p>
-                        {order.note ? <p>Müşteri notu: {order.note}</p> : null}
-                      </div>
-                    ) : (
-                      <p className="mt-1 text-sm text-muted-foreground">{alert.body}</p>
+                  <div
+                    key={alert.id}
+                    className={`flex flex-wrap items-center justify-between gap-3 rounded-3xl border p-4 ${
+                      alert.read_at ? "border-border bg-card" : "border-primary/40 bg-primary/5"
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold">
+                        {order ? order.recipient_name : alert.title || "Yeni sipariş"}
+                        <span className="ml-2 text-xs font-normal text-muted-foreground">
+                          {alert.read_at ? "Okundu" : "Okunmadı"}
+                        </span>
+                      </p>
+                      {order ? (
+                        <div className="mt-1 space-y-1 text-sm text-muted-foreground">
+                          <p>
+                            <span className="font-medium text-foreground">{order.phone}</span>
+                            {" · "}
+                            Sipariş #{alert.order_id.slice(0, 8)}
+                            {" · "}
+                            {formatDateTime(order.created_at)}
+                          </p>
+                          <p>
+                            {order.order_items
+                              .map((line) => `${line.quantity}x ${line.name}`)
+                              .join(", ")}
+                          </p>
+                          <p className="font-medium text-foreground">
+                            Toplam: {formatPrice(Number(order.total))}
+                          </p>
+                          <p>
+                            {order.street}, {order.district} / {order.city}
+                          </p>
+                          {order.note ? <p>Müşteri notu: {order.note}</p> : null}
+                        </div>
+                      ) : (
+                        <p className="mt-1 text-sm text-muted-foreground">{alert.body}</p>
+                      )}
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {formatDateTime(alert.created_at)}
+                      </p>
+                    </div>
+                    {alert.read_at ? null : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-full"
+                        disabled={alertReadMutation.isPending}
+                        onClick={() => alertReadMutation.mutate(alert.id)}
+                      >
+                        Okundu
+                      </Button>
                     )}
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {formatDateTime(alert.created_at)}
-                    </p>
                   </div>
-                  {alert.read_at ? null : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="rounded-full"
-                      disabled={alertReadMutation.isPending}
-                      onClick={() => alertReadMutation.mutate(alert.id)}
-                    >
-                      Okundu
-                    </Button>
-                  )}
-                </div>
                 );
               })
-
             )}
           </TabsContent>
-
 
           <TabsContent value="siparisler" className="mt-6 space-y-3">
             {unreadAlerts.map((alert) => (
@@ -549,9 +542,7 @@ function VendorDashboard() {
                         variant={order.status === step.value ? "secondary" : "outline"}
                         className="rounded-full"
                         disabled={statusMutation.isPending || order.status === step.value}
-                        onClick={() =>
-                          statusMutation.mutate({ id: order.id, status: step.value })
-                        }
+                        onClick={() => statusMutation.mutate({ id: order.id, status: step.value })}
                       >
                         {step.label}
                       </Button>
@@ -585,9 +576,7 @@ function VendorDashboard() {
                       </p>
                     </div>
                     <label className="flex items-center gap-3 text-sm">
-                      <span
-                        className={item.is_available ? "font-medium" : "text-muted-foreground"}
-                      >
+                      <span className={item.is_available ? "font-medium" : "text-muted-foreground"}>
                         {item.is_available ? "Stokta var" : "Stokta yok"}
                       </span>
                       <Switch
@@ -613,7 +602,6 @@ function VendorDashboard() {
               onChanged={invalidate}
             />
           </TabsContent>
-
 
           <TabsContent value="guvenlik" className="mt-6">
             <PasswordPanel />

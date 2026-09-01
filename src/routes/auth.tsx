@@ -220,7 +220,7 @@ function AuthPage() {
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
         {vendorPortal
-          ? "Telefon numaranızı girin, hesabınıza tek kullanımlık şifre gönderilir. İşletme hesapları kurucu tarafından tanımlanır."
+          ? "Telefon numaranızı girin, hesabınıza tek kullanımlık şifre gönderilir. İşletme hesapları sayfa yöneticisi tarafından tanımlanır."
           : "Sipariş vermek ve adreslerinizi kaydetmek için hesabınızı kullanın."}
       </p>
 
@@ -385,7 +385,8 @@ function AuthPage() {
 
       {vendorPortal ? (
         <p className="mt-5 text-center text-xs text-muted-foreground">
-          İşletme hesabınız yok mu? Kurucu ekiple iletişime geçerek işletmenizi tanımlatın.
+          İşletme hesabınız yok mu? Sayfa yöneticisi ekiple iletişime geçerek işletmenizi
+          tanımlatın.
         </p>
       ) : (
         <button
