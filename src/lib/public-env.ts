@@ -4,6 +4,7 @@ export type PublicEnv = {
   VITE_APK_VERSION: string;
   VITE_APK_REV: string;
   VITE_GOOGLE_OAUTH_CLIENT_ID: string;
+  VITE_VAPID_PUBLIC_KEY: string;
 };
 
 declare global {
@@ -36,7 +37,11 @@ function fromWindow(): PublicEnv | undefined {
     VITE_APK_VERSION: bag.VITE_APK_VERSION || readEnv("VITE_APK_VERSION") || "1",
     VITE_APK_REV: bag.VITE_APK_REV || readEnv("VITE_APK_REV") || bag.VITE_APK_VERSION || "1",
     VITE_GOOGLE_OAUTH_CLIENT_ID:
-      bag.VITE_GOOGLE_OAUTH_CLIENT_ID || readEnv("VITE_GOOGLE_OAUTH_CLIENT_ID") || readEnv("GOOGLE_OAUTH_CLIENT_ID"),
+      bag.VITE_GOOGLE_OAUTH_CLIENT_ID ||
+      readEnv("VITE_GOOGLE_OAUTH_CLIENT_ID") ||
+      readEnv("GOOGLE_OAUTH_CLIENT_ID"),
+    VITE_VAPID_PUBLIC_KEY:
+      bag.VITE_VAPID_PUBLIC_KEY || readEnv("VITE_VAPID_PUBLIC_KEY") || readEnv("VAPID_PUBLIC_KEY"),
   };
 }
 
@@ -56,7 +61,9 @@ export function getPublicSupabaseEnv(): PublicEnv {
     VITE_SUPABASE_PUBLISHABLE_KEY: key,
     VITE_APK_VERSION: apkVersion,
     VITE_APK_REV: readEnv("VITE_APK_REV") || apkVersion,
-    VITE_GOOGLE_OAUTH_CLIENT_ID: readEnv("VITE_GOOGLE_OAUTH_CLIENT_ID") || readEnv("GOOGLE_OAUTH_CLIENT_ID"),
+    VITE_GOOGLE_OAUTH_CLIENT_ID:
+      readEnv("VITE_GOOGLE_OAUTH_CLIENT_ID") || readEnv("GOOGLE_OAUTH_CLIENT_ID"),
+    VITE_VAPID_PUBLIC_KEY: readEnv("VITE_VAPID_PUBLIC_KEY") || readEnv("VAPID_PUBLIC_KEY"),
   };
 }
 

@@ -618,11 +618,17 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
         },
         async () => {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-          const { error } = await supabaseAdmin
+          const { data: updated, error } = await supabaseAdmin
             .from("orders")
             .update({ status: data.status })
-            .eq("id", data.id);
+            .eq("id", data.id)
+            .select("id, user_id, restaurants(name)")
+            .maybeSingle();
           if (error) throw new Error(error.message);
+          if (updated) {
+            const { notifyCustomerOfOrderStatus } = await import("./order-customer-alert.server");
+            await notifyCustomerOfOrderStatus(updated, data.status);
+          }
           return { ok: true };
         },
       );

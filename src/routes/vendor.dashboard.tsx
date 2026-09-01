@@ -26,6 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import { AccessDenied } from "@/components/auth/AccessDenied";
+import { PushNotificationButton } from "@/components/notifications/PushNotificationButton";
 import { EmptyState } from "@/components/vendor/EmptyState";
 import { ProductPanel } from "@/components/vendor/ProductPanel";
 import { MediaPanel } from "@/components/vendor/MediaPanel";
@@ -331,6 +332,7 @@ function VendorDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <PushNotificationButton />
             <Button asChild variant="ghost" size="sm" className="rounded-full">
               <Link to="/restoran/$slug" params={{ slug: restaurant.slug }}>
                 <ExternalLink className="size-4" /> Sayfamı gör

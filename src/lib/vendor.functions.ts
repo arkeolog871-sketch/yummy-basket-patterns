@@ -137,10 +137,12 @@ export const setVendorOrderStatus = createServerFn({ method: "POST" })
             .update({ status: data.status })
             .eq("id", data.id)
             .eq("restaurant_id", restaurantId)
-            .select("id")
+            .select("id, user_id, restaurants(name)")
             .maybeSingle();
           if (error) throw new Error(error.message);
           if (!updated) throw new Error("Bu sipariş işletmenize ait değil");
+          const { notifyCustomerOfOrderStatus } = await import("./order-customer-alert.server");
+          await notifyCustomerOfOrderStatus(updated, data.status);
           return { ok: true };
         },
       );

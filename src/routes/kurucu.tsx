@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccess } from "@/hooks/useAccess";
 import { AccessDenied } from "@/components/auth/AccessDenied";
+import { PushNotificationButton } from "@/components/notifications/PushNotificationButton";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { readTwoFactorState, clearTwoFactorFlag } from "@/lib/two-factor";
 import { SecurityPanel } from "@/components/founder/SecurityPanel";
@@ -201,6 +202,7 @@ function FounderShell({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <PushNotificationButton />
             <Button asChild variant="ghost" size="sm" className="rounded-full">
               <Link to="/">
                 <ExternalLink className="size-4" /> Siteyi gör
