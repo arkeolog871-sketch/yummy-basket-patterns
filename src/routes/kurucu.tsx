@@ -14,6 +14,7 @@ import {
   LogOut,
   ExternalLink,
   UserPlus,
+  Search,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -38,6 +39,7 @@ import { formatPrice, formatDateTime, ORDER_STATUS_LABELS, slugify } from "@/lib
 import { formatPhoneDisplay } from "@/lib/phone";
 import {
   listAdminData,
+  listBusinessCatalog,
   listUsers,
   saveBusiness,
   deleteBusiness,
@@ -278,6 +280,7 @@ function FounderDashboard() {
     void queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     void queryClient.invalidateQueries({ queryKey: ["restaurants"] });
     void queryClient.invalidateQueries({ queryKey: ["categories"] });
+    void queryClient.invalidateQueries({ queryKey: ["business-catalog"] });
   }
 
   return (
@@ -367,20 +370,11 @@ function FounderDashboard() {
         </TabsContent>
 
         <TabsContent value="kategoriler" className="mt-6">
-          <MenuCategoryPanel
-            businesses={data.data?.businesses ?? []}
-            categories={data.data?.categories ?? []}
-            onDone={invalidate}
-          />
+          <MenuCategoryPanel businesses={data.data?.businesses ?? []} onDone={invalidate} />
         </TabsContent>
 
         <TabsContent value="urunler" className="mt-6">
-          <MenuItemPanel
-            businesses={data.data?.businesses ?? []}
-            categories={data.data?.categories ?? []}
-            items={data.data?.items ?? []}
-            onDone={invalidate}
-          />
+          <MenuItemPanel businesses={data.data?.businesses ?? []} onDone={invalidate} />
         </TabsContent>
 
         <TabsContent value="kullanicilar" className="mt-6">
@@ -599,13 +593,32 @@ const emptyBusiness = {
   is_open_manual: true,
 };
 
+/** İşletme adı/alt tür/URL adında arama — 300+ işletmede listeyi taranabilir tutar. */
+function matchesBusinessSearch(
+  business: { name: string; category: string; slug: string },
+  term: string,
+) {
+  if (!term) return true;
+  const needle = term.trim().toLocaleLowerCase("tr");
+  if (!needle) return true;
+  return (
+    business.name.toLocaleLowerCase("tr").includes(needle) ||
+    business.category.toLocaleLowerCase("tr").includes(needle) ||
+    business.slug.toLocaleLowerCase("tr").includes(needle)
+  );
+}
+
 function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDone: () => void }) {
   const save = useServerFn(saveBusiness);
   const remove = useServerFn(deleteBusiness);
   const { categories } = useAppCategories();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyBusiness);
+  const [search, setSearch] = useState("");
   const activeSector = form.sector || categories[0]?.slug || "";
+  const visibleBusinesses = businesses.filter((business) =>
+    matchesBusinessSearch(business, search),
+  );
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -894,100 +907,168 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
         </div>
       </form>
 
-      <div className="overflow-hidden rounded-3xl border border-border bg-card">
-        {businesses.length === 0 ? (
-          <p className="p-6 text-sm text-muted-foreground">Kayıtlı işletme yok.</p>
-        ) : (
-          businesses.map((business) => (
-            <div
-              key={business.id}
-              className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 p-4 last:border-0"
-            >
-              <div className="min-w-0">
-                <p className="truncate font-medium">
-                  {business.name}
-                  {business.is_active ? null : (
-                    <span className="ml-2 text-xs text-muted-foreground">(gizli)</span>
-                  )}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {business.category} · /{business.slug}
-                </p>
+      <div className="flex flex-col gap-3">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder={`İşletme ara (ad, alt tür, /url) — ${businesses.length} işletme`}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="overflow-hidden rounded-3xl border border-border bg-card">
+          {businesses.length === 0 ? (
+            <p className="p-6 text-sm text-muted-foreground">Kayıtlı işletme yok.</p>
+          ) : visibleBusinesses.length === 0 ? (
+            <p className="p-6 text-sm text-muted-foreground">"{search}" ile eşleşen işletme yok.</p>
+          ) : (
+            visibleBusinesses.map((business) => (
+              <div
+                key={business.id}
+                className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 p-4 last:border-0"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-medium">
+                    {business.name}
+                    {business.is_active ? null : (
+                      <span className="ml-2 text-xs text-muted-foreground">(gizli)</span>
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {business.category} · /{business.slug}
+                  </p>
+                </div>
+                <div className="flex gap-1">
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="rounded-full"
+                    aria-label="Düzenle"
+                    onClick={() => {
+                      setEditingId(business.id);
+                      setForm({
+                        slug: business.slug,
+                        name: business.name,
+                        tagline: business.tagline ?? "",
+                        category: business.category,
+                        sector: business.sector ?? "",
+                        cuisines: (business.cuisines ?? []).join(", "),
+                        delivery_minutes: business.delivery_minutes,
+                        delivery_fee: Number(business.delivery_fee),
+                        min_order: Number(business.min_order),
+                        cover_image_url: business.cover_image_url ?? "",
+                        address: business.address ?? "",
+                        district: business.district ?? "",
+                        city: business.city ?? "",
+                        latitude:
+                          business.latitude === null || business.latitude === undefined
+                            ? ""
+                            : String(business.latitude),
+                        longitude:
+                          business.longitude === null || business.longitude === undefined
+                            ? ""
+                            : String(business.longitude),
+                        maps_url: business.maps_url ?? "",
+                        contact_email: business.contact_email ?? "",
+                        contact_phone: business.contact_phone ?? "",
+                        is_active: business.is_active,
+                        opens_at: (business.opens_at ?? "").slice(0, 5),
+                        closes_at: (business.closes_at ?? "").slice(0, 5),
+                        is_open_manual: business.is_open_manual !== false,
+                      });
+                    }}
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="rounded-full"
+                    aria-label="Sil"
+                    onClick={() => deleteMutation.mutate(business.id)}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-1">
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="rounded-full"
-                  aria-label="Düzenle"
-                  onClick={() => {
-                    setEditingId(business.id);
-                    setForm({
-                      slug: business.slug,
-                      name: business.name,
-                      tagline: business.tagline ?? "",
-                      category: business.category,
-                      sector: business.sector ?? "",
-                      cuisines: (business.cuisines ?? []).join(", "),
-                      delivery_minutes: business.delivery_minutes,
-                      delivery_fee: Number(business.delivery_fee),
-                      min_order: Number(business.min_order),
-                      cover_image_url: business.cover_image_url ?? "",
-                      address: business.address ?? "",
-                      district: business.district ?? "",
-                      city: business.city ?? "",
-                      latitude:
-                        business.latitude === null || business.latitude === undefined
-                          ? ""
-                          : String(business.latitude),
-                      longitude:
-                        business.longitude === null || business.longitude === undefined
-                          ? ""
-                          : String(business.longitude),
-                      maps_url: business.maps_url ?? "",
-                      contact_email: business.contact_email ?? "",
-                      contact_phone: business.contact_phone ?? "",
-                      is_active: business.is_active,
-                      opens_at: (business.opens_at ?? "").slice(0, 5),
-                      closes_at: (business.closes_at ?? "").slice(0, 5),
-                      is_open_manual: business.is_open_manual !== false,
-                    });
-                  }}
-                >
-                  <Pencil className="size-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="rounded-full"
-                  aria-label="Sil"
-                  onClick={() => deleteMutation.mutate(business.id)}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
-            </div>
-          ))
-        )}
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-type CategoryRow = { id: string; restaurant_id: string; name: string; position: number };
+/** İşletme seçici — arama kutusu + select, 300+ işletmede taranabilir kalır. */
+function BusinessSelect({
+  businesses,
+  value,
+  onChange,
+  required,
+}: {
+  businesses: BusinessRow[];
+  value: string;
+  onChange: (id: string) => void;
+  required?: boolean;
+}) {
+  const [search, setSearch] = useState("");
+  // Seçili işletme aramayla eşleşmese bile listede kalsın, aksi halde
+  // select'in değeri boş görünür ama form state'i hâlâ o işletmeyi tutar.
+  const options = businesses.filter(
+    (business) => business.id === value || matchesBusinessSearch(business, search),
+  );
+
+  return (
+    <div className="space-y-1.5">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="İşletme ara…"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          className="pl-9"
+        />
+      </div>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        required={required}
+        className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+      >
+        <option value="">İşletme seçin ({businesses.length})</option>
+        {options.map((business) => (
+          <option key={business.id} value={business.id}>
+            {business.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/** Seçilen işletmenin menü kategori + ürün kataloğunu çeker (tüm katalog değil). */
+function useBusinessCatalog(restaurantId: string) {
+  const fetchCatalog = useServerFn(listBusinessCatalog);
+  return useQuery({
+    queryKey: ["business-catalog", restaurantId],
+    queryFn: () => fetchCatalog({ data: { restaurantId } }),
+    enabled: Boolean(restaurantId),
+  });
+}
 
 function MenuCategoryPanel({
   businesses,
-  categories,
   onDone,
 }: {
   businesses: BusinessRow[];
-  categories: CategoryRow[];
   onDone: () => void;
 }) {
   const save = useServerFn(saveMenuCategory);
   const remove = useServerFn(deleteMenuCategory);
   const [form, setForm] = useState({ restaurant_id: "", name: "", position: 0 });
+  const catalog = useBusinessCatalog(form.restaurant_id);
+  const categories = catalog.data?.categories ?? [];
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -1025,19 +1106,12 @@ function MenuCategoryPanel({
         }}
       >
         <p className="text-sm font-semibold">Yeni menü kategorisi</p>
-        <select
+        <BusinessSelect
+          businesses={businesses}
           value={form.restaurant_id}
-          onChange={(event) => setForm({ ...form, restaurant_id: event.target.value })}
+          onChange={(restaurant_id) => setForm({ ...form, restaurant_id })}
           required
-          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-        >
-          <option value="">İşletme seçin</option>
-          {businesses.map((business) => (
-            <option key={business.id} value={business.id}>
-              {business.name}
-            </option>
-          ))}
-        </select>
+        />
         <Input
           placeholder="Kategori adı"
           value={form.name}
@@ -1057,8 +1131,16 @@ function MenuCategoryPanel({
       </form>
 
       <div className="overflow-hidden rounded-3xl border border-border bg-card">
-        {categories.length === 0 ? (
-          <p className="p-6 text-sm text-muted-foreground">Kategori yok.</p>
+        {!form.restaurant_id ? (
+          <p className="p-6 text-sm text-muted-foreground">
+            Kategorileri görmek için önce bir işletme seçin.
+          </p>
+        ) : catalog.isError ? (
+          <p className="p-6 text-sm text-muted-foreground">Kategoriler yüklenemedi.</p>
+        ) : catalog.isLoading ? (
+          <p className="p-6 text-sm text-muted-foreground">Yükleniyor…</p>
+        ) : categories.length === 0 ? (
+          <p className="p-6 text-sm text-muted-foreground">Bu işletmenin kategorisi yok.</p>
         ) : (
           categories.map((category) => (
             <div
@@ -1067,11 +1149,7 @@ function MenuCategoryPanel({
             >
               <div>
                 <p className="font-medium">{category.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {businesses.find((business) => business.id === category.restaurant_id)?.name ??
-                    "—"}{" "}
-                  · sıra {category.position}
-                </p>
+                <p className="text-xs text-muted-foreground">sıra {category.position}</p>
               </div>
               <Button
                 size="icon"
@@ -1090,18 +1168,6 @@ function MenuCategoryPanel({
   );
 }
 
-type ItemRow = {
-  id: string;
-  restaurant_id: string;
-  category_id: string | null;
-  name: string;
-  description: string | null;
-  price: number | string;
-  image_url: string | null;
-  is_popular: boolean;
-  is_available: boolean;
-};
-
 const emptyItem = {
   restaurant_id: "",
   category_id: "",
@@ -1113,21 +1179,14 @@ const emptyItem = {
   is_available: true,
 };
 
-function MenuItemPanel({
-  businesses,
-  categories,
-  items,
-  onDone,
-}: {
-  businesses: BusinessRow[];
-  categories: CategoryRow[];
-  items: ItemRow[];
-  onDone: () => void;
-}) {
+function MenuItemPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDone: () => void }) {
   const save = useServerFn(saveMenuItem);
   const remove = useServerFn(deleteMenuItem);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyItem);
+  const catalog = useBusinessCatalog(form.restaurant_id);
+  const categories = catalog.data?.categories ?? [];
+  const items = catalog.data?.items ?? [];
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -1172,32 +1231,23 @@ function MenuItemPanel({
         }}
       >
         <p className="text-sm font-semibold">{editingId ? "Ürünü düzenle" : "Yeni ürün"}</p>
-        <select
+        <BusinessSelect
+          businesses={businesses}
           value={form.restaurant_id}
-          onChange={(event) => setForm({ ...form, restaurant_id: event.target.value })}
+          onChange={(restaurant_id) => setForm({ ...form, restaurant_id, category_id: "" })}
           required
-          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-        >
-          <option value="">İşletme seçin</option>
-          {businesses.map((business) => (
-            <option key={business.id} value={business.id}>
-              {business.name}
-            </option>
-          ))}
-        </select>
+        />
         <select
           value={form.category_id}
           onChange={(event) => setForm({ ...form, category_id: event.target.value })}
           className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
         >
           <option value="">Kategori (opsiyonel)</option>
-          {categories
-            .filter((category) => category.restaurant_id === form.restaurant_id)
-            .map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
+          {categories.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.name}
+            </option>
+          ))}
         </select>
         <Input
           placeholder="Ürün adı"
@@ -1258,8 +1308,16 @@ function MenuItemPanel({
       </form>
 
       <div className="max-h-[36rem] overflow-y-auto rounded-3xl border border-border bg-card">
-        {items.length === 0 ? (
-          <p className="p-6 text-sm text-muted-foreground">Ürün yok.</p>
+        {!form.restaurant_id ? (
+          <p className="p-6 text-sm text-muted-foreground">
+            Ürünleri görmek için önce bir işletme seçin.
+          </p>
+        ) : catalog.isError ? (
+          <p className="p-6 text-sm text-muted-foreground">Ürünler yüklenemedi.</p>
+        ) : catalog.isLoading ? (
+          <p className="p-6 text-sm text-muted-foreground">Yükleniyor…</p>
+        ) : items.length === 0 ? (
+          <p className="p-6 text-sm text-muted-foreground">Bu işletmenin ürünü yok.</p>
         ) : (
           items.map((item) => (
             <div
@@ -1268,10 +1326,7 @@ function MenuItemPanel({
             >
               <div className="min-w-0">
                 <p className="truncate font-medium">{item.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {businesses.find((business) => business.id === item.restaurant_id)?.name ?? "—"} ·{" "}
-                  {formatPrice(Number(item.price))}
-                </p>
+                <p className="text-xs text-muted-foreground">{formatPrice(Number(item.price))}</p>
               </div>
               <div className="flex gap-1">
                 <Button
