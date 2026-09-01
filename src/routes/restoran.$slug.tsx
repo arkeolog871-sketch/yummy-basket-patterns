@@ -133,7 +133,7 @@ function RestaurantDetail() {
       </div>
 
       <div className="mx-auto w-full max-w-6xl px-4">
-        <div className="-mt-6 flex flex-wrap gap-4 rounded-3xl border border-border/70 bg-card p-4 text-sm shadow-card">
+        <div className="relative z-10 -mt-6 flex flex-wrap gap-4 rounded-3xl border border-border/70 bg-card p-4 text-sm shadow-card">
           <span className="flex items-center gap-1.5 font-semibold">
             <Star className="size-4 fill-primary text-primary" />
             {Number(restaurant.rating).toFixed(1)}
