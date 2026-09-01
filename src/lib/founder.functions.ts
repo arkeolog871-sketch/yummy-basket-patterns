@@ -705,9 +705,15 @@ export const listUsers = createServerFn({ method: "GET" })
       .select("user_id, restaurant_id");
     if (assignError) throw new Error(assignError.message);
 
+    const { data: profiles, error: profilesError } = await supabaseAdmin
+      .from("profiles")
+      .select("id, phone");
+    if (profilesError) throw new Error(profilesError.message);
+
     return list.users.map((user) => ({
       id: user.id,
       email: user.email ?? "—",
+      phone: (profiles ?? []).find((row) => row.id === user.id)?.phone ?? null,
       created_at: user.created_at,
       roles: (roles ?? []).filter((row) => row.user_id === user.id).map((row) => row.role),
       vendorRestaurantId:
