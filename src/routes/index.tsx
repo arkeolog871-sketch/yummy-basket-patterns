@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, ClientOnly } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useState, Suspense, lazy } from "react";
-import { Search, Clock, ShieldCheck, Sparkles } from "lucide-react";
+import { Search, Clock, Sparkles } from "lucide-react";
 import { RestaurantCard } from "@/components/restaurant/RestaurantCard";
 import { homeQuery, type HomeSearch } from "@/lib/catalog.queries";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -147,9 +147,6 @@ function Index() {
             <div className="mt-6 flex flex-wrap gap-5 text-sm text-muted-foreground">
               <span className="flex items-center gap-2">
                 <Clock className="size-4" /> Ortalama 30 dk teslimat
-              </span>
-              <span className="flex items-center gap-2">
-                <ShieldCheck className="size-4" /> Güvenli ödeme
               </span>
             </div>
             </div>
