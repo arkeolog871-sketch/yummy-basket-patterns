@@ -424,13 +424,13 @@ export const listAdminData = createServerFn({ method: "GET" })
       // Kurucu doğrulandıktan sonra iletişim alanlarını da okuyabilmek için yetkili istemci.
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-      // Kurucu paneli tüm kataloğu tek seferde belleğe indirir; gerçek sayfalama
-      // henüz yok, bu yüzden aşırı büyümeye karşı cömert bir üst sınır konuldu.
+      // İşletme sayısı yüzlerle ifade edilse bile (300+) tek sorguda kalabilecek
+      // cömert bir üst sınır. Menü kategorileri/ürünleri artık burada tüm
+      // kataloğu çekmiyor — her işletmenin binlerce ürünü olabileceğinden
+      // listBusinessCatalog ile tek işletme seçildiğinde ayrıca çekiliyor.
       const CATALOG_LIMIT = 1000;
-      const [businesses, categories, items, orders] = await Promise.all([
+      const [businesses, orders] = await Promise.all([
         supabaseAdmin.from("restaurants").select("*").order("name").limit(CATALOG_LIMIT),
-        context.supabase.from("menu_categories").select("*").order("position").limit(CATALOG_LIMIT),
-        supabaseAdmin.from("menu_items").select("*").order("name").limit(CATALOG_LIMIT),
         context.supabase
           .from("orders")
           .select(
@@ -440,15 +440,55 @@ export const listAdminData = createServerFn({ method: "GET" })
           .limit(50),
       ]);
 
-      const firstError =
-        businesses.error ?? categories.error ?? items.error ?? orders.error ?? null;
+      const firstError = businesses.error ?? orders.error ?? null;
       if (firstError) throw new Error(firstError.message);
 
       return {
         businesses: businesses.data ?? [],
+        orders: orders.data ?? [],
+      };
+    }),
+  );
+
+/**
+ * Tek bir işletmenin menü kategorilerini ve ürünlerini döner. Kurucu paneli
+ * kategori/ürün sekmelerinde tüm kataloğu değil, seçilen işletmenin
+ * kataloğunu çeker — işletme sayısı ve ürün sayısı ne kadar büyürse büyüsün
+ * (300+ işletme, işletme başına binlerce ürün) payload her zaman tek
+ * işletmenin boyutuyla sınırlı kalır.
+ */
+export const listBusinessCatalog = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({ restaurantId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) =>
+    runServerFn(async () => {
+      const { assertFounder } = await import("./founder.server");
+      await assertFounder(context.supabase, context.userId, context.claims as never);
+      // Ürünler için: müşteri tarafı is_available=true dışını göremez, kurucunun
+      // satışta olmayan ürünleri de düzenleyebilmesi için yetkili istemci gerekli.
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+      const [categories, items] = await Promise.all([
+        context.supabase
+          .from("menu_categories")
+          .select("*")
+          .eq("restaurant_id", data.restaurantId)
+          .order("position")
+          .limit(1000),
+        supabaseAdmin
+          .from("menu_items")
+          .select("*")
+          .eq("restaurant_id", data.restaurantId)
+          .order("name")
+          .limit(2000),
+      ]);
+
+      const firstError = categories.error ?? items.error ?? null;
+      if (firstError) throw new Error(firstError.message);
+
+      return {
         categories: categories.data ?? [],
         items: items.data ?? [],
-        orders: orders.data ?? [],
       };
     }),
   );
