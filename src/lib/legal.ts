@@ -40,9 +40,10 @@ export const LEGAL_DOCUMENTS: Record<LegalDocId, LegalDocument> = {
     title: "Gizlilik Politikası",
     path: "/gizlilik-politikasi",
     description: `${BRAND} kişisel verileri nasıl işler.`,
-    updatedLabel: "Son güncelleme: 31 Ağustos 2026",
+    updatedLabel: "Son güncelleme: 1 Eylül 2026",
     paragraphs: [
       `${BRAND} olarak hesabınızı oluştururken ve sipariş verirken ad-soyad, e-posta, telefon, teslimat adresi, sipariş geçmişi ve oturum bilgilerinizi işleriz. Bu veriler hesabınızı çalıştırmak, siparişi işletmeye iletmek, destek sağlamak ve yasal yükümlülükleri yerine getirmek için kullanılır.`,
+      "Veri sorumlusu: İsmail Simpil. Adres: Boyunlu Küme Evler Kapı No: 264 Zemin, Boyunlu Mah., Silvan / Diyarbakır. İletişim: arkeolog871@gmail.com, 0546 696 31 33.",
       "E-posta doğrulama kodu (OTP) gönderimi, giriş güvenliği ve dolandırıcılığın önlenmesi için işlenir. Kodun kendisi düz metin olarak saklanmaz; yalnızca doğrulama ve güvenlik kayıtları tutulur.",
       "Esnaf/işletme girişlerinde telefon numarası ve bu numaraya gönderilen tek kullanımlık kod (SMS/telefon OTP) da işlenir. Telefon numarası işletme yetkilisinin kimliğini doğrulamak, panele erişimi güvenli kılmak ve sipariş bildirimlerini iletmek için kullanılır; tek kullanımlık kodlar düz metin olarak saklanmaz.",
       "Platformda reklam/vitrin alanı veren işletmelerden alınan reklam sahibi ad-unvanı ve iletişim telefonu, ayrı bir veri kategorisi olarak reklamın yayınlanması, faturalandırma ve iletişim amacıyla işlenir.",
