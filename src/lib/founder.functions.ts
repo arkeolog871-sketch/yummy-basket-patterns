@@ -710,14 +710,26 @@ export const listUsers = createServerFn({ method: "GET" })
       .select("id, phone");
     if (profilesError) throw new Error(profilesError.message);
 
+    const phoneByUser = new Map((profiles ?? []).map((row) => [row.id, row.phone]));
+    const rolesByUser = new Map<string, string[]>();
+    for (const row of roles ?? []) {
+      const bucket = rolesByUser.get(row.user_id);
+      if (bucket) bucket.push(row.role);
+      else rolesByUser.set(row.user_id, [row.role]);
+    }
+    const restaurantIdByUser = new Map<string, string>();
+    for (const row of assignments ?? []) {
+      if (!restaurantIdByUser.has(row.user_id))
+        restaurantIdByUser.set(row.user_id, row.restaurant_id);
+    }
+
     return list.users.map((user) => ({
       id: user.id,
       email: user.email ?? "—",
-      phone: (profiles ?? []).find((row) => row.id === user.id)?.phone ?? null,
+      phone: phoneByUser.get(user.id) ?? null,
       created_at: user.created_at,
-      roles: (roles ?? []).filter((row) => row.user_id === user.id).map((row) => row.role),
-      vendorRestaurantId:
-        (assignments ?? []).find((row) => row.user_id === user.id)?.restaurant_id ?? null,
+      roles: rolesByUser.get(user.id) ?? [],
+      vendorRestaurantId: restaurantIdByUser.get(user.id) ?? null,
     }));
   });
 
