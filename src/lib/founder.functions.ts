@@ -155,6 +155,13 @@ export const sendAdminMessage = createServerFn({ method: "POST" })
           body: data.body,
         });
         if (error) throw new Error(error.message);
+        const { notifyAdminMessageAudience } = await import("./admin-message-alert.server");
+        await notifyAdminMessageAudience({
+          targetType: data.target_type,
+          restaurantId,
+          title: data.title,
+          body: data.body,
+        });
         return { ok: true };
       },
     );
