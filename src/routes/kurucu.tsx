@@ -61,6 +61,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AuditLogPanel } from "@/components/founder/AuditLogPanel";
+import { DeletionRequestsPanel } from "@/components/founder/DeletionRequestsPanel";
 
 export const Route = createFileRoute("/kurucu")({
   head: () => ({
@@ -321,6 +322,7 @@ function FounderDashboard() {
           <TabsTrigger value="kategoriler">Menü kategorileri</TabsTrigger>
           <TabsTrigger value="urunler">Ürünler</TabsTrigger>
           <TabsTrigger value="kullanicilar">Kullanıcılar</TabsTrigger>
+          <TabsTrigger value="silme-talepleri">Silme talepleri</TabsTrigger>
           <TabsTrigger value="guvenlik">Güvenlik</TabsTrigger>
           <TabsTrigger value="siparisler">Siparişler</TabsTrigger>
           <TabsTrigger value="denetim">Denetim kaydı</TabsTrigger>
@@ -388,6 +390,10 @@ function FounderDashboard() {
             businesses={data.data?.businesses ?? []}
             onDone={invalidate}
           />
+        </TabsContent>
+
+        <TabsContent value="silme-talepleri" className="mt-6">
+          <DeletionRequestsPanel />
         </TabsContent>
 
         <TabsContent value="guvenlik" className="mt-6">

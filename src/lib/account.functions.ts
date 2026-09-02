@@ -37,13 +37,18 @@ export const requestAccountDeletion = createServerFn({ method: "POST" })
 
     if (existing) return { ok: true as const, alreadyPending: true as const };
 
+    const requesterEmail = context.claims?.email ?? null;
     const { error } = await context.supabase.from("account_deletion_requests").insert({
       user_id: context.userId,
-      email: context.claims?.email ?? null,
+      email: requesterEmail,
       phone: data.phone ?? null,
       reason: data.reason ?? null,
       status: "pending",
     });
     if (error) throw new Error(error.message);
+
+    const { notifyFoundersOfDeletionRequest } = await import("./account-deletion-alert.server");
+    await notifyFoundersOfDeletionRequest({ requesterEmail });
+
     return { ok: true as const, alreadyPending: false as const };
   });
