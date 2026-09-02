@@ -1088,6 +1088,8 @@ export type Database = {
         Args: { p_email_hash: string; p_now?: string }
         Returns: number
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       track_advertisement: {
         Args: { p_id: string; p_type: string }
         Returns: undefined
