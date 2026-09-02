@@ -2,6 +2,14 @@ plugins {
     id("com.android.application")
 }
 
+// google-services.json Firebase Console'dan indirilip buraya (app/) eklenene
+// kadar bu eklenti hiç uygulanmaz — mevcut derleme davranışı tamamen aynı
+// kalır. Dosya eklenince FCM (kapalı-uygulama bildirimi) otomatik aktifleşir.
+val hasGoogleServicesConfig = file("google-services.json").exists()
+if (hasGoogleServicesConfig) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 android {
     namespace = "online.uygulamamcebimde.app"
     compileSdk = 34
@@ -63,4 +71,10 @@ android {
 dependencies {
     implementation("androidx.core:core:1.13.1")
     implementation("androidx.browser:browser:1.8.0")
+    // Her zaman dahil (derleme zamanında google-services.json gerektirmez);
+    // yapılandırılmadan kullanılırsa PushService/MainActivity.syncFcmToken
+    // sessizce no-op kalır (try/catch), FirebaseMessagingService kaydı da
+    // token üretilemediği için hiç tetiklenmez.
+    implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
+    implementation("com.google.firebase:firebase-messaging")
 }

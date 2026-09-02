@@ -51,3 +51,21 @@ export const deletePushSubscription = createServerFn({ method: "POST" })
       return { ok: true };
     }),
   );
+
+const fcmTokenSchema = z.object({
+  token: z.string().trim().min(20).max(500),
+});
+
+/** Android native uygulamadan (FCM) alınan cihaz token'ını kaydeder/günceller. */
+export const saveFcmToken = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => fcmTokenSchema.parse(input))
+  .handler(async ({ data, context }) =>
+    runServerFn(async () => {
+      const { error } = await context.supabase
+        .from("fcm_tokens")
+        .upsert({ user_id: context.userId, token: data.token }, { onConflict: "token" });
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }),
+  );

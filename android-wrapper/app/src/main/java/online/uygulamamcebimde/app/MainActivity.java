@@ -186,6 +186,7 @@ public class MainActivity extends Activity {
                 hideLoadingOverlay();
                 hideErrorOverlay();
                 requestNotificationPermissionIfNeeded();
+                syncFcmToken();
             }
         }
 
@@ -1146,6 +1147,31 @@ public class MainActivity extends Activity {
                 new String[] { Manifest.permission.POST_NOTIFICATIONS },
                 NOTIFICATION_PERMISSION_REQUEST
         );
+    }
+
+    /**
+     * WebView Web Push API'yi desteklemiyor; sunucunun kapalı-uygulama bildirimi
+     * gönderebilmesi için FCM token'ını her sayfa yüklemesinde JS köprüsüne
+     * bildirir (window.__onFcmToken, src/hooks/useFcmTokenBridge.tsx tarafında
+     * tanımlanır). google-services.json eklenmemişse Firebase yapılandırılmamış
+     * olur ve bu tamamen sessizce (çökmeden) atlanır.
+     */
+    private void syncFcmToken() {
+        try {
+            com.google.firebase.messaging.FirebaseMessaging.getInstance()
+                    .getToken()
+                    .addOnCompleteListener(task -> {
+                        if (!task.isSuccessful() || task.getResult() == null) return;
+                        String token = task.getResult();
+                        String escaped = token.replace("\\", "\\\\").replace("'", "\\'");
+                        String script = "window.__onFcmToken && window.__onFcmToken('" + escaped + "');";
+                        runOnUiThread(() -> {
+                            if (webView != null) webView.evaluateJavascript(script, null);
+                        });
+                    });
+        } catch (Throwable ignored) {
+            // Firebase yapılandırılmamış (google-services.json yok) — sessizce atla.
+        }
     }
 
     private void postOrderNotification(String title, String body) {
