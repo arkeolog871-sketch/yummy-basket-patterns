@@ -31,29 +31,33 @@ printf 'sdk.dir=%s\n' "$ANDROID_HOME" > local.properties
 
 The WebView does not support the Web Push API, so this is the only way to
 notify a user while the app is fully closed. It is wired up (`PushService`,
-manifest, Gradle) but **inactive until you add real Firebase config** — the
-app builds and runs exactly as before without it.
+manifest, Gradle) and **active** — `app/google-services.json` for the
+`silvan-cebimde` Firebase project (package `online.uygulamamcebimde.app`)
+is committed in this folder, and
+`apply(plugin = "com.google.gms.google-services")` in `app/build.gradle.kts`
+picks it up automatically.
 
-To activate:
+Note: `google-services.json` contains a client-side Firebase API key, which
+Firebase's own docs treat as safe to check in (it's restricted by package
+name and app data access is controlled by Firebase Security Rules, not by
+keeping this file secret) — unlike a service-account private key, which
+must never be committed.
 
-1. **Firebase Console** → open the existing `silvan-cebimde` project (same
-   one already used by `ios/`) → Project settings → add an Android app with
-   package name `online.uygulamamcebimde.app` → download `google-services.json`.
-2. Place that file at `app/google-services.json` (gitignored, never commit it).
-3. Build normally — `apply(plugin = "com.google.gms.google-services")` in
-   `app/build.gradle.kts` activates automatically once the file exists.
-4. Server-side: Firebase Console → Project settings → Service accounts →
-   Generate new private key → paste the whole JSON as the `FIREBASE_SERVICE_ACCOUNT_JSON`
-   secret in the web app's environment (Lovable → Cloud → Secrets). Without
-   it, `src/lib/fcm.server.ts` sends nothing (logs and returns, doesn't throw).
-5. Rebuild, install on a **debug** build first, confirm a test push
+Remaining step to fully activate server-side sending:
+
+1. **Firebase Console** → `silvan-cebimde` project → Project settings →
+   Service accounts → Generate new private key → paste the whole JSON as the
+   `FIREBASE_SERVICE_ACCOUNT_JSON` secret in the web app's environment
+   (Lovable → Cloud → Secrets). Without it, `src/lib/fcm.server.ts` sends
+   nothing (logs and returns, doesn't throw).
+2. Rebuild the APK, install on a **debug** build first, confirm a test push
    (kurucu paneli → Bildirimler → "Bildirim gönder testi") arrives with the
    app fully closed, *then* roll it into a release build.
 
 This was validated in CI-style: `:app:compileDebugJavaWithJavac` and
 `:app:assembleDebug` both succeed with and without `google-services.json`
-present (confirmed with a throwaway stub matching the real project;
-never committed). It was not tested on a physical device.
+present (confirmed with a throwaway stub matching the real project before
+the real file was committed). It was not tested on a physical device.
 
 ## WebView session and OAuth
 

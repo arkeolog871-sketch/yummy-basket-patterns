@@ -6,6 +6,3 @@ local.properties
 captures/
 .cxx/
 dist/
-
-# Firebase (FCM) config — get from Firebase Console, never commit.
-app/google-services.json
