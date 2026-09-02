@@ -31,6 +31,8 @@ const ACTION_LABELS: Record<string, string> = {
   "role.grant": "Yetki verme",
   "role.revoke": "Yetki kaldırma",
   "user.delete": "Kullanıcı silme",
+  "account_deletion.approve": "Hesap silme talebini onaylama",
+  "account_deletion.reject": "Hesap silme talebini reddetme",
 };
 
 const STATUS_FILTERS = ["all", "success", "error", "denied"] as const;

@@ -1019,3 +1019,101 @@ export const deleteUser = createServerFn({ method: "POST" })
       },
     );
   });
+
+/** Kurucu, bekleyen tüm hesap silme taleplerini (en yeniden eskiye) görür. */
+export const listDeletionRequests = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { assertFounder } = await import("./founder.server");
+    await assertFounder(context.supabase, context.userId, context.claims as never);
+
+    const { data, error } = await context.supabase
+      .from("account_deletion_requests")
+      .select("id, user_id, email, phone, reason, status, founder_note, reviewed_at, created_at")
+      .order("status", { ascending: true })
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+/**
+ * Kurucu bir hesap silme talebini onaylar (hesabı gerçekten siler) veya
+ * reddeder. Onaydan önce talebin hâlâ beklemede olduğu tekrar doğrulanır;
+ * kurucu kendi talebini onaylayamaz.
+ */
+export const reviewDeletionRequest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z
+      .object({
+        requestId: z.string().uuid(),
+        action: z.enum(["approve", "reject"]),
+        note: z.string().trim().max(500).optional().nullable(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { assertFounder } = await import("./founder.server");
+    const { audited } = await import("./audit.server");
+    await assertFounder(context.supabase, context.userId, context.claims as never);
+
+    const { data: request, error: requestError } = await context.supabase
+      .from("account_deletion_requests")
+      .select("id, user_id, email, reason, status")
+      .eq("id", data.requestId)
+      .maybeSingle();
+    if (requestError) throw new Error(requestError.message);
+    if (!request) throw new Error("Talep bulunamadı");
+    if (request.status !== "pending") throw new Error("Bu talep zaten işleme alınmış");
+    if (request.user_id === context.userId) {
+      throw new Error("Kendi hesap silme talebinizi işleme alamazsınız");
+    }
+
+    return audited(
+      {
+        actorId: context.userId,
+        actorEmail: (context.claims as { email?: string } | null)?.email ?? null,
+        action: data.action === "approve" ? "account_deletion.approve" : "account_deletion.reject",
+        entity: "account_deletion_requests",
+        entityId: request.id,
+        detail: { targetUserId: request.user_id, email: request.email, reason: request.reason },
+      },
+      async () => {
+        if (data.action === "reject") {
+          const { error } = await context.supabase
+            .from("account_deletion_requests")
+            .update({
+              status: "rejected",
+              founder_note: data.note ?? null,
+              reviewed_by: context.userId,
+              reviewed_at: new Date().toISOString(),
+            })
+            .eq("id", request.id)
+            .eq("status", "pending");
+          if (error) throw new Error(error.message);
+          return { ok: true, deleted: false };
+        }
+
+        // Onay: talebi önce 'approved' işaretle (audit/görünürlük için), sonra
+        // hesabı gerçekten sil. auth.users silinince bu talep satırı da
+        // ON DELETE CASCADE ile birlikte kalkar — bu beklenen davranış.
+        const { error: markError } = await context.supabase
+          .from("account_deletion_requests")
+          .update({
+            status: "approved",
+            founder_note: data.note ?? null,
+            reviewed_by: context.userId,
+            reviewed_at: new Date().toISOString(),
+          })
+          .eq("id", request.id)
+          .eq("status", "pending");
+        if (markError) throw new Error(markError.message);
+
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(request.user_id);
+        if (deleteError) throw new Error(deleteError.message);
+        return { ok: true, deleted: true };
+      },
+    );
+  });

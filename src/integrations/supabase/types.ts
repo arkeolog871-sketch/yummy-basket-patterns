@@ -18,9 +18,12 @@ export type Database = {
         Row: {
           created_at: string
           email: string | null
+          founder_note: string | null
           id: string
           phone: string | null
           reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           status: string
           updated_at: string
           user_id: string
@@ -28,9 +31,12 @@ export type Database = {
         Insert: {
           created_at?: string
           email?: string | null
+          founder_note?: string | null
           id?: string
           phone?: string | null
           reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string
           updated_at?: string
           user_id: string
@@ -38,9 +44,12 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string | null
+          founder_note?: string | null
           id?: string
           phone?: string | null
           reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string
           updated_at?: string
           user_id?: string
