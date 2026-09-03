@@ -101,7 +101,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },
-      { name: "apple-mobile-web-app-title", content: "Cebimde" },
+      { name: "apple-mobile-web-app-title", content: "Silvan Cebimde" },
       { name: "format-detection", content: "telephone=yes" },
       { property: "og:title", content: "SİLVAN CEBİMDE — Yemek siparişi" },
       {
