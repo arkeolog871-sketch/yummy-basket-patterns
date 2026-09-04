@@ -39,14 +39,14 @@ export function RestaurantCard({ restaurant }: { restaurant: RestaurantSummary }
       params={{ slug: restaurant.slug }}
       className="group overflow-hidden rounded-3xl border border-border/70 bg-card shadow-card transition-all hover:-translate-y-1 hover:shadow-lifted"
     >
-      <div className="relative aspect-[16/10] overflow-hidden">
+      <div className="relative aspect-video overflow-hidden">
         {restaurant.cover_image_url ? (
           <img
             src={restaurant.cover_image_url}
             alt={`${restaurant.name} yemekleri`}
             loading="lazy"
-            width={1024}
-            height={640}
+            width={1280}
+            height={720}
             className={`size-full object-cover transition-transform duration-500 group-hover:scale-105 ${
               open ? "" : "grayscale"
             }`}
