@@ -28,7 +28,11 @@ const saveSchema = z.object({
   end_date: z.string().trim().min(10).max(40),
   fileName: z.string().trim().min(1).max(180).optional(),
   contentType: z.string().trim().max(120).optional(),
-  base64: z.string().min(16).max(42_000_000).optional(),
+  // Zod validator, gövde işletme yetkisi kontrolünden (assertFounder, handler
+  // içinde) önce çalışır; 42MB'lık eski sınır herhangi bir oturum açmış
+  // kullanıcıya ucuz bir bellek/CPU baskısı (DoS) fırsatı veriyordu. Diğer
+  // görsel yüklemeleriyle (vendor-media.functions.ts) aynı, makul sınıra çekildi.
+  base64: z.string().min(16).max(6_000_000).optional(),
 });
 
 export const listAdvertisements = createServerFn({ method: "GET" })

@@ -7,8 +7,16 @@ const mapsSchema = z.object({
   allowed_referrers: z.string().trim().max(2000),
 });
 
-/** Tarayıcı haritası için anahtar; anahtar yönlendirici (referrer) kısıtlıdır. */
+/**
+ * Tarayıcı haritası için anahtar; asıl koruma Google Cloud Console'daki HTTP
+ * yönlendirici (referrer) kısıtlaması. Girişsiz herkese açık olmak zorunda
+ * (anonim ziyaretçiler de haritayı görür), bu yüzden en azından toplu
+ * kazımayı (scraping) zorlaştırmak için IP başına ayrıca sınırlanır — genel
+ * server-fn limitine (dakikada 180) ek bir katman.
+ */
 export const getMapsBrowserConfig = createServerFn({ method: "GET" }).handler(async () => {
+  const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
+  await enforceSensitiveRateLimit("maps-browser-config", 60, 60 * 1000);
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await supabaseAdmin
     .from("maps_config")
