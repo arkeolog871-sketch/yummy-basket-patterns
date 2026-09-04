@@ -18,6 +18,7 @@ export type RestaurantSummary = {
   delivery_minutes: number;
   min_order: number;
   cover_image_url: string | null;
+  logo_url?: string | null;
   address?: string | null;
   district?: string | null;
   city?: string | null;
@@ -69,9 +70,23 @@ export function RestaurantCard({ restaurant }: { restaurant: RestaurantSummary }
 
       <div className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-base font-semibold">{restaurant.name}</h3>
-            <p className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">{restaurant.tagline}</p>
+          <div className="flex min-w-0 items-center gap-3">
+            {restaurant.logo_url ? (
+              <img
+                src={restaurant.logo_url}
+                alt={`${restaurant.name} logosu`}
+                loading="lazy"
+                width={40}
+                height={40}
+                className="size-10 shrink-0 rounded-full border border-border/70 bg-card object-cover"
+              />
+            ) : null}
+            <div className="min-w-0">
+              <h3 className="truncate text-base font-semibold">{restaurant.name}</h3>
+              <p className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">
+                {restaurant.tagline}
+              </p>
+            </div>
           </div>
           <span className="flex shrink-0 items-center gap-1 rounded-full bg-warm px-2 py-1 text-xs font-semibold text-warm-foreground">
             <Star className="size-3 fill-current" />
