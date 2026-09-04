@@ -35,10 +35,9 @@ export const getMyReview = createServerFn({ method: "GET" })
  * ON CONFLICT DO UPDATE bir SECURITY INVOKER RPC içinden çağrılınca sorunsuz
  * çalışıyor, bu yüzden yazma burada RPC üzerinden yapılıyor.
  *
- * Yorumcu adı kasıtlı olarak her zaman "Müşteri": profiles.full_name,
- * işletmeci hesaplarında işletme adıyla dolduruluyor (vendor panelinde
- * görünmesi için), bu yüzden yorumlarda gerçek veya işletme adı yerine
- * hiçbir kimlik göstermeyen sabit bir etiket kullanılıyor.
+ * Yorumcu adı ("Ad SS.") submit_review RPC'si içinde profiles.full_name'den
+ * hesaplanır; işletme adı hiçbir zaman kullanılmaz (bkz. founder.server.ts'de
+ * profiles.full_name'in artık işletme adıyla üzerine yazılmaması).
  */
 export const submitReview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
