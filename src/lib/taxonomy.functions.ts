@@ -12,6 +12,12 @@ const categorySchema = z.object({
     .regex(/^[a-z0-9-]+$/, "Sadece küçük harf, rakam ve tire"),
   label: z.string().trim().min(2).max(40),
   icon: z.string().trim().min(2).max(40),
+  color: z
+    .string()
+    .trim()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Geçerli hex renk girin (#rrggbb)")
+    .nullable()
+    .optional(),
   position: z.number().int().min(0).max(999),
   is_active: z.boolean(),
 });
@@ -31,7 +37,8 @@ export const saveCategory = createServerFn({ method: "POST" })
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
     await assertFounder(context.supabase, context.userId, context.claims as never);
-    const { id, ...values } = data;
+    const { id, color, ...rest } = data;
+    const values = { ...rest, ...(color !== undefined ? { color } : {}) };
     return audited(
       {
         actorId: context.userId,

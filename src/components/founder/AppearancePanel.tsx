@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { toPublicErrorMessage } from "@/lib/public-error";
-import { Palette } from "lucide-react";
+import { Palette, Tags } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { updateSiteSettings } from "@/lib/founder.functions";
+import { useAppCategories, type AppCategory } from "@/hooks/useTaxonomy";
+import { saveCategory } from "@/lib/taxonomy.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -256,6 +258,125 @@ export function AppearancePanel() {
           </Button>
         </div>
       </div>
+
+      <CategoryColorPanel />
+    </div>
+  );
+}
+
+const CATEGORY_COLOR_SUGGESTIONS = [
+  "#ff8c42",
+  "#e63946",
+  "#2f9e6b",
+  "#2563eb",
+  "#9d174d",
+  "#f2b705",
+  "#0ea5e9",
+  "#8b5cf6",
+];
+
+/** Ana sayfadaki kategori çubuğunda her kategori kendi rengiyle görünsün diye kullanılır. */
+function CategoryColorPanel() {
+  const { categories } = useAppCategories({ includeHidden: true });
+  const queryClient = useQueryClient();
+  const save = useServerFn(saveCategory);
+  const [draft, setDraft] = useState<Record<string, string | null>>({});
+
+  const mutation = useMutation({
+    mutationFn: (category: AppCategory) =>
+      save({
+        data: {
+          id: category.id,
+          slug: category.slug,
+          label: category.label,
+          icon: category.icon,
+          position: category.position,
+          is_active: category.is_active,
+          color: draft[category.id] ?? category.color,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Kategori rengi kaydedildi");
+      void queryClient.invalidateQueries({ queryKey: ["app-categories"] });
+    },
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
+  });
+
+  return (
+    <div className="rounded-3xl border border-border bg-card p-6">
+      <div className="flex items-center gap-2">
+        <Tags className="size-4 text-accent" />
+        <h2 className="text-xl">Kategori renkleri</h2>
+      </div>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Ana sayfadaki kategori çubuğunda her kategori kendi rengiyle görünür. Boş bırakılan
+        kategoriler varsayılan (ana renk) ile gösterilir.
+      </p>
+
+      {categories.length === 0 ? (
+        <p className="mt-4 text-sm text-muted-foreground">Henüz kategori eklenmemiş.</p>
+      ) : (
+        <div className="mt-4 space-y-3">
+          {categories.map((category) => {
+            const value = draft[category.id] ?? category.color ?? "";
+            const saving = mutation.isPending && mutation.variables?.id === category.id;
+            return (
+              <div
+                key={category.id}
+                className="flex flex-wrap items-center gap-3 rounded-2xl border border-border p-3"
+              >
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                  {category.label}
+                  {category.is_active ? null : (
+                    <span className="ml-2 text-xs text-muted-foreground">(gizli)</span>
+                  )}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  {CATEGORY_COLOR_SUGGESTIONS.map((swatch) => (
+                    <button
+                      key={swatch}
+                      type="button"
+                      aria-label={swatch}
+                      onClick={() => setDraft((current) => ({ ...current, [category.id]: swatch }))}
+                      className={`size-6 shrink-0 rounded-full border-2 transition-transform ${
+                        value === swatch ? "scale-110 border-foreground" : "border-transparent"
+                      }`}
+                      style={{ backgroundColor: swatch }}
+                    />
+                  ))}
+                </div>
+                <input
+                  type="color"
+                  aria-label={`${category.label} rengi`}
+                  value={value || "#94a3b8"}
+                  onChange={(event) =>
+                    setDraft((current) => ({ ...current, [category.id]: event.target.value }))
+                  }
+                  className="size-9 shrink-0 cursor-pointer rounded-xl border border-border bg-transparent"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="rounded-full"
+                  onClick={() => setDraft((current) => ({ ...current, [category.id]: null }))}
+                >
+                  Varsayılana dön
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="rounded-full"
+                  disabled={mutation.isPending}
+                  onClick={() => mutation.mutate(category)}
+                >
+                  {saving ? "Kaydediliyor…" : "Kaydet"}
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
