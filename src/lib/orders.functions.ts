@@ -167,7 +167,11 @@ async function insertOrderRow(payload: Record<string, unknown>): Promise<{
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return insertOmittingUnknownColumns(
     async (row) => {
-      const result = await supabaseAdmin.from("orders").insert(row as never).select("id").single();
+      const result = await supabaseAdmin
+        .from("orders")
+        .insert(row as never)
+        .select("id")
+        .single();
       return { data: result.data, error: result.error };
     },
     payload,
@@ -358,6 +362,37 @@ export const listMyOrders = createServerFn({ method: "GET" })
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
       return data ?? [];
+    }),
+  );
+
+/** Sipariş, verildikten sonraki 4 dakika içinde ve hâlâ "confirmed" iken müşteri tarafından iptal edilebilir. */
+export const cancelMyOrder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) =>
+    runServerFn(async () => {
+      const { data: result, error } = await context.supabase.rpc("cancel_customer_order", {
+        p_order_id: data.id,
+        p_user_id: context.userId,
+      });
+      if (error) throw new Error(error.message);
+      const parsed = result as { ok?: boolean; error?: string } | null;
+      if (!parsed?.ok) throw new Error(parsed?.error || "Sipariş iptal edilemedi.");
+
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: order } = await supabaseAdmin
+        .from("orders")
+        .select("restaurant_id, recipient_name")
+        .eq("id", data.id)
+        .maybeSingle();
+      if (order) {
+        const { notifyVendorOfCancelledOrder } = await import("./order-cancel-alert.server");
+        await notifyVendorOfCancelledOrder({
+          restaurantId: order.restaurant_id,
+          recipientName: order.recipient_name,
+        });
+      }
+      return { ok: true as const };
     }),
   );
 

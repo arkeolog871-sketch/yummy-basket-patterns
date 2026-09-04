@@ -38,6 +38,7 @@ import {
   getVendorDashboard,
   markVendorOrderAlertRead,
   setVendorItemAvailability,
+  setVendorMinOrder,
   setVendorOrderStatus,
   setVendorStoreOpen,
 } from "@/lib/vendor.functions";
@@ -147,6 +148,7 @@ function VendorDashboard() {
   const updateStatus = useServerFn(setVendorOrderStatus);
   const updateStore = useServerFn(setVendorStoreOpen);
   const updateItem = useServerFn(setVendorItemAvailability);
+  const updateMinOrder = useServerFn(setVendorMinOrder);
   const markAlertRead = useServerFn(markVendorOrderAlertRead);
 
   const dashboard = useQuery({
@@ -221,6 +223,21 @@ function VendorDashboard() {
     },
     onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
   });
+
+  const minOrderMutation = useMutation({
+    mutationFn: (minOrder: number) => updateMinOrder({ data: { minOrder } }),
+    onSuccess: () => {
+      toast.success("Minimum sipariş tutarı güncellendi");
+      invalidate();
+    },
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
+  });
+
+  const [minOrderInput, setMinOrderInput] = useState("");
+  useEffect(() => {
+    const value = dashboard.data?.restaurant?.min_order;
+    if (value != null) setMinOrderInput(String(value));
+  }, [dashboard.data?.restaurant?.min_order]);
 
   const alertReadMutation = useMutation({
     mutationFn: (id: string) => markAlertRead({ data: { id } }),
@@ -372,6 +389,51 @@ function VendorDashboard() {
               aria-label="Mağazayı açık/kapalı yap"
             />
           </label>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-border bg-card p-5 shadow-card">
+          <div>
+            <p className="font-semibold">Minimum sipariş tutarı</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Müşteriler bu tutarın altında sepetle sipariş veremez.
+            </p>
+          </div>
+          <form
+            className="flex items-center gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const parsed = Number(minOrderInput.replace(",", "."));
+              if (!Number.isFinite(parsed) || parsed < 0) {
+                toast.error("Geçerli bir tutar girin");
+                return;
+              }
+              minOrderMutation.mutate(parsed);
+            }}
+          >
+            <div className="relative">
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                inputMode="decimal"
+                value={minOrderInput}
+                onChange={(event) => setMinOrderInput(event.target.value)}
+                className="w-32 rounded-full pr-8"
+                aria-label="Minimum sipariş tutarı"
+              />
+              <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                ₺
+              </span>
+            </div>
+            <Button
+              type="submit"
+              size="sm"
+              className="rounded-full"
+              disabled={minOrderMutation.isPending}
+            >
+              {minOrderMutation.isPending ? "Kaydediliyor…" : "Kaydet"}
+            </Button>
+          </form>
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
