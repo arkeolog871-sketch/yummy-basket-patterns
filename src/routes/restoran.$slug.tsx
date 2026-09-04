@@ -199,6 +199,16 @@ function RestaurantDetail() {
                         key={item.id}
                         className="flex items-center gap-4 rounded-3xl border border-border/70 bg-card p-4 shadow-card"
                       >
+                        {item.image_url ? (
+                          <img
+                            src={item.image_url}
+                            alt={item.name}
+                            loading="lazy"
+                            width={80}
+                            height={80}
+                            className="size-20 shrink-0 rounded-2xl object-cover"
+                          />
+                        ) : null}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <h3 className="truncate text-base font-semibold">{item.name}</h3>
