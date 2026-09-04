@@ -1097,6 +1097,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_menu_item_stock: {
+        Args: { p_delta: number; p_id: string }
+        Returns: undefined
+      }
       is_vendor_of: {
         Args: { _restaurant_id: string; _user_id: string }
         Returns: boolean

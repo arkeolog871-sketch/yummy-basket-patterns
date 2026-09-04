@@ -264,6 +264,7 @@ const menuItemSchema = z.object({
   image_url: z.string().trim().max(500).nullable().default(null),
   is_popular: z.boolean().default(false),
   is_available: z.boolean().default(true),
+  stock_quantity: z.number().int().min(0).max(1_000_000).default(100),
 });
 
 export const getSiteSettings = createServerFn({ method: "GET" }).handler(async () => {
@@ -589,7 +590,8 @@ export const deleteBusiness = createServerFn({ method: "POST" })
           // Sipariş geçmişi olan işletmeler orders.restaurant_id ON DELETE RESTRICT
           // yüzünden silinemez; kayıtları bozmamak için yayından kaldırıp gizleriz.
           if (error.code === "23503") {
-            const { error: hideError } = await context.supabase
+            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+            const { error: hideError } = await supabaseAdmin
               .from("restaurants")
               .update({ is_active: false })
               .eq("id", data.id);

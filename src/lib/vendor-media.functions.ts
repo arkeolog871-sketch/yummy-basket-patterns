@@ -66,7 +66,15 @@ export const createVendorProduct = createServerFn({ method: "POST" })
 export const updateVendorProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) =>
-    productSchema.extend({ id: z.string().uuid() }).parse(input),
+    productSchema
+      .extend({
+        id: z.string().uuid(),
+        // Form açıldığında görülen stok değeri: mutlak bir sayı yazmak yerine
+        // farkı (delta) uygulamak için gerekli — aksi halde form açıkken
+        // gelen eşzamanlı siparişlerin düştüğü stok, bu kayıtla geri gelirdi.
+        previousStockQuantity: z.number().int().min(0).max(1_000_000),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { assertVendor } = await import("./vendor.server");
@@ -90,7 +98,6 @@ export const updateVendorProduct = createServerFn({ method: "POST" })
         description: data.description?.trim() || null,
         price: data.price,
         category_id: data.categoryId ?? null,
-        stock_quantity: data.stockQuantity,
         image_url: imageUrl,
         ...(data.isAvailable === undefined ? {} : { is_available: data.isAvailable }),
         ...(data.isPopular === undefined ? {} : { is_popular: data.isPopular }),
@@ -101,6 +108,16 @@ export const updateVendorProduct = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!updated) throw new Error("Bu ürün işletmenize ait değil");
+
+    const stockDelta = data.stockQuantity - data.previousStockQuantity;
+    if (stockDelta !== 0) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { error: stockError } = await supabaseAdmin.rpc("increment_menu_item_stock", {
+        p_id: data.id,
+        p_delta: stockDelta,
+      });
+      if (stockError) throw new Error(stockError.message);
+    }
     return { ok: true };
   });
 
