@@ -154,10 +154,23 @@ export function isGoogleOAuthCallbackParams(
   return Boolean(code && (state.startsWith(GOOGLE_OAUTH_STATE_PREFIX) || storedNonce === state));
 }
 
+/**
+ * Chrome'un "Masaüstü sitesi" (Request desktop site) ayarı bir alan adı için
+ * kalıcı olarak açık kalabilir; bu durumda gerçek bir Android telefonda bile
+ * navigator.userAgent masaüstü Linux/X11 gibi görünür. Dokunmatik ekran
+ * desteği bu geçişten etkilenmeyen donanımsal bir sinyal olduğu için yedek
+ * olarak kullanılır.
+ */
+function isLikelyMobileDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  if (/Android/i.test(navigator.userAgent)) return true;
+  return typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 0;
+}
+
 function shouldHandoffGoogleOAuthToAndroidApp(): boolean {
   if (typeof window === "undefined") return false;
   if (nativeOAuthBridge()) return false;
-  if (!/Android/i.test(navigator.userAgent)) return false;
+  if (!isLikelyMobileDevice()) return false;
   return isGoogleOAuthCallbackParams();
 }
 
@@ -267,7 +280,9 @@ function recordOAuthDebugSnapshot(extra: Record<string, unknown>) {
     const snapshot = {
       ts: Date.now(),
       hasBridge: Boolean(nativeOAuthBridge()),
-      isAndroid: /Android/i.test(navigator.userAgent),
+      isAndroidUa: /Android/i.test(navigator.userAgent),
+      maxTouchPoints: navigator.maxTouchPoints,
+      isLikelyMobile: isLikelyMobileDevice(),
       ua: navigator.userAgent,
       ...extra,
     };
