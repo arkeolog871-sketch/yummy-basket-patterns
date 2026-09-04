@@ -35,13 +35,17 @@ export const submitReview = createServerFn({ method: "POST" })
     runServerFn(async () => {
       const { audited } = await import("./audit.server");
       const { data: whoami } = await context.supabase.rpc("debug_whoami");
+      const { data: rpcInsertTry } = await context.supabase.rpc("debug_try_insert", {
+        p_restaurant_id: data.restaurantId,
+        p_user_id: context.userId,
+      });
       return audited(
         {
           actorId: context.userId,
           action: "review.submit",
           entity: "reviews",
           entityId: data.restaurantId,
-          detail: { whoami },
+          detail: { whoami, rpcInsertTry },
         },
         async () => {
           const { data: profile } = await context.supabase
