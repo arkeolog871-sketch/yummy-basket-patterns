@@ -706,7 +706,7 @@ export type Database = {
           subtotal?: number
           total?: number
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -1122,7 +1122,10 @@ export type Database = {
         }
         Returns: boolean
       }
-      delete_my_review: { Args: { p_restaurant_id: string }; Returns: undefined }
+      delete_my_review: {
+        Args: { p_restaurant_id: string }
+        Returns: undefined
+      }
       expire_stale_advertisements: { Args: never; Returns: number }
       get_active_banners: {
         Args: never
@@ -1170,10 +1173,6 @@ export type Database = {
         }
         Returns: Json
       }
-      refresh_restaurant_rating: {
-        Args: Record<PropertyKey, never>
-        Returns: unknown
-      }
       register_email_otp_failure: {
         Args: { p_email_hash: string; p_now?: string }
         Returns: number
@@ -1183,7 +1182,7 @@ export type Database = {
       submit_review: {
         Args: {
           p_author_name: string
-          p_comment: string | null
+          p_comment: string
           p_rating: number
           p_restaurant_id: string
         }
