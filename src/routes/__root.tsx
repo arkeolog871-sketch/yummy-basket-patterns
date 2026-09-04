@@ -227,6 +227,7 @@ function RootComponent() {
                 <FcmTokenBridge />
                 <ErrorCollector />
                 <Toaster />
+                <OAuthDebugBanner />
               </CartProvider>
             </SiteSettingsProvider>
           </AuthProvider>
