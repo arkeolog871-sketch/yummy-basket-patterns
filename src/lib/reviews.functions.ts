@@ -27,32 +27,12 @@ export const getMyReview = createServerFn({ method: "GET" })
     }),
   );
 
-/**
- * Yorum ekler veya (aynı işletmeye zaten yorum bırakılmışsa) günceller.
- * Sahte yorumları önlemek için RLS, yalnızca o işletmeden teslim edilmiş
- * bir siparişi olan kullanıcıların yazmasına izin verir; burada da aynı
- * kontrol önceden yapılıp anlaşılır bir hata mesajı veriliyor.
- */
+/** Yorum ekler veya (aynı işletmeye zaten yorum bırakılmışsa) günceller. */
 export const submitReview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => reviewSchema.parse(input))
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
-      const { data: eligible, error: orderError } = await context.supabase
-        .from("orders")
-        .select("id")
-        .eq("user_id", context.userId)
-        .eq("restaurant_id", data.restaurantId)
-        .eq("status", "delivered")
-        .limit(1)
-        .maybeSingle();
-      if (orderError) throw new Error(orderError.message);
-      if (!eligible) {
-        throw new Error(
-          "Yorum yapabilmek için bu işletmeden teslim edilmiş bir siparişiniz olmalı.",
-        );
-      }
-
       const { data: profile } = await context.supabase
         .from("profiles")
         .select("full_name")
