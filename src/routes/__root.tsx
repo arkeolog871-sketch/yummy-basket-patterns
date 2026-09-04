@@ -168,7 +168,6 @@ function AppChrome() {
       </main>
       {framed ? null : <Footer />}
       {framed ? null : <IosHomeScreenGuide />}
-      <OAuthDebugBanner />
     </div>
   );
 }
@@ -227,6 +226,7 @@ function RootComponent() {
                 <FcmTokenBridge />
                 <ErrorCollector />
                 <Toaster />
+                <OAuthDebugBanner />
               </CartProvider>
             </SiteSettingsProvider>
           </AuthProvider>
