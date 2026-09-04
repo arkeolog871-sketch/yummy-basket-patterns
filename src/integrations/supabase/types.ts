@@ -1122,6 +1122,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      debug_try_insert: {
+        Args: { p_restaurant_id: string; p_user_id: string }
+        Returns: Json
+      }
       debug_whoami: { Args: Record<PropertyKey, never>; Returns: Json }
       expire_stale_advertisements: { Args: never; Returns: number }
       get_active_banners: {
