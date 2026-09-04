@@ -585,7 +585,19 @@ export const deleteBusiness = createServerFn({ method: "POST" })
       },
       async () => {
         const { error } = await context.supabase.from("restaurants").delete().eq("id", data.id);
-        if (error) throw new Error(error.message);
+        if (error) {
+          // Sipariş geçmişi olan işletmeler orders.restaurant_id ON DELETE RESTRICT
+          // yüzünden silinemez; kayıtları bozmamak için yayından kaldırıp gizleriz.
+          if (error.code === "23503") {
+            const { error: hideError } = await context.supabase
+              .from("restaurants")
+              .update({ is_active: false })
+              .eq("id", data.id);
+            if (hideError) throw new Error(hideError.message);
+            return { ok: true, softHidden: true as const };
+          }
+          throw new Error(error.message);
+        }
         return { ok: true };
       },
     );

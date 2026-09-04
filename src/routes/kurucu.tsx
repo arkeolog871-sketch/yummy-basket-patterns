@@ -685,8 +685,12 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => remove({ data: { id } }),
-    onSuccess: () => {
-      toast.success("İşletme silindi");
+    onSuccess: (result: { softHidden?: boolean }) => {
+      toast.success(
+        result?.softHidden
+          ? "Bu işletmenin sipariş geçmişi olduğu için tamamen silinemedi; bunun yerine yayından kaldırıldı (müşteriler artık göremez)."
+          : "İşletme silindi",
+      );
       onDone();
     },
     onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
