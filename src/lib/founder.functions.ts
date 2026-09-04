@@ -1026,6 +1026,8 @@ export const deleteUser = createServerFn({ method: "POST" })
         entityId: data.userId,
       },
       async () => {
+        const { anonymizeUserOrders } = await import("./founder.server");
+        await anonymizeUserOrders(data.userId);
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
         if (error) throw new Error(error.message);
@@ -1124,6 +1126,8 @@ export const reviewDeletionRequest = createServerFn({ method: "POST" })
           .eq("status", "pending");
         if (markError) throw new Error(markError.message);
 
+        const { anonymizeUserOrders } = await import("./founder.server");
+        await anonymizeUserOrders(request.user_id);
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(request.user_id);
         if (deleteError) throw new Error(deleteError.message);

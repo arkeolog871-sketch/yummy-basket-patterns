@@ -10,7 +10,11 @@ const sealSchema = z.object({
 const exchangeSchema = z.object({
   code: z.string().min(8).max(2048),
   state: z.string().min(8).max(4096),
-  storedNonce: z.string().min(8).max(128).optional(),
+  // Zorunlu: bu, akışı başlatan tarayıcı bağlamının onu tamamlayanla aynı
+  // olduğunu kanıtlayan tek kanıt (login CSRF'e karşı). Eksikse istemcinin
+  // sessionStorage/localStorage'ı temizlenmiş demektir — akış güvenle
+  // tamamlanamaz, kullanıcı girişi baştan başlatmalı.
+  storedNonce: z.string().min(8).max(128),
   storedVerifier: z.string().min(43).max(128).optional(),
   storedRedirectUri: z.string().url().max(500).optional(),
 });
@@ -88,7 +92,7 @@ export const exchangeGoogleOAuthCode = createServerFn({ method: "POST" })
       };
     }
 
-    if (data.storedNonce && data.storedNonce !== nonce) {
+    if (data.storedNonce !== nonce) {
       return {
         ok: false as const,
         error: "Durum doğrulama başarısız oldu. Saklanan state değeri eşleşmiyor.",
