@@ -1058,6 +1058,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cancel_customer_order: {
+        Args: { p_order_id: string; p_user_id: string }
+        Returns: Json
+      }
       consume_email_otp: {
         Args: { p_code_hash: string; p_email_hash: string; p_now?: string }
         Returns: string

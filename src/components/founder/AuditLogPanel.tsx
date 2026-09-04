@@ -33,6 +33,7 @@ const ACTION_LABELS: Record<string, string> = {
   "user.delete": "Kullanıcı silme",
   "account_deletion.approve": "Hesap silme talebini onaylama",
   "account_deletion.reject": "Hesap silme talebini reddetme",
+  "vendor.min_order": "İşletme minimum sipariş tutarı güncelleme",
 };
 
 const STATUS_FILTERS = ["all", "success", "error", "denied"] as const;

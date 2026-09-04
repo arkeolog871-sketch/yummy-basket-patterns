@@ -180,6 +180,37 @@ export const setVendorStoreOpen = createServerFn({ method: "POST" })
     }),
   );
 
+/** İşletme kendi minimum sipariş tutarını belirler. */
+export const setVendorMinOrder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({ minOrder: z.number().min(0).max(100000) }).parse(input))
+  .handler(async ({ data, context }) =>
+    runServerFn(async () => {
+      const { assertVendor } = await import("./vendor.server");
+      const { audited } = await import("./audit.server");
+      const restaurantId = await assertVendor(context.supabase, context.userId);
+
+      return audited(
+        {
+          actorId: context.userId,
+          actorEmail: (context.claims as { email?: string } | null)?.email ?? null,
+          action: "vendor.min_order",
+          entity: "restaurants",
+          entityId: restaurantId,
+          detail: { min_order: data.minOrder },
+        },
+        async () => {
+          const { error } = await context.supabase
+            .from("restaurants")
+            .update({ min_order: data.minOrder })
+            .eq("id", restaurantId);
+          if (error) throw new Error(error.message);
+          return { ok: true };
+        },
+      );
+    }),
+  );
+
 /** Ürünün stok durumunu (Stokta var / yok) değiştirir. */
 export const setVendorItemAvailability = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
