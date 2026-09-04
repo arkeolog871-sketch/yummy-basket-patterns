@@ -34,6 +34,11 @@ export const getMyReview = createServerFn({ method: "GET" })
  * RLS ve auth.uid() doğru olsa bile (canlıda doğrulandı). Aynı INSERT ...
  * ON CONFLICT DO UPDATE bir SECURITY INVOKER RPC içinden çağrılınca sorunsuz
  * çalışıyor, bu yüzden yazma burada RPC üzerinden yapılıyor.
+ *
+ * Yorumcu adı kasıtlı olarak her zaman "Müşteri": profiles.full_name,
+ * işletmeci hesaplarında işletme adıyla dolduruluyor (vendor panelinde
+ * görünmesi için), bu yüzden yorumlarda gerçek veya işletme adı yerine
+ * hiçbir kimlik göstermeyen sabit bir etiket kullanılıyor.
  */
 export const submitReview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -49,18 +54,10 @@ export const submitReview = createServerFn({ method: "POST" })
           entityId: data.restaurantId,
         },
         async () => {
-          const { data: profile } = await context.supabase
-            .from("profiles")
-            .select("full_name")
-            .eq("id", context.userId)
-            .maybeSingle();
-          const authorName = profile?.full_name?.trim() || "Müşteri";
-
           const { error } = await context.supabase.rpc("submit_review", {
             p_restaurant_id: data.restaurantId,
             p_rating: data.rating,
             p_comment: data.comment?.trim() || null,
-            p_author_name: authorName,
           });
           if (error) throw new Error(error.message);
           return { ok: true };
