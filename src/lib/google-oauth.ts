@@ -161,12 +161,28 @@ function shouldHandoffGoogleOAuthToAndroidApp(): boolean {
   return isGoogleOAuthCallbackParams();
 }
 
+/**
+ * True when this tab is an orphaned Android browser tab left behind after
+ * Google's consent screen — the automatic `intent://` handoff below is not
+ * guaranteed to fire without a user gesture on every Chrome/OEM build, so
+ * the UI shows a manual "Uygulamaya dön" button whenever this is true.
+ */
+export function isOrphanedAndroidOAuthBrowser(): boolean {
+  return shouldHandoffGoogleOAuthToAndroidApp();
+}
+
 function handoffGoogleOAuthToAndroidApp() {
   const search = window.location.search || "";
   const intent =
     `intent://oauth${search}#Intent;scheme=silvancebimde;package=${ANDROID_APP_PACKAGE};` +
     `S.browser_fallback_url=${encodeURIComponent(`${PRODUCTION_OAUTH_ORIGIN}/auth${search}`)};end`;
   window.location.assign(intent);
+}
+
+/** "Uygulamaya dön" butonu: kullanıcı dokunuşuyla intent:// yönlendirmesini tekrar dener. */
+export function returnToAndroidApp() {
+  if (typeof window === "undefined") return;
+  handoffGoogleOAuthToAndroidApp();
 }
 
 export async function startGoogleOAuth(): Promise<{ ok: true } | { ok: false; error: string }> {

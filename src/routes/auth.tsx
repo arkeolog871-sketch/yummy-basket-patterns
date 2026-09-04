@@ -13,6 +13,8 @@ import {
   humanizeOAuthError,
   isGoogleOAuthCallbackParams,
   isInAppBrowser,
+  isOrphanedAndroidOAuthBrowser,
+  returnToAndroidApp,
   startGoogleOAuth,
   stripOAuthCallbackFromUrl,
 } from "@/lib/google-oauth";
@@ -83,6 +85,7 @@ function AuthPage() {
   const [googleCompleting, setGoogleCompleting] = useState(() =>
     typeof window === "undefined" ? false : isGoogleOAuthCallbackParams(),
   );
+  const [androidHandoffPending, setAndroidHandoffPending] = useState(false);
 
   useEffect(() => {
     if (!oauthError) return;
@@ -92,6 +95,11 @@ function AuthPage() {
 
   useEffect(() => {
     if (!isGoogleOAuthCallbackParams()) return;
+    // Google'ın dönüş sayfası Android'de ayrı bir tarayıcı sekmesinde açılabilir;
+    // otomatik intent:// yönlendirmesi kullanıcı dokunuşu olmadan her Chrome/OEM'de
+    // tetiklenmeyebilir, bu yüzden bu durumu yakalayıp elle "Uygulamaya dön" göster.
+    const isAndroidHandoff = isOrphanedAndroidOAuthBrowser();
+    if (isAndroidHandoff) setAndroidHandoffPending(true);
     let cancelled = false;
     setGoogleCompleting(true);
     void completeGoogleOAuthFromCallback().then((result) => {
@@ -100,8 +108,10 @@ function AuthPage() {
       if (result?.ok === false) {
         toast.error(result.error);
         setGoogleCompleting(false);
+        setAndroidHandoffPending(false);
         return;
       }
+      if (isAndroidHandoff) return;
       setGoogleCompleting(false);
     });
     return () => {
@@ -183,6 +193,16 @@ function AuthPage() {
         <p className="mt-2 text-sm text-muted-foreground">
           Yetkilendirme tamamlanıyor, lütfen bekleyin…
         </p>
+        {androidHandoffPending ? (
+          <div className="mt-6 rounded-3xl border border-border bg-card p-5 text-sm">
+            <p className="text-muted-foreground">
+              Uygulama otomatik açılmadıysa aşağıdaki butona dokunun.
+            </p>
+            <Button className="mt-3 w-full rounded-full" onClick={() => returnToAndroidApp()}>
+              Uygulamaya dön
+            </Button>
+          </div>
+        ) : null}
       </div>
     );
   }
