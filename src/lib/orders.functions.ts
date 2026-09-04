@@ -187,14 +187,16 @@ async function insertOrderRow(payload: Record<string, unknown>): Promise<{
   );
 }
 
-async function restoreStockSnapshots(rows: Array<{ id: string; previous: number }>): Promise<void> {
+/**
+ * Yalnızca gerçekte düşülen miktar kadar geri ekler (mutlak bir "önceki
+ * değeri" geri yazmaz) — aksi halde eşzamanlı bir sipariş aradan stok
+ * düşürmüşse, o düşüş bu geri alma tarafından silinip birimler dirilirdi.
+ */
+async function restoreStockSnapshots(rows: Array<{ id: string; quantity: number }>): Promise<void> {
   if (rows.length === 0) return;
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   for (const row of rows) {
-    await supabaseAdmin
-      .from("menu_items")
-      .update({ stock_quantity: row.previous })
-      .eq("id", row.id);
+    await supabaseAdmin.rpc("increment_menu_item_stock", { p_id: row.id, p_delta: row.quantity });
   }
 }
 
@@ -263,7 +265,7 @@ async function placeOrderFallback(
 
   const deliveryFee = Number(restaurant.delivery_fee);
   const total = Number((subtotal + deliveryFee).toFixed(2));
-  const decremented: Array<{ id: string; previous: number }> = [];
+  const decremented: Array<{ id: string; quantity: number }> = [];
 
   try {
     for (const line of orderItems) {
@@ -278,7 +280,7 @@ async function placeOrderFallback(
         .maybeSingle();
       if (stockError) throw new Error(stockError.message);
       if (!updated) throw new Error(`${line.name} için yeterli stok yok.`);
-      decremented.push({ id: line.menu_item_id, previous: line.previousStock });
+      decremented.push({ id: line.menu_item_id, quantity: line.quantity });
     }
 
     const insertPayload: Record<string, unknown> = {

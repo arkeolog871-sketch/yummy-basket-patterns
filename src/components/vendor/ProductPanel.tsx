@@ -155,7 +155,13 @@ export function ProductPanel({
       };
 
       return editing
-        ? updateProduct({ data: { ...payload, id: editing.id } })
+        ? updateProduct({
+            data: {
+              ...payload,
+              id: editing.id,
+              previousStockQuantity: editing.stock_quantity ?? 0,
+            },
+          })
         : createProduct({ data: payload });
     },
     onSuccess: () => {

@@ -132,6 +132,16 @@ export const setVendorOrderStatus = createServerFn({ method: "POST" })
         },
         async () => {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const { data: existing, error: existingError } = await supabaseAdmin
+            .from("orders")
+            .select("id, status")
+            .eq("id", data.id)
+            .eq("restaurant_id", restaurantId)
+            .maybeSingle();
+          if (existingError) throw new Error(existingError.message);
+          if (!existing) throw new Error("Bu sipariş işletmenize ait değil");
+          const wasAlreadyCancelled = existing.status === "cancelled";
+
           const { data: updated, error } = await supabaseAdmin
             .from("orders")
             .update({ status: data.status })
@@ -141,6 +151,23 @@ export const setVendorOrderStatus = createServerFn({ method: "POST" })
             .maybeSingle();
           if (error) throw new Error(error.message);
           if (!updated) throw new Error("Bu sipariş işletmenize ait değil");
+
+          // Sipariş iptal ediliyorsa (yalnızca daha önce iptal edilmemişse), stoğu
+          // sınırlı ürünlerde geri ekle — müşteri iptalinde olduğu gibi.
+          if (data.status === "cancelled" && !wasAlreadyCancelled) {
+            const { data: items } = await supabaseAdmin
+              .from("order_items")
+              .select("menu_item_id, quantity")
+              .eq("order_id", data.id);
+            for (const item of items ?? []) {
+              if (!item.menu_item_id) continue;
+              await supabaseAdmin.rpc("increment_menu_item_stock", {
+                p_id: item.menu_item_id,
+                p_delta: item.quantity,
+              });
+            }
+          }
+
           const { notifyCustomerOfOrderStatus } = await import("./order-customer-alert.server");
           await notifyCustomerOfOrderStatus(updated, data.status);
           return { ok: true };
