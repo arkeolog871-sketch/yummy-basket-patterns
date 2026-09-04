@@ -34,12 +34,14 @@ export const submitReview = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
       const { audited } = await import("./audit.server");
+      const { data: whoami } = await context.supabase.rpc("debug_whoami");
       return audited(
         {
           actorId: context.userId,
           action: "review.submit",
           entity: "reviews",
           entityId: data.restaurantId,
+          detail: { whoami },
         },
         async () => {
           const { data: profile } = await context.supabase
