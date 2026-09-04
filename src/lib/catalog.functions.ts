@@ -104,30 +104,38 @@ export const getRestaurantBySlug = createServerFn({ method: "GET" })
     }
     if (!restaurant) return null;
 
-    const [{ data: categories }, { data: items }, { data: gallery }] = await Promise.all([
-      supabase
-        .from("menu_categories")
-        .select("id, name, position")
-        .eq("restaurant_id", restaurant.id)
-        .order("position"),
-      supabase
-        .from("menu_items")
-        .select("id, name, description, price, image_url, is_popular, category_id")
-        .eq("restaurant_id", restaurant.id)
-        .eq("is_available", true)
-        .order("name"),
-      supabase
-        .from("business_media")
-        .select("id, url")
-        .eq("restaurant_id", restaurant.id)
-        .eq("kind", "gallery")
-        .order("position"),
-    ]);
+    const [{ data: categories }, { data: items }, { data: gallery }, { data: reviews }] =
+      await Promise.all([
+        supabase
+          .from("menu_categories")
+          .select("id, name, position")
+          .eq("restaurant_id", restaurant.id)
+          .order("position"),
+        supabase
+          .from("menu_items")
+          .select("id, name, description, price, image_url, is_popular, category_id")
+          .eq("restaurant_id", restaurant.id)
+          .eq("is_available", true)
+          .order("name"),
+        supabase
+          .from("business_media")
+          .select("id, url")
+          .eq("restaurant_id", restaurant.id)
+          .eq("kind", "gallery")
+          .order("position"),
+        supabase
+          .from("reviews")
+          .select("id, rating, comment, author_name, created_at")
+          .eq("restaurant_id", restaurant.id)
+          .order("created_at", { ascending: false })
+          .limit(50),
+      ]);
 
     return {
       restaurant,
       categories: categories ?? [],
       items: items ?? [],
       gallery: gallery ?? [],
+      reviews: reviews ?? [],
     };
   });

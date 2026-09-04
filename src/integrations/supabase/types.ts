@@ -895,6 +895,50 @@ export type Database = {
         }
         Relationships: []
       }
+      reviews: {
+        Row: {
+          author_name: string
+          comment: string | null
+          created_at: string
+          id: string
+          is_hidden: boolean
+          rating: number
+          restaurant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          author_name?: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          is_hidden?: boolean
+          rating: number
+          restaurant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          author_name?: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          is_hidden?: boolean
+          rating?: number
+          restaurant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_areas: {
         Row: {
           city: string
@@ -1124,6 +1168,10 @@ export type Database = {
           p_user_id: string
         }
         Returns: Json
+      }
+      refresh_restaurant_rating: {
+        Args: Record<PropertyKey, never>
+        Returns: unknown
       }
       register_email_otp_failure: {
         Args: { p_email_hash: string; p_now?: string }

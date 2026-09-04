@@ -1,16 +1,31 @@
 import { useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { Star, Clock, Bike, Plus, ShoppingBag, ChevronLeft, ChevronRight } from "lucide-react";
+import { useSuspenseQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  Star,
+  Clock,
+  Bike,
+  Plus,
+  ShoppingBag,
+  ChevronLeft,
+  ChevronRight,
+  Trash2,
+  Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { restaurantDetailQuery } from "@/lib/catalog.queries";
+import { getMyReview, submitReview, deleteMyReview } from "@/lib/reviews.functions";
 import { LocationButton } from "@/components/business/LocationButton";
 import { CallButton } from "@/components/business/CallButton";
 import { BusinessMap } from "@/components/business/BusinessMap";
+import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatDateTime } from "@/lib/format";
+import { toPublicErrorMessage } from "@/lib/public-error";
 import { isBusinessOpen, hoursLabel, closedReason } from "@/lib/hours";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/restoran/$slug")({
@@ -73,6 +88,7 @@ function RestaurantDetail() {
   const categories = Array.isArray(data.categories) ? data.categories : [];
   const items = Array.isArray(data.items) ? data.items : [];
   const gallery = Array.isArray(data.gallery) ? data.gallery : [];
+  const reviews = Array.isArray(data.reviews) ? data.reviews : [];
   const open = isBusinessOpen(restaurant);
   const hours = hoursLabel(restaurant);
 
@@ -381,6 +397,189 @@ function RestaurantDetail() {
       <div className="mx-auto w-full max-w-6xl px-4 pb-10 lg:hidden">
         <BusinessMap business={restaurant} />
       </div>
+
+      <div className="mx-auto w-full max-w-6xl px-4 pb-16">
+        <ReviewsSection restaurantId={restaurant.id} reviews={reviews} />
+      </div>
+    </div>
+  );
+}
+
+type RestaurantReview = {
+  id: string;
+  rating: number;
+  comment: string | null;
+  author_name: string;
+  created_at: string;
+};
+
+function ReviewsSection({
+  restaurantId,
+  reviews,
+}: {
+  restaurantId: string;
+  reviews: RestaurantReview[];
+}) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const getMyReviewFn = useServerFn(getMyReview);
+  const submitReviewFn = useServerFn(submitReview);
+  const deleteMyReviewFn = useServerFn(deleteMyReview);
+
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+
+  const myReviewQuery = useQuery({
+    queryKey: ["my-review", restaurantId, user?.id ?? null],
+    queryFn: () => getMyReviewFn({ data: { restaurantId } }),
+    enabled: Boolean(user),
+  });
+
+  const myReview = myReviewQuery.data;
+
+  function openForm() {
+    setRating(myReview?.rating ?? 0);
+    setComment(myReview?.comment ?? "");
+    setFormOpen(true);
+  }
+
+  const submitMutation = useMutation({
+    mutationFn: () =>
+      submitReviewFn({ data: { restaurantId, rating, comment: comment.trim() || undefined } }),
+    onSuccess: () => {
+      toast.success(myReview ? "Yorumunuz güncellendi" : "Yorumunuz için teşekkürler");
+      setFormOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ["my-review", restaurantId] });
+      void queryClient.invalidateQueries({ queryKey: ["restaurant"] });
+    },
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteMyReviewFn({ data: { restaurantId } }),
+    onSuccess: () => {
+      toast.success("Yorumunuz silindi");
+      setFormOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ["my-review", restaurantId] });
+      void queryClient.invalidateQueries({ queryKey: ["restaurant"] });
+    },
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
+  });
+
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-lg">Değerlendirmeler ({reviews.length})</h2>
+        {user ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="rounded-full"
+            onClick={openForm}
+          >
+            {myReview ? "Yorumumu düzenle" : "Yorum yap"}
+          </Button>
+        ) : (
+          <Button asChild variant="outline" size="sm" className="rounded-full">
+            <Link to="/auth">Yorum yapmak için giriş yapın</Link>
+          </Button>
+        )}
+      </div>
+
+      {formOpen ? (
+        <div className="mt-4 space-y-3 rounded-3xl border border-border/70 bg-card p-4 shadow-card">
+          <div className="flex items-center gap-1">
+            {[1, 2, 3, 4, 5].map((value) => (
+              <button
+                key={value}
+                type="button"
+                aria-label={`${value} yıldız`}
+                onMouseEnter={() => setHoverRating(value)}
+                onMouseLeave={() => setHoverRating(0)}
+                onClick={() => setRating(value)}
+                className="p-0.5"
+              >
+                <Star
+                  className={`size-6 ${
+                    value <= (hoverRating || rating)
+                      ? "fill-primary text-primary"
+                      : "text-muted-foreground"
+                  }`}
+                />
+              </button>
+            ))}
+          </div>
+          <Textarea
+            value={comment}
+            onChange={(event) => setComment(event.target.value)}
+            placeholder="Deneyiminizi paylaşın (opsiyonel)"
+            maxLength={600}
+            className="rounded-2xl"
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              className="rounded-full"
+              disabled={rating === 0 || submitMutation.isPending}
+              onClick={() => submitMutation.mutate()}
+            >
+              {submitMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+              Gönder
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="rounded-full"
+              onClick={() => setFormOpen(false)}
+            >
+              Vazgeç
+            </Button>
+            {myReview ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="ml-auto rounded-full text-destructive hover:text-destructive"
+                disabled={deleteMutation.isPending}
+                onClick={() => deleteMutation.mutate()}
+              >
+                <Trash2 className="size-4" /> Yorumu sil
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {reviews.length === 0 ? (
+        <p className="mt-4 text-sm text-muted-foreground">
+          Bu işletme için henüz değerlendirme yapılmamış.
+        </p>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {reviews.map((review) => (
+            <li
+              key={review.id}
+              className="rounded-3xl border border-border/70 bg-card p-4 shadow-card"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-semibold">{review.author_name}</span>
+                <span className="flex items-center gap-1 text-sm">
+                  <Star className="size-4 fill-primary text-primary" />
+                  {review.rating}
+                </span>
+              </div>
+              {review.comment ? (
+                <p className="mt-2 text-sm text-muted-foreground">{review.comment}</p>
+              ) : null}
+              <p className="mt-2 text-xs text-muted-foreground">
+                {formatDateTime(review.created_at)}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
