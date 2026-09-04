@@ -9,6 +9,7 @@ import {
   SITE_SETTINGS_COLUMNS_WITH_TYPOGRAPHY,
 } from "./typography";
 import type { Json } from "@/integrations/supabase/types";
+import type { User } from "@supabase/supabase-js";
 
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Geçerli bir renk kodu girin");
 
@@ -763,8 +764,19 @@ export const listUsers = createServerFn({ method: "GET" })
     await assertFounder(context.supabase, context.userId, context.claims as never);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: list, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 200 });
-    if (error) throw new Error(error.message);
+    // listUsers tek sayfa döner (varsayılan perPage 200); 200'den fazla
+    // kullanıcıda geri kalanlar panelde hiç görünmezdi. Tükenene kadar
+    // sayfalanır (makul bir üst sınırla — sonsuz döngüye karşı).
+    const allUsers: User[] = [];
+    for (let page = 1; page <= 50; page += 1) {
+      const { data: pageData, error: pageError } = await supabaseAdmin.auth.admin.listUsers({
+        page,
+        perPage: 200,
+      });
+      if (pageError) throw new Error(pageError.message);
+      allUsers.push(...pageData.users);
+      if (pageData.users.length < 200) break;
+    }
 
     const { data: roles, error: rolesError } = await supabaseAdmin
       .from("user_roles")
@@ -794,7 +806,7 @@ export const listUsers = createServerFn({ method: "GET" })
         restaurantIdByUser.set(row.user_id, row.restaurant_id);
     }
 
-    return list.users.map((user) => ({
+    return allUsers.map((user) => ({
       id: user.id,
       email: user.email ?? "—",
       phone: phoneByUser.get(user.id) ?? null,
@@ -946,10 +958,14 @@ export const createStaffUser = createServerFn({ method: "POST" })
         const phone = normalizePhone(data.phone);
         if (phone.length < 10) throw new Error("Telefon numarası en az 10 haneli olmalı");
 
+        // PostgREST'in varsayılan satır sınırı 1000; açıkça yüksek bir sınır
+        // vermeden bu sorgu sessizce eksik tarardı ve büyük kullanıcı
+        // sayılarında tekillik kontrolü güvenilmez hale gelirdi.
         const { data: existing, error: existingError } = await supabaseAdmin
           .from("profiles")
           .select("id, phone")
-          .not("phone", "is", null);
+          .not("phone", "is", null)
+          .limit(20_000);
         if (existingError) throw new Error(existingError.message);
         if ((existing ?? []).some((row) => row.phone && normalizePhone(row.phone) === phone)) {
           throw new Error("Bu telefon numarası başka bir hesapta kayıtlı");

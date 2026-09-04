@@ -67,11 +67,23 @@ export async function findVendorUser(
   if (vendorIds.length === 0) return null;
 
   if (byEmail) {
-    for (const id of vendorIds) {
-      const { data: user, error: userError } = await supabaseAdmin.auth.admin.getUserById(id);
-      if (userError || !user?.user) continue;
-      const email = user.user.email ?? null;
-      if (email && email.toLowerCase() === target) return { userId: id, email };
+    // Bu, oturumsuz ve giriş öncesi erişilebilen bir yol (yalnızca IP başına
+    // hız sınırıyla korunuyor); vendorIds sayısı kadar sıralı admin API
+    // çağrısı yapmak yerine (300 işletmede 300 çağrı), kullanıcı listesini
+    // sayfalayarak bir kerede çekip vendorIds kümesiyle bellekte eşleştirir.
+    const vendorIdSet = new Set(vendorIds);
+    for (let page = 1; page <= 50; page += 1) {
+      const { data: pageData, error: userError } = await supabaseAdmin.auth.admin.listUsers({
+        page,
+        perPage: 1000,
+      });
+      if (userError) break;
+      for (const user of pageData.users) {
+        if (!vendorIdSet.has(user.id)) continue;
+        const email = user.email ?? null;
+        if (email && email.toLowerCase() === target) return { userId: user.id, email };
+      }
+      if (pageData.users.length < 1000) break;
     }
     return findByBusinessContact(supabaseAdmin, assignments ?? [], target, true);
   }
