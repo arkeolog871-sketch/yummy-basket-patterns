@@ -1189,6 +1189,7 @@ const emptyItem = {
   image_url: "",
   is_popular: false,
   is_available: true,
+  stock_quantity: 100,
 };
 
 function MenuItemPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDone: () => void }) {
@@ -1213,6 +1214,7 @@ function MenuItemPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
           image_url: form.image_url || null,
           is_popular: form.is_popular,
           is_available: form.is_available,
+          stock_quantity: Number(form.stock_quantity),
         },
       }),
     onSuccess: () => {
@@ -1284,6 +1286,13 @@ function MenuItemPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
           placeholder="Görsel adresi"
           value={form.image_url}
           onChange={(event) => setForm({ ...form, image_url: event.target.value })}
+        />
+        <Input
+          type="number"
+          min={0}
+          placeholder="Stok adedi"
+          value={form.stock_quantity}
+          onChange={(event) => setForm({ ...form, stock_quantity: Number(event.target.value) })}
         />
         <div className="flex items-center justify-between rounded-2xl border border-border p-3">
           <span className="text-sm">Öne çıkan</span>
@@ -1357,6 +1366,7 @@ function MenuItemPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
                       image_url: item.image_url ?? "",
                       is_popular: item.is_popular,
                       is_available: item.is_available,
+                      stock_quantity: item.stock_quantity ?? 0,
                     });
                   }}
                 >
