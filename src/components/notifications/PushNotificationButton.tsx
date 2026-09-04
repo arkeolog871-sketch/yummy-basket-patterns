@@ -1,12 +1,18 @@
 import { Bell, BellOff, BellRing } from "lucide-react";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { Button } from "@/components/ui/button";
+import { isNativeApp } from "@/lib/native-notify";
 
 /** Uygulama/sekme kapalıyken de bildirim alabilmek için push aboneliğini açar/kapatır. */
 export function PushNotificationButton({ className }: { className?: string }) {
   const { status, enable, disable } = usePushNotifications();
 
   if (status === "unsupported") {
+    // Android native uygulama (WebView) tarayıcının Web Push API'sini hiç
+    // desteklemez, ama bildirimler orada FCM köprüsüyle sessizce zaten
+    // çalışıyor — bu yüzden burada "desteklemiyor" uyarısı yanıltıcı olur,
+    // hiçbir şey göstermemek daha doğru.
+    if (isNativeApp()) return null;
     return (
       <p className={`text-xs text-muted-foreground ${className ?? ""}`}>
         Bu tarayıcı anlık bildirimleri desteklemiyor.
