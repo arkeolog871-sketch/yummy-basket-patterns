@@ -19,7 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAccess } from "@/hooks/useAccess";
 import { useCart } from "@/hooks/useCart";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
-import { useAppCategories, useServiceAreas, areaLabel } from "@/hooks/useTaxonomy";
+import { useServiceAreas, areaLabel } from "@/hooks/useTaxonomy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TextPrefsPanel } from "@/components/layout/TextPrefsPanel";
@@ -39,7 +39,6 @@ export function Header() {
   const { itemCount } = useCart();
   const { settings, isFounder, founderExists } = useSiteSettings();
   const access = useAccess();
-  const { categories } = useAppCategories();
   const { areas } = useServiceAreas();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -216,26 +215,6 @@ export function Header() {
           )}
         </div>
       </div>
-
-      <nav
-        aria-label="Kategoriler"
-        className="no-scrollbar mx-auto flex w-full max-w-6xl gap-1 overflow-x-auto border-t border-border/60 px-4 py-2"
-      >
-        {categories.map((sector) => (
-          <Link
-            key={sector.slug}
-            to="/"
-            search={{ kategori: sector.slug }}
-            activeOptions={{ exact: true, includeSearch: true }}
-            className="shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-warm hover:text-warm-foreground"
-            activeProps={{
-              className: "shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium text-foreground",
-            }}
-          >
-            {sector.label}
-          </Link>
-        ))}
-      </nav>
     </header>
   );
 }
