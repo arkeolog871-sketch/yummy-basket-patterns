@@ -13,6 +13,7 @@ export type CartRestaurant = {
   slug: string;
   name: string;
   deliveryFee: number;
+  deliveryType?: string | null;
   minOrder: number;
   deliveryMinutes: number;
 };

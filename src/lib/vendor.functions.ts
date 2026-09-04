@@ -11,6 +11,8 @@ const vendorStatusSchema = z.enum([
   "cancelled",
 ]);
 
+const deliveryTypeSchema = z.enum(["kurye", "kargo", "gel_al"]);
+
 /** Oturumun rolünü ve (varsa) atandığı işletmeyi döner; yönlendirme kararları buna dayanır. */
 export const getMyAccessContext = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -49,7 +51,7 @@ export const getVendorDashboard = createServerFn({ method: "GET" })
           supabase
             .from("restaurants")
             .select(
-              "id, name, slug, sector, category, delivery_fee, min_order, delivery_minutes, opens_at, closes_at, is_open_manual, is_active, city, district, logo_url, cover_image_url",
+              "id, name, slug, sector, category, delivery_fee, delivery_type, min_order, delivery_minutes, opens_at, closes_at, is_open_manual, is_active, city, district, logo_url, cover_image_url",
             )
             .eq("id", restaurantId)
             .maybeSingle(),
@@ -230,6 +232,46 @@ export const setVendorMinOrder = createServerFn({ method: "POST" })
           const { error } = await context.supabase
             .from("restaurants")
             .update({ min_order: data.minOrder })
+            .eq("id", restaurantId);
+          if (error) throw new Error(error.message);
+          return { ok: true };
+        },
+      );
+    }),
+  );
+
+/**
+ * İşletme kendi teslimat şeklini (kendi kuryesi / kargo / yalnızca gel-al) ve
+ * varsa ücretini belirler. "gel_al" seçildiğinde adrese teslimat yapılmadığı
+ * için ücret her zaman sıfırlanır.
+ */
+export const setVendorDelivery = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z
+      .object({ deliveryType: deliveryTypeSchema, deliveryFee: z.number().min(0).max(10000) })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) =>
+    runServerFn(async () => {
+      const { assertVendor } = await import("./vendor.server");
+      const { audited } = await import("./audit.server");
+      const restaurantId = await assertVendor(context.supabase, context.userId);
+      const deliveryFee = data.deliveryType === "gel_al" ? 0 : data.deliveryFee;
+
+      return audited(
+        {
+          actorId: context.userId,
+          actorEmail: (context.claims as { email?: string } | null)?.email ?? null,
+          action: "vendor.delivery",
+          entity: "restaurants",
+          entityId: restaurantId,
+          detail: { delivery_type: data.deliveryType, delivery_fee: deliveryFee },
+        },
+        async () => {
+          const { error } = await context.supabase
+            .from("restaurants")
+            .update({ delivery_type: data.deliveryType, delivery_fee: deliveryFee })
             .eq("id", restaurantId);
           if (error) throw new Error(error.message);
           return { ok: true };

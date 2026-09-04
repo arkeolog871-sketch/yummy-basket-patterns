@@ -37,11 +37,13 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   getVendorDashboard,
   markVendorOrderAlertRead,
+  setVendorDelivery,
   setVendorItemAvailability,
   setVendorMinOrder,
   setVendorOrderStatus,
   setVendorStoreOpen,
 } from "@/lib/vendor.functions";
+import { DELIVERY_TYPES, isDeliveryType, type DeliveryType } from "@/lib/delivery";
 import {
   formatPrice,
   formatDateTime,
@@ -149,6 +151,7 @@ function VendorDashboard() {
   const updateStore = useServerFn(setVendorStoreOpen);
   const updateItem = useServerFn(setVendorItemAvailability);
   const updateMinOrder = useServerFn(setVendorMinOrder);
+  const updateDelivery = useServerFn(setVendorDelivery);
   const markAlertRead = useServerFn(markVendorOrderAlertRead);
 
   const dashboard = useQuery({
@@ -238,6 +241,25 @@ function VendorDashboard() {
     const value = dashboard.data?.restaurant?.min_order;
     if (value != null) setMinOrderInput(String(value));
   }, [dashboard.data?.restaurant?.min_order]);
+
+  const deliveryMutation = useMutation({
+    mutationFn: (input: { deliveryType: DeliveryType; deliveryFee: number }) =>
+      updateDelivery({ data: input }),
+    onSuccess: () => {
+      toast.success("Teslimat şekli güncellendi");
+      invalidate();
+    },
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
+  });
+
+  const [deliveryType, setDeliveryType] = useState<DeliveryType>("kurye");
+  const [deliveryFeeInput, setDeliveryFeeInput] = useState("");
+  useEffect(() => {
+    const restaurant = dashboard.data?.restaurant;
+    if (!restaurant) return;
+    if (isDeliveryType(restaurant.delivery_type)) setDeliveryType(restaurant.delivery_type);
+    if (restaurant.delivery_fee != null) setDeliveryFeeInput(String(restaurant.delivery_fee));
+  }, [dashboard.data?.restaurant]);
 
   const alertReadMutation = useMutation({
     mutationFn: (id: string) => markAlertRead({ data: { id } }),
@@ -434,6 +456,78 @@ function VendorDashboard() {
               {minOrderMutation.isPending ? "Kaydediliyor…" : "Kaydet"}
             </Button>
           </form>
+        </div>
+
+        <div className="mt-4 rounded-3xl border border-border bg-card p-5 shadow-card">
+          <p className="font-semibold">Teslimat şekli</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            İşletmenizin ürünlerini nasıl teslim ettiğinizi seçin; müşteriler bunu görür.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {DELIVERY_TYPES.map((option) => (
+              <button
+                key={option.slug}
+                type="button"
+                onClick={() => {
+                  setDeliveryType(option.slug);
+                  deliveryMutation.mutate({
+                    deliveryType: option.slug,
+                    deliveryFee: Number(deliveryFeeInput.replace(",", ".")) || 0,
+                  });
+                }}
+                disabled={deliveryMutation.isPending}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
+                  deliveryType === option.slug
+                    ? "border-transparent bg-primary text-primary-foreground"
+                    : "border-border"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          {deliveryType !== "gel_al" ? (
+            <form
+              className="mt-3 flex items-center gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const parsed = Number(deliveryFeeInput.replace(",", "."));
+                if (!Number.isFinite(parsed) || parsed < 0) {
+                  toast.error("Geçerli bir tutar girin");
+                  return;
+                }
+                deliveryMutation.mutate({ deliveryType, deliveryFee: parsed });
+              }}
+            >
+              <div className="relative">
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  inputMode="decimal"
+                  value={deliveryFeeInput}
+                  onChange={(event) => setDeliveryFeeInput(event.target.value)}
+                  className="w-32 rounded-full pr-8"
+                  aria-label="Teslimat ücreti"
+                />
+                <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                  ₺
+                </span>
+              </div>
+              <Button
+                type="submit"
+                size="sm"
+                className="rounded-full"
+                disabled={deliveryMutation.isPending}
+              >
+                {deliveryMutation.isPending ? "Kaydediliyor…" : "Kaydet"}
+              </Button>
+            </form>
+          ) : (
+            <p className="mt-3 text-xs text-muted-foreground">
+              Gel-al seçiliyken teslimat ücreti alınmaz.
+            </p>
+          )}
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">

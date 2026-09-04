@@ -22,6 +22,7 @@ import { BusinessMap } from "@/components/business/BusinessMap";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { formatPrice, formatDateTime } from "@/lib/format";
+import { deliverySummary } from "@/lib/delivery";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { isBusinessOpen, hoursLabel, closedReason } from "@/lib/hours";
 import { Button } from "@/components/ui/button";
@@ -107,6 +108,7 @@ function RestaurantDetail() {
     slug: restaurant.slug,
     name: restaurant.name,
     deliveryFee: Number(restaurant.delivery_fee),
+    deliveryType: restaurant.delivery_type,
     minOrder: Number(restaurant.min_order),
     deliveryMinutes: restaurant.delivery_minutes,
   };
@@ -179,9 +181,7 @@ function RestaurantDetail() {
           </span>
           <span className="flex items-center gap-1.5 text-muted-foreground">
             <Bike className="size-4" />
-            {Number(restaurant.delivery_fee) === 0
-              ? "Ücretsiz teslimat"
-              : `${formatPrice(Number(restaurant.delivery_fee))} teslimat`}
+            {deliverySummary(restaurant.delivery_type, Number(restaurant.delivery_fee))}
           </span>
           <span className="text-muted-foreground">
             Min. sepet {formatPrice(Number(restaurant.min_order))}
@@ -372,7 +372,13 @@ function RestaurantDetail() {
                   </div>
                   <div className="flex justify-between text-muted-foreground">
                     <span>Teslimat</span>
-                    <span>{cart.deliveryFee === 0 ? "Ücretsiz" : formatPrice(cart.deliveryFee)}</span>
+                    <span>
+                      {cart.restaurant?.deliveryType === "gel_al"
+                        ? "Gel-al"
+                        : cart.deliveryFee === 0
+                          ? "Ücretsiz"
+                          : formatPrice(cart.deliveryFee)}
+                    </span>
                   </div>
                   <div className="flex justify-between pt-1 font-semibold">
                     <span>Toplam</span>

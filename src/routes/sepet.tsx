@@ -106,7 +106,13 @@ function CartPage() {
           </div>
           <div className="flex justify-between text-muted-foreground">
             <span>Teslimat ücreti</span>
-            <span>{cart.deliveryFee === 0 ? "Ücretsiz" : formatPrice(cart.deliveryFee)}</span>
+            <span>
+              {cart.restaurant?.deliveryType === "gel_al"
+                ? "Gel-al"
+                : cart.deliveryFee === 0
+                  ? "Ücretsiz"
+                  : formatPrice(cart.deliveryFee)}
+            </span>
           </div>
           <div className="flex justify-between border-t border-border pt-3 text-base font-semibold">
             <span>Toplam</span>
