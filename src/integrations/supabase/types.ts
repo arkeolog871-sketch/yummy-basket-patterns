@@ -662,7 +662,7 @@ export type Database = {
           subtotal: number
           total: number
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           city: string
@@ -684,7 +684,7 @@ export type Database = {
           subtotal: number
           total: number
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           city?: string

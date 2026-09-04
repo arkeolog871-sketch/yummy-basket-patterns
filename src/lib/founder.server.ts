@@ -25,10 +25,15 @@ async function hasVerifiedTotp(userId: string): Promise<boolean> {
   );
 }
 
-/** Son 12 saat içinde yedek kod ile doğrulama yapıldı mı? */
+/**
+ * Yedek kod kullanımı Supabase'in kendi aal2 iddiasını üretmediği için (özel
+ * bir mekanizma), bu pencere yalnızca kodun kullanıldığı giriş akışını
+ * tamamlamaya yetecek kadar kısa tutulur — herhangi bir oturumun saatlerce
+ * "doğrulanmış" sayılmasını önlemek için (bkz. denetim bulgusu #9).
+ */
 async function hasRecentBackupCodeUse(userId: string): Promise<boolean> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const since = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
+  const since = new Date(Date.now() - 5 * 60 * 1000).toISOString();
   const { data, error } = await supabaseAdmin
     .from("founder_backup_codes")
     .select("id")
@@ -46,12 +51,11 @@ async function hasRecentBackupCodeUse(userId: string): Promise<boolean> {
 export async function assertFounder(
   supabase: SupabaseClient<Database>,
   userId: string,
-  claims?: JwtClaims,
+  claims: JwtClaims,
 ): Promise<void> {
   const { assertVerifiedEmail } = await import("./otp.server");
   await assertVerifiedEmail(userId);
   if (!(await isFounderUser(supabase, userId))) throw new Error("Forbidden");
-  if (claims === undefined) return;
 
   const aal = claims?.aal ?? null;
   const amrHasTotp = (claims?.amr ?? []).some((entry) => entry?.method === "totp");
@@ -61,6 +65,29 @@ export async function assertFounder(
   if (await hasRecentBackupCodeUse(userId)) return;
 
   throw new Error("İki adımlı doğrulama gerekli");
+}
+
+/**
+ * Hesap silinmeden önce çağrılır: sipariş kayıtları (muhasebe/işletme geçmişi
+ * için) saklanır, yalnızca siparişin taşıdığı kişisel veriler (ad, telefon,
+ * adres, not) anonimleştirilir. orders.user_id FK'si ON DELETE SET NULL
+ * olduğu için asıl silme işlemi (auth.admin.deleteUser) artık bu satırları
+ * kaskadla yok etmez.
+ */
+export async function anonymizeUserOrders(userId: string): Promise<void> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await supabaseAdmin
+    .from("orders")
+    .update({
+      recipient_name: "Silinmiş kullanıcı",
+      phone: "",
+      street: "",
+      district: "",
+      city: "",
+      directions: null,
+      note: null,
+    })
+    .eq("user_id", userId);
 }
 
 type BusinessVendorInput = {

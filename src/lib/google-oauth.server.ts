@@ -53,6 +53,15 @@ export function googleOAuthClientSecret(): string {
   return (process.env["GOOGLE_OAUTH_CLIENT_SECRET"] || "").trim();
 }
 
+/** Bu Lovable projesine ait önizleme alan adları. Herhangi bir *.lovable.app
+ *  hesabı değil, yalnızca bu projenin kendi id-preview/proje alt alan adları. */
+const LOVABLE_PROJECT_ID = "a8800987-b805-4195-985a-a5436e29aa8b";
+const LOVABLE_PREVIEW_HOSTS = new Set([
+  "uygulamamcebimde.lovable.app",
+  `id-preview--${LOVABLE_PROJECT_ID}.lovable.app`,
+  `${LOVABLE_PROJECT_ID}.lovableproject.com`,
+]);
+
 export function isAllowedGoogleRedirectUri(uri: string): boolean {
   if (PRODUCTION_REDIRECTS.has(uri)) return true;
   try {
@@ -61,7 +70,7 @@ export function isAllowedGoogleRedirectUri(uri: string): boolean {
     const host = url.hostname.toLowerCase();
     if (host === "localhost" || host === "127.0.0.1") return url.protocol === "http:";
     if (url.protocol !== "https:") return false;
-    if (host.endsWith(".lovable.app") || host.endsWith(".lovableproject.com")) return true;
+    if (LOVABLE_PREVIEW_HOSTS.has(host)) return true;
     return false;
   } catch {
     return false;

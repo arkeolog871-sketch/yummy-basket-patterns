@@ -296,14 +296,21 @@ export async function completeGoogleOAuthFromCallback(): Promise<
 
   handledCodes.add(code);
   const stored = readGoogleOAuthPkce();
+  if (!stored?.nonce) {
+    handledCodes.delete(code);
+    return {
+      ok: false,
+      error: humanizeOAuthError("Durum doğrulama başarısız oldu (saklanan oturum bulunamadı)."),
+    };
+  }
   try {
     const exchanged = await exchangeGoogleOAuthCode({
       data: {
         code,
         state,
-        storedNonce: stored?.nonce,
-        storedVerifier: stored?.verifier,
-        storedRedirectUri: stored?.redirectUri,
+        storedNonce: stored.nonce,
+        storedVerifier: stored.verifier,
+        storedRedirectUri: stored.redirectUri,
       },
     });
     if (!exchanged.ok) {

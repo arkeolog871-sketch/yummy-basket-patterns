@@ -2,7 +2,7 @@ import { ORDER_STATUS_LABELS } from "@/lib/format";
 
 type OrderForCustomerAlert = {
   id: string;
-  user_id: string;
+  user_id: string | null;
   restaurants?: { name: string } | null;
 };
 
@@ -15,6 +15,7 @@ export async function notifyCustomerOfOrderStatus(
   order: OrderForCustomerAlert,
   status: string,
 ): Promise<void> {
+  if (!order.user_id) return;
   try {
     const { sendPushToUserIds } = await import("./push.server");
     const label = ORDER_STATUS_LABELS[status] ?? status;
