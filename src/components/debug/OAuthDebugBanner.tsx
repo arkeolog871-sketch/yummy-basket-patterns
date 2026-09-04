@@ -10,7 +10,26 @@ export function OAuthDebugBanner() {
   const [snapshot, setSnapshot] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
-    setSnapshot(readAndClearOAuthDebugSnapshot());
+    // The snapshot is written a few hundred ms after this component's first
+    // mount (mid-exchange, before a client-side SPA navigation swaps routes),
+    // so a single check-on-mount misses it — poll briefly instead.
+    const found = readAndClearOAuthDebugSnapshot();
+    if (found) {
+      setSnapshot(found);
+      return;
+    }
+    let attempts = 0;
+    const interval = window.setInterval(() => {
+      attempts += 1;
+      const value = readAndClearOAuthDebugSnapshot();
+      if (value) {
+        setSnapshot(value);
+        window.clearInterval(interval);
+      } else if (attempts >= 40) {
+        window.clearInterval(interval);
+      }
+    }, 250);
+    return () => window.clearInterval(interval);
   }, []);
 
   if (!snapshot) return null;
