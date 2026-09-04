@@ -33,25 +33,36 @@ export const submitReview = createServerFn({ method: "POST" })
   .validator((input: unknown) => reviewSchema.parse(input))
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
-      const { data: profile } = await context.supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", context.userId)
-        .maybeSingle();
-      const authorName = profile?.full_name?.trim() || "Müşteri";
-
-      const { error } = await context.supabase.from("reviews").upsert(
+      const { audited } = await import("./audit.server");
+      return audited(
         {
-          restaurant_id: data.restaurantId,
-          user_id: context.userId,
-          rating: data.rating,
-          comment: data.comment?.trim() || null,
-          author_name: authorName,
+          actorId: context.userId,
+          action: "review.submit",
+          entity: "reviews",
+          entityId: data.restaurantId,
         },
-        { onConflict: "restaurant_id,user_id" },
+        async () => {
+          const { data: profile } = await context.supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("id", context.userId)
+            .maybeSingle();
+          const authorName = profile?.full_name?.trim() || "Müşteri";
+
+          const { error } = await context.supabase.from("reviews").upsert(
+            {
+              restaurant_id: data.restaurantId,
+              user_id: context.userId,
+              rating: data.rating,
+              comment: data.comment?.trim() || null,
+              author_name: authorName,
+            },
+            { onConflict: "restaurant_id,user_id" },
+          );
+          if (error) throw new Error(error.message);
+          return { ok: true };
+        },
       );
-      if (error) throw new Error(error.message);
-      return { ok: true };
     }),
   );
 
