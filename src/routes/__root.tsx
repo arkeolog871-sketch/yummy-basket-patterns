@@ -28,6 +28,7 @@ import { publicEnvInlineScript } from "@/lib/public-env";
 import { TextPrefsProvider } from "@/hooks/useTextPrefs";
 import { installMapsSchemeGuard } from "@/lib/maps";
 import { installTelSchemeGuard } from "@/lib/ios";
+import { OAuthDebugBanner } from "@/components/debug/OAuthDebugBanner";
 
 function NotFoundComponent() {
   return (
@@ -167,6 +168,7 @@ function AppChrome() {
       </main>
       {framed ? null : <Footer />}
       {framed ? null : <IosHomeScreenGuide />}
+      <OAuthDebugBanner />
     </div>
   );
 }
