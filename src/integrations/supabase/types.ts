@@ -815,6 +815,7 @@ export type Database = {
           cuisines: string[]
           delivery_fee: number
           delivery_minutes: number
+          delivery_type: string
           district: string | null
           id: string
           is_active: boolean
@@ -845,6 +846,7 @@ export type Database = {
           cuisines?: string[]
           delivery_fee?: number
           delivery_minutes?: number
+          delivery_type?: string
           district?: string | null
           id?: string
           is_active?: boolean
@@ -875,6 +877,7 @@ export type Database = {
           cuisines?: string[]
           delivery_fee?: number
           delivery_minutes?: number
+          delivery_type?: string
           district?: string | null
           id?: string
           is_active?: boolean

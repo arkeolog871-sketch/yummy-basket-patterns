@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Star, Clock, Bike } from "lucide-react";
 import { formatPrice } from "@/lib/format";
+import { deliverySummary } from "@/lib/delivery";
 import { LocationButton } from "@/components/business/LocationButton";
 import { isBusinessOpen, hoursLabel } from "@/lib/hours";
 
@@ -15,6 +16,7 @@ export type RestaurantSummary = {
   rating: number;
   review_count: number;
   delivery_fee: number;
+  delivery_type?: string | null;
   delivery_minutes: number;
   min_order: number;
   cover_image_url: string | null;
@@ -61,11 +63,11 @@ export function RestaurantCard({ restaurant }: { restaurant: RestaurantSummary }
           <span className="absolute right-3 top-3 rounded-full bg-foreground/85 px-3 py-1 text-xs font-semibold text-background">
             Şu An Kapalı
           </span>
-        ) : Number(restaurant.delivery_fee) === 0 ? (
+        ) : (
           <span className="absolute right-3 top-3 rounded-full bg-success px-3 py-1 text-xs font-semibold text-success-foreground">
-            Ücretsiz teslimat
+            {deliverySummary(restaurant.delivery_type, Number(restaurant.delivery_fee))}
           </span>
-        ) : null}
+        )}
       </div>
 
       <div className="space-y-3 p-4">
@@ -100,9 +102,7 @@ export function RestaurantCard({ restaurant }: { restaurant: RestaurantSummary }
           </span>
           <span className="flex items-center gap-1">
             <Bike className="size-3.5" />
-            {Number(restaurant.delivery_fee) === 0
-              ? "Ücretsiz"
-              : formatPrice(Number(restaurant.delivery_fee))}
+            {deliverySummary(restaurant.delivery_type, Number(restaurant.delivery_fee))}
           </span>
           <span>Min. {formatPrice(Number(restaurant.min_order))}</span>
           {hours ? <span>{hours}</span> : null}
