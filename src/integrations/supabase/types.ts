@@ -1122,6 +1122,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      debug_whoami: { Args: Record<PropertyKey, never>; Returns: Json }
       expire_stale_advertisements: { Args: never; Returns: number }
       get_active_banners: {
         Args: never
