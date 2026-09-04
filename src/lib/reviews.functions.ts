@@ -27,25 +27,26 @@ export const getMyReview = createServerFn({ method: "GET" })
     }),
   );
 
-/** Yorum ekler veya (aynı işletmeye zaten yorum bırakılmışsa) günceller. */
+/**
+ * Yorum ekler veya (aynı işletmeye zaten yorum bırakılmışsa) günceller.
+ * `.from("reviews").upsert(...)` bu tabloda PostgREST üzerinden hep
+ * "permission denied for table reviews" ile başarısız oluyordu — yetkiler,
+ * RLS ve auth.uid() doğru olsa bile (canlıda doğrulandı). Aynı INSERT ...
+ * ON CONFLICT DO UPDATE bir SECURITY INVOKER RPC içinden çağrılınca sorunsuz
+ * çalışıyor, bu yüzden yazma burada RPC üzerinden yapılıyor.
+ */
 export const submitReview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => reviewSchema.parse(input))
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
       const { audited } = await import("./audit.server");
-      const { data: whoami } = await context.supabase.rpc("debug_whoami");
-      const { data: rpcInsertTry } = await context.supabase.rpc("debug_try_insert", {
-        p_restaurant_id: data.restaurantId,
-        p_user_id: context.userId,
-      });
       return audited(
         {
           actorId: context.userId,
           action: "review.submit",
           entity: "reviews",
           entityId: data.restaurantId,
-          detail: { whoami, rpcInsertTry },
         },
         async () => {
           const { data: profile } = await context.supabase
@@ -55,16 +56,12 @@ export const submitReview = createServerFn({ method: "POST" })
             .maybeSingle();
           const authorName = profile?.full_name?.trim() || "Müşteri";
 
-          const { error } = await context.supabase.from("reviews").upsert(
-            {
-              restaurant_id: data.restaurantId,
-              user_id: context.userId,
-              rating: data.rating,
-              comment: data.comment?.trim() || null,
-              author_name: authorName,
-            },
-            { onConflict: "restaurant_id,user_id" },
-          );
+          const { error } = await context.supabase.rpc("submit_review", {
+            p_restaurant_id: data.restaurantId,
+            p_rating: data.rating,
+            p_comment: data.comment?.trim() || null,
+            p_author_name: authorName,
+          });
           if (error) throw new Error(error.message);
           return { ok: true };
         },
@@ -72,17 +69,15 @@ export const submitReview = createServerFn({ method: "POST" })
     }),
   );
 
-/** Kullanıcının kendi yorumunu siler. */
+/** Kullanıcının kendi yorumunu siler (bkz. submitReview'daki upsert notu). */
 export const deleteMyReview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => restaurantIdSchema.parse(input))
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
-      const { error } = await context.supabase
-        .from("reviews")
-        .delete()
-        .eq("restaurant_id", data.restaurantId)
-        .eq("user_id", context.userId);
+      const { error } = await context.supabase.rpc("delete_my_review", {
+        p_restaurant_id: data.restaurantId,
+      });
       if (error) throw new Error(error.message);
       return { ok: true };
     }),
