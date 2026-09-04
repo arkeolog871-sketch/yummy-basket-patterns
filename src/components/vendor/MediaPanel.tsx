@@ -104,8 +104,9 @@ export function MediaPanel({
       <div className="grid gap-4 md:grid-cols-2">
         <BrandCard
           title="İşletme logosu"
-          description="Kare oranlı, arka planı temiz bir logo önerilir."
+          description="Kare oranlı, arka planı temiz bir logo önerilir. Müşterilere yuvarlak rozet olarak gösterilir."
           url={logoUrl}
+          aspect="square"
           busy={busyKind === "logo"}
           onFiles={(files) => handleBrandFiles("logo", files)}
           onRemove={() => brandRemoveMutation.mutate("logo")}
@@ -113,8 +114,9 @@ export function MediaPanel({
         />
         <BrandCard
           title="Kapak görseli"
-          description="Müşterilerin işletme sayfanızda gördüğü geniş görsel."
+          description="Müşterilerin işletme sayfanızda gördüğü geniş (16:9) görsel."
           url={coverUrl}
+          aspect="video"
           busy={busyKind === "cover"}
           onFiles={(files) => handleBrandFiles("cover", files)}
           onRemove={() => brandRemoveMutation.mutate("cover")}
@@ -182,6 +184,7 @@ function BrandCard({
   title,
   description,
   url,
+  aspect,
   busy,
   onFiles,
   onRemove,
@@ -190,6 +193,7 @@ function BrandCard({
   title: string;
   description: string;
   url: string | null;
+  aspect: "square" | "video";
   busy: boolean;
   onFiles: (files: File[]) => void;
   onRemove: () => void;
@@ -203,7 +207,11 @@ function BrandCard({
       </div>
       {url ? (
         <div className="relative overflow-hidden rounded-2xl border border-border bg-muted">
-          <img src={url} alt={title} className="h-40 w-full object-cover" />
+          <img
+            src={url}
+            alt={title}
+            className={`w-full object-cover ${aspect === "square" ? "aspect-square" : "aspect-video"}`}
+          />
           <Button
             size="sm"
             variant="secondary"

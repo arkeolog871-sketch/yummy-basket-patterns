@@ -264,7 +264,7 @@ export function ProductPanel({
               key={product.id}
               className="overflow-hidden rounded-3xl border border-border bg-card shadow-card"
             >
-              <div className="aspect-[4/3] w-full bg-muted">
+              <div className="aspect-square w-full bg-muted">
                 {product.image_url ? (
                   <img
                     src={product.image_url}
@@ -423,7 +423,7 @@ export function ProductPanel({
                 <img
                   src={previewSrc}
                   alt="Ürün görseli önizlemesi"
-                  className="h-32 w-full rounded-2xl border border-border object-cover"
+                  className="aspect-square w-32 rounded-2xl border border-border object-cover"
                 />
               ) : null}
               <Input
