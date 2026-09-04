@@ -1122,11 +1122,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      debug_try_insert: {
-        Args: { p_restaurant_id: string; p_user_id: string }
-        Returns: Json
-      }
-      debug_whoami: { Args: Record<PropertyKey, never>; Returns: Json }
+      delete_my_review: { Args: { p_restaurant_id: string }; Returns: undefined }
       expire_stale_advertisements: { Args: never; Returns: number }
       get_active_banners: {
         Args: never
@@ -1184,6 +1180,15 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      submit_review: {
+        Args: {
+          p_author_name: string
+          p_comment: string | null
+          p_rating: number
+          p_restaurant_id: string
+        }
+        Returns: undefined
+      }
       track_advertisement: {
         Args: { p_id: string; p_type: string }
         Returns: undefined
