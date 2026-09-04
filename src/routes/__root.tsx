@@ -28,7 +28,6 @@ import { publicEnvInlineScript } from "@/lib/public-env";
 import { TextPrefsProvider } from "@/hooks/useTextPrefs";
 import { installMapsSchemeGuard } from "@/lib/maps";
 import { installTelSchemeGuard } from "@/lib/ios";
-import { OAuthDebugBanner } from "@/components/debug/OAuthDebugBanner";
 
 function NotFoundComponent() {
   return (
@@ -226,7 +225,6 @@ function RootComponent() {
                 <FcmTokenBridge />
                 <ErrorCollector />
                 <Toaster />
-                <OAuthDebugBanner />
               </CartProvider>
             </SiteSettingsProvider>
           </AuthProvider>

@@ -272,40 +272,6 @@ export async function startGoogleOAuth(): Promise<{ ok: true } | { ok: false; er
   return { ok: true };
 }
 
-const OAUTH_DEBUG_STORAGE_KEY = "silvan.google.oauth.debug.v1";
-
-/** Geçici tanı kaydı: hangi bağlamda (WebView/Custom Tab/Chrome) tamamlandığını görmek için. */
-function recordOAuthDebugSnapshot(extra: Record<string, unknown>) {
-  try {
-    const snapshot = {
-      ts: Date.now(),
-      hasBridge: Boolean(nativeOAuthBridge()),
-      isAndroidUa: /Android/i.test(navigator.userAgent),
-      maxTouchPoints: navigator.maxTouchPoints,
-      isLikelyMobile: isLikelyMobileDevice(),
-      ua: navigator.userAgent,
-      ...extra,
-    };
-    window.sessionStorage.setItem(OAUTH_DEBUG_STORAGE_KEY, JSON.stringify(snapshot));
-  } catch {
-    /* private mode veya storage kapalı */
-  }
-}
-
-export function readAndClearOAuthDebugSnapshot(): Record<string, unknown> | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.sessionStorage.getItem(OAUTH_DEBUG_STORAGE_KEY);
-    if (!raw) return null;
-    window.sessionStorage.removeItem(OAUTH_DEBUG_STORAGE_KEY);
-    const parsed = JSON.parse(raw) as { ts?: number };
-    if (!parsed?.ts || Date.now() - parsed.ts > 5 * 60 * 1000) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
 export async function completeGoogleOAuthFromCallback(): Promise<
   { ok: true } | { ok: false; error: string } | { ok: null }
 > {
@@ -314,7 +280,6 @@ export async function completeGoogleOAuthFromCallback(): Promise<
   const oauthError = params.get("error");
   const code = params.get("code");
   const state = params.get("state");
-  recordOAuthDebugSnapshot({ code: Boolean(code), state: Boolean(state) });
 
   if (oauthError && (state || readGoogleOAuthPkce())) {
     clearGoogleOAuthPkce();
@@ -325,11 +290,9 @@ export async function completeGoogleOAuthFromCallback(): Promise<
   if (handledCodes.has(code)) return { ok: true };
 
   if (shouldHandoffGoogleOAuthToAndroidApp()) {
-    recordOAuthDebugSnapshot({ code: true, state: true, branch: "handoff-to-app" });
     handoffGoogleOAuthToAndroidApp();
     return { ok: true };
   }
-  recordOAuthDebugSnapshot({ code: true, state: true, branch: "exchange-here" });
 
   handledCodes.add(code);
   const stored = readGoogleOAuthPkce();
