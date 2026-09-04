@@ -1181,8 +1181,7 @@ export type Database = {
       show_trgm: { Args: { "": string }; Returns: string[] }
       submit_review: {
         Args: {
-          p_author_name: string
-          p_comment: string
+          p_comment: string | null
           p_rating: number
           p_restaurant_id: string
         }
