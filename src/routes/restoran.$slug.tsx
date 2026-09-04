@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Star, Clock, Bike, Plus, ShoppingBag } from "lucide-react";
+import { Star, Clock, Bike, Plus, ShoppingBag, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { restaurantDetailQuery } from "@/lib/catalog.queries";
 import { LocationButton } from "@/components/business/LocationButton";
@@ -10,6 +11,7 @@ import { useCart } from "@/hooks/useCart";
 import { formatPrice } from "@/lib/format";
 import { isBusinessOpen, hoursLabel, closedReason } from "@/lib/hours";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/restoran/$slug")({
   loader: async ({ context, params }) => {
@@ -64,6 +66,7 @@ function RestaurantDetail() {
   const { slug } = Route.useParams();
   const { data } = useSuspenseQuery(restaurantDetailQuery(slug));
   const cart = useCart();
+  const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
 
   if (!data?.restaurant) return <RestaurantNotFound />;
   const restaurant = data.restaurant;
@@ -198,20 +201,71 @@ function RestaurantDetail() {
           <div className="mt-6">
             <h2 className="text-lg">İşletme galerisi</h2>
             <div className="mt-3 flex gap-3 overflow-x-auto pb-1">
-              {gallery.map((photo) => (
-                <img
+              {gallery.map((photo, index) => (
+                <button
                   key={photo.id}
-                  src={photo.url}
-                  alt={`${restaurant.name} işletme fotoğrafı`}
-                  loading="lazy"
-                  width={160}
-                  height={160}
-                  className="size-32 shrink-0 rounded-2xl border border-border/70 object-cover sm:size-40"
-                />
+                  type="button"
+                  aria-label={`${restaurant.name} işletme fotoğrafını büyüt`}
+                  onClick={() => setOpenPhotoIndex(index)}
+                  className="shrink-0 overflow-hidden rounded-2xl border border-border/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <img
+                    src={photo.url}
+                    alt={`${restaurant.name} işletme fotoğrafı`}
+                    loading="lazy"
+                    width={160}
+                    height={160}
+                    className="size-32 object-cover sm:size-40"
+                  />
+                </button>
               ))}
             </div>
           </div>
         ) : null}
+
+        <Dialog
+          open={openPhotoIndex !== null}
+          onOpenChange={(next) => setOpenPhotoIndex(next ? openPhotoIndex : null)}
+        >
+          <DialogContent className="max-w-3xl border-none bg-transparent p-0 shadow-none [&>button]:rounded-full [&>button]:bg-black/60 [&>button]:p-1.5 [&>button]:text-white [&>button]:opacity-100">
+            <DialogTitle className="sr-only">{restaurant.name} işletme fotoğrafı</DialogTitle>
+            {openPhotoIndex !== null ? (
+              <div className="relative">
+                <img
+                  src={gallery[openPhotoIndex]?.url}
+                  alt={`${restaurant.name} işletme fotoğrafı`}
+                  className="max-h-[85vh] w-full rounded-2xl object-contain"
+                />
+                {gallery.length > 1 ? (
+                  <>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="secondary"
+                      aria-label="Önceki fotoğraf"
+                      className="absolute left-2 top-1/2 size-9 -translate-y-1/2 rounded-full"
+                      onClick={() =>
+                        setOpenPhotoIndex((openPhotoIndex - 1 + gallery.length) % gallery.length)
+                      }
+                    >
+                      <ChevronLeft className="size-5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="secondary"
+                      aria-label="Sonraki fotoğraf"
+                      className="absolute right-2 top-1/2 size-9 -translate-y-1/2 rounded-full"
+                      onClick={() => setOpenPhotoIndex((openPhotoIndex + 1) % gallery.length)}
+                    >
+                      <ChevronRight className="size-5" />
+                    </Button>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+          </DialogContent>
+        </Dialog>
 
         <div className="grid gap-8 py-10 lg:grid-cols-[1fr_320px]">
           <div className="space-y-10">
