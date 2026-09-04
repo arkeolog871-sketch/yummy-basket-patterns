@@ -7,6 +7,7 @@ export type AppCategory = {
   slug: string;
   label: string;
   icon: string;
+  color: string | null;
   position: number;
   is_active: boolean;
 };
@@ -24,6 +25,7 @@ const FALLBACK_CATEGORIES: AppCategory[] = SECTORS.map((sector, index) => ({
   slug: sector.slug,
   label: sector.label,
   icon: "UtensilsCrossed",
+  color: null,
   position: index + 1,
   is_active: true,
 }));
@@ -48,7 +50,7 @@ export function useAppCategories(options?: { includeHidden?: boolean }) {
       try {
         const { data, error } = await supabase
           .from("app_categories")
-          .select("id, slug, label, icon, position, is_active")
+          .select("id, slug, label, icon, color, position, is_active")
           .order("position");
         if (error) {
           console.error("[app-categories]", error.message);

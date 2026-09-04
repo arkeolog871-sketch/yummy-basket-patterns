@@ -184,6 +184,7 @@ function Index() {
           </button>
           {categories.map((sector) => {
             const active = activeSector === sector.slug;
+            const color = sector.color;
             return (
               <button
                 key={sector.slug}
@@ -192,10 +193,19 @@ function Index() {
                   apply({ q: search.q, kategori: active ? undefined : sector.slug })
                 }
                 className={`shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
-                  active
-                    ? "border-transparent bg-primary text-primary-foreground"
-                    : "border-border bg-card hover:bg-warm hover:text-warm-foreground"
+                  color
+                    ? ""
+                    : active
+                      ? "border-transparent bg-primary text-primary-foreground"
+                      : "border-border bg-card hover:bg-warm hover:text-warm-foreground"
                 }`}
+                style={
+                  color
+                    ? active
+                      ? { backgroundColor: color, borderColor: color, color: "#fff" }
+                      : { backgroundColor: `${color}1a`, borderColor: `${color}55`, color }
+                    : undefined
+                }
               >
                 {sector.label}
               </button>
