@@ -69,6 +69,7 @@ function RestaurantDetail() {
   const restaurant = data.restaurant;
   const categories = Array.isArray(data.categories) ? data.categories : [];
   const items = Array.isArray(data.items) ? data.items : [];
+  const gallery = Array.isArray(data.gallery) ? data.gallery : [];
   const open = isBusinessOpen(restaurant);
   const hours = hoursLabel(restaurant);
 
@@ -127,8 +128,21 @@ function RestaurantDetail() {
           <span className="rounded-full bg-background/90 px-3 py-1 text-xs font-semibold">
             {restaurant.category}
           </span>
-          <h1 className="mt-3 text-3xl text-background sm:text-4xl">{restaurant.name}</h1>
-          <p className="mt-1 text-sm text-background/80">{restaurant.tagline}</p>
+          <div className="mt-3 flex items-center gap-3">
+            {restaurant.logo_url ? (
+              <img
+                src={restaurant.logo_url}
+                alt={`${restaurant.name} logosu`}
+                width={56}
+                height={56}
+                className="size-14 shrink-0 rounded-full border-2 border-background object-cover shadow-card"
+              />
+            ) : null}
+            <div className="min-w-0">
+              <h1 className="truncate text-3xl text-background sm:text-4xl">{restaurant.name}</h1>
+              <p className="mt-1 text-sm text-background/80">{restaurant.tagline}</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -179,6 +193,25 @@ function RestaurantDetail() {
             {closedReason(restaurant)} Sepete ürün ekleyemezsiniz.
           </div>
         )}
+
+        {gallery.length > 0 ? (
+          <div className="mt-6">
+            <h2 className="text-lg">İşletme galerisi</h2>
+            <div className="mt-3 flex gap-3 overflow-x-auto pb-1">
+              {gallery.map((photo) => (
+                <img
+                  key={photo.id}
+                  src={photo.url}
+                  alt={`${restaurant.name} işletme fotoğrafı`}
+                  loading="lazy"
+                  width={160}
+                  height={160}
+                  className="size-32 shrink-0 rounded-2xl border border-border/70 object-cover sm:size-40"
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <div className="grid gap-8 py-10 lg:grid-cols-[1fr_320px]">
           <div className="space-y-10">

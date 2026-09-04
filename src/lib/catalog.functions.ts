@@ -17,7 +17,7 @@ export const listRestaurants = createServerFn({ method: "GET" })
     let query = supabase
       .from("restaurants")
       .select(
-        "id, slug, name, tagline, category, sector, cuisines, rating, review_count, delivery_fee, delivery_minutes, min_order, cover_image_url, address, district, city, latitude, longitude, maps_url, opens_at, closes_at, is_open_manual",
+        "id, slug, name, tagline, category, sector, cuisines, rating, review_count, delivery_fee, delivery_minutes, min_order, cover_image_url, logo_url, address, district, city, latitude, longitude, maps_url, opens_at, closes_at, is_open_manual",
       )
       .eq("is_active", true)
       .order("rating", { ascending: false })
@@ -61,7 +61,7 @@ export const getRestaurantBySlug = createServerFn({ method: "GET" })
     const supabase = createPublicClient();
 
     const detailColumns =
-      "id, slug, name, tagline, category, sector, cuisines, rating, review_count, delivery_fee, delivery_minutes, min_order, cover_image_url, is_active, address, district, city, latitude, longitude, maps_url, opens_at, closes_at, is_open_manual, created_at, updated_at";
+      "id, slug, name, tagline, category, sector, cuisines, rating, review_count, delivery_fee, delivery_minutes, min_order, cover_image_url, logo_url, is_active, address, district, city, latitude, longitude, maps_url, opens_at, closes_at, is_open_manual, created_at, updated_at";
     const withPhone = `${detailColumns}, contact_phone`;
 
     let { data: restaurant, error } = await supabase
@@ -104,7 +104,7 @@ export const getRestaurantBySlug = createServerFn({ method: "GET" })
     }
     if (!restaurant) return null;
 
-    const [{ data: categories }, { data: items }] = await Promise.all([
+    const [{ data: categories }, { data: items }, { data: gallery }] = await Promise.all([
       supabase
         .from("menu_categories")
         .select("id, name, position")
@@ -116,11 +116,18 @@ export const getRestaurantBySlug = createServerFn({ method: "GET" })
         .eq("restaurant_id", restaurant.id)
         .eq("is_available", true)
         .order("name"),
+      supabase
+        .from("business_media")
+        .select("id, url")
+        .eq("restaurant_id", restaurant.id)
+        .eq("kind", "gallery")
+        .order("position"),
     ]);
 
     return {
       restaurant,
       categories: categories ?? [],
       items: items ?? [],
+      gallery: gallery ?? [],
     };
   });
