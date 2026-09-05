@@ -677,6 +677,22 @@ public class MainActivity extends Activity {
         webView.saveState(outState);
     }
 
+    /**
+     * Radix tabanlı diyalog/sheet/popover gibi sayfa-içi katmanlar (galeri
+     * büyütme, yorum formu vb.) tarayıcı geçmişine kendi girdilerini eklemez;
+     * donanım geri tuşu doğrudan işletim sistemine gider. Bu yüzden geri
+     * tuşuna basıldığında önce açık bir katman olup olmadığını kontrol edip
+     * varsa Escape tuşu simüle ederek kapatıyoruz — sayfa/uygulama
+     * gezinmesine geçmeden önce "bir adım geri" davranışı böyle sağlanıyor.
+     */
+    private static final String CLOSE_OPEN_OVERLAY_JS =
+            "(function(){"
+            + "var el = document.querySelector('[data-state=\"open\"][role=\"dialog\"],[data-state=\"open\"][role=\"alertdialog\"]');"
+            + "if(!el) return 'none';"
+            + "document.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape', code:'Escape', bubbles:true, cancelable:true}));"
+            + "return 'closed';"
+            + "})();";
+
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
@@ -684,11 +700,31 @@ public class MainActivity extends Activity {
             super.onBackPressed();
             return;
         }
-        if (webView != null && webView.canGoBack()) {
-            webView.goBack();
+        if (webView == null) {
+            super.onBackPressed();
             return;
         }
-        super.onBackPressed();
+        webView.evaluateJavascript(CLOSE_OPEN_OVERLAY_JS, (String result) -> {
+            if (result != null && result.contains("closed")) return;
+            if (webView.canGoBack()) {
+                webView.goBack();
+                return;
+            }
+            String currentUrl = webView.getUrl();
+            if (!isHomeUrl(currentUrl)) {
+                webView.loadUrl(APP_URL);
+                return;
+            }
+            super.onBackPressed();
+        });
+    }
+
+    private boolean isHomeUrl(String url) {
+        if (url == null) return true;
+        Uri uri = Uri.parse(url);
+        if (!isTrustedWebOrigin(uri)) return true;
+        String path = uri.getPath();
+        return path == null || path.isEmpty() || "/".equals(path);
     }
 
     private final class SilvanNativeBridge {
