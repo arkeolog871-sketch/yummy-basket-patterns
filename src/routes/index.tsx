@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, ClientOnly } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useState, Suspense, lazy } from "react";
-import { Search, Sparkles } from "lucide-react";
+import { Search } from "lucide-react";
 import { RestaurantCard } from "@/components/restaurant/RestaurantCard";
 import { homeQuery, type HomeSearch } from "@/lib/catalog.queries";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -65,7 +65,7 @@ export const Route = createFileRoute("/")({
 function Index() {
   const search = Route.useSearch();
   const navigate = useNavigate();
-  const { settings, hero } = useSiteSettings();
+  const { settings } = useSiteSettings();
   const { categories } = useAppCategories();
   const { data: results } = useSuspenseQuery(homeQuery(search));
   const bannersQuery = useQuery({
@@ -81,7 +81,9 @@ function Index() {
   const bannerSlides = liveBanners.length
     ? liveBanners
     : settings.banner_url
-      ? legacySlidesToBanners([{ id: "banner", title: "", imageUrl: settings.banner_url, href: "/" }])
+      ? legacySlidesToBanners([
+          { id: "banner", title: "", imageUrl: settings.banner_url, href: "/" },
+        ])
       : [];
 
   useEffect(() => setTerm(search.q ?? ""), [search.q]);
@@ -100,7 +102,7 @@ function Index() {
   return (
     <div>
       <section className="bg-gradient-hero">
-        <div className="mx-auto w-full max-w-6xl px-4 py-14 lg:py-20">
+        <div className="mx-auto w-full max-w-6xl px-4 py-6 lg:py-8">
           <div
             className={
               bannerSlides.length > 0
@@ -109,42 +111,28 @@ function Index() {
             }
           >
             <div className={bannerSlides.length > 0 ? "order-2 lg:order-1" : undefined}>
-            <span className="inline-flex items-center gap-2 rounded-full bg-background/70 px-3 py-1 text-xs font-semibold text-muted-foreground">
-              <Sparkles className="size-3.5" /> {results.length} {hero.hero_badge}
-            </span>
-            <h1 className="mt-4 text-4xl leading-tight sm:text-5xl">
-              {hero.hero_title}{" "}
-              {hero.hero_title_accent ? (
-                <span className="text-accent">{hero.hero_title_accent}</span>
-              ) : null}
-            </h1>
-            <p className="mt-4 max-w-md text-base text-muted-foreground">
-              {hero.hero_subtitle}
-            </p>
-
-            <form
-              className="mt-7 flex max-w-md gap-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                apply({ kategori: activeSector, q: term.trim() || undefined });
-              }}
-            >
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={term}
-                  name="q"
-                  onChange={(event) => setTerm(event.target.value)}
-                  placeholder="İşletme, mutfak veya ürün ara"
-                  aria-label="İşletme ara"
-                  className="h-12 rounded-full bg-card pl-9"
-                />
-              </div>
-              <Button type="submit" size="lg" className="h-12 rounded-full px-6">
-                Ara
-              </Button>
-            </form>
-
+              <form
+                className="flex max-w-md gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  apply({ kategori: activeSector, q: term.trim() || undefined });
+                }}
+              >
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={term}
+                    name="q"
+                    onChange={(event) => setTerm(event.target.value)}
+                    placeholder="İşletme, mutfak veya ürün ara"
+                    aria-label="İşletme ara"
+                    className="h-12 rounded-full bg-card pl-9"
+                  />
+                </div>
+                <Button type="submit" size="lg" className="h-12 rounded-full px-6">
+                  Ara
+                </Button>
+              </form>
             </div>
             {bannerSlides.length > 0 ? (
               <div className="order-1 lg:order-2">
@@ -189,9 +177,7 @@ function Index() {
               <button
                 key={sector.slug}
                 type="button"
-                onClick={() =>
-                  apply({ q: search.q, kategori: active ? undefined : sector.slug })
-                }
+                onClick={() => apply({ q: search.q, kategori: active ? undefined : sector.slug })}
                 className={`shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
                   color
                     ? ""
