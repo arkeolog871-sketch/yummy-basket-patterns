@@ -3,8 +3,25 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { toPublicErrorMessage } from "@/lib/public-error";
-import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from "lucide-react";
-import * as Icons from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Pencil,
+  Plus,
+  Trash2,
+  UtensilsCrossed,
+  ChefHat,
+  Coffee,
+  PartyPopper,
+  ShoppingCart,
+  Shirt,
+  Pizza,
+  IceCream,
+  Flower2,
+  Dumbbell,
+  Gift,
+  Sparkles,
+} from "lucide-react";
 import { useAppCategories, type AppCategory } from "@/hooks/useTaxonomy";
 import { saveCategory, deleteCategory, moveCategory } from "@/lib/taxonomy.functions";
 import { Button } from "@/components/ui/button";
@@ -28,12 +45,25 @@ const ICON_OPTIONS = [
   "Sparkles",
 ] as const;
 
+/** Yalnızca kullanılan ikonları içe aktarır — `import * as Icons` tüm ikon
+ * kütüphanesini bu (kurucu paneline özel) paketin içine gömüyordu. */
+const ICON_REGISTRY: Record<string, ComponentType<{ className?: string }>> = {
+  UtensilsCrossed,
+  ChefHat,
+  Coffee,
+  PartyPopper,
+  ShoppingCart,
+  Shirt,
+  Pizza,
+  IceCream,
+  Flower2,
+  Dumbbell,
+  Gift,
+  Sparkles,
+};
+
 function CategoryIcon({ name, className }: { name: string; className?: string }) {
-  const registry = Icons as unknown as Record<
-    string,
-    ComponentType<{ className?: string }> | undefined
-  >;
-  const Component = registry[name] ?? registry["Sparkles"]!;
+  const Component = ICON_REGISTRY[name] ?? Sparkles;
   return className ? <Component className={className} /> : <Component />;
 }
 
@@ -225,7 +255,10 @@ export function CategoryPanel({ businesses }: { businesses: { sector: string | n
                 </p>
                 <p className="text-xs text-muted-foreground">
                   /{category.slug} ·{" "}
-                  {businesses.filter((business) => (business.sector ?? "") === category.slug).length}{" "}
+                  {
+                    businesses.filter((business) => (business.sector ?? "") === category.slug)
+                      .length
+                  }{" "}
                   işletme
                 </p>
               </div>

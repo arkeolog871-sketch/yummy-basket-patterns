@@ -30,7 +30,10 @@ export const Route = createFileRoute("/api/public/media/$")({
         return new Response(await data.arrayBuffer(), {
           headers: {
             "Content-Type": data.type || "application/octet-stream",
-            "Cache-Control": "public, max-age=600",
+            // Dosya adı yükleme başına rastgele üretiliyor (bkz. uploadRestaurantImage);
+            // aynı yol her zaman aynı içeriği döner, bu yüzden sonsuza kadar
+            // önbelleklenebilir — yeniden yükleme her zaman yeni bir yol üretir.
+            "Cache-Control": "public, max-age=31536000, immutable",
             "Content-Disposition": "inline",
             "X-Content-Type-Options": "nosniff",
           },
