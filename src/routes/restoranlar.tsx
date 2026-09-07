@@ -2,14 +2,11 @@ import { createFileRoute, useNavigate, ClientOnly } from "@tanstack/react-router
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useState, Suspense, lazy } from "react";
 import { Search } from "lucide-react";
-import {
-  restaurantsQuery,
-  categoriesQuery,
-  type RestoranSearch,
-} from "@/lib/catalog.queries";
+import { restaurantsQuery, categoriesQuery, type RestoranSearch } from "@/lib/catalog.queries";
 import { RestaurantCard } from "@/components/restaurant/RestaurantCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useAppCategories } from "@/hooks/useTaxonomy";
 
 const AllBusinessesMap = lazy(() => import("@/components/business/AllBusinessesMap"));
 
@@ -45,7 +42,8 @@ export const Route = createFileRoute("/restoranlar")({
       { title: "Restoranlar — SİLVAN CEBİMDE" },
       {
         name: "description",
-        content: "Kategoriye göre filtreleyin, arama yapın ve mahallenizin en iyi mutfaklarını keşfedin.",
+        content:
+          "Kategoriye göre filtreleyin, arama yapın ve mahallenizin en iyi mutfaklarını keşfedin.",
       },
       { property: "og:title", content: "Restoranlar — SİLVAN CEBİMDE" },
       {
@@ -62,6 +60,7 @@ function RestaurantsPage() {
   const navigate = useNavigate({ from: Route.fullPath });
   const { data: restaurants } = useSuspenseQuery(restaurantsQuery(search));
   const { data: categories } = useSuspenseQuery(categoriesQuery);
+  const { categories: sectors } = useAppCategories();
   const [term, setTerm] = useState(search.q ?? "");
 
   useEffect(() => setTerm(search.q ?? ""), [search.q]);
@@ -118,9 +117,7 @@ function RestaurantsPage() {
             <button
               key={category.name}
               type="button"
-              onClick={() =>
-                apply({ q: search.q, kategori: active ? undefined : category.name })
-              }
+              onClick={() => apply({ q: search.q, kategori: active ? undefined : category.name })}
               className={`shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
                 active
                   ? "border-transparent bg-primary text-primary-foreground"
@@ -154,7 +151,11 @@ function RestaurantsPage() {
       ) : (
         <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {restaurants.map((restaurant) => (
-            <RestaurantCard key={restaurant.id} restaurant={restaurant} />
+            <RestaurantCard
+              key={restaurant.id}
+              restaurant={restaurant}
+              categoryColor={sectors.find((sector) => sector.slug === restaurant.sector)?.color}
+            />
           ))}
         </div>
       )}

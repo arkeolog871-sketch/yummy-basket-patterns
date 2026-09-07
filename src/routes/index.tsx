@@ -218,7 +218,11 @@ function Index() {
         ) : (
           <div className={gridClass}>
             {results.map((business) => (
-              <RestaurantCard key={business.id} restaurant={business} />
+              <RestaurantCard
+                key={business.id}
+                restaurant={business}
+                categoryColor={categories.find((sector) => sector.slug === business.sector)?.color}
+              />
             ))}
           </div>
         )}

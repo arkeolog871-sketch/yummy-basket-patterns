@@ -264,15 +264,27 @@ export function AppearancePanel() {
   );
 }
 
+/** Kategori renk seçenekleri bilinçli olarak yumuşatılmış (düşük doygunluk) —
+ * ana sayfadaki kategori çubuğunda ve görseli olmayan işletme kartlarında
+ * geniş bir zemin dolgusu olarak kullanıldıkları için parlak/cırt tonlar
+ * göz yormasın diye tercih edildi. */
 const CATEGORY_COLOR_SUGGESTIONS = [
-  "#ff8c42",
-  "#e63946",
-  "#2f9e6b",
-  "#2563eb",
-  "#9d174d",
-  "#f2b705",
-  "#0ea5e9",
-  "#8b5cf6",
+  "#C4636B",
+  "#D98A55",
+  "#D9A544",
+  "#A8A344",
+  "#5FA372",
+  "#4F8F6B",
+  "#4FA8A0",
+  "#5B9BD9",
+  "#6B7FD9",
+  "#9B7FD4",
+  "#B06BA0",
+  "#D97FA0",
+  "#E0876F",
+  "#C9A227",
+  "#A98467",
+  "#7A8FA6",
 ];
 
 /** Ana sayfadaki kategori çubuğunda her kategori kendi rengiyle görünsün diye kullanılır. */
@@ -331,7 +343,7 @@ function CategoryColorPanel() {
                     <span className="ml-2 text-xs text-muted-foreground">(gizli)</span>
                   )}
                 </span>
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   {CATEGORY_COLOR_SUGGESTIONS.map((swatch) => (
                     <button
                       key={swatch}
