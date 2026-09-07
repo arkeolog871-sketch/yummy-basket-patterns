@@ -1,12 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-const ALLOWED_BUCKETS = new Set(["product-images", "business-images", "banners"]);
-const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
-const SAFE_MEDIA_PATH = new RegExp(
-  `^(?:${UUID}/[A-Za-z0-9-]+\\.(?:png|jpg|webp|avif)|ads/${UUID}\\.(?:png|jpg|jpeg|webp|gif|avif|bmp|heic|heif|mp4|mov|webm))$`,
-  "i",
-);
-
 export const Route = createFileRoute("/api/public/media/$")({
   server: {
     handlers: {
@@ -19,7 +12,9 @@ export const Route = createFileRoute("/api/public/media/$")({
         const slash = splat.indexOf("/");
         const bucket = slash === -1 ? "" : splat.slice(0, slash);
         const path = slash === -1 ? "" : splat.slice(slash + 1);
-        if (!ALLOWED_BUCKETS.has(bucket) || !SAFE_MEDIA_PATH.test(path)) {
+        const { ALLOWED_MEDIA_BUCKETS, SAFE_MEDIA_PATH } =
+          await import("@/lib/vendor-media.server");
+        if (!ALLOWED_MEDIA_BUCKETS.has(bucket) || !SAFE_MEDIA_PATH.test(path)) {
           return new Response("Not found", { status: 404 });
         }
 

@@ -27,6 +27,7 @@ import { SecurityPanel } from "@/components/founder/SecurityPanel";
 import { AppearancePanel } from "@/components/founder/AppearancePanel";
 import { TypographyPanel } from "@/components/founder/TypographyPanel";
 import { BrandingPanel } from "@/components/founder/BrandingPanel";
+import { MediaCleanupPanel } from "@/components/founder/MediaCleanupPanel";
 import { HeroContentPanel } from "@/components/founder/HeroContentPanel";
 import { ContactPanel } from "@/components/founder/ContactPanel";
 import { NotificationsPanel } from "@/components/founder/NotificationsPanel";
@@ -337,8 +338,9 @@ function FounderDashboard() {
           <TypographyPanel />
         </TabsContent>
 
-        <TabsContent value="gorseller" className="mt-6">
+        <TabsContent value="gorseller" className="mt-6 space-y-6">
           <BrandingPanel />
+          <MediaCleanupPanel />
         </TabsContent>
 
         <TabsContent value="anasayfa" className="mt-6">
