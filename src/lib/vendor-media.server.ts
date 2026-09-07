@@ -1,5 +1,14 @@
 import { randomUUID } from "crypto";
 
+/** `/api/public/media/$` proxy'sinin ve founder "görselleri küçült"
+ * aracının izin verdiği kovalar/yol biçimi — tek yerden yönetilsin diye. */
+export const ALLOWED_MEDIA_BUCKETS = new Set(["product-images", "business-images", "banners"]);
+const MEDIA_UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
+export const SAFE_MEDIA_PATH = new RegExp(
+  `^(?:${MEDIA_UUID}/[A-Za-z0-9-]+\\.(?:png|jpg|webp|avif)|ads/${MEDIA_UUID}\\.(?:png|jpg|jpeg|webp|gif|avif|bmp|heic|heif|mp4|mov|webm))$`,
+  "i",
+);
+
 const EXTENSIONS: Record<string, string> = {
   "image/png": "png",
   "image/jpeg": "jpg",
@@ -102,7 +111,13 @@ function isHeif(bytes: Uint8Array): boolean {
 const IMAGE_FTYP = new Set(["avif", "avis", "heic", "heix", "heif", "heis", "mif1", "msf1"]);
 
 function isWebm(bytes: Uint8Array): boolean {
-  if (bytes.length < 4 || bytes[0] !== 0x1a || bytes[1] !== 0x45 || bytes[2] !== 0xdf || bytes[3] !== 0xa3) {
+  if (
+    bytes.length < 4 ||
+    bytes[0] !== 0x1a ||
+    bytes[1] !== 0x45 ||
+    bytes[2] !== 0xdf ||
+    bytes[3] !== 0xa3
+  ) {
     return false;
   }
   const head = ascii(bytes, 0, Math.min(bytes.length, 80)).toLowerCase();
@@ -148,7 +163,9 @@ function sanitizeSvgBytes(bytes: Uint8Array, maxBytes: number): Uint8Array {
 }
 
 function looksLikeSvg(bytes: Uint8Array): boolean {
-  const head = new TextDecoder("utf-8", { fatal: false }).decode(bytes.slice(0, Math.min(bytes.length, 512)));
+  const head = new TextDecoder("utf-8", { fatal: false }).decode(
+    bytes.slice(0, Math.min(bytes.length, 512)),
+  );
   return /<svg[\s>]/i.test(head) || /<\?xml[\s\S]{0,200}<svg[\s>]/i.test(head);
 }
 
@@ -161,7 +178,9 @@ export function prepareAdMediaBytes(
     throw new Error("Dosya boyutu izin verilen sınırı aşıyor.");
   }
   if (isHeif(bytes)) {
-    throw new Error("HEIC/HEIF tarayıcıda açılamaz. PNG, JPEG, WebP, GIF, AVIF, MP4, MOV veya WEBM kullanın.");
+    throw new Error(
+      "HEIC/HEIF tarayıcıda açılamaz. PNG, JPEG, WebP, GIF, AVIF, MP4, MOV veya WEBM kullanın.",
+    );
   }
   const raster = sniffRasterImage(bytes);
   if (raster) return { bytes, contentType: raster.contentType, extension: raster.extension };
@@ -192,7 +211,8 @@ function assertImageMagic(bytes: Uint8Array, contentType: string): void {
     (contentType === "image/gif" && isGif(bytes)) ||
     (contentType === "image/avif" && isAvif(bytes)) ||
     (contentType === "image/bmp" && isBmp(bytes)) ||
-    ((contentType === "image/x-icon" || contentType === "image/vnd.microsoft.icon") && isIco(bytes));
+    ((contentType === "image/x-icon" || contentType === "image/vnd.microsoft.icon") &&
+      isIco(bytes));
   if (!valid) throw new Error("Görsel içeriği türüyle eşleşmiyor.");
 }
 
