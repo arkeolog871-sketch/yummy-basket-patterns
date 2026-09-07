@@ -25,6 +25,7 @@ import { formatPrice, formatDateTime } from "@/lib/format";
 import { deliverySummary } from "@/lib/delivery";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { isBusinessOpen, hoursLabel, closedReason } from "@/lib/hours";
+import { useAppCategories } from "@/hooks/useTaxonomy";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -38,7 +39,10 @@ export const Route = createFileRoute("/restoran/$slug")({
   head: ({ loaderData }) => {
     if (!loaderData) {
       return {
-        meta: [{ title: "Restoran bulunamadı — SİLVAN CEBİMDE" }, { name: "robots", content: "noindex" }],
+        meta: [
+          { title: "Restoran bulunamadı — SİLVAN CEBİMDE" },
+          { name: "robots", content: "noindex" },
+        ],
       };
     }
     const title = `${loaderData.name} — SİLVAN CEBİMDE`;
@@ -82,10 +86,12 @@ function RestaurantDetail() {
   const { slug } = Route.useParams();
   const { data } = useSuspenseQuery(restaurantDetailQuery(slug));
   const cart = useCart();
+  const { categories: sectors } = useAppCategories();
   const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
 
   if (!data?.restaurant) return <RestaurantNotFound />;
   const restaurant = data.restaurant;
+  const categoryColor = sectors.find((sector) => sector.slug === restaurant.sector)?.color;
   const categories = Array.isArray(data.categories) ? data.categories : [];
   const items = Array.isArray(data.items) ? data.items : [];
   const gallery = Array.isArray(data.gallery) ? data.gallery : [];
@@ -142,7 +148,10 @@ function RestaurantDetail() {
             className="size-full object-cover"
           />
         ) : (
-          <div className="size-full bg-warm" />
+          <div
+            className={categoryColor ? "size-full" : "size-full bg-warm"}
+            style={categoryColor ? { backgroundColor: `${categoryColor}33` } : undefined}
+          />
         )}
         <div className="absolute inset-0 bg-gradient-fade-up" />
         <div className="absolute inset-x-0 bottom-0 mx-auto w-full max-w-6xl px-4 pb-6">

@@ -32,7 +32,14 @@ export type RestaurantSummary = {
   is_open_manual?: boolean | null;
 };
 
-export function RestaurantCard({ restaurant }: { restaurant: RestaurantSummary }) {
+export function RestaurantCard({
+  restaurant,
+  categoryColor,
+}: {
+  restaurant: RestaurantSummary;
+  /** Görseli olmayan işletmelerde zemin rengi olarak kullanılır (bkz. kategori renkleri). */
+  categoryColor?: string | null | undefined;
+}) {
   const open = isBusinessOpen(restaurant);
   const hours = hoursLabel(restaurant);
   return (
@@ -54,7 +61,10 @@ export function RestaurantCard({ restaurant }: { restaurant: RestaurantSummary }
             }`}
           />
         ) : (
-          <div className="size-full bg-warm" />
+          <div
+            className={categoryColor ? "size-full" : "size-full bg-warm"}
+            style={categoryColor ? { backgroundColor: `${categoryColor}33` } : undefined}
+          />
         )}
         <span className="absolute left-3 top-3 rounded-full bg-background/90 px-3 py-1 text-xs font-semibold">
           {restaurant.category}
@@ -108,10 +118,7 @@ export function RestaurantCard({ restaurant }: { restaurant: RestaurantSummary }
           {hours ? <span>{hours}</span> : null}
         </div>
 
-        <LocationButton
-          business={restaurant}
-          className="text-xs text-muted-foreground"
-        />
+        <LocationButton business={restaurant} className="text-xs text-muted-foreground" />
       </div>
     </Link>
   );
