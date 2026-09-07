@@ -195,7 +195,7 @@ function FounderShell({
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="flex size-9 items-center justify-center rounded-xl bg-gradient-warm text-primary-foreground">
-              <Crown className="size-4" />
+              <Crown className="size-4 text-[#D4AF37]" />
             </span>
             <div className="leading-tight">
               <p className="font-display text-sm font-semibold">Sayfa yöneticisi çalışma alanı</p>
@@ -290,7 +290,7 @@ function FounderDashboard() {
     <div className="mx-auto w-full max-w-6xl px-4 py-10">
       <div className="flex items-center gap-3">
         <span className="flex size-11 items-center justify-center rounded-2xl bg-gradient-warm text-primary-foreground shadow-glow">
-          <Crown className="size-5" />
+          <Crown className="size-5 text-[#D4AF37]" />
         </span>
         <div>
           <h1 className="text-3xl">Sayfa yöneticisi paneli</h1>
