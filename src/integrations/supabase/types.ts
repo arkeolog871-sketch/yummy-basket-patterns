@@ -1183,11 +1183,7 @@ export type Database = {
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       submit_review: {
-        Args: {
-          p_comment: string | null
-          p_rating: number
-          p_restaurant_id: string
-        }
+        Args: { p_comment: string; p_rating: number; p_restaurant_id: string }
         Returns: undefined
       }
       track_advertisement: {
