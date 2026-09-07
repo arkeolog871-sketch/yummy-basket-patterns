@@ -56,7 +56,7 @@ export const submitReview = createServerFn({ method: "POST" })
           const { error } = await context.supabase.rpc("submit_review", {
             p_restaurant_id: data.restaurantId,
             p_rating: data.rating,
-            p_comment: data.comment?.trim() || null,
+            p_comment: (data.comment?.trim() || null) as unknown as string,
           });
           if (error) throw new Error(error.message);
           return { ok: true };
