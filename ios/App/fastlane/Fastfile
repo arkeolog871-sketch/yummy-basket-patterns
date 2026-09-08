@@ -17,6 +17,19 @@ platform :ios do
       build_number: ENV.fetch("GITHUB_RUN_NUMBER"),
     )
 
+    # build_app doesn't forward the API key from app_store_connect_api_key's
+    # lane context into the raw xcodebuild invocations on its own — without
+    # these, both the archive step and the separate export step fall back to
+    # looking for an Xcode-signed-in Apple ID ("No Accounts" / "Cloud signing
+    # permission error") instead of using the API key. (The action's return
+    # hash has no :key_filepath entry — read the file path from the env var
+    # we wrote it to.) archive and export are two distinct xcodebuild calls,
+    # each needing its own copy of these flags (xcargs vs export_xcargs).
+    auth_xcargs = "-allowProvisioningUpdates " \
+                  "-authenticationKeyPath \"#{ENV.fetch('APP_STORE_CONNECT_API_KEY_PATH')}\" " \
+                  "-authenticationKeyID \"#{api_key[:key_id]}\" " \
+                  "-authenticationKeyIssuerID \"#{api_key[:issuer_id]}\""
+
     build_app(
       project: "App.xcodeproj",
       scheme: "App",
@@ -29,16 +42,8 @@ platform :ios do
         signingStyle: "automatic",
         teamID: "YP8PRJ4Q6M",
       },
-      # build_app doesn't forward the API key from app_store_connect_api_key's
-      # lane context into the raw `xcodebuild ... -allowProvisioningUpdates`
-      # invocation on its own — without these it falls back to looking for an
-      # Xcode-signed-in Apple ID ("No Accounts" error) instead of the API key.
-      # (app_store_connect_api_key's return hash has no :key_filepath entry —
-      # read the file path straight from the env var we wrote it to.)
-      xcargs: "-allowProvisioningUpdates " \
-              "-authenticationKeyPath \"#{ENV.fetch('APP_STORE_CONNECT_API_KEY_PATH')}\" " \
-              "-authenticationKeyID \"#{api_key[:key_id]}\" " \
-              "-authenticationKeyIssuerID \"#{api_key[:issuer_id]}\"",
+      xcargs: auth_xcargs,
+      export_xcargs: auth_xcargs,
     )
 
     upload_to_testflight(
