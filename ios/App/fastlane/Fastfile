@@ -29,8 +29,10 @@ platform :ios do
       # lane context into the raw `xcodebuild ... -allowProvisioningUpdates`
       # invocation on its own — without these it falls back to looking for an
       # Xcode-signed-in Apple ID ("No Accounts" error) instead of the API key.
+      # (app_store_connect_api_key's return hash has no :key_filepath entry —
+      # read the file path straight from the env var we wrote it to.)
       xcargs: "-allowProvisioningUpdates " \
-              "-authenticationKeyPath \"#{api_key[:key_filepath]}\" " \
+              "-authenticationKeyPath \"#{ENV.fetch('APP_STORE_CONNECT_API_KEY_PATH')}\" " \
               "-authenticationKeyID \"#{api_key[:key_id]}\" " \
               "-authenticationKeyIssuerID \"#{api_key[:issuer_id]}\"",
     )
