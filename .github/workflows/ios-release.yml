@@ -1,0 +1,66 @@
+# Signed iOS release build, uploaded to TestFlight via Fastlane using an
+# App Store Connect API key (no local Mac or Xcode needed). Manual trigger
+# only — this consumes a TestFlight build slot and Apple Developer quota,
+# unlike the unsigned simulator check in ios-build.yml.
+name: iOS TestFlight release
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ios-release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Build and upload to TestFlight
+    runs-on: macos-15
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: ios/App
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install JS dependencies
+        working-directory: .
+        run: bun install --frozen-lockfile
+
+      - name: Sync Capacitor iOS
+        working-directory: .
+        run: bunx cap sync ios
+
+      - name: Verify production Capacitor config
+        working-directory: .
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          cfg = json.loads(Path("ios/App/App/capacitor.config.json").read_text())
+          assert cfg.get("appId") == "online.uygulamamcebimde.app", cfg.get("appId")
+          assert cfg.get("server", {}).get("url") == "https://uygulamamcebimde.online", cfg.get("server")
+          print("appId", cfg["appId"])
+          print("server.url", cfg["server"]["url"])
+          PY
+
+      - name: Install Fastlane
+        run: gem install fastlane --no-document
+
+      - name: Build and upload to TestFlight
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+        run: fastlane beta
