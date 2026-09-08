@@ -58,11 +58,20 @@ jobs:
       - name: Install Fastlane
         run: gem install fastlane --no-document
 
+      - name: Write App Store Connect API key
+        # xcodebuild's -authenticationKeyPath needs a real file on disk;
+        # app_store_connect_api_key's key_content: doesn't produce one.
+        run: |
+          mkdir -p "$RUNNER_TEMP/app_store_connect"
+          printf '%s' "$APP_STORE_CONNECT_API_KEY" > "$RUNNER_TEMP/app_store_connect/AuthKey.p8"
+        env:
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+
       - name: Build and upload to TestFlight
         env:
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          APP_STORE_CONNECT_API_KEY_PATH: ${{ runner.temp }}/app_store_connect/AuthKey.p8
           # Firebase's SPM dependency graph is large; the default 3s base
           # timeout for `xcodebuild -showBuildSettings` isn't enough on a
           # cold checkout even after package resolution succeeds.
