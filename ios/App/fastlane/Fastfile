@@ -26,6 +26,10 @@ platform :ios do
         signingStyle: "automatic",
         teamID: "YP8PRJ4Q6M",
       },
+      # Automatic signing needs this explicitly, even with an API key already
+      # in the lane context — otherwise xcodebuild refuses to create a
+      # missing provisioning profile itself.
+      xcargs: "-allowProvisioningUpdates",
     )
 
     upload_to_testflight(
