@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { SplashScreen } from "@/components/system/SplashScreen";
 import {
   applyTypographyCss,
   DEFAULT_TYPOGRAPHY,
@@ -189,6 +190,12 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   const settings: SiteSettings = merged;
 
   useEffect(() => {
+    // Ayarlar henüz gelmeden DEFAULT_SETTINGS'i (eski/varsayılan renk şeması)
+    // uygulamak açılışta kısa bir yanlış renk yanıp sönmesine yol açıyordu;
+    // gerçek ayarlar (veya kesin bir hata) gelene kadar bekle — bu sırada
+    // sayfa styles.css'teki derlenmiş varsayılanları kullanır ve zaten tam
+    // ekran splash tarafından örtülür (bkz. SplashScreen).
+    if (settingsQuery.isLoading) return;
     const root = document.documentElement;
     root.style.setProperty("--primary", settings.primary_color);
     root.style.setProperty("--ring", settings.primary_color);
@@ -207,6 +214,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     root.classList.toggle("dark", settings.theme_mode === "dark");
     root.dataset["layout"] = settings.layout_variant;
   }, [
+    settingsQuery.isLoading,
     settings.primary_color,
     settings.accent_color,
     settings.secondary_color,
@@ -262,6 +270,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
         },
       }}
     >
+      <SplashScreen ready={!settingsQuery.isLoading} />
       {children}
     </SiteSettingsContext.Provider>
   );
