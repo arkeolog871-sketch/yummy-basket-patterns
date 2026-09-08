@@ -19,12 +19,13 @@ platform :ios do
 
     # build_app doesn't forward the API key from app_store_connect_api_key's
     # lane context into the raw xcodebuild invocations on its own — without
-    # these, both the archive step and the separate export step fall back to
-    # looking for an Xcode-signed-in Apple ID ("No Accounts" / "Cloud signing
-    # permission error") instead of using the API key. (The action's return
-    # hash has no :key_filepath entry — read the file path from the env var
-    # we wrote it to.) archive and export are two distinct xcodebuild calls,
-    # each needing its own copy of these flags (xcargs vs export_xcargs).
+    # this, xcodebuild falls back to looking for an Xcode-signed-in Apple ID
+    # ("No Accounts") instead of using the API key. (The action's return hash
+    # has no :key_filepath entry — read the file path from the env var we
+    # wrote it to.) gym applies xcargs to both the archive and export
+    # xcodebuild calls already — passing the same flags again via
+    # export_xcargs duplicates them and xcodebuild rejects the command
+    # ("option '-authenticationKeyPath' may only be provided once").
     auth_xcargs = "-allowProvisioningUpdates " \
                   "-authenticationKeyPath \"#{ENV.fetch('APP_STORE_CONNECT_API_KEY_PATH')}\" " \
                   "-authenticationKeyID \"#{api_key[:key_id]}\" " \
@@ -43,7 +44,6 @@ platform :ios do
         teamID: "YP8PRJ4Q6M",
       },
       xcargs: auth_xcargs,
-      export_xcargs: auth_xcargs,
     )
 
     upload_to_testflight(
