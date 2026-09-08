@@ -18,8 +18,8 @@ android {
         applicationId = "online.uygulamamcebimde.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 15
-        versionName = "2.4"
+        versionCode = 16
+        versionName = "2.5"
     }
 
     val signingStore = providers.gradleProperty("android.keystorePath")
@@ -54,7 +54,12 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
             if (hasReleaseSigning) signingConfig = signingConfigs.getByName("release")
         }
         debug {
