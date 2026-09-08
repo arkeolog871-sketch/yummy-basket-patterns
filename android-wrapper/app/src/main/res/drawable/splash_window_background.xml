@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Uygulama süreci başlar başlamaz (herhangi bir layout inflate edilmeden
+     önce) sistem tarafından çizilen pencere arka planı — açılış logosunun
+     en baştan itibaren görünmesini sağlar (bkz. activity_main.xml'deki
+     loadingOverlay, aynı logo/zemin ile devam eder). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/splash_background" />
+    <item android:width="220dp" android:height="220dp" android:gravity="center">
+        <bitmap android:src="@drawable/splash_logo" android:gravity="center" />
+    </item>
+</layer-list>

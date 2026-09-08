@@ -88,7 +88,7 @@ public class MainActivity extends Activity {
         loadingOverlay = findViewById(R.id.loadingOverlay);
         errorOverlay = findViewById(R.id.errorOverlay);
         findViewById(R.id.retryButton).setOnClickListener(v -> retryProductionLoad());
-        webView.setBackgroundColor(Color.parseColor("#C8341F"));
+        webView.setBackgroundColor(Color.parseColor("#F4EDDA"));
         applySafeAreaInsets();
         createOrderNotificationChannel();
 

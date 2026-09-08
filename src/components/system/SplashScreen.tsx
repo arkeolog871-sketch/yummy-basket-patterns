@@ -25,7 +25,11 @@ export function SplashScreen({ ready }: { ready: boolean }) {
       aria-hidden="true"
       className={`fixed inset-0 z-[999] flex items-center justify-center bg-[#f4edda] transition-opacity duration-300 ease-out ${fading ? "pointer-events-none opacity-0" : "opacity-100"}`}
     >
-      <img src="/logo-mark.png" alt="" className="h-32 w-32 rounded-[28%] sm:h-40 sm:w-40" />
+      <img
+        src="/logo-mark.png"
+        alt=""
+        className="h-[52vw] w-[52vw] max-h-80 max-w-80 rounded-[28%] sm:h-72 sm:w-72"
+      />
     </div>
   );
 }

@@ -3,4 +3,5 @@
     <color name="ic_launcher_background">#F4EDDA</color>
     <color name="brand">#C8341F</color>
     <color name="on_brand">#FFFFFF</color>
+    <color name="splash_background">#F4EDDA</color>
 </resources>

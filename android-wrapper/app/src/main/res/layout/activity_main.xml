@@ -3,38 +3,30 @@
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/brand"
+    android:background="@color/splash_background"
     android:fitsSystemWindows="true">
 
     <WebView
         android:id="@+id/webView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/brand" />
+        android:background="@color/splash_background" />
 
     <LinearLayout
         android:id="@+id/loadingOverlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/brand"
+        android:background="@color/splash_background"
         android:gravity="center"
         android:orientation="vertical"
         android:padding="24dp">
 
-        <ProgressBar
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:indeterminate="true"
-            android:indeterminateTint="@color/on_brand" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/loading_title"
-            android:textColor="@color/on_brand"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+        <ImageView
+            android:layout_width="220dp"
+            android:layout_height="220dp"
+            android:contentDescription="@null"
+            android:scaleType="centerInside"
+            android:src="@drawable/splash_logo" />
     </LinearLayout>
 
     <LinearLayout
