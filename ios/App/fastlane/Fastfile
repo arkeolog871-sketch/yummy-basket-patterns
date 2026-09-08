@@ -20,6 +20,10 @@ platform :ios do
     build_app(
       project: "App.xcodeproj",
       scheme: "App",
+      # Without this, xcodebuild's automatic signing asked Apple for an
+      # "iOS App Development" profile (which needs a registered test
+      # device) instead of an App Store distribution profile.
+      configuration: "Release",
       export_method: "app-store",
       export_options: {
         signingStyle: "automatic",
