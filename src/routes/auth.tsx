@@ -18,6 +18,14 @@ import {
   startGoogleOAuth,
   stripOAuthCallbackFromUrl,
 } from "@/lib/google-oauth";
+import {
+  completeAppleOAuthFromCallback,
+  humanizeOAuthError as humanizeAppleOAuthError,
+  isAppleOAuthCallbackParams,
+  isOrphanedAndroidAppleOAuthBrowser,
+  returnToAndroidApp as returnToAndroidAppApple,
+  startAppleOAuth,
+} from "@/lib/apple-oauth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -86,10 +94,15 @@ function AuthPage() {
     typeof window === "undefined" ? false : isGoogleOAuthCallbackParams(),
   );
   const [androidHandoffPending, setAndroidHandoffPending] = useState(false);
+  const [appleCompleting, setAppleCompleting] = useState(() =>
+    typeof window === "undefined" ? false : isAppleOAuthCallbackParams(),
+  );
+  const [appleAndroidHandoffPending, setAppleAndroidHandoffPending] = useState(false);
 
   useEffect(() => {
     if (!oauthError) return;
     if (isGoogleOAuthCallbackParams()) return;
+    if (isAppleOAuthCallbackParams()) return;
     toast.error(humanizeOAuthError(oauthErrorDescription || oauthError));
   }, [oauthError, oauthErrorDescription]);
 
@@ -113,6 +126,32 @@ function AuthPage() {
       }
       if (isAndroidHandoff) return;
       setGoogleCompleting(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAppleOAuthCallbackParams()) return;
+    // Apple'ın dönüş sayfası Android'de ayrı bir tarayıcı sekmesinde açılabilir;
+    // otomatik intent:// yönlendirmesi kullanıcı dokunuşu olmadan her Chrome/OEM'de
+    // tetiklenmeyebilir, bu yüzden bu durumu yakalayıp elle "Uygulamaya dön" göster.
+    const isAndroidHandoff = isOrphanedAndroidAppleOAuthBrowser();
+    if (isAndroidHandoff) setAppleAndroidHandoffPending(true);
+    let cancelled = false;
+    setAppleCompleting(true);
+    void completeAppleOAuthFromCallback().then((result) => {
+      if (cancelled) return;
+      stripOAuthCallbackFromUrl();
+      if (result?.ok === false) {
+        toast.error(result.error);
+        setAppleCompleting(false);
+        setAppleAndroidHandoffPending(false);
+        return;
+      }
+      if (isAndroidHandoff) return;
+      setAppleCompleting(false);
     });
     return () => {
       cancelled = true;
@@ -186,6 +225,21 @@ function AuthPage() {
     }
   }
 
+  async function handleApple() {
+    if (isInAppBrowser()) {
+      toast.error(
+        "Apple girişi WhatsApp / Instagram / Facebook içi tarayıcıda çalışmaz. Bağlantıyı Chrome veya Safari ile açın.",
+      );
+      return;
+    }
+    try {
+      const result = await startAppleOAuth();
+      if (!result.ok) toast.error(humanizeAppleOAuthError(result.error));
+    } catch (error) {
+      toast.error(humanizeAppleOAuthError(error instanceof Error ? error.message : "Apple girişi başlatılamadı."));
+    }
+  }
+
   if (googleCompleting) {
     return (
       <div className="mx-auto w-full max-w-md px-4 py-16">
@@ -199,6 +253,27 @@ function AuthPage() {
               Uygulama otomatik açılmadıysa aşağıdaki butona dokunun.
             </p>
             <Button className="mt-3 w-full rounded-full" onClick={() => returnToAndroidApp()}>
+              Uygulamaya dön
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (appleCompleting) {
+    return (
+      <div className="mx-auto w-full max-w-md px-4 py-16">
+        <h1 className="text-3xl">Apple ile giriş</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Yetkilendirme tamamlanıyor, lütfen bekleyin…
+        </p>
+        {appleAndroidHandoffPending ? (
+          <div className="mt-6 rounded-3xl border border-border bg-card p-5 text-sm">
+            <p className="text-muted-foreground">
+              Uygulama otomatik açılmadıysa aşağıdaki butona dokunun.
+            </p>
+            <Button className="mt-3 w-full rounded-full" onClick={() => returnToAndroidAppApple()}>
               Uygulamaya dön
             </Button>
           </div>
@@ -399,6 +474,21 @@ function AuthPage() {
             Google, uygulamanın kendi alan adına döner. Android uygulamasında sistem tarayıcısı
             (Chrome) açılır. WhatsApp, Instagram veya Facebook içi tarayıcıda çalışmaz. E-posta kodu
             ile giriş her zaman kullanılabilir.
+          </p>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="mt-3 w-full rounded-full"
+            onClick={() => void handleApple()}
+          >
+            Apple ile devam et
+          </Button>
+          <p className="mt-2 text-center text-xs text-muted-foreground">
+            Apple ile giriş, uygulamanın kendi alan adına döner. iPhone veya iPad'de Safari ile en
+            iyi sonucu verir. Supabase Auth üzerinde Apple sağlayıcısı etkinleştirildikten sonra
+            çalışır.
           </p>
         </>
       )}

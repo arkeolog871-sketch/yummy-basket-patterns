@@ -24,7 +24,7 @@ type SilvanNativeOAuth = {
 
 const handledCodes = new Set<string>();
 
-function nativeOAuthBridge(): SilvanNativeOAuth | null {
+export function nativeOAuthBridge(): SilvanNativeOAuth | null {
   if (typeof window === "undefined") return null;
   const native = (window as Window & { SilvanNative?: SilvanNativeOAuth }).SilvanNative;
   return native && typeof native.openOAuth === "function" ? native : null;
@@ -161,7 +161,7 @@ export function isGoogleOAuthCallbackParams(
  * desteği bu geçişten etkilenmeyen donanımsal bir sinyal olduğu için yedek
  * olarak kullanılır.
  */
-function isLikelyMobileDevice(): boolean {
+export function isLikelyMobileDevice(): boolean {
   if (typeof navigator === "undefined") return false;
   if (/Android/i.test(navigator.userAgent)) return true;
   return typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 0;
