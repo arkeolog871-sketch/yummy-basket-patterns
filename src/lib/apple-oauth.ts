@@ -222,7 +222,7 @@ export function stripAppleOAuthCallbackFromUrl() {
   stripOAuthCallbackFromUrl();
 }
 
-export function humanizeAppleOAuthError(message: string): string {
+export function humanizeOAuthError(message: string): string {
   const text = (message || "").toLowerCase();
   if (text.includes("unsupported provider") || text.includes("missing oauth secret")) {
     return "Supabase Auth → Apple sağlayıcısı etkinleştirilmeli ve Apple Developer bilgileri eklenmeli.";
