@@ -18,6 +18,14 @@ import {
   startGoogleOAuth,
   stripOAuthCallbackFromUrl,
 } from "@/lib/google-oauth";
+import {
+  completeAppleOAuthFromCallback,
+  humanizeOAuthError as humanizeAppleOAuthError,
+  isAppleOAuthCallbackParams,
+  isOrphanedAndroidAppleOAuthBrowser,
+  returnToAndroidApp as returnToAndroidAppApple,
+  startAppleOAuth,
+} from "@/lib/apple-oauth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
