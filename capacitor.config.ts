@@ -6,7 +6,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
  */
 const config: CapacitorConfig = {
   appId: "online.uygulamamcebimde.app",
-  appName: "Uygulamam Cebimde",
+  appName: "Silvan Cebimde",
   webDir: "public",
   server: {
     url: "https://uygulamamcebimde.online",
