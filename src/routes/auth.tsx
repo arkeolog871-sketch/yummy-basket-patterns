@@ -133,6 +133,32 @@ function AuthPage() {
   }, []);
 
   useEffect(() => {
+    if (!isAppleOAuthCallbackParams()) return;
+    // Apple'ın dönüş sayfası Android'de ayrı bir tarayıcı sekmesinde açılabilir;
+    // otomatik intent:// yönlendirmesi kullanıcı dokunuşu olmadan her Chrome/OEM'de
+    // tetiklenmeyebilir, bu yüzden bu durumu yakalayıp elle "Uygulamaya dön" göster.
+    const isAndroidHandoff = isOrphanedAndroidAppleOAuthBrowser();
+    if (isAndroidHandoff) setAppleAndroidHandoffPending(true);
+    let cancelled = false;
+    setAppleCompleting(true);
+    void completeAppleOAuthFromCallback().then((result) => {
+      if (cancelled) return;
+      stripOAuthCallbackFromUrl();
+      if (result?.ok === false) {
+        toast.error(result.error);
+        setAppleCompleting(false);
+        setAppleAndroidHandoffPending(false);
+        return;
+      }
+      if (isAndroidHandoff) return;
+      setAppleCompleting(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!user || access.loading) return;
     if (!user.email_confirmed_at) {
       if (user.email) setPendingVerification({ email: user.email, startAtCode: false });
