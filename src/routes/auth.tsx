@@ -94,6 +94,10 @@ function AuthPage() {
     typeof window === "undefined" ? false : isGoogleOAuthCallbackParams(),
   );
   const [androidHandoffPending, setAndroidHandoffPending] = useState(false);
+  const [appleCompleting, setAppleCompleting] = useState(() =>
+    typeof window === "undefined" ? false : isAppleOAuthCallbackParams(),
+  );
+  const [appleAndroidHandoffPending, setAppleAndroidHandoffPending] = useState(false);
 
   useEffect(() => {
     if (!oauthError) return;
