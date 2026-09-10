@@ -161,7 +161,7 @@ export function isGoogleOAuthCallbackParams(
  * desteği bu geçişten etkilenmeyen donanımsal bir sinyal olduğu için yedek
  * olarak kullanılır.
  */
-function isLikelyMobileDevice(): boolean {
+export function isLikelyMobileDevice(): boolean {
   if (typeof navigator === "undefined") return false;
   if (/Android/i.test(navigator.userAgent)) return true;
   return typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 0;
