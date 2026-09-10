@@ -157,21 +157,22 @@ export async function startAppleOAuth(): Promise<{ ok: true } | { ok: false; err
   persistAppleOAuthPending({ ts: Date.now() });
 
   const redirectTo = appleOAuthRedirectUri();
-  const result = await lovable.auth.signInWithOAuth("apple", {
-    redirect_uri: redirectTo,
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "apple",
+    options: {
+      redirectTo,
+      scopes: "name email",
+    },
   });
 
-  if (result.error) {
+  if (error) {
     clearAppleOAuthPending();
     return {
       ok: false,
-      error: humanizeOAuthError(result.error.message || "Apple giriş başlatılamadı."),
+      error: humanizeOAuthError(error.message || "Apple giriş başlatılamadı."),
     };
   }
 
-  if (!("redirected" in result) || !result.redirected) {
-    clearAppleOAuthPending();
-  }
   return { ok: true };
 }
 
