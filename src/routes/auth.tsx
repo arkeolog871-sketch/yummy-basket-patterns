@@ -475,6 +475,21 @@ function AuthPage() {
             (Chrome) açılır. WhatsApp, Instagram veya Facebook içi tarayıcıda çalışmaz. E-posta kodu
             ile giriş her zaman kullanılabilir.
           </p>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="mt-3 w-full rounded-full"
+            onClick={() => void handleApple()}
+          >
+            Apple ile devam et
+          </Button>
+          <p className="mt-2 text-center text-xs text-muted-foreground">
+            Apple ile giriş, uygulamanın kendi alan adına döner. iPhone veya iPad'de Safari ile en
+            iyi sonucu verir. Supabase Auth üzerinde Apple sağlayıcısı etkinleştirildikten sonra
+            çalışır.
+          </p>
         </>
       )}
 
