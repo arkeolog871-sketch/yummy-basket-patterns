@@ -102,6 +102,7 @@ function AuthPage() {
   useEffect(() => {
     if (!oauthError) return;
     if (isGoogleOAuthCallbackParams()) return;
+    if (isAppleOAuthCallbackParams()) return;
     toast.error(humanizeOAuthError(oauthErrorDescription || oauthError));
   }, [oauthError, oauthErrorDescription]);
 
