@@ -225,6 +225,21 @@ function AuthPage() {
     }
   }
 
+  async function handleApple() {
+    if (isInAppBrowser()) {
+      toast.error(
+        "Apple girişi WhatsApp / Instagram / Facebook içi tarayıcıda çalışmaz. Bağlantıyı Chrome veya Safari ile açın.",
+      );
+      return;
+    }
+    try {
+      const result = await startAppleOAuth();
+      if (!result.ok) toast.error(humanizeAppleOAuthError(result.error));
+    } catch (error) {
+      toast.error(humanizeAppleOAuthError(error instanceof Error ? error.message : "Apple girişi başlatılamadı."));
+    }
+  }
+
   if (googleCompleting) {
     return (
       <div className="mx-auto w-full max-w-md px-4 py-16">
