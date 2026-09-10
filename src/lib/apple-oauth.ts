@@ -166,7 +166,7 @@ export async function startAppleOAuth(): Promise<{ ok: true } | { ok: false; err
     clearAppleOAuthPending();
     return {
       ok: false,
-      error: humanizeAppleOAuthError(error?.message || "Apple giriş başlatılamadı."),
+      error: humanizeOAuthError(error?.message || "Apple giriş başlatılamadı."),
     };
   }
 
@@ -190,7 +190,7 @@ export async function completeAppleOAuthFromCallback(): Promise<
 
   if (oauthError && isAppleOAuthCallbackParams()) {
     clearAppleOAuthPending();
-    return { ok: false, error: humanizeAppleOAuthError(params.get("error_description") || oauthError) };
+    return { ok: false, error: humanizeOAuthError(params.get("error_description") || oauthError) };
   }
   if (!code) return { ok: null };
   if (!isAppleOAuthCallbackParams()) return { ok: null };
@@ -204,14 +204,14 @@ export async function completeAppleOAuthFromCallback(): Promise<
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     clearAppleOAuthPending();
     if (error) {
-      return { ok: false, error: humanizeAppleOAuthError(error.message) };
+      return { ok: false, error: humanizeOAuthError(error.message) };
     }
     return { ok: true };
   } catch (error) {
     clearAppleOAuthPending();
     return {
       ok: false,
-      error: humanizeAppleOAuthError(
+      error: humanizeOAuthError(
         error instanceof Error ? error.message : "Apple girişi tamamlanamadı.",
       ),
     };
