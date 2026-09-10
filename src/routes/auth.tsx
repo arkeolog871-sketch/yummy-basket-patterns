@@ -261,6 +261,27 @@ function AuthPage() {
     );
   }
 
+  if (appleCompleting) {
+    return (
+      <div className="mx-auto w-full max-w-md px-4 py-16">
+        <h1 className="text-3xl">Apple ile giriş</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Yetkilendirme tamamlanıyor, lütfen bekleyin…
+        </p>
+        {appleAndroidHandoffPending ? (
+          <div className="mt-6 rounded-3xl border border-border bg-card p-5 text-sm">
+            <p className="text-muted-foreground">
+              Uygulama otomatik açılmadıysa aşağıdaki butona dokunun.
+            </p>
+            <Button className="mt-3 w-full rounded-full" onClick={() => returnToAndroidAppApple()}>
+              Uygulamaya dön
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-md px-4 py-16">
       <div className="grid grid-cols-2 gap-1 rounded-full bg-muted p-1 text-sm">
