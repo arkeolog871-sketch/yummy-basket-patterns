@@ -3,7 +3,6 @@ import {
   isInAppBrowser,
   nativeOAuthBridge,
   isLikelyMobileDevice,
-  returnToAndroidApp as googleReturnToAndroidApp,
   stripOAuthCallbackFromUrl,
   isGoogleOAuthCallbackParams,
   PRODUCTION_OAUTH_ORIGIN,
