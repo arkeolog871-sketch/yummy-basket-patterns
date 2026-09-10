@@ -24,7 +24,7 @@ type SilvanNativeOAuth = {
 
 const handledCodes = new Set<string>();
 
-function nativeOAuthBridge(): SilvanNativeOAuth | null {
+export function nativeOAuthBridge(): SilvanNativeOAuth | null {
   if (typeof window === "undefined") return null;
   const native = (window as Window & { SilvanNative?: SilvanNativeOAuth }).SilvanNative;
   return native && typeof native.openOAuth === "function" ? native : null;
