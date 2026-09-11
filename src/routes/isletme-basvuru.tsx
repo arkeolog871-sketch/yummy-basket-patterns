@@ -7,6 +7,7 @@ import { Store } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { startAppleOAuth, humanizeOAuthError as humanizeAppleOAuthError } from "@/lib/apple-oauth";
+import { startGoogleOAuth } from "@/lib/google-oauth";
 
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { slugify, formatDateTime } from "@/lib/format";
@@ -64,6 +65,15 @@ function BusinessApplicationGate() {
     }
   }
 
+  async function handleGoogle() {
+    try {
+      const result = await startGoogleOAuth();
+      if (!result.ok) toast.error(result.error);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Google girişi başlatılamadı.");
+    }
+  }
+
   if (loading) {
     return <p className="mx-auto max-w-3xl px-4 py-10 text-sm text-muted-foreground">Yükleniyor…</p>;
   }
@@ -77,7 +87,7 @@ function BusinessApplicationGate() {
           </p>
           <h1 className="mt-3 text-2xl font-semibold">Önce kimliğinizi doğrulayın</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            E-posta kodu veya Apple ile doğrulandıktan sonra başvuru formu açılır.
+            E-posta kodu, Google veya Apple ile doğrulandıktan sonra başvuru formu açılır.
           </p>
         </header>
 
@@ -95,13 +105,21 @@ function BusinessApplicationGate() {
               type="button"
               variant="outline"
               className="w-full rounded-full"
+              onClick={() => void handleGoogle()}
+            >
+              Google ile devam et
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3 w-full rounded-full"
               onClick={() => void handleApple()}
             >
               Apple ile devam et
             </Button>
             <p className="mt-2 text-center text-xs text-muted-foreground">
-              Apple ile doğrulama tamamlandıktan sonra bu sayfaya geri dönüp başvurunuzu
-              gönderebilirsiniz.
+              Google veya Apple ile doğrulama tamamlandıktan sonra bu sayfaya geri dönüp
+              başvurunuzu gönderebilirsiniz.
             </p>
           </div>
         </div>
