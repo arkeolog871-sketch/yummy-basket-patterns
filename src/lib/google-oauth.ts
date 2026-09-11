@@ -168,12 +168,28 @@ export function isLikelyMobileDevice(): boolean {
   return typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 0;
 }
 
+/**
+ * Akış bu tarayıcıda başladıysa (saklı PKCE kaydının nonce'u gelen `state` ile
+ * eşleşiyorsa) kodu burada takas ederiz; Android uygulamasına devretmeyiz.
+ * Devretme yalnızca kayıt olmayan, yani gerçekten uygulamadan başlayıp
+ * tarayıcıda yetim kalan sekmeler için denenir.
+ */
+function startedInThisBrowser(): boolean {
+  if (typeof window === "undefined") return false;
+  const stored = readGoogleOAuthPkce();
+  if (!stored?.nonce) return false;
+  const state = new URLSearchParams(window.location.search).get("state") || "";
+  return Boolean(state) && stored.nonce === state;
+}
+
 function shouldHandoffGoogleOAuthToAndroidApp(): boolean {
   if (typeof window === "undefined") return false;
   if (nativeOAuthBridge()) return false;
   if (!isLikelyMobileDevice()) return false;
+  if (startedInThisBrowser()) return false;
   return isGoogleOAuthCallbackParams();
 }
+
 
 /**
  * True when this tab is an orphaned Android browser tab left behind after
