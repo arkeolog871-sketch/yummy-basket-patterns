@@ -85,7 +85,10 @@ function BusinessApplicationGate() {
           <EmailCodeLogin
             idPrefix="application-otp"
             allowSignUp
-            onVerified={() => toast.success("Doğrulama başarılı, formu doldurabilirsiniz.")}
+            onVerified={() => {
+              toast.success("Doğrulama başarılı, formu doldurabilirsiniz.");
+            }}
+
           />
           <div className="border-t border-border/70 pt-4">
             <Button
