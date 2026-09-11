@@ -177,3 +177,37 @@ export function humanizeGoogleTokenError(message: string): string {
   }
   return message || "Google jetonu alınamadı. Lütfen tekrar deneyin.";
 }
+
+/** Devir kaydı anahtarı: mühürlü state değerinin hash'i (ham state DB'ye yazılmaz). */
+export function oauthStateHash(state: string): string {
+  return createHash("sha256").update(state).digest("hex");
+}
+
+/**
+ * Tarayıcı sekmesinde (Custom Tab) alınan Google yetkilendirme kodunu kısa
+ * ömürlü olarak saklar; akışı başlatan uygulama WebView'i onu geri alıp
+ * girişi kendi içinde tamamlar. Böylece kullanıcı tarayıcı sayfasında kalmaz.
+ */
+export async function parkAuthorizationCode(state: string, code: string): Promise<void> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const staleBefore = new Date(Date.now() - GOOGLE_OAUTH_STATE_TTL_MS).toISOString();
+  await supabaseAdmin.from("oauth_code_relay").delete().lt("created_at", staleBefore);
+  await supabaseAdmin
+    .from("oauth_code_relay")
+    .upsert({ state_hash: oauthStateHash(state), code }, { onConflict: "state_hash" });
+}
+
+/** Kodu tek kullanımlık olarak teslim eder (okuduktan sonra kaydı siler). */
+export async function claimAuthorizationCode(state: string): Promise<string | null> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const hash = oauthStateHash(state);
+  const { data } = await supabaseAdmin
+    .from("oauth_code_relay")
+    .select("code, created_at")
+    .eq("state_hash", hash)
+    .maybeSingle();
+  if (!data?.code) return null;
+  await supabaseAdmin.from("oauth_code_relay").delete().eq("state_hash", hash);
+  if (Date.now() - new Date(data.created_at).getTime() > GOOGLE_OAUTH_STATE_TTL_MS) return null;
+  return data.code;
+}
