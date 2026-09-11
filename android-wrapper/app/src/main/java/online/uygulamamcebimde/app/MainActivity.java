@@ -52,6 +52,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.Task;
 
@@ -863,7 +864,7 @@ public class MainActivity extends Activity {
             googleSignInClient.signOut().addOnCompleteListener(ignored ->
                     startActivityForResult(googleSignInClient.getSignInIntent(), GOOGLE_NATIVE_SIGN_IN_REQUEST));
         } catch (Exception ignored) {
-            deliverGoogleIdTokenToWebView(null);
+            reportGoogleNativeSignInUnavailable();
         }
     }
 
@@ -873,25 +874,35 @@ public class MainActivity extends Activity {
             GoogleSignInAccount account = task.getResult(ApiException.class);
             String idToken = account != null ? account.getIdToken() : null;
             if (idToken == null || idToken.isEmpty()) {
-                // Hesap seçimi başarılı ama ID token boş geldi — genelde
-                // requestIdToken() ile verilen Web istemci kimliği yanlış/eksik
-                // yapılandırılmış demektir. Sessizce yutmak yerine görünür yap.
-                Toast.makeText(this, "Google girişi: ID token alınamadı.", Toast.LENGTH_LONG).show();
+                // Hesap seçildi ama ID token yok: Play Services bu paket + imza
+                // için Web istemcisi adına token üretmeye yetkili değil.
+                reportGoogleNativeSignInUnavailable();
+                return;
             }
             deliverGoogleIdTokenToWebView(idToken);
         } catch (ApiException e) {
-            // Kod 12501 kullanıcının hesap seçmeden vazgeçmesidir; onu sessiz
-            // geç, diğer her şeyi (ör. 10 = DEVELOPER_ERROR: SHA-1/paket/istemci
-            // kimliği uyuşmazlığı) görünür yap ki teşhis edilebilsin.
-            if (e.getStatusCode() != 12501) {
-                Toast.makeText(
-                        this,
-                        "Google girişi hatası (kod " + e.getStatusCode() + "): " + e.getMessage(),
-                        Toast.LENGTH_LONG
-                ).show();
+            if (e.getStatusCode() == GoogleSignInStatusCodes.SIGN_IN_CANCELLED) {
+                deliverGoogleIdTokenToWebView(null);
+                return;
             }
-            deliverGoogleIdTokenToWebView(null);
+            // Geri kalan her hata (özellikle 10 = DEVELOPER_ERROR: Google Cloud'da
+            // bu paket adı + imza sertifikası SHA-1'i ile kayıtlı Android istemcisi
+            // yok) native yolun bu cihazda kullanılamadığı anlamına gelir. Eskiden
+            // burası "kullanıcı vazgeçti" ile aynı yola giriyordu ve giriş hiçbir
+            // geri bildirim vermeden ölüyordu; artık web tarafı tarayıcı akışına düşer.
+            reportGoogleNativeSignInUnavailable();
         }
+    }
+
+    /**
+     * Native giriş bu yapılandırmada kullanılamıyor — web tarafı bunu alınca
+     * tarayıcı tabanlı Google akışını başlatır, böylece kullanıcı hiçbir zaman
+     * sessiz bir çıkmazda kalmaz.
+     */
+    private void reportGoogleNativeSignInUnavailable() {
+        if (webView == null) return;
+        String script = "window.__onNativeGoogleSignInUnavailable && window.__onNativeGoogleSignInUnavailable();";
+        runOnUiThread(() -> webView.evaluateJavascript(script, null));
     }
 
     /** idToken null/boşsa JS tarafı bunu "kullanıcı vazgeçti" olarak yorumlar. */

@@ -112,7 +112,10 @@ function AuthPage() {
     typeof window === "undefined" ? false : isAppleOAuthCallbackParams(),
   );
   const [appleAndroidHandoffPending, setAppleAndroidHandoffPending] = useState(false);
-  const { busy: googleNativeBusy, start: startNativeGoogle } = useNativeGoogleSignIn();
+  // Native hesap seçici açılamaz/yetkisizse giriş sessizce ölmesin: tarayıcı akışına düş.
+  const { busy: googleNativeBusy, start: startNativeGoogle } = useNativeGoogleSignIn(() => {
+    void startBrowserGoogle();
+  });
 
   useEffect(() => {
     if (!oauthError) return;
@@ -268,11 +271,7 @@ function AuthPage() {
     }
   }
 
-  async function handleGoogle() {
-    // Android native köprüsü varsa Google hesap seçimi tamamen uygulama
-    // içinde (tarayıcıya hiç çıkmadan) yapılır — Custom Tab'ın otomatik
-    // uygulamaya dönmeme sorununu kökten ortadan kaldırır.
-    if (startNativeGoogle()) return;
+  async function startBrowserGoogle() {
     if (isInAppBrowser()) {
       toast.error(
         "Google girişi WhatsApp / Instagram / Facebook içi tarayıcıda çalışmaz. Bağlantıyı Chrome veya Safari ile açın.",
@@ -285,6 +284,14 @@ function AuthPage() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Google girişi başlatılamadı.");
     }
+  }
+
+  async function handleGoogle() {
+    // Android native köprüsü varsa Google hesap seçimi tamamen uygulama
+    // içinde (tarayıcıya hiç çıkmadan) yapılır — Custom Tab'ın otomatik
+    // uygulamaya dönmeme sorununu kökten ortadan kaldırır.
+    if (startNativeGoogle()) return;
+    await startBrowserGoogle();
   }
 
   async function handleApple() {
