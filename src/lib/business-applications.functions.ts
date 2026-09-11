@@ -23,16 +23,17 @@ const applicationSchema = z.object({
     .min(2)
     .max(40)
     .regex(/^[a-z0-9-]+$/, "Sadece küçük harf, rakam ve tire"),
-  cuisines: z.array(z.string().trim().min(1).max(30)).min(1, "En az bir etiket girin").max(8),
+  cuisines: z.array(z.string().trim().max(30)).max(8).default([]),
   delivery_minutes: z.number().int().min(0).max(600),
   delivery_fee: z.number().min(0).max(10000),
   min_order: z.number().min(0).max(100000),
   cover_image_url: z
     .string()
     .trim()
-    .min(4, "Görsel adresi girin")
     .max(500)
-    .refine((value) => /^https?:\/\//i.test(value), "Geçerli bir görsel bağlantısı girin"),
+    .nullable()
+    .default(null)
+    .refine((value) => !value || /^https?:\/\//i.test(value), "Geçerli bir görsel bağlantısı girin"),
   address: z.string().trim().min(5, "Açık adres girin").max(240),
   district: z.string().trim().min(2, "İlçe girin").max(80),
   city: z.string().trim().min(2, "Şehir girin").max(80),
@@ -41,9 +42,10 @@ const applicationSchema = z.object({
   maps_url: z
     .string()
     .trim()
-    .min(4, "Harita bağlantısı girin")
     .max(500)
-    .refine((value) => /^https?:\/\//i.test(value), "Geçerli bir bağlantı girin"),
+    .nullable()
+    .default(null)
+    .refine((value) => !value || /^https?:\/\//i.test(value), "Geçerli bir bağlantı girin"),
   contact_email: z
     .string()
     .trim()
