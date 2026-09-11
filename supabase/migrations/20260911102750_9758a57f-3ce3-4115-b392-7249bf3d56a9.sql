@@ -1,0 +1,1 @@
+ALTER TABLE public.restaurants ADD COLUMN IF NOT EXISTS contact_person TEXT;

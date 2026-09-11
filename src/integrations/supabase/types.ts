@@ -809,6 +809,7 @@ export type Database = {
           city: string | null
           closes_at: string | null
           contact_email: string | null
+          contact_person: string | null
           contact_phone: string | null
           cover_image_url: string | null
           created_at: string
@@ -840,6 +841,7 @@ export type Database = {
           city?: string | null
           closes_at?: string | null
           contact_email?: string | null
+          contact_person?: string | null
           contact_phone?: string | null
           cover_image_url?: string | null
           created_at?: string
@@ -871,6 +873,7 @@ export type Database = {
           city?: string | null
           closes_at?: string | null
           contact_email?: string | null
+          contact_person?: string | null
           contact_phone?: string | null
           cover_image_url?: string | null
           created_at?: string
