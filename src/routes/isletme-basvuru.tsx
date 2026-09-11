@@ -52,7 +52,10 @@ export const Route = createFileRoute("/isletme-basvuru")({
 function BusinessApplicationGate() {
   const { user, loading } = useAuth();
   const verified = Boolean(user && user.email_confirmed_at);
-  const { busy: googleNativeBusy, start: startNativeGoogle } = useNativeGoogleSignIn();
+  // Native hesap seçici açılamaz/yetkisizse giriş sessizce ölmesin: tarayıcı akışına düş.
+  const { busy: googleNativeBusy, start: startNativeGoogle } = useNativeGoogleSignIn(() => {
+    void startBrowserGoogle();
+  });
   // Apple'ın Android için native bir giriş SDK'sı yok; tarayıcı tabanlı akış
   // orada güvenilir uygulamaya dönemiyor ve Apple'ın kendi App Store
   // incelemesi dışında bir gereksinim yok — Android'de hiç göstermiyoruz.
@@ -73,14 +76,18 @@ function BusinessApplicationGate() {
     }
   }
 
-  async function handleGoogle() {
-    if (startNativeGoogle()) return;
+  async function startBrowserGoogle() {
     try {
       const result = await startGoogleOAuth();
       if (!result.ok) toast.error(result.error);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Google girişi başlatılamadı.");
     }
+  }
+
+  async function handleGoogle() {
+    if (startNativeGoogle()) return;
+    await startBrowserGoogle();
   }
 
   if (loading) {

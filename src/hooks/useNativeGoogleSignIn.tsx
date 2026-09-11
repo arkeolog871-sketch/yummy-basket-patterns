@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   completeNativeGoogleSignIn,
@@ -10,6 +10,12 @@ declare global {
   interface Window {
     /** android-wrapper (native Android), Google hesap seçimi bitince ID token'ı bunun üzerinden iletir. Boş string = kullanıcı vazgeçti. */
     __onNativeGoogleSignIn?: (idToken: string) => void;
+    /**
+     * Native akış bu cihazda/yapılandırmada kullanılamıyor (ör. Google Cloud'da
+     * uygulamanın imza SHA-1'i ile kayıtlı Android istemcisi yok → DEVELOPER_ERROR).
+     * Kullanıcıyı çıkmazda bırakmamak için tarayıcı akışına düşülür.
+     */
+    __onNativeGoogleSignInUnavailable?: () => void;
   }
 }
 
@@ -18,13 +24,17 @@ declare global {
  * `start()` köprü yoksa false döner — çağıran taraf mevcut tarayıcı tabanlı
  * `startGoogleOAuth()`'a düşmeli (iOS, web, eski Android build'leri).
  */
-export function useNativeGoogleSignIn() {
+export function useNativeGoogleSignIn(onUnavailable?: () => void) {
   const [busy, setBusy] = useState(false);
+  const fallbackRef = useRef(onUnavailable);
+  fallbackRef.current = onUnavailable;
 
   useEffect(() => {
     window.__onNativeGoogleSignIn = (idToken: string) => {
-      setBusy(false);
-      if (!idToken) return; // kullanıcı hesap seçmeden vazgeçti
+      if (!idToken) {
+        setBusy(false); // kullanıcı hesap seçmeden vazgeçti
+        return;
+      }
       setBusy(true);
       void completeNativeGoogleSignIn(idToken)
         .then((result) => {
@@ -35,8 +45,13 @@ export function useNativeGoogleSignIn() {
         })
         .finally(() => setBusy(false));
     };
+    window.__onNativeGoogleSignInUnavailable = () => {
+      setBusy(false);
+      fallbackRef.current?.();
+    };
     return () => {
       delete window.__onNativeGoogleSignIn;
+      delete window.__onNativeGoogleSignInUnavailable;
     };
   }, []);
 
