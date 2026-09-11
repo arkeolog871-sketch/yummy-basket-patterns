@@ -48,13 +48,17 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import com.google.android.gms.auth.api.signin.GoogleSignIn;
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
-import com.google.android.gms.auth.api.signin.GoogleSignInClient;
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
-import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes;
-import com.google.android.gms.common.api.ApiException;
-import com.google.android.gms.tasks.Task;
+import androidx.credentials.Credential;
+import androidx.credentials.CredentialManager;
+import androidx.credentials.CredentialManagerCallback;
+import androidx.credentials.CustomCredential;
+import androidx.credentials.GetCredentialRequest;
+import androidx.credentials.GetCredentialResponse;
+import androidx.credentials.exceptions.GetCredentialCancellationException;
+import androidx.credentials.exceptions.GetCredentialException;
+
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption;
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -67,7 +71,6 @@ public class MainActivity extends Activity {
     private static final int LOCATION_PERMISSION_REQUEST = 1004;
     private static final int WEB_CAMERA_PERMISSION_REQUEST = 1005;
     private static final int NOTIFICATION_PERMISSION_REQUEST = 1006;
-    private static final int GOOGLE_NATIVE_SIGN_IN_REQUEST = 1007;
     private static final String ORDER_CHANNEL_ID = "orders";
     private static final int LOAD_TIMEOUT_MS = 25000;
     /**
@@ -94,7 +97,6 @@ public class MainActivity extends Activity {
     private PermissionRequest webPermissionRequest;
     private boolean askedNotificationPermission;
     private boolean pageReady;
-    private GoogleSignInClient googleSignInClient;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Runnable loadTimeout = this::showLoadError;
 
@@ -370,10 +372,6 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == GOOGLE_NATIVE_SIGN_IN_REQUEST) {
-            handleGoogleNativeSignInResult(data);
-            return;
-        }
         if (requestCode != FILE_CHOOSER_REQUEST) {
             super.onActivityResult(requestCode, resultCode, data);
             return;
@@ -775,13 +773,21 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> requestNotificationPermissionIfNeeded());
         }
 
+        /**
+         * Bu build, Google'ın güncel Credential Manager API'siyle uygulama içi
+         * hesap seçimi yapabiliyor mu? Eski build'lerde bu köprü yok; web tarafı
+         * o zaman doğrudan tarayıcı akışını kullanır. Adı kasıtlı olarak eski
+         * `supportsNativeGoogleSignIn`'den farklı: eski build'ler kullanımdan
+         * kaldırılmış GoogleSignInClient'ı çağırıyordu ve sessizce başarısız
+         * oluyordu, web'in onları native sanmaması gerekiyor.
+         */
         @JavascriptInterface
-        public boolean supportsNativeGoogleSignIn() {
+        public boolean supportsCredentialManagerGoogleSignIn() {
             return true;
         }
 
         @JavascriptInterface
-        public void signInWithGoogleNative() {
+        public void signInWithGoogleCredentialManager() {
             runOnUiThread(MainActivity.this::startNativeGoogleSignIn);
         }
     }
@@ -847,51 +853,72 @@ public class MainActivity extends Activity {
     }
 
     /**
-     * Google hesap seçimini tamamen uygulama içinde, native bir sistem
-     * diyaloğuyla yapar — Chrome Custom Tab'a hiç çıkılmaz. Bu yüzden
-     * "otomatik uygulamaya dönmüyor" sorunu bu yolda yapısal olarak imkansız.
+     * Google hesap seçimini tamamen uygulama içinde yapar — Chrome Custom Tab'a
+     * hiç çıkılmaz, dolayısıyla "otomatik uygulamaya dönmüyor" sorunu bu yolda
+     * yapısal olarak imkansız.
+     *
+     * Credential Manager, Google'ın güncel ve desteklenen yolu. Önceki sürüm
+     * com.google.android.gms.auth.api.signin (GoogleSignInClient) kullanıyordu;
+     * o API kullanımdan kaldırıldı ve hesap seçildikten sonra ID token
+     * üretmeden başarısız oluyordu. Yapılandırma (Web istemci kimliği, paket
+     * adı, imza SHA-1'i, Supabase audience) tek tek doğrulandığı için geriye
+     * API'nin kendisi kalmıştı.
      */
     private void startNativeGoogleSignIn() {
         try {
-            if (googleSignInClient == null) {
-                GoogleSignInOptions options = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                        .requestIdToken(GOOGLE_WEB_CLIENT_ID)
-                        .requestEmail()
-                        .build();
-                googleSignInClient = GoogleSignIn.getClient(this, options);
-            }
-            // Hesap seçici her seferinde açılsın; önceki oturumu sessizce yeniden kullanma.
-            googleSignInClient.signOut().addOnCompleteListener(ignored ->
-                    startActivityForResult(googleSignInClient.getSignInIntent(), GOOGLE_NATIVE_SIGN_IN_REQUEST));
+            GetSignInWithGoogleOption option =
+                    new GetSignInWithGoogleOption.Builder(GOOGLE_WEB_CLIENT_ID).build();
+            GetCredentialRequest request = new GetCredentialRequest.Builder()
+                    .addCredentialOption(option)
+                    .build();
+            CredentialManager.create(this).getCredentialAsync(
+                    this,
+                    request,
+                    null,
+                    ContextCompat.getMainExecutor(this),
+                    new CredentialManagerCallback<GetCredentialResponse, GetCredentialException>() {
+                        @Override
+                        public void onResult(GetCredentialResponse response) {
+                            handleGoogleCredential(response.getCredential());
+                        }
+
+                        @Override
+                        public void onError(GetCredentialException error) {
+                            if (error instanceof GetCredentialCancellationException) {
+                                // Kullanıcı vazgeçti: boş token "vazgeçildi" demek.
+                                deliverGoogleIdTokenToWebView(null);
+                                return;
+                            }
+                            // Hesap yok, Play Services eski, yapılandırma eksik…
+                            // Sessizce ölmek yerine web'e bildir; o tarayıcı akışına düşer.
+                            reportGoogleNativeSignInUnavailable();
+                        }
+                    });
         } catch (Exception ignored) {
             reportGoogleNativeSignInUnavailable();
         }
     }
 
-    private void handleGoogleNativeSignInResult(Intent data) {
-        Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
-        try {
-            GoogleSignInAccount account = task.getResult(ApiException.class);
-            String idToken = account != null ? account.getIdToken() : null;
-            if (idToken == null || idToken.isEmpty()) {
-                // Hesap seçildi ama ID token yok: Play Services bu paket + imza
-                // için Web istemcisi adına token üretmeye yetkili değil.
-                reportGoogleNativeSignInUnavailable();
-                return;
-            }
-            deliverGoogleIdTokenToWebView(idToken);
-        } catch (ApiException e) {
-            if (e.getStatusCode() == GoogleSignInStatusCodes.SIGN_IN_CANCELLED) {
-                deliverGoogleIdTokenToWebView(null);
-                return;
-            }
-            // Geri kalan her hata (özellikle 10 = DEVELOPER_ERROR: Google Cloud'da
-            // bu paket adı + imza sertifikası SHA-1'i ile kayıtlı Android istemcisi
-            // yok) native yolun bu cihazda kullanılamadığı anlamına gelir. Eskiden
-            // burası "kullanıcı vazgeçti" ile aynı yola giriyordu ve giriş hiçbir
-            // geri bildirim vermeden ölüyordu; artık web tarafı tarayıcı akışına düşer.
+    private void handleGoogleCredential(Credential credential) {
+        if (!(credential instanceof CustomCredential)
+                || !GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL.equals(credential.getType())) {
             reportGoogleNativeSignInUnavailable();
+            return;
         }
+        String idToken;
+        try {
+            idToken = GoogleIdTokenCredential
+                    .createFrom(((CustomCredential) credential).getData())
+                    .getIdToken();
+        } catch (Exception ignored) {
+            reportGoogleNativeSignInUnavailable();
+            return;
+        }
+        if (idToken == null || idToken.isEmpty()) {
+            reportGoogleNativeSignInUnavailable();
+            return;
+        }
+        deliverGoogleIdTokenToWebView(idToken);
     }
 
     /**

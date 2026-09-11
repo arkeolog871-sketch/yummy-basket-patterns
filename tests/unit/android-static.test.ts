@@ -42,6 +42,42 @@ describe("Android wrapper static controls", () => {
     expect(manifest).not.toMatch(/android:host="www\.uygulamamcebimde\.online"/);
   });
 
+  // Google hesap seçimi, kullanımdan kaldırılan GoogleSignInClient ile hesap
+  // seçildikten sonra ID token üretmeden sessizce başarısız oluyordu. Yerine
+  // Google'ın güncel yolu (Credential Manager) kondu; eskisine dönülmesi bu
+  // testlerle gerileme olarak yakalanır.
+  it("signs in with Credential Manager, not the retired GoogleSignInClient", () => {
+    expect(activity).toMatch(/androidx\.credentials\.CredentialManager/);
+    expect(activity).toMatch(/GetSignInWithGoogleOption/);
+    expect(activity).toMatch(/GoogleIdTokenCredential/);
+    // Yalnızca kullanımı yasak; sınıfın adı tarihçeyi anlatan yorumda geçebilir.
+    expect(activity).not.toMatch(/^\s*import\s+com\.google\.android\.gms\.auth\.api\.signin/m);
+    expect(gradle).not.toMatch(/com\.google\.android\.gms:play-services-auth:/);
+    expect(gradle).toMatch(/androidx\.credentials:credentials-play-services-auth/);
+    expect(gradle).toMatch(/com\.google\.android\.libraries\.identity\.googleid:googleid/);
+  });
+
+  // Web yalnızca bu köprüyü görünce native yola giriyor. Eski adın geri gelmesi,
+  // kullanımdan kaldırılmış akışı çağıran build'leri yeniden native sanmaya yol açar.
+  it("exposes the Credential Manager bridge under its own name", () => {
+    expect(activity).toMatch(/public boolean supportsCredentialManagerGoogleSignIn\(\)/);
+    expect(activity).toMatch(/public void signInWithGoogleCredentialManager\(\)/);
+    expect(activity).not.toMatch(/public boolean supportsNativeGoogleSignIn\(\)/);
+  });
+
+  // Hata ile vazgeçme ayrı sinyaller: aksi hâlde gerçek bir hata "vazgeçildi"
+  // sanılıp giriş hiçbir geri bildirim vermeden ölüyor.
+  it("reports native sign-in failures separately from cancellation", () => {
+    expect(activity).toMatch(/GetCredentialCancellationException/);
+    expect(activity).toMatch(/__onNativeGoogleSignInUnavailable/);
+  });
+
+  it("keeps R8 from stripping the credential classes", () => {
+    const proguard = readFileSync(join(ROOT, "android-wrapper/app/proguard-rules.pro"), "utf8");
+    expect(proguard).toMatch(/-keep class com\.google\.android\.libraries\.identity\.googleid/);
+    expect(proguard).toMatch(/-keep class androidx\.credentials/);
+  });
+
   it("disables mixed content and WebView debugging", () => {
     expect(activity).toMatch(/MIXED_CONTENT_NEVER_ALLOW/);
     expect(activity).toMatch(/setWebContentsDebuggingEnabled\(false\)/);
