@@ -10,7 +10,9 @@ import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { VendorPhoneLogin } from "@/components/auth/VendorPhoneLogin";
 import {
   completeGoogleOAuthFromCallback,
+  completeNativeGoogleSignIn,
   GOOGLE_OAUTH_RETURN_PATH_KEY,
+  hasNativeGoogleSignIn,
   humanizeOAuthError,
   isGoogleOAuthCallbackParams,
   isInAppBrowser,
@@ -18,6 +20,7 @@ import {
   readGoogleOAuthPkce,
   returnToAndroidApp,
   startGoogleOAuth,
+  startNativeGoogleSignIn,
   stripOAuthCallbackFromUrl,
 } from "@/lib/google-oauth";
 import {
@@ -32,6 +35,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+declare global {
+  interface Window {
+    /** android-wrapper (native Android), Google hesap seçimi bitince ID token'ı bunun üzerinden iletir. Boş string = kullanıcı vazgeçti. */
+    __onNativeGoogleSignIn?: (idToken: string) => void;
+  }
+}
 
 type AuthSearch = {
   redirect?: string;
@@ -103,6 +113,26 @@ function AuthPage() {
     typeof window === "undefined" ? false : isAppleOAuthCallbackParams(),
   );
   const [appleAndroidHandoffPending, setAppleAndroidHandoffPending] = useState(false);
+  const [googleNativeBusy, setGoogleNativeBusy] = useState(false);
+
+  useEffect(() => {
+    window.__onNativeGoogleSignIn = (idToken: string) => {
+      setGoogleNativeBusy(false);
+      if (!idToken) return; // kullanıcı hesap seçmeden vazgeçti
+      setGoogleNativeBusy(true);
+      void completeNativeGoogleSignIn(idToken)
+        .then((result) => {
+          if (!result.ok) toast.error(result.error);
+        })
+        .catch(() => {
+          toast.error(humanizeOAuthError("Google girişi tamamlanamadı."));
+        })
+        .finally(() => setGoogleNativeBusy(false));
+    };
+    return () => {
+      delete window.__onNativeGoogleSignIn;
+    };
+  }, []);
 
   useEffect(() => {
     if (!oauthError) return;
@@ -259,6 +289,13 @@ function AuthPage() {
   }
 
   async function handleGoogle() {
+    // Android native köprüsü varsa Google hesap seçimi tamamen uygulama
+    // içinde (tarayıcıya hiç çıkmadan) yapılır — Custom Tab'ın otomatik
+    // uygulamaya dönmeme sorununu kökten ortadan kaldırır.
+    if (startNativeGoogleSignIn()) {
+      setGoogleNativeBusy(true);
+      return;
+    }
     if (isInAppBrowser()) {
       toast.error(
         "Google girişi WhatsApp / Instagram / Facebook içi tarayıcıda çalışmaz. Bağlantıyı Chrome veya Safari ile açın.",
@@ -528,9 +565,10 @@ function AuthPage() {
             variant="outline"
             size="lg"
             className="mt-4 w-full rounded-full"
+            disabled={googleNativeBusy}
             onClick={() => void handleGoogle()}
           >
-            Google ile devam et
+            {googleNativeBusy ? "Google hesabı seçiliyor…" : "Google ile devam et"}
           </Button>
           <p className="mt-2 text-center text-xs text-muted-foreground">
             Google, uygulamanın kendi alan adına döner. Android uygulamasında sistem tarayıcısı
