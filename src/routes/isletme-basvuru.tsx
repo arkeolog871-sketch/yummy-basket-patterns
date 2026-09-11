@@ -399,9 +399,16 @@ function BusinessApplicationPage() {
                 <p className="mt-1 text-xs text-muted-foreground">
                   {formatDateTime(row.created_at)} · /{row.slug}
                 </p>
+                {row.status === "approved" ? (
+                  <p className="mt-2 text-sm">
+                    İşletmenizi şu e-posta ile yönetebilirsiniz:{" "}
+                    <strong className="break-all">{row.contact_email}</strong>
+                  </p>
+                ) : null}
                 {row.founder_note ? (
                   <p className="mt-2 text-sm text-muted-foreground">Not: {row.founder_note}</p>
                 ) : null}
+
               </div>
             ))}
           </div>
