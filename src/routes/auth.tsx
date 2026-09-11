@@ -10,6 +10,7 @@ import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { VendorPhoneLogin } from "@/components/auth/VendorPhoneLogin";
 import {
   completeGoogleOAuthFromCallback,
+  GOOGLE_OAUTH_RETURN_PATH_KEY,
   humanizeOAuthError,
   isGoogleOAuthCallbackParams,
   isInAppBrowser,
@@ -19,6 +20,7 @@ import {
   stripOAuthCallbackFromUrl,
 } from "@/lib/google-oauth";
 import {
+  APPLE_OAUTH_RETURN_PATH_KEY,
   completeAppleOAuthFromCallback,
   humanizeOAuthError as humanizeAppleOAuthError,
   isAppleOAuthCallbackParams,
