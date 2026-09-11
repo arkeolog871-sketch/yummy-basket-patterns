@@ -36,6 +36,7 @@ import { MapsPanel } from "@/components/founder/MapsPanel";
 import { CategoryPanel } from "@/components/founder/CategoryPanel";
 import { ServiceAreaPanel } from "@/components/founder/ServiceAreaPanel";
 import { ApplicationsPanel } from "@/components/founder/ApplicationsPanel";
+import { PageManagerPanel } from "@/components/founder/PageManagerPanel";
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { SECTORS } from "@/lib/sectors";
 import { formatPrice, formatDateTime, ORDER_STATUS_LABELS, slugify } from "@/lib/format";
@@ -226,7 +227,6 @@ function FounderShell({
 }
 
 function FounderPage() {
-  const { isFounder, founderExists } = useSiteSettings();
   const access = useAccess();
 
   if (access.loading) {
@@ -234,30 +234,23 @@ function FounderPage() {
   }
 
   // İşletme hesapları sayfa yöneticisi URL'ine elle girse bile 403 alır ve kendi paneline döner.
-  if (!isFounder && access.isVendor) {
+  if (!access.canManagePage && access.isVendor) {
     return (
       <AccessDenied message="Sayfa yöneticisi paneli işletme hesaplarına kapalıdır. İşletme panelinize yönlendiriliyorsunuz." />
     );
   }
 
-  if (!isFounder) {
+  if (!access.canManagePage) {
     return (
       <div className="mx-auto max-w-lg px-4 py-20 text-center">
         <span className="mx-auto flex size-14 items-center justify-center rounded-3xl bg-warm text-warm-foreground">
           <Crown className="size-6" />
         </span>
         <h1 className="mt-5 text-3xl">Sayfa yöneticisi profili</h1>
-        {founderExists ? (
-          <p className="mt-3 text-sm text-muted-foreground">
-            Bu panel yalnızca sayfa yöneticisi hesabına açıktır. Yetki almak için sayfa yöneticisi
-            ile iletişime geçin.
-          </p>
-        ) : (
-          <p className="mt-3 text-sm text-muted-foreground">
-            Henüz sayfa yöneticisi hesabı tanımlı değil. Sayfa yöneticisi hesabı yalnızca deployment
-            yöneticisi tarafından yetkilendirilebilir.
-          </p>
-        )}
+        <p className="mt-3 text-sm text-muted-foreground">
+          Bu panel yalnızca ana hesap sahibine ve sahibin bölge yetkisi verdiği kişilere açıktır.
+          Yetki almak için sayfa sahibiyle iletişime geçin.
+        </p>
         <div className="mt-4">
           <Button asChild variant="ghost" className="rounded-full">
             <Link to="/">Ana sayfaya dön</Link>
@@ -267,16 +260,32 @@ function FounderPage() {
     );
   }
 
-  return <FounderDashboard />;
+  return (
+    <FounderDashboard
+      isOwner={access.isFounder}
+      regions={access.regions as Array<{ city: string; district: string }>}
+    />
+  );
 }
 
-function FounderDashboard() {
+function FounderDashboard({
+  isOwner,
+  regions,
+}: {
+  isOwner: boolean;
+  regions: Array<{ city: string; district: string }>;
+}) {
   const queryClient = useQueryClient();
   const fetchAdminData = useServerFn(listAdminData);
   const fetchUsers = useServerFn(listUsers);
 
   const data = useQuery({ queryKey: ["admin-data"], queryFn: () => fetchAdminData() });
-  const users = useQuery({ queryKey: ["admin-users"], queryFn: () => fetchUsers() });
+  // Kullanıcı listesi yalnızca sahibe açıktır (sunucu tarafında da founder zorunlu).
+  const users = useQuery({
+    queryKey: ["admin-users"],
+    queryFn: () => fetchUsers(),
+    enabled: isOwner,
+  });
 
   function invalidate() {
     void queryClient.invalidateQueries({ queryKey: ["admin-data"] });
@@ -297,7 +306,11 @@ function FounderDashboard() {
         <div>
           <h1 className="text-3xl">Sayfa yöneticisi paneli</h1>
           <p className="text-sm text-muted-foreground">
-            Tema, tipografi, işletme, kategori, ürün, kullanıcı ve sipariş yönetimi
+            {isOwner
+              ? "Tema, tipografi, işletme, kategori, ürün, kullanıcı ve sipariş yönetimi"
+              : `Yetkili bölgeleriniz: ${
+                  regions.map((region) => `${region.district}, ${region.city}`).join(" · ") || "—"
+                }`}
           </p>
         </div>
       </div>
@@ -308,70 +321,91 @@ function FounderDashboard() {
         </p>
       ) : null}
 
-      <Tabs defaultValue="gorunum" className="mt-8">
+      <Tabs defaultValue={isOwner ? "gorunum" : "isletmeler"} className="mt-8">
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
-          <TabsTrigger value="gorunum">Görünüm</TabsTrigger>
-          <TabsTrigger value="tipografi">Tipografi</TabsTrigger>
-          <TabsTrigger value="gorseller">Görseller</TabsTrigger>
-          <TabsTrigger value="anasayfa">Ana sayfa</TabsTrigger>
-          <TabsTrigger value="iletisim">İletişim</TabsTrigger>
-          <TabsTrigger value="bildirimler">Bildirimler</TabsTrigger>
-          <TabsTrigger value="reklamlar">Reklamlar</TabsTrigger>
-          <TabsTrigger value="harita">Harita</TabsTrigger>
-          <TabsTrigger value="sektorler">Kategoriler</TabsTrigger>
-          <TabsTrigger value="bolgeler">Bölgeler</TabsTrigger>
+          {isOwner ? <TabsTrigger value="gorunum">Görünüm</TabsTrigger> : null}
+          {isOwner ? <TabsTrigger value="tipografi">Tipografi</TabsTrigger> : null}
+          {isOwner ? <TabsTrigger value="gorseller">Görseller</TabsTrigger> : null}
+          {isOwner ? <TabsTrigger value="anasayfa">Ana sayfa</TabsTrigger> : null}
+          {isOwner ? <TabsTrigger value="iletisim">İletişim</TabsTrigger> : null}
+          {isOwner ? <TabsTrigger value="bildirimler">Bildirimler</TabsTrigger> : null}
+          {isOwner ? <TabsTrigger value="reklamlar">Reklamlar</TabsTrigger> : null}
+          {isOwner ? <TabsTrigger value="harita">Harita</TabsTrigger> : null}
+          {isOwner ? <TabsTrigger value="sektorler">Kategoriler</TabsTrigger> : null}
+          {isOwner ? <TabsTrigger value="bolgeler">Bölgeler</TabsTrigger> : null}
           <TabsTrigger value="isletmeler">İşletmeler</TabsTrigger>
           <TabsTrigger value="basvurular">Başvurular</TabsTrigger>
           <TabsTrigger value="kategoriler">Menü kategorileri</TabsTrigger>
           <TabsTrigger value="urunler">Ürünler</TabsTrigger>
-          <TabsTrigger value="kullanicilar">Kullanıcılar</TabsTrigger>
-          <TabsTrigger value="silme-talepleri">Silme talepleri</TabsTrigger>
-          <TabsTrigger value="guvenlik">Güvenlik</TabsTrigger>
+          {isOwner ? <TabsTrigger value="kullanicilar">Kullanıcılar</TabsTrigger> : null}
+          {isOwner ? <TabsTrigger value="yetkiler">Yetkiler</TabsTrigger> : null}
+          {isOwner ? <TabsTrigger value="silme-talepleri">Silme talepleri</TabsTrigger> : null}
+          {isOwner ? <TabsTrigger value="guvenlik">Güvenlik</TabsTrigger> : null}
           <TabsTrigger value="siparisler">Siparişler</TabsTrigger>
-          <TabsTrigger value="denetim">Denetim kaydı</TabsTrigger>
-          <TabsTrigger value="hatalar">Sistem hataları</TabsTrigger>
+          {isOwner ? <TabsTrigger value="denetim">Denetim kaydı</TabsTrigger> : null}
+          {isOwner ? <TabsTrigger value="hatalar">Sistem hataları</TabsTrigger> : null}
         </TabsList>
 
-        <TabsContent value="gorunum" className="mt-6">
-          <AppearancePanel />
-        </TabsContent>
+        {isOwner ? (
+          <TabsContent value="gorunum" className="mt-6">
+            <AppearancePanel />
+          </TabsContent>
+        ) : null}
 
-        <TabsContent value="tipografi" className="mt-6">
-          <TypographyPanel />
-        </TabsContent>
+        {isOwner ? (
+          <TabsContent value="tipografi" className="mt-6">
+            <TypographyPanel />
+          </TabsContent>
+        ) : null}
 
-        <TabsContent value="gorseller" className="mt-6 space-y-6">
-          <BrandingPanel />
-          <MediaCleanupPanel />
-        </TabsContent>
+        {isOwner ? (
+          <TabsContent value="gorseller" className="mt-6 space-y-6">
+            <BrandingPanel />
+            <MediaCleanupPanel />
+          </TabsContent>
+        ) : null}
 
-        <TabsContent value="anasayfa" className="mt-6">
-          <HeroContentPanel />
-        </TabsContent>
+        {isOwner ? (
+          <TabsContent value="anasayfa" className="mt-6">
+            <HeroContentPanel />
+          </TabsContent>
+        ) : null}
 
-        <TabsContent value="iletisim" className="mt-6">
-          <ContactPanel />
-        </TabsContent>
+        {isOwner ? (
+          <TabsContent value="iletisim" className="mt-6">
+            <ContactPanel />
+          </TabsContent>
+        ) : null}
 
-        <TabsContent value="bildirimler" className="mt-6">
-          <NotificationsPanel businesses={data.data?.businesses ?? []} />
-        </TabsContent>
+        {isOwner ? (
+          <TabsContent value="bildirimler" className="mt-6">
+            <NotificationsPanel businesses={data.data?.businesses ?? []} />
+          </TabsContent>
+        ) : null}
 
-        <TabsContent value="reklamlar" className="mt-6">
-          <AdsPanel />
-        </TabsContent>
+        {isOwner ? (
+          <TabsContent value="reklamlar" className="mt-6">
+            <AdsPanel />
+          </TabsContent>
+        ) : null}
 
-        <TabsContent value="harita" className="mt-6">
-          <MapsPanel />
-        </TabsContent>
+        {isOwner ? (
+          <TabsContent value="harita" className="mt-6">
+            <MapsPanel />
+          </TabsContent>
+        ) : null}
 
-        <TabsContent value="sektorler" className="mt-6">
-          <CategoryPanel businesses={data.data?.businesses ?? []} />
-        </TabsContent>
+        {isOwner ? (
+          <TabsContent value="sektorler" className="mt-6">
+            <CategoryPanel businesses={data.data?.businesses ?? []} />
+          </TabsContent>
+        ) : null}
 
-        <TabsContent value="bolgeler" className="mt-6">
-          <ServiceAreaPanel />
-        </TabsContent>
+        {isOwner ? (
+          <TabsContent value="bolgeler" className="mt-6">
+            <ServiceAreaPanel />
+          </TabsContent>
+        ) : null}
 
         <TabsContent value="isletmeler" className="mt-6">
           <BusinessPanel businesses={data.data?.businesses ?? []} onDone={invalidate} />
@@ -381,7 +415,6 @@ function FounderDashboard() {
           <ApplicationsPanel onApproved={invalidate} />
         </TabsContent>
 
-
         <TabsContent value="kategoriler" className="mt-6">
           <MenuCategoryPanel businesses={data.data?.businesses ?? []} onDone={invalidate} />
         </TabsContent>
@@ -390,24 +423,35 @@ function FounderDashboard() {
           <MenuItemPanel businesses={data.data?.businesses ?? []} onDone={invalidate} />
         </TabsContent>
 
-        <TabsContent value="kullanicilar" className="mt-6">
-          {users.isError ? (
-            <p className="mb-3 text-sm text-muted-foreground">Kullanıcı listesi yüklenemedi.</p>
-          ) : null}
-          <UserPanel
-            users={users.data ?? []}
-            businesses={data.data?.businesses ?? []}
-            onDone={invalidate}
-          />
-        </TabsContent>
+        {isOwner ? (
+          <TabsContent value="kullanicilar" className="mt-6">
+            {users.isError ? (
+              <p className="mb-3 text-sm text-muted-foreground">Kullanıcı listesi yüklenemedi.</p>
+            ) : null}
+            <UserPanel
+              users={users.data ?? []}
+              businesses={data.data?.businesses ?? []}
+              onDone={invalidate}
+            />
+          </TabsContent>
+        ) : null}
+        {isOwner ? (
+          <TabsContent value="yetkiler" className="mt-6">
+            <PageManagerPanel users={users.data ?? []} />
+          </TabsContent>
+        ) : null}
 
-        <TabsContent value="silme-talepleri" className="mt-6">
-          <DeletionRequestsPanel />
-        </TabsContent>
+        {isOwner ? (
+          <TabsContent value="silme-talepleri" className="mt-6">
+            <DeletionRequestsPanel />
+          </TabsContent>
+        ) : null}
 
-        <TabsContent value="guvenlik" className="mt-6">
-          <SecurityPanel />
-        </TabsContent>
+        {isOwner ? (
+          <TabsContent value="guvenlik" className="mt-6">
+            <SecurityPanel />
+          </TabsContent>
+        ) : null}
 
         <TabsContent value="siparisler" className="mt-6">
           <OrderPanel
@@ -418,24 +462,28 @@ function FounderDashboard() {
           />
         </TabsContent>
 
-        <TabsContent value="denetim" className="mt-6">
-          <AuditLogPanel />
-        </TabsContent>
+        {isOwner ? (
+          <TabsContent value="denetim" className="mt-6">
+            <AuditLogPanel />
+          </TabsContent>
+        ) : null}
 
-        <TabsContent value="hatalar" className="mt-6">
-          <div className="rounded-2xl border bg-card p-5">
-            <h2 className="text-xl">Sistem hataları</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Uygulamada oluşan çalışma zamanı hataları ayrı bir sayfada listelenir.
-            </p>
-            <Button asChild className="mt-4 rounded-full">
-              <Link to="/sistem-hatalari">
-                Sistem hataları sayfasını aç
-                <ExternalLink className="ml-2 size-4" />
-              </Link>
-            </Button>
-          </div>
-        </TabsContent>
+        {isOwner ? (
+          <TabsContent value="hatalar" className="mt-6">
+            <div className="rounded-2xl border bg-card p-5">
+              <h2 className="text-xl">Sistem hataları</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Uygulamada oluşan çalışma zamanı hataları ayrı bir sayfada listelenir.
+              </p>
+              <Button asChild className="mt-4 rounded-full">
+                <Link to="/sistem-hatalari">
+                  Sistem hataları sayfasını aç
+                  <ExternalLink className="ml-2 size-4" />
+                </Link>
+              </Button>
+            </div>
+          </TabsContent>
+        ) : null}
       </Tabs>
     </div>
   );
