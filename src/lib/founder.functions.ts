@@ -790,7 +790,7 @@ export const listUsers = createServerFn({ method: "GET" })
 
     const { data: profiles, error: profilesError } = await supabaseAdmin
       .from("profiles")
-      .select("id, phone");
+      .select("id, phone, full_name");
     if (profilesError) throw new Error(profilesError.message);
 
     const phoneByUser = new Map((profiles ?? []).map((row) => [row.id, row.phone]));
