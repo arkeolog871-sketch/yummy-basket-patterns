@@ -680,6 +680,24 @@ export type Database = {
         }
         Relationships: []
       }
+      oauth_code_relay: {
+        Row: {
+          code: string
+          created_at: string
+          state_hash: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          state_hash: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          state_hash?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string
