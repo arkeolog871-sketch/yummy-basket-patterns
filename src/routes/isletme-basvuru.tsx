@@ -7,6 +7,7 @@ import { Store } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { startAppleOAuth, humanizeOAuthError as humanizeAppleOAuthError } from "@/lib/apple-oauth";
+import { startGoogleOAuth } from "@/lib/google-oauth";
 
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { slugify, formatDateTime } from "@/lib/format";
