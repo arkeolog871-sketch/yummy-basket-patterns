@@ -15,9 +15,9 @@ describe("iOS native shell static controls", () => {
 
   it("uses the production bundle id and display name", () => {
     expect(capConfig).toContain(`appId: "${BUNDLE_ID}"`);
-    expect(capConfig).toContain('appName: "Uygulamam Cebimde"');
+    expect(capConfig).toContain('appName: "Silvan Cebimde"');
     expect(pbxproj).toContain(`PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID};`);
-    expect(infoPlist).toContain("Uygulamam Cebimde");
+    expect(infoPlist).toContain("<string>Silvan Cebimde</string>");
   });
 
   it("points the WebView at production HTTPS, not a local SSR bundle", () => {

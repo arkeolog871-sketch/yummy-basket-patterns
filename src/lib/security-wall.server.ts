@@ -1,11 +1,20 @@
 /** Uygulama güvenlik duvarı: tarama isteklerini keser, yanıt başlıklarını sıkılaştırır.
  * Kullanıcı akışını veya sayfa davranışını değiştirmez. */
 
+/**
+ * Vite HMR yalnızca geliştirmede localhost websocket'i açar; bu izin üretime
+ * gönderilmemeli. Ayrı bir `connect-src` parçası olarak tutulur ki üretim
+ * politikası geliştirme ihtiyacıyla gevşemesin.
+ */
+const DEV_CONNECT_SRC =
+  process.env["NODE_ENV"] === "production" ? "" : " ws://localhost:* ws://127.0.0.1:*";
+
 export const SECURITY_HEADERS: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "X-Permitted-Cross-Domain-Policies": "none",
-  "Permissions-Policy": "geolocation=(self), camera=(self), microphone=(), payment=(), usb=(), interest-cohort=()",
+  "Permissions-Policy":
+    "geolocation=(self), camera=(self), microphone=(), payment=(), usb=(), interest-cohort=()",
   "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
   "X-DNS-Prefetch-Control": "off",
   "X-Frame-Options": "SAMEORIGIN",
@@ -19,7 +28,7 @@ export const SECURITY_HEADERS: Record<string, string> = {
     "img-src 'self' data: blob: https:; " +
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://oauth2.googleapis.com https://accounts.google.com " +
     "https://maps.googleapis.com https://unpkg.com " +
-    "https://tile.openstreetmap.org ws://localhost:* ws://127.0.0.1:*; " +
+    `https://tile.openstreetmap.org${DEV_CONNECT_SRC}; ` +
     "frame-src 'self' https://www.openstreetmap.org https://accounts.google.com; " +
     "media-src 'self' blob: https:",
 };

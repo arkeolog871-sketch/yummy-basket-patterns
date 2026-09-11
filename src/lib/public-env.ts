@@ -68,5 +68,10 @@ export function getPublicSupabaseEnv(): PublicEnv {
 }
 
 export function publicEnvInlineScript(): string {
-  return `window.__PUBLIC_ENV__=${JSON.stringify(getPublicSupabaseEnv())};`;
+  // JSON.stringify `<` karakterini kaçırmaz; bir değer `</script>` içerseydi
+  // satır içi blok erken kapanır ve kalanı HTML olarak yorumlanırdı. Değerler
+  // operatörün ortam değişkenlerinden geldiği için bugün istismar edilebilir
+  // değil, ama enjeksiyonu değere bağlı bırakmamak için kaçırılır.
+  const json = JSON.stringify(getPublicSupabaseEnv()).replace(/</g, "\\u003c");
+  return `window.__PUBLIC_ENV__=${json};`;
 }
