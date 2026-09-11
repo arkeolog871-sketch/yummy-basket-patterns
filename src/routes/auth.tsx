@@ -117,20 +117,33 @@ function AuthPage() {
     if (isAndroidHandoff) setAndroidHandoffPending(true);
     let cancelled = false;
     setGoogleCompleting(true);
-    void completeGoogleOAuthFromCallback().then((result) => {
-      if (cancelled) return;
-      stripOAuthCallbackFromUrl();
-      if (result?.ok === false) {
-        toast.error(result.error);
+    // Beklenmedik bir durumda ekran sonsuza kadar bekleme metninde kalmasın.
+    const release = window.setTimeout(() => {
+      if (!cancelled) setGoogleCompleting(false);
+    }, 12_000);
+    void completeGoogleOAuthFromCallback()
+      .then((result) => {
+        if (cancelled) return;
+        stripOAuthCallbackFromUrl();
+        if (result?.ok === false) {
+          toast.error(result.error);
+          setAndroidHandoffPending(false);
+        }
+        if (result?.ok === true && isAndroidHandoff) return;
         setGoogleCompleting(false);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        stripOAuthCallbackFromUrl();
+        toast.error(
+          humanizeOAuthError(error instanceof Error ? error.message : "Google girişi tamamlanamadı."),
+        );
         setAndroidHandoffPending(false);
-        return;
-      }
-      if (isAndroidHandoff) return;
-      setGoogleCompleting(false);
-    });
+        setGoogleCompleting(false);
+      });
     return () => {
       cancelled = true;
+      window.clearTimeout(release);
     };
   }, []);
 
@@ -143,20 +156,34 @@ function AuthPage() {
     if (isAndroidHandoff) setAppleAndroidHandoffPending(true);
     let cancelled = false;
     setAppleCompleting(true);
-    void completeAppleOAuthFromCallback().then((result) => {
-      if (cancelled) return;
-      stripOAuthCallbackFromUrl();
-      if (result?.ok === false) {
-        toast.error(result.error);
+    const release = window.setTimeout(() => {
+      if (!cancelled) setAppleCompleting(false);
+    }, 12_000);
+    void completeAppleOAuthFromCallback()
+      .then((result) => {
+        if (cancelled) return;
+        stripOAuthCallbackFromUrl();
+        if (result?.ok === false) {
+          toast.error(result.error);
+          setAppleAndroidHandoffPending(false);
+        }
+        if (result?.ok === true && isAndroidHandoff) return;
         setAppleCompleting(false);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        stripOAuthCallbackFromUrl();
+        toast.error(
+          humanizeAppleOAuthError(
+            error instanceof Error ? error.message : "Apple girişi tamamlanamadı.",
+          ),
+        );
         setAppleAndroidHandoffPending(false);
-        return;
-      }
-      if (isAndroidHandoff) return;
-      setAppleCompleting(false);
-    });
+        setAppleCompleting(false);
+      });
     return () => {
       cancelled = true;
+      window.clearTimeout(release);
     };
   }, []);
 
@@ -182,16 +209,14 @@ function AuthPage() {
       /* private mode */
     }
 
-    if (access.isFounder) {
-      navigate({ to: "/kurucu", replace: true });
-      return;
-    }
-    if (access.isVendor) {
-      navigate({ to: "/vendor/dashboard", replace: true });
+    // Rolün varsayılan hedefi: sahip ve bölge yöneticisi /kurucu, işletme /vendor/dashboard.
+    if (access.homePath !== "/") {
+      navigate({ to: access.homePath, replace: true });
       return;
     }
     navigate({ to: redirect === "/odeme" ? "/odeme" : "/", replace: true });
-  }, [user, access.loading, access.isFounder, access.isVendor, redirect, navigate]);
+  }, [user, access.loading, access.homePath, redirect, navigate]);
+
 
   const vendorPortal = portal === "vendor";
 
