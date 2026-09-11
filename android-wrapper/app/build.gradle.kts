@@ -18,8 +18,8 @@ android {
         applicationId = "online.uygulamamcebimde.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 19
-        versionName = "2.8"
+        versionCode = 20
+        versionName = "2.9"
     }
 
     val signingStore = providers.gradleProperty("android.keystorePath")
@@ -76,6 +76,9 @@ android {
 dependencies {
     implementation("androidx.core:core:1.13.1")
     implementation("androidx.browser:browser:1.8.0")
+    // Native Google hesap seçimi (Custom Tab'a hiç çıkmadan) — Google ile
+    // giriş sonrası uygulamaya otomatik dönmeme sorununu kökten kapatır.
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
     // Her zaman dahil (derleme zamanında google-services.json gerektirmez);
     // yapılandırılmadan kullanılırsa PushService/MainActivity.syncFcmToken
     // sessizce no-op kalır (try/catch), FirebaseMessagingService kaydı da

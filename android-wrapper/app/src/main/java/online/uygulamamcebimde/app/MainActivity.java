@@ -48,6 +48,13 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.tasks.Task;
+
 import java.io.File;
 import java.util.ArrayList;
 
@@ -59,8 +66,20 @@ public class MainActivity extends Activity {
     private static final int LOCATION_PERMISSION_REQUEST = 1004;
     private static final int WEB_CAMERA_PERMISSION_REQUEST = 1005;
     private static final int NOTIFICATION_PERMISSION_REQUEST = 1006;
+    private static final int GOOGLE_NATIVE_SIGN_IN_REQUEST = 1007;
     private static final String ORDER_CHANNEL_ID = "orders";
     private static final int LOAD_TIMEOUT_MS = 25000;
+    /**
+     * "Web application" istemcisinin Client ID'si (google-oauth.ts'teki
+     * tarayıcı akışıyla aynı) — ID token'ın Supabase'in doğrulayabileceği
+     * audience ile üretilmesi için requestIdToken() burayı ister. Android'de
+     * kayıtlı ayrı "Android" istemcisi (paket adı + imza sertifikası) sadece
+     * bu uygulamanın bu Web istemcisi adına native girişe izinli olduğunu
+     * doğrular; kodda hiç kullanılmaz. Client ID gizli değil (web paketinde
+     * de görünür durumda), sabit kodlanması güvenlik riski oluşturmaz.
+     */
+    private static final String GOOGLE_WEB_CLIENT_ID =
+            "690305033747-s0q65dae6feqfpndvrcmlmoictvehp99.apps.googleusercontent.com";
 
     private WebView webView;
     private View loadingOverlay;
@@ -74,6 +93,7 @@ public class MainActivity extends Activity {
     private PermissionRequest webPermissionRequest;
     private boolean askedNotificationPermission;
     private boolean pageReady;
+    private GoogleSignInClient googleSignInClient;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Runnable loadTimeout = this::showLoadError;
 
@@ -349,6 +369,10 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == GOOGLE_NATIVE_SIGN_IN_REQUEST) {
+            handleGoogleNativeSignInResult(data);
+            return;
+        }
         if (requestCode != FILE_CHOOSER_REQUEST) {
             super.onActivityResult(requestCode, resultCode, data);
             return;
@@ -749,6 +773,16 @@ public class MainActivity extends Activity {
         public void requestNotifications() {
             runOnUiThread(() -> requestNotificationPermissionIfNeeded());
         }
+
+        @JavascriptInterface
+        public boolean supportsNativeGoogleSignIn() {
+            return true;
+        }
+
+        @JavascriptInterface
+        public void signInWithGoogleNative() {
+            runOnUiThread(MainActivity.this::startNativeGoogleSignIn);
+        }
     }
 
     private boolean loadIncomingOAuthIntent(Intent intent) {
@@ -809,6 +843,47 @@ public class MainActivity extends Activity {
                 Toast.makeText(this, "Google girişi için tarayıcı açılamadı.", Toast.LENGTH_LONG).show();
             }
         }
+    }
+
+    /**
+     * Google hesap seçimini tamamen uygulama içinde, native bir sistem
+     * diyaloğuyla yapar — Chrome Custom Tab'a hiç çıkılmaz. Bu yüzden
+     * "otomatik uygulamaya dönmüyor" sorunu bu yolda yapısal olarak imkansız.
+     */
+    private void startNativeGoogleSignIn() {
+        try {
+            if (googleSignInClient == null) {
+                GoogleSignInOptions options = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                        .requestIdToken(GOOGLE_WEB_CLIENT_ID)
+                        .requestEmail()
+                        .build();
+                googleSignInClient = GoogleSignIn.getClient(this, options);
+            }
+            // Hesap seçici her seferinde açılsın; önceki oturumu sessizce yeniden kullanma.
+            googleSignInClient.signOut().addOnCompleteListener(ignored ->
+                    startActivityForResult(googleSignInClient.getSignInIntent(), GOOGLE_NATIVE_SIGN_IN_REQUEST));
+        } catch (Exception ignored) {
+            deliverGoogleIdTokenToWebView(null);
+        }
+    }
+
+    private void handleGoogleNativeSignInResult(Intent data) {
+        Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
+        try {
+            GoogleSignInAccount account = task.getResult(ApiException.class);
+            deliverGoogleIdTokenToWebView(account != null ? account.getIdToken() : null);
+        } catch (ApiException e) {
+            // Kod 12501 kullanıcının hesap seçmeden vazgeçmesidir; sessizce yut.
+            deliverGoogleIdTokenToWebView(null);
+        }
+    }
+
+    /** idToken null/boşsa JS tarafı bunu "kullanıcı vazgeçti" olarak yorumlar. */
+    private void deliverGoogleIdTokenToWebView(String idToken) {
+        if (webView == null) return;
+        String safeToken = idToken == null ? "" : idToken.replace("\\", "\\\\").replace("'", "\\'");
+        String script = "window.__onNativeGoogleSignIn && window.__onNativeGoogleSignIn('" + safeToken + "');";
+        runOnUiThread(() -> webView.evaluateJavascript(script, null));
     }
 
     private boolean shouldLeaveWebView(String url) {
