@@ -169,27 +169,51 @@ export function isLikelyMobileDevice(): boolean {
 }
 
 /**
- * Akış bu tarayıcıda başladıysa (saklı PKCE kaydının nonce'u gelen `state` ile
- * eşleşiyorsa) kodu burada takas ederiz; Android uygulamasına devretmeyiz.
- * Devretme yalnızca kayıt olmayan, yani gerçekten uygulamadan başlayıp
- * tarayıcıda yetim kalan sekmeler için denenir.
+ * intent:// devretme yalnızca Android'de anlamlıdır. iPhone/iPad dokunmatik
+ * olduğu için `isLikelyMobileDevice()` true döndürür; bu yüzden aktarım kararı
+ * ayrı bir Android tespitine bağlanır (iOS asla bu dala girmez).
  */
-function startedInThisBrowser(): boolean {
-  if (typeof window === "undefined") return false;
-  const stored = readGoogleOAuthPkce();
-  if (!stored?.nonce) return false;
-  const state = new URLSearchParams(window.location.search).get("state") || "";
-  return Boolean(state) && stored.nonce === state;
+export function isAndroidDevice(userAgent?: string): boolean {
+  const ua = userAgent ?? (typeof navigator === "undefined" ? "" : navigator.userAgent);
+  if (!ua) return false;
+  if (/iPhone|iPad|iPod/i.test(ua)) return false;
+  return /Android/i.test(ua);
+}
+
+/**
+ * Saf karar fonksiyonu (test edilebilir): Google callback'i Android
+ * uygulamasına devretmeli miyiz?
+ *
+ * Devretme yalnızca şu durumda yapılır: gerçek bir Android tarayıcı sekmesi,
+ * yerleşik native köprü yok ve bu tarayıcıda başlatılmış bir PKCE kaydı yok
+ * (yani akış uygulamada başlamış, tarayıcıda yetim kalmış).
+ *
+ * ÖNEMLİ: Saklanan `nonce` ham değerdir, URL'deki `state` ise sunucuda
+ * mühürlenmiş `sc1...` değeridir; bu ikisi asla birebir eşleşmez. Bu yüzden
+ * "bu tarayıcıda başladı mı" kararı kaydın varlığına bakar; nonce/state
+ * doğrulaması sunucudaki kod takasında yapılır.
+ */
+export function decideGoogleOAuthHandoff(input: {
+  userAgent: string;
+  hasNativeBridge: boolean;
+  hasStoredPkce: boolean;
+  isCallback: boolean;
+}): boolean {
+  if (!input.isCallback) return false;
+  if (input.hasNativeBridge) return false;
+  if (!isAndroidDevice(input.userAgent)) return false;
+  return !input.hasStoredPkce;
 }
 
 function shouldHandoffGoogleOAuthToAndroidApp(): boolean {
   if (typeof window === "undefined") return false;
-  if (nativeOAuthBridge()) return false;
-  if (!isLikelyMobileDevice()) return false;
-  if (startedInThisBrowser()) return false;
-  return isGoogleOAuthCallbackParams();
+  return decideGoogleOAuthHandoff({
+    userAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
+    hasNativeBridge: Boolean(nativeOAuthBridge()),
+    hasStoredPkce: Boolean(readGoogleOAuthPkce()?.nonce),
+    isCallback: isGoogleOAuthCallbackParams(),
+  });
 }
-
 
 /**
  * True when this tab is an orphaned Android browser tab left behind after
@@ -200,6 +224,7 @@ function shouldHandoffGoogleOAuthToAndroidApp(): boolean {
 export function isOrphanedAndroidOAuthBrowser(): boolean {
   return shouldHandoffGoogleOAuthToAndroidApp();
 }
+
 
 function handoffGoogleOAuthToAndroidApp() {
   const search = window.location.search || "";

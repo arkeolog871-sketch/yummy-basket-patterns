@@ -113,16 +113,17 @@ export function isAppleOAuthCallbackParams(
 /**
  * Apple callback'i yalnızca bu tarayıcıda saklı "pending" kaydı varken
  * tanınır; yani akış her zaman burada başlamıştır ve kod burada takas edilir.
- * Android uygulamasına devretme bu yüzden hiç denenmez (aksi halde ekran
- * "Yetkilendirme tamamlanıyor" adımında kilitli kalıyordu).
+ * Devretme yalnızca gerçek Android'de ve pending kaydı yokken düşünülür;
+ * iPhone/iPad hiçbir koşulda intent:// dalına girmez.
  */
 function shouldHandoffAppleOAuthToAndroidApp(): boolean {
   if (typeof window === "undefined") return false;
   if (nativeOAuthBridge()) return false;
-  if (!isLikelyMobileDevice()) return false;
+  if (!isAndroidDevice()) return false;
   if (readAppleOAuthPending()) return false;
   return isAppleOAuthCallbackParams();
 }
+
 
 
 export function isOrphanedAndroidAppleOAuthBrowser(): boolean {
