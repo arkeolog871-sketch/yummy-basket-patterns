@@ -1,11 +1,11 @@
 # Yol haritası — bölgesel sayfa yöneticiliği
 
-- [ ] page_manager_roles tablosu + RLS + yardımcı fonksiyonlar (migration)
-- [ ] founderExists kaynaklı menü görünürlüğü hatası
-- [ ] getMyAccessContext/useAccess: isPageManager + regions
-- [ ] Header ve /kurucu erişim mantığı (isFounder || isPageManager)
-- [ ] Bölge yöneticisi için sınırlı panel sekmeleri
-- [ ] Sunucu taraflı bölge kontrolleri (işletme/ürün/sipariş/başvuru)
-- [ ] Sahip hesabı koruması (setUserRole, deleteUser)
-- [ ] PageManagerPanel (yetki ver/geri al)
-- [ ] typecheck + build
+- [x] page_manager_roles tablosu + RLS + yardımcı fonksiyonlar (migration)
+- [x] founderExists kaynaklı menü görünürlüğü hatası
+- [x] getMyAccessContext/useAccess: isPageManager + regions
+- [x] Header ve /kurucu erişim mantığı (isFounder || isPageManager)
+- [x] Bölge yöneticisi için sınırlı panel sekmeleri
+- [x] Sunucu taraflı bölge kontrolleri (işletme/ürün/sipariş/başvuru)
+- [x] Sahip hesabı koruması (setUserRole, deleteUser)
+- [x] PageManagerPanel (yetki ver/geri al)
+- [x] typecheck + build
