@@ -302,6 +302,9 @@ export async function startGoogleOAuth(): Promise<{ ok: true } | { ok: false; er
     return { ok: false, error: humanizeOAuthError(sealed.error) };
   }
   const state = sealed.state;
+  // State'i de sakla: giriş tarayıcı sekmesinde onaylanırsa uygulama bekleyen
+  // kodu bu state ile geri alıp girişi kendi içinde tamamlar.
+  persistGoogleOAuthPkce({ nonce, verifier, redirectUri, ts: Date.now(), state });
 
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   url.searchParams.set("client_id", clientId);
