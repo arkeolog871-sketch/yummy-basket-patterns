@@ -170,6 +170,10 @@ export const reviewBusinessApplication = createServerFn({ method: "POST" })
           detail: { name: application.name, slug: application.slug },
         },
         async () => {
+          const { notifyApplicantOfApplicationReview } = await import(
+            "./business-application-alert.server"
+          );
+
           if (data.action === "reject") {
             const { error } = await supabaseAdmin
               .from("business_applications")
@@ -181,6 +185,12 @@ export const reviewBusinessApplication = createServerFn({ method: "POST" })
               })
               .eq("id", data.id);
             if (error) throw new Error(error.message);
+            await notifyApplicantOfApplicationReview({
+              applicantUserId: application.applicant_user_id,
+              businessName: application.name,
+              approved: false,
+              founderNote: data.note,
+            });
             return { ok: true, approved: false as const };
           }
 
@@ -214,41 +224,55 @@ export const reviewBusinessApplication = createServerFn({ method: "POST" })
           });
           if (insertError) throw new Error(insertError.message);
 
-          const vendor = await ensureBusinessVendorAccount({
-            restaurantId: businessId,
-            businessName: application.name,
-            ownerName: application.contact_person,
-            email: application.contact_email,
-            phone: application.contact_phone,
-          });
+          try {
+            const vendor = await ensureBusinessVendorAccount({
+              restaurantId: businessId,
+              businessName: application.name,
+              ownerName: application.contact_person,
+              email: application.contact_email,
+              phone: application.contact_phone,
+            });
 
-          if (vendor.emailVerified) {
-            const { error: activeError } = await supabaseAdmin
-              .from("restaurants")
-              .update({ is_active: true })
-              .eq("id", businessId);
-            if (activeError) throw new Error(activeError.message);
+            if (vendor.emailVerified) {
+              const { error: activeError } = await supabaseAdmin
+                .from("restaurants")
+                .update({ is_active: true })
+                .eq("id", businessId);
+              if (activeError) throw new Error(activeError.message);
+            }
+
+            const { error: statusError } = await supabaseAdmin
+              .from("business_applications")
+              .update({
+                status: "approved",
+                founder_note: data.note,
+                reviewed_by: context.userId,
+                reviewed_at: new Date().toISOString(),
+              })
+              .eq("id", data.id);
+            if (statusError) throw new Error(statusError.message);
+
+            await notifyApplicantOfApplicationReview({
+              applicantUserId: application.applicant_user_id,
+              businessName: application.name,
+              approved: true,
+              contactEmail: application.contact_email,
+            });
+
+            return {
+              ok: true,
+              approved: true as const,
+              restaurantId: businessId,
+              verificationSent: vendor.verificationSent,
+              emailVerified: vendor.emailVerified,
+            };
+          } catch (error) {
+            // Vendor hesabı açılamazsa yeni eklenen işletme satırı sahipsiz kalmasın.
+            await supabaseAdmin.from("restaurants").delete().eq("id", businessId);
+            throw error;
           }
-
-          const { error: statusError } = await supabaseAdmin
-            .from("business_applications")
-            .update({
-              status: "approved",
-              founder_note: data.note,
-              reviewed_by: context.userId,
-              reviewed_at: new Date().toISOString(),
-            })
-            .eq("id", data.id);
-          if (statusError) throw new Error(statusError.message);
-
-          return {
-            ok: true,
-            approved: true as const,
-            restaurantId: businessId,
-            verificationSent: vendor.verificationSent,
-            emailVerified: vendor.emailVerified,
-          };
         },
+
       );
     }),
   );
