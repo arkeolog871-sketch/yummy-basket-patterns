@@ -143,6 +143,7 @@ export async function ensureBusinessVendorAccount(
   const { isEmailVerified } = await import("./otp.server");
   const email = input.email.trim().toLowerCase();
   const phone = normalizePhone(input.phone);
+  const ownerName = input.ownerName.trim();
 
   const { data: currentAssignment, error: currentAssignmentError } = await supabaseAdmin
     .from("vendor_assignments")
