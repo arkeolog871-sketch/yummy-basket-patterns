@@ -225,7 +225,7 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "signup") {
-        if (phone.replace(/\D/g, "").length < 10) {
+        if (phone.trim() && phone.replace(/\D/g, "").length < 10) {
           throw new Error("Telefon numarası en az 10 haneli olmalı.");
         }
         // Tek doğrulama akışı: hesap doğrulanmamış oluşturulur, 6 haneli kod gönderilir.
@@ -451,7 +451,7 @@ function AuthPage() {
           ) : null}
           {mode === "signup" ? (
             <div className="space-y-2">
-              <Label htmlFor="phone">Telefon numarası</Label>
+              <Label htmlFor="phone">Telefon numarası (opsiyonel)</Label>
               <Input
                 id="phone"
                 name="tel"
@@ -461,11 +461,10 @@ function AuthPage() {
                 placeholder="05xx xxx xx xx"
                 value={phone}
                 onChange={(event) => setPhone(event.target.value)}
-                required
                 className="rounded-xl"
               />
               <p className="text-xs text-muted-foreground">
-                Kurye iletişimi ve giriş doğrulaması için zorunludur.
+                Sipariş verirken kurye iletişimi için adres adımında istenir.
               </p>
             </div>
           ) : null}

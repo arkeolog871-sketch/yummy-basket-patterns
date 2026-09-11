@@ -1,11 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import {
-  OTP_INVALID_MESSAGE,
-  OTP_LENGTH_MESSAGE,
-  OTP_LOCK_MESSAGE,
-  PHONE_REQUIRED_MESSAGE,
-  parseExactOtpCode,
-} from "@/lib/otp";
+import { OTP_INVALID_MESSAGE, OTP_LENGTH_MESSAGE, OTP_LOCK_MESSAGE, parseExactOtpCode } from "@/lib/otp";
 import { otpSendSchema, otpVerifySchema, registerSchema } from "@/lib/otp-schemas";
 
 /**
@@ -59,7 +53,6 @@ export const verifyEmailVerificationCode = createServerFn({ method: "POST" })
       consumeIssuedOtp,
       createVerifiedSession,
       recordTermsAcceptance,
-      hasPhoneOnFile,
       MAX_FAILED_ATTEMPTS,
     } = await import("./otp.server");
 
@@ -84,15 +77,6 @@ export const verifyEmailVerificationCode = createServerFn({ method: "POST" })
         }
       }
       return { ok: false as const, error: OTP_INVALID_MESSAGE };
-    }
-
-    // Kod doğrulandıktan sonra kontrol edilir: aksi halde bu kontrol, kodun
-    // hiç doğrulanmasına gerek kalmadan hesabın var olup olmadığını (farklı
-    // hata mesajıyla) sızdıran bir e-posta numaralandırma kanalına dönüşürdü.
-    // Kayıt akışı telefonu zaten zorunlu tutar; bu, o akışı atlayan hiçbir
-    // hesabın telefon girmeden e-posta doğrulamasını tamamlayamamasını garanti eder.
-    if (!(await hasPhoneOnFile(data.email))) {
-      return { ok: false as const, error: PHONE_REQUIRED_MESSAGE };
     }
 
     const session = await createVerifiedSession(data.email);

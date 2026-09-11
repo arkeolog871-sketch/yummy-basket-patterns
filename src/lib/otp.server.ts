@@ -497,25 +497,6 @@ export async function findAuthUserIdByEmail(email: string): Promise<string | nul
   return null;
 }
 
-/**
- * E-posta doğrulaması tamamlanmadan önce hesapta bir telefon numarası kayıtlı
- * olmasını zorunlu kılar. Kayıt akışı zaten telefonu zorunlu tutuyor
- * (registerSchema); bu kontrol, o akışı atlayan (ör. gelecekte eklenecek
- * OAuth/manuel) hesaplar için de aynı kuralı sunucu tarafında garanti eder.
- */
-export async function hasPhoneOnFile(email: string): Promise<boolean> {
-  const userId = await findAuthUserIdByEmail(email);
-  if (!userId) return false;
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin
-    .from("profiles")
-    .select("phone")
-    .eq("id", userId)
-    .maybeSingle();
-  if (error) return false;
-  return Boolean(data?.phone && data.phone.trim().length >= 10);
-}
-
 /** Hesabın e-postası gerçekten doğrulanmış mı (sunucu tarafı kontrol). */
 export async function isEmailVerified(userId: string): Promise<boolean> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -539,14 +520,14 @@ export async function createUnverifiedAccount(input: {
   email: string;
   password: string;
   fullName: string;
-  phone: string;
+  phone?: string | undefined;
 }): Promise<{ ok: true } | { ok: false; existing: true } | { ok: false; error: string }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { error } = await supabaseAdmin.auth.admin.createUser({
     email: input.email,
     password: input.password,
     email_confirm: false,
-    user_metadata: { full_name: input.fullName, phone: input.phone },
+    user_metadata: { full_name: input.fullName, phone: input.phone || undefined },
   });
   if (!error) return { ok: true };
   if (/already|registered|exists/i.test(error.message)) {

@@ -27,5 +27,11 @@ export const registerSchema = z.object({
   email: authEmail,
   password: z.string().min(6, "Şifre en az 6 karakter olmalı").max(72),
   fullName: z.string().trim().min(2, "Ad soyad girin").max(120),
-  phone: z.string().trim().min(10, "Telefon numarası en az 10 haneli olmalı").max(20),
+  phone: z
+    .string()
+    .trim()
+    .min(10, "Telefon numarası en az 10 haneli olmalı")
+    .max(20)
+    .optional()
+    .or(z.literal("")),
 });
