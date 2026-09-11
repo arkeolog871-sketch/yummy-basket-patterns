@@ -2,6 +2,18 @@
 
 Hiçbir dosya, ayar veya veritabanı değiştirilmedi. Aşağıdakiler yalnızca inceleme sonuçlarıdır; sonda tek bir küçük değişiklik önerisi var.
 
+> **Sonradan düzeltme (2026-09-11):** Bu belgede ve o dönem eklenen kodda
+> kullanılan `52:F0:37:72:…` parmak izi, Play Console'da o tarihte gösterilen
+> App Signing sertifikasıydı. Aradan geçen sürede (Play Console'daki "Önceki
+> uygulama imzalama anahtarları" kaydına göre 3 Eylül 2026, 16:40 civarı)
+> **App Signing anahtarı değişmiş/rotasyona uğramış**, ama
+> `src/lib/android-assetlinks.ts` ve `public/.well-known/assetlinks.json`
+> hiç güncellenmemiş. Bu yüzden Android App Links doğrulaması aylarca yanlış
+> sertifikayla yayınlanmış olabilir. Güncel, doğru değer:
+> `6C:D3:38:83:2F:42:70:FD:C9:B6:65:1C:18:07:89:D7:03:61:DA:61:08:B8:89:8F:26:74:DD:FB:1A:BD:98:24`.
+> Bu belgenin geri kalanındaki `52:F0:37:72:…` referansları, o tarihteki
+> incelemenin tarihsel kaydı olarak bırakıldı — güncel değer için koda bakın.
+
 ## 1. Bulgular (doğrulanmış)
 
 - Android istemcisi Capacitor değil: `android-wrapper/` altında native WebView wrapper. Capacitor yalnızca iOS için (`capacitor.config.ts`), `android/` klasörü yok.
