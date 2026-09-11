@@ -3,7 +3,16 @@ import { toast } from "sonner";
 
 import { claimGoogleOAuthFromApp, hasPendingGoogleOAuth } from "@/lib/google-oauth";
 
-const POLL_INTERVAL_MS = 2500;
+const FIRST_POLL_MS = 2000;
+/**
+ * Sabit 2,5 sn'lik yoklama, 5 dakikalık pencerede tek başına ~120 istek
+ * üretiyordu; sunucudaki `google-oauth-claim` sınırı da 10 dakikada 120.
+ * Yarım bırakılan tek bir giriş denemesi bu bütçeyi doldurup röleyi 10 dakika
+ * boyunca susturuyordu (istek sınırı hatası sessizce yutuluyor). Kademeli
+ * gecikme aynı süreyi ~40 istekle karşılıyor; kullanıcı tarayıcıdan dönünce
+ * görünürlük olayı yoklamayı zaten anında ve baştaki hızla tetikliyor.
+ */
+const MAX_POLL_INTERVAL_MS = 8000;
 const MAX_POLL_MS = 5 * 60 * 1000;
 
 /**
@@ -39,18 +48,31 @@ export function GoogleOAuthRelayBridge() {
       }
     };
 
+    let timer: number | undefined;
+    let interval = FIRST_POLL_MS;
+
+    const schedule = () => {
+      if (cancelled) return;
+      timer = window.setTimeout(() => void attempt().finally(schedule), interval);
+      interval = Math.min(Math.round(interval * 1.5), MAX_POLL_INTERVAL_MS);
+    };
+
     const onVisible = () => {
-      if (document.visibilityState === "visible") void attempt();
+      if (document.visibilityState !== "visible") return;
+      // Kullanıcı tarayıcıdan uygulamaya döndü: gecikmeyi sıfırla ki bekleyen
+      // onay anında alınsın.
+      interval = FIRST_POLL_MS;
+      void attempt();
     };
 
     void attempt();
-    const timer = window.setInterval(() => void attempt(), POLL_INTERVAL_MS);
+    schedule();
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onVisible);
 
     return () => {
       cancelled = true;
-      if (timer) window.clearInterval(timer);
+      if (timer) window.clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);
     };
