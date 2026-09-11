@@ -8,6 +8,7 @@ const IN_APP_BROWSER =
 const PKCE_STORAGE_KEY = "silvan.google.oauth.pkce.v1";
 const ANDROID_APP_PACKAGE = "online.uygulamamcebimde.app";
 const GOOGLE_OAUTH_STATE_PREFIX = "sc1";
+export const GOOGLE_OAUTH_RETURN_PATH_KEY = "silvan-oauth-return";
 
 export const PRODUCTION_OAUTH_ORIGIN = "https://uygulamamcebimde.online";
 
