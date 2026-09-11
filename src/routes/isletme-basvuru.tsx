@@ -7,7 +7,8 @@ import { Store } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { startAppleOAuth, humanizeOAuthError as humanizeAppleOAuthError } from "@/lib/apple-oauth";
-import { startGoogleOAuth } from "@/lib/google-oauth";
+import { nativeOAuthBridge, startGoogleOAuth } from "@/lib/google-oauth";
+import { useNativeGoogleSignIn } from "@/hooks/useNativeGoogleSignIn";
 
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { slugify, formatDateTime } from "@/lib/format";
@@ -51,6 +52,13 @@ export const Route = createFileRoute("/isletme-basvuru")({
 function BusinessApplicationGate() {
   const { user, loading } = useAuth();
   const verified = Boolean(user && user.email_confirmed_at);
+  const { busy: googleNativeBusy, start: startNativeGoogle } = useNativeGoogleSignIn();
+  // Apple'ın Android için native bir giriş SDK'sı yok; tarayıcı tabanlı akış
+  // orada güvenilir uygulamaya dönemiyor ve Apple'ın kendi App Store
+  // incelemesi dışında bir gereksinim yok — Android'de hiç göstermiyoruz.
+  const [isAndroidNativeApp] = useState(() =>
+    typeof window === "undefined" ? false : Boolean(nativeOAuthBridge()),
+  );
 
   async function handleApple() {
     try {
@@ -66,6 +74,7 @@ function BusinessApplicationGate() {
   }
 
   async function handleGoogle() {
+    if (startNativeGoogle()) return;
     try {
       const result = await startGoogleOAuth();
       if (!result.ok) toast.error(result.error);
@@ -105,21 +114,25 @@ function BusinessApplicationGate() {
               type="button"
               variant="outline"
               className="w-full rounded-full"
+              disabled={googleNativeBusy}
               onClick={() => void handleGoogle()}
             >
-              Google ile devam et
+              {googleNativeBusy ? "Google hesabı seçiliyor…" : "Google ile devam et"}
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-3 w-full rounded-full"
-              onClick={() => void handleApple()}
-            >
-              Apple ile devam et
-            </Button>
+            {isAndroidNativeApp ? null : (
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-3 w-full rounded-full"
+                onClick={() => void handleApple()}
+              >
+                Apple ile devam et
+              </Button>
+            )}
             <p className="mt-2 text-center text-xs text-muted-foreground">
-              Google veya Apple ile doğrulama tamamlandıktan sonra bu sayfaya geri dönüp
-              başvurunuzu gönderebilirsiniz.
+              {isAndroidNativeApp
+                ? "Google ile doğrulama tamamlandıktan sonra bu sayfaya geri dönüp başvurunuzu gönderebilirsiniz."
+                : "Google veya Apple ile doğrulama tamamlandıktan sonra bu sayfaya geri dönüp başvurunuzu gönderebilirsiniz."}
             </p>
           </div>
         </div>

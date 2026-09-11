@@ -10,19 +10,18 @@ import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { VendorPhoneLogin } from "@/components/auth/VendorPhoneLogin";
 import {
   completeGoogleOAuthFromCallback,
-  completeNativeGoogleSignIn,
   GOOGLE_OAUTH_RETURN_PATH_KEY,
-  hasNativeGoogleSignIn,
   humanizeOAuthError,
   isGoogleOAuthCallbackParams,
   isInAppBrowser,
   isOrphanedAndroidOAuthBrowser,
+  nativeOAuthBridge,
   readGoogleOAuthPkce,
   returnToAndroidApp,
   startGoogleOAuth,
-  startNativeGoogleSignIn,
   stripOAuthCallbackFromUrl,
 } from "@/lib/google-oauth";
+import { useNativeGoogleSignIn } from "@/hooks/useNativeGoogleSignIn";
 import {
   APPLE_OAUTH_RETURN_PATH_KEY,
   completeAppleOAuthFromCallback,
@@ -35,13 +34,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-declare global {
-  interface Window {
-    /** android-wrapper (native Android), Google hesap seçimi bitince ID token'ı bunun üzerinden iletir. Boş string = kullanıcı vazgeçti. */
-    __onNativeGoogleSignIn?: (idToken: string) => void;
-  }
-}
 
 type AuthSearch = {
   redirect?: string;
@@ -99,6 +91,13 @@ function AuthPage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
+  // Apple'ın Android için native bir giriş SDK'sı yok; Android uygulamasında
+  // tarayıcı tabanlı akış güvenilir uygulamaya dönemiyor. Apple'ın kendi App
+  // Store incelemesi (Guideline 4.8) dışında bir gereksinim olmadığı için
+  // burada hiç göstermiyoruz — iOS/web'de aynen kalıyor.
+  const [isAndroidNativeApp] = useState(() =>
+    typeof window === "undefined" ? false : Boolean(nativeOAuthBridge()),
+  );
   const [pendingVerification, setPendingVerification] = useState<{
     email: string;
     startAtCode: boolean;
@@ -113,26 +112,7 @@ function AuthPage() {
     typeof window === "undefined" ? false : isAppleOAuthCallbackParams(),
   );
   const [appleAndroidHandoffPending, setAppleAndroidHandoffPending] = useState(false);
-  const [googleNativeBusy, setGoogleNativeBusy] = useState(false);
-
-  useEffect(() => {
-    window.__onNativeGoogleSignIn = (idToken: string) => {
-      setGoogleNativeBusy(false);
-      if (!idToken) return; // kullanıcı hesap seçmeden vazgeçti
-      setGoogleNativeBusy(true);
-      void completeNativeGoogleSignIn(idToken)
-        .then((result) => {
-          if (!result.ok) toast.error(result.error);
-        })
-        .catch(() => {
-          toast.error(humanizeOAuthError("Google girişi tamamlanamadı."));
-        })
-        .finally(() => setGoogleNativeBusy(false));
-    };
-    return () => {
-      delete window.__onNativeGoogleSignIn;
-    };
-  }, []);
+  const { busy: googleNativeBusy, start: startNativeGoogle } = useNativeGoogleSignIn();
 
   useEffect(() => {
     if (!oauthError) return;
@@ -292,10 +272,7 @@ function AuthPage() {
     // Android native köprüsü varsa Google hesap seçimi tamamen uygulama
     // içinde (tarayıcıya hiç çıkmadan) yapılır — Custom Tab'ın otomatik
     // uygulamaya dönmeme sorununu kökten ortadan kaldırır.
-    if (startNativeGoogleSignIn()) {
-      setGoogleNativeBusy(true);
-      return;
-    }
+    if (startNativeGoogle()) return;
     if (isInAppBrowser()) {
       toast.error(
         "Google girişi WhatsApp / Instagram / Facebook içi tarayıcıda çalışmaz. Bağlantıyı Chrome veya Safari ile açın.",
@@ -571,25 +548,29 @@ function AuthPage() {
             {googleNativeBusy ? "Google hesabı seçiliyor…" : "Google ile devam et"}
           </Button>
           <p className="mt-2 text-center text-xs text-muted-foreground">
-            Google, uygulamanın kendi alan adına döner. Android uygulamasında sistem tarayıcısı
-            (Chrome) açılır. WhatsApp, Instagram veya Facebook içi tarayıcıda çalışmaz. E-posta kodu
-            ile giriş her zaman kullanılabilir.
+            {isAndroidNativeApp
+              ? "Hesap seçimi uygulama içinde açılır, tarayıcıya çıkmaz."
+              : "Google, uygulamanın kendi alan adına döner. Android uygulamasında sistem tarayıcısı (Chrome) açılır. WhatsApp, Instagram veya Facebook içi tarayıcıda çalışmaz. E-posta kodu ile giriş her zaman kullanılabilir."}
           </p>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            className="mt-3 w-full rounded-full"
-            onClick={() => void handleApple()}
-          >
-            Apple ile devam et
-          </Button>
-          <p className="mt-2 text-center text-xs text-muted-foreground">
-            Apple ile giriş, uygulamanın kendi alan adına döner. iPhone veya iPad'de Safari ile en
-            iyi sonucu verir. Supabase Auth üzerinde Apple sağlayıcısı etkinleştirildikten sonra
-            çalışır.
-          </p>
+          {isAndroidNativeApp ? null : (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="mt-3 w-full rounded-full"
+                onClick={() => void handleApple()}
+              >
+                Apple ile devam et
+              </Button>
+              <p className="mt-2 text-center text-xs text-muted-foreground">
+                Apple ile giriş, uygulamanın kendi alan adına döner. iPhone veya iPad'de Safari ile en
+                iyi sonucu verir. Supabase Auth üzerinde Apple sağlayıcısı etkinleştirildikten sonra
+                çalışır.
+              </p>
+            </>
+          )}
         </>
       )}
 
