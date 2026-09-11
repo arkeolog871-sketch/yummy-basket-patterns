@@ -199,7 +199,8 @@ export async function ensureBusinessVendorAccount(
     const { data: createdUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       email_confirm: false,
-      user_metadata: { full_name: input.businessName, phone },
+      // Kişisel ad soyad: işletme adı restaurants.name'de tutulur.
+      user_metadata: { full_name: ownerName, phone, business_name: input.businessName },
     });
     if (createError) throw new Error(createError.message);
     matchedUserId = createdUser.user?.id ?? null;
@@ -248,14 +249,10 @@ export async function ensureBusinessVendorAccount(
     if (revokeRoleError) throw new Error(revokeRoleError.message);
   }
 
-  // full_name kasıtlı olarak yazılmıyor: matchedUserId zaten var olan bir
-  // müşteri e-postasıyla eşleşmiş olabilir, işletme adını onun kişisel
-  // adının üzerine yazmamak gerekiyor. Tamamen yeni oluşturulan hesaplarda
-  // (created=true) profiles satırı zaten auth trigger'ı ile
-  // user_metadata.full_name'den (yukarıda işletme adı) doldurulmuş olur.
+  // full_name = yetkilinin kişisel ad soyadı (işletme adı değil), bu yüzden yazılır.
   const { error: profileError } = await supabaseAdmin
     .from("profiles")
-    .upsert({ id: matchedUserId, phone }, { onConflict: "id" });
+    .upsert({ id: matchedUserId, phone, full_name: ownerName }, { onConflict: "id" });
   if (profileError) throw new Error(profileError.message);
 
   const { error: roleError } = await supabaseAdmin
