@@ -50,10 +50,9 @@ export function ApplicationsPanel({ onApproved }: { onApproved?: () => void }) {
   const reviewMutation = useMutation({
     mutationFn: (input: { id: string; action: "approve" | "reject"; note: string }) =>
       review({ data: { id: input.id, action: input.action, note: input.note || null } }),
-    onSuccess: (
-      result: { approved?: boolean; verificationSent?: boolean },
-      variables: { action: "approve" | "reject" },
-    ) => {
+    onSuccess: (result, variables) => {
+      const verificationSent =
+        "verificationSent" in result ? Boolean(result.verificationSent) : false;
       toast.success(
         variables.action === "reject"
           ? "Başvuru reddedildi"
