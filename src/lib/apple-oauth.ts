@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   isInAppBrowser,
   nativeOAuthBridge,
-  isLikelyMobileDevice,
+  isAndroidDevice,
   stripOAuthCallbackFromUrl,
   isGoogleOAuthCallbackParams,
   PRODUCTION_OAUTH_ORIGIN,
