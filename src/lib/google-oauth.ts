@@ -328,6 +328,9 @@ export async function completeGoogleOAuthFromCallback(): Promise<
       handledCodes.delete(code);
       return { ok: false, error: humanizeOAuthError(error.message) };
     }
+    // Google'dan gelen isim profildeki ad soyad boşsa otomatik yazılır.
+    const { fillFullNameFromProvider } = await import("@/lib/social-profile");
+    await fillFullNameFromProvider();
     return { ok: true };
   } catch (error) {
     handledCodes.delete(code);
