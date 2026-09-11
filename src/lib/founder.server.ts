@@ -156,12 +156,14 @@ export async function ensureBusinessVendorAccount(
       currentAssignment.user_id,
     );
     if (currentUser.user?.email?.trim().toLowerCase() === email) {
-      // full_name kasıtlı olarak yazılmıyor: bu hesap zaten var olan bir
-      // müşteri hesabı olabilir, işletme adını onun kişisel adının üzerine
-      // yazmamak gerekiyor (bkz. reviews.functions.ts'teki yorum yazarı adı).
+      // full_name artık işletme adı değil, yetkilinin kişisel ad soyadıdır;
+      // bu yüzden güvenle yazılabilir (bkz. reviews.functions.ts yorum yazarı adı).
       const { error: profileError } = await supabaseAdmin
         .from("profiles")
-        .upsert({ id: currentAssignment.user_id, phone }, { onConflict: "id" });
+        .upsert(
+          { id: currentAssignment.user_id, phone, full_name: ownerName },
+          { onConflict: "id" },
+        );
       if (profileError) throw new Error(profileError.message);
       const emailVerified = await isEmailVerified(currentAssignment.user_id);
       let verificationSent = false;
