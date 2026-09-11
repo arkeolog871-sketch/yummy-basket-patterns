@@ -26,6 +26,8 @@ type GoogleOAuthPkceRecord = {
   verifier: string;
   redirectUri: string;
   ts: number;
+  /** Mühürlü state; uygulama tarayıcıda bırakılan kodu bununla geri alır. */
+  state?: string;
 };
 
 type SilvanNativeOAuth = {
