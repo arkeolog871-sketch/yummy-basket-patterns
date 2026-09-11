@@ -1,5 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getUnreadNotificationCount } from "@/lib/notifications.functions";
 import { useEffect, useState } from "react";
 import {
   ShoppingBag,
@@ -42,6 +44,14 @@ export function Header() {
   const { areas } = useServiceAreas();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const fetchUnread = useServerFn(getUnreadNotificationCount);
+  const { data: unread } = useQuery({
+    queryKey: ["notifications-unread"],
+    queryFn: () => fetchUnread(),
+    enabled: Boolean(user),
+    refetchInterval: 30000,
+  });
+  const unreadCount = user ? (unread?.count ?? 0) : 0;
   const [city, setCity] = useState<string>("");
   const [hydrated, setHydrated] = useState(false);
   const [term, setTerm] = useState("");
