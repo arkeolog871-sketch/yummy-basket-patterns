@@ -1395,6 +1395,7 @@ function MenuItemPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
 type UserRow = {
   id: string;
   email: string;
+  full_name: string | null;
   phone: string | null;
   created_at: string;
   roles: string[];
@@ -1584,6 +1585,9 @@ function UserPanel({
             >
               <div className="min-w-0">
                 <p className="truncate font-medium">{user.email}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  Ad Soyad: {user.full_name?.trim() || "İsim belirtilmemiş"}
+                </p>
                 <p className="truncate text-xs text-muted-foreground">
                   {user.phone ? formatPhoneDisplay(user.phone) : "Telefon yok"}
                 </p>
