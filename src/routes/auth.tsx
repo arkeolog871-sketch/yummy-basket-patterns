@@ -345,10 +345,20 @@ function AuthPage() {
       ) : null}
 
       {vendorPortal ? (
-        <div className="mt-8 rounded-3xl border border-border/70 bg-card p-4 shadow-card sm:p-6">
+        <div className="mt-8 space-y-4 rounded-3xl border border-border/70 bg-card p-4 shadow-card sm:p-6">
           <VendorPhoneLogin />
+          <div className="border-t border-border/70 pt-4 text-center">
+            <p className="text-sm text-muted-foreground">İşletmeniz yok mu?</p>
+            <Link
+              to="/isletme-basvuru"
+              className="mt-2 inline-flex w-full items-center justify-center rounded-full border border-border px-4 py-2 text-sm font-medium transition hover:bg-secondary"
+            >
+              Başvuru yapın
+            </Link>
+          </div>
         </div>
       ) : pendingVerification ? (
+
         <div className="mt-6 space-y-4 rounded-3xl border border-border/70 bg-card p-4 shadow-card sm:p-6">
           <p className="text-sm text-muted-foreground">
             Hesabınız oluşturuldu ancak <strong>e-posta doğrulanmadı</strong>.{" "}
