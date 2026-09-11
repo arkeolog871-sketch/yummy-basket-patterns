@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import {
   completeNativeGoogleSignIn,
   humanizeOAuthError,
+  nativeGoogleSignInReportsErrors,
   startNativeGoogleSignIn,
 } from "@/lib/google-oauth";
 
@@ -32,7 +33,16 @@ export function useNativeGoogleSignIn(onUnavailable?: () => void) {
   useEffect(() => {
     window.__onNativeGoogleSignIn = (idToken: string) => {
       if (!idToken) {
-        setBusy(false); // kullanıcı hesap seçmeden vazgeçti
+        setBusy(false);
+        // Hatayı ayırt edebilen build'lerde boş token kesinlikle vazgeçmedir;
+        // sessiz geç. Eski build'lerde (2.9 ve öncesi) aynı sinyal başarısız
+        // bir girişi de gizleyebilir — kullanıcıyı çıkmazda bırakmamak için
+        // tarayıcı yolunu elle öner.
+        if (!nativeGoogleSignInReportsErrors() && fallbackRef.current) {
+          toast("Google girişi tamamlanamadı.", {
+            action: { label: "Tarayıcı ile dene", onClick: () => fallbackRef.current?.() },
+          });
+        }
         return;
       }
       setBusy(true);

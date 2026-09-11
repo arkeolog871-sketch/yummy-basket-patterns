@@ -784,6 +784,18 @@ public class MainActivity extends Activity {
         public void signInWithGoogleNative() {
             runOnUiThread(MainActivity.this::startNativeGoogleSignIn);
         }
+
+        /**
+         * Bu build native giriş hatasını vazgeçmeden ayırt edip
+         * __onNativeGoogleSignInUnavailable() ile bildiriyor mu? 2.9 ve öncesi
+         * ikisini de boş token olarak gönderiyordu; web tarafı bu köprüyü
+         * göremezse boş token'ı "çıkmaz olabilir" sayıp kullanıcıya elle
+         * tarayıcı seçeneği sunar.
+         */
+        @JavascriptInterface
+        public boolean reportsNativeGoogleSignInErrors() {
+            return true;
+        }
     }
 
     private boolean loadIncomingOAuthIntent(Intent intent) {

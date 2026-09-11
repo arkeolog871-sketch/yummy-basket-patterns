@@ -39,6 +39,7 @@ type SilvanNativeOAuth = {
   openOAuth?: (url: string) => void;
   supportsNativeGoogleSignIn?: () => boolean;
   signInWithGoogleNative?: () => void;
+  reportsNativeGoogleSignInErrors?: () => boolean;
 };
 
 const handledCodes = new Set<string>();
@@ -58,6 +59,17 @@ export function nativeOAuthBridge(): SilvanNativeOAuth | null {
 export function hasNativeGoogleSignIn(): boolean {
   const native = nativeOAuthBridge();
   return Boolean(native?.supportsNativeGoogleSignIn?.());
+}
+
+/**
+ * Native köprü, gerçek hatayı kullanıcının vazgeçmesinden ayırt edebiliyor mu?
+ * 2.9 ve öncesi Android build'leri ikisini de boş ID token olarak bildiriyordu,
+ * bu yüzden orada boş token bir çıkmazı gizliyor olabilir. False dönerse çağıran
+ * taraf kullanıcıya tarayıcı ile devam etme seçeneğini elle sunmalı.
+ */
+export function nativeGoogleSignInReportsErrors(): boolean {
+  const native = nativeOAuthBridge();
+  return Boolean(native?.reportsNativeGoogleSignInErrors?.());
 }
 
 export function startNativeGoogleSignIn(): boolean {
