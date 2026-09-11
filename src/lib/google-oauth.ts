@@ -351,20 +351,27 @@ export async function completeGoogleOAuthFromCallback(): Promise<
 
   const stored = readGoogleOAuthPkce();
 
-  // Bu sekme akışı başlatmadıysa (uygulamadan açılan tarayıcı sekmesi): kodu
-  // sunucuda kısa süre bekleteceğiz, uygulama onu alıp girişi kendi içinde
-  // tamamlayacak. Ardından uygulamaya dönmeyi de deniyoruz.
+  // Bu sekme akışı başlatmadıysa (uygulamadan açılan tarayıcı sekmesi): önce
+  // otomatik intent:// devretmeyi SENKRON olarak dene. Bu navigasyon zaman
+  // duyarlı — bazı Chrome/OEM sürümleri, sayfa yüklendikten sonra araya bir
+  // await (ör. parkGoogleOAuthCode'un ağ isteği) girince script kaynaklı
+  // intent:// yönlendirmesini kullanıcı dokunuşu olmadığı gerekçesiyle
+  // sessizce engelliyor. Bu yüzden devretme her şeyden önce, senkron olarak
+  // denenir; sunucuda bırakma (park) ise devretme başarısız olursa
+  // GoogleOAuthRelayBridge'in yakalayabilmesi için arka planda, beklenmeden
+  // yapılır.
   if (!stored?.nonce) {
+    if (shouldHandoffGoogleOAuthToAndroidApp()) {
+      handoffGoogleOAuthToAndroidApp();
+      void parkGoogleOAuthCode({ data: { code, state } }).catch(() => {});
+      return { ok: true };
+    }
     let parked = false;
     try {
       const result = await parkGoogleOAuthCode({ data: { code, state } });
       parked = result.ok === true;
     } catch {
       parked = false;
-    }
-    if (shouldHandoffGoogleOAuthToAndroidApp()) {
-      handoffGoogleOAuthToAndroidApp();
-      return { ok: true };
     }
     if (parked) return { ok: true };
     return {
