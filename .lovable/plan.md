@@ -1,91 +1,28 @@
-# Bölgesel sayfa yöneticiliği (yetki devri)
+# Google OAuth redirect_uri_mismatch incelemesi
 
-## Tespit edilen kök neden (menü herkese görünüyor)
+## Amaç
+Kullanıcı Google ile giriş yaparken `redirect_uri_mismatch` (400) hatası alıyor. Kodda Google OAuth akışının `redirect_uri` değerini bulmak ve Google Cloud Console'daki **Authorized redirect URIs** listesine eklenmesi gereken doğru adresi rapor etmek. Bu turda kod değişikliği yapılmayacak.
 
-`Header.tsx` menüyü şu koşulla gösteriyor: `isFounder || (!founderExists && !access.isVendor)`.
-`founderExists` değeri tarayıcıdan `user_roles` tablosunda "founder" sayımıyla hesaplanıyor; fakat
-veritabanı kuralları normal kullanıcıya yalnızca **kendi** rol satırlarını görme izni veriyor. Bu yüzden
-normal bir müşteride sayım 0 dönüyor, `founderExists` yanlışlıkla `false` oluyor ve menü açılıyor.
-Doğrulandı: `user_roles` üzerinde yalnızca "kendi satırını gör" + admin/founder politikaları var.
+## Kodda bulunan mantık
+`src/lib/google-oauth.ts` içindeki `googleOAuthRedirectUri()` şöyle çalışır:
 
-Ayrıca: şu anda tek sahip hesabı var (founder rolü tek kullanıcıda). Bu hesap "owner" kabul edilecek.
+- Üretim alan adları (`uygulamamcebimde.online` veya `www.uygulamamcebimde.online`) için `redirect_uri` her zaman `https://uygulamamcebimde.online/auth` olarak sabitlenir.
+- `www` alt alan adından başlasa bile apex alan adına (`uygulamamcebimde.online`) yönlendirilir; çünkü Google `www` ile apex arasındaki 302 yönlendirmesini redirect URI eşleşmesinde kabul etmez.
+- Önizleme / localhost ortamlarında o anki origin + `/auth` kullanılır.
 
-## Ne yapılacak
+Google authorization URL'i `https://accounts.google.com/o/oauth2/v2/auth` üzerinden doğrudan çağrılır; dönüş adresi uygulamanın kendi `/auth` rotasıdır, Supabase callback değildir.
 
-1. **Menü görünürlüğü düzeltilir.** Menü öğesi yalnızca sunucudan doğrulanan yetkiye göre çizilir:
-   sahip (owner) veya sahibin yetkilendirdiği bölge yöneticisi. Diğer herkeste hiç render edilmez
-   (`founderExists` tahmini koşul tamamen kaldırılır).
+## Google Cloud Console'a eklenecek URI
+```text
+https://uygulamamcebimde.online/auth
+```
 
-2. **Bölgesel yetki tablosu.** Sahip, bir kullanıcıya belirli şehir/ilçe (mahalle alanı ile) için
-   panel yetkisi verir. Yetki listesi panelden verilir/geri alınır.
+Ek notlar:
+- Sonunda `/` olmamalı (`.../auth/` değil).
+- Sorgu parametresi, hash veya farklı protokol olmamalı.
+- `https://www.uygulamamcebimde.online/auth` ayrıca eklenmek zorunda değil; kod www'den gelen isteği de apex URI'sine sabitliyor.
+- Eğer preview URL'den de Google girişi test edilecekse o preview URL'nin `/auth` yolu da (örn. `https://id-preview--...lovable.app/auth`) izin listesinde olmalı, ancak rapor edilen üretim hatası için yalnızca yukarıdaki URI yeterli.
 
-3. **Panel iki modda çalışır.**
-   - Sahip: bugünkü tüm sekmeler.
-   - Bölge yöneticisi: yalnızca kendi bölgesindeki İşletmeler, Başvurular, Menü kategorileri,
-     Ürünler ve Siparişler sekmeleri. Tema/görünüm, kullanıcılar, roller, güvenlik, denetim kaydı,
-     harita anahtarı, reklamlar, silme talepleri, bölge/kategori tanımları görünmez.
-
-4. **Sahip kimliği korunur.** Bölge yöneticisi hiçbir koşulda kullanıcı/rol yönetimine erişemez;
-   sahibin hesabını silemez, pasifleştiremez, rolünü değiştiremez. Bu kısıt hem arayüzde hem
-   sunucu tarafında zorlanır.
-
-## Veritabanı
-
-Yeni tablo `public.page_manager_roles`:
-
-| alan | tip | not |
-| --- | --- | --- |
-| id | uuid pk | |
-| user_id | uuid → auth.users | yetkilendirilen kişi |
-| granted_by | uuid → auth.users | yetkiyi veren sahip |
-| city | text | zorunlu |
-| district | text | zorunlu (`service_areas` listesinden seçilir) |
-| is_active | boolean | varsayılan true |
-| created_at / updated_at | timestamptz | updated_at trigger'ı ile |
-
-- `unique (user_id, city, district)`, index `(user_id) where is_active`.
-- GRANT: `authenticated` → SELECT; `service_role` → ALL. Yazma işlemleri yalnızca sunucu tarafından.
-- RLS:
-  - kullanıcı yalnızca kendi satırlarını görebilir,
-  - founder (sahip) tüm satırları görüp yönetebilir,
-  - INSERT/UPDATE/DELETE için `authenticated` rolüne politika verilmez (yalnızca sahip/servis).
-- Yeni yardımcı fonksiyonlar (security definer, `search_path = public`):
-  - `is_page_manager(_user_id uuid) returns boolean`
-  - `manages_region(_user_id uuid, _city text, _district text) returns boolean`
-  Bunlar hem sunucu kontrollerinde hem gerekli RLS ifadelerinde kullanılır.
-- `restaurants` üzerine bölge yöneticisi için okuma/yazma politikası eklenmez; yazmalar sunucu
-  fonksiyonlarından, bölge kontrolü yapıldıktan sonra gerçekleşir (mevcut mimariyle aynı).
-
-## Sunucu tarafı
-
-- `founder.server.ts`: yeni `assertPanelAccess(supabase, userId, claims)` → `{ isOwner, regions }`.
-  Sahip için mevcut `assertFounder` (e-posta doğrulaması + 2FA) aynen çalışır; bölge yöneticisi için
-  e-posta doğrulaması ve aktif yetki satırı kontrol edilir.
-- Bölgeye bağlanabilen fonksiyonlar bölge filtresi/kontrolü kazanır: `listAdminData`,
-  `listBusinessCatalog`, `saveBusiness`, `deleteBusiness`, `updateOrderStatus`, `saveMenuCategory`,
-  `deleteMenuCategory`, `saveMenuItem`, `deleteMenuItem`, `listBusinessApplications`,
-  `reviewBusinessApplication`. Hedef kaydın `city`/`district` değeri yetkili bölgeler arasında
-  değilse `Forbidden`.
-- Kalan tüm yönetim fonksiyonları (`setUserRole`, `deleteUser`, `createStaffUser`,
-  `setVendorAssignment`, branding/tipografi/hero/iletişim, reklam, harita, taksonomi, güvenlik,
-  denetim, silme talepleri, sistem hataları) `assertFounder` ile sahibe kapalı kalır — bölge
-  yöneticisi bunlara erişemez.
-- `setUserRole`/`deleteUser` içine ek koruma: hedef kullanıcı founder rolü taşıyorsa yalnızca o
-  hesabın kendisi işlem yapabilir; founder rolünün verilmesi/geri alınması yalnızca sahibe açıktır.
-- Yeni fonksiyonlar `src/lib/page-managers.functions.ts`: `listPageManagers`, `grantPageManager`,
-  `revokePageManager` (hepsi `assertFounder` + `audited` ile denetim kaydına yazar).
-
-## Arayüz
-
-- `getMyAccessContext` artık `isPageManager` ve `regions` döner; `useAccess` bunları yayar.
-- `Header.tsx`: menü öğesi koşulu `access.isFounder || access.isPageManager`.
-- `kurucu.tsx`: erişim kontrolü `useAccess` üzerinden; bölge yöneticisinde yalnızca izinli sekmeler
-  render edilir ve başlıkta yetkili bölgeler gösterilir.
-- Yeni `src/components/founder/PageManagerPanel.tsx` (yalnızca sahip sekmesi): kullanıcı arama +
-  şehir/ilçe seçimi ile yetki verme, mevcut yetkilerin listesi ve "Yetkiyi kaldır" düğmesi.
-
-## Doğrulama
-
-- Migration sonrası tip dosyası yenilenince typecheck + build.
-- Sahip / bölge yöneticisi / normal kullanıcı için menü görünürlüğü ve panel sekmeleri kontrol edilir.
-- Bölge dışı bir işletmede güncelleme denemesinin sunucu tarafında reddedildiği doğrulanır.
+## Çıktı
+Kullanıcıya raporlanacak doğru redirect URI:
+**`https://uygulamamcebimde.online/auth`**
