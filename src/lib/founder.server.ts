@@ -93,6 +93,8 @@ export async function anonymizeUserOrders(userId: string): Promise<void> {
 type BusinessVendorInput = {
   restaurantId: string;
   businessName: string;
+  /** Yetkilinin kişisel ad soyadı — profiles.full_name'e yazılır. */
+  ownerName: string;
   email: string;
   phone: string;
 };
