@@ -866,6 +866,16 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
             onChange={(event) => setForm({ ...form, contact_phone: event.target.value })}
             required
           />
+          <Input
+            placeholder="Yetkili ad soyad (kişisel isim)"
+            autoComplete="name"
+            value={form.contact_person}
+            onChange={(event) => setForm({ ...form, contact_person: event.target.value })}
+            required
+          />
+          <p className="text-xs text-muted-foreground">
+            İşletme adı ayrı bir alandır; buraya işletmeyi yöneten kişinin ad soyadını yazın.
+          </p>
         </div>
         <div className="flex items-center justify-between rounded-2xl border border-border p-3">
           <span className="text-sm">Yayında</span>
