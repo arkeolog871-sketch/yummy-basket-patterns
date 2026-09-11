@@ -18,20 +18,32 @@ export const getMyAccessContext = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) =>
     runServerFn(async () => {
-      const { isFounderUser } = await import("./founder.server");
+      const { isFounderUser, listPageManagerRegions } = await import("./founder.server");
       const { getVendorRestaurantId } = await import("./vendor.server");
       const { isEmailVerified } = await import("./otp.server");
-      const [isFounder, restaurantId, emailVerified] = await Promise.all([
+      const [isFounder, restaurantId, emailVerified, regions] = await Promise.all([
         isFounderUser(context.supabase, context.userId),
         getVendorRestaurantId(context.supabase, context.userId),
         isEmailVerified(context.userId),
+        listPageManagerRegions(context.userId),
       ]);
+      const isPageManager = !isFounder && regions.length > 0;
       return {
         isFounder,
+        /** Sahibin bölgesel olarak yetkilendirdiği sayfa yöneticisi. */
+        isPageManager,
+        /** Bölge yöneticisinin yetkili olduğu şehir/ilçe listesi. */
+        regions,
         isVendor: Boolean(restaurantId),
         restaurantId,
         emailVerified,
-        role: isFounder ? "founder" : restaurantId ? "vendor" : "customer",
+        role: isFounder
+          ? "founder"
+          : isPageManager
+            ? "page_manager"
+            : restaurantId
+              ? "vendor"
+              : "customer",
       } as const;
     }),
   );
