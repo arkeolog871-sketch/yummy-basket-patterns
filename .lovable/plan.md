@@ -1,33 +1,24 @@
-# Google girişinin "Yetkilendirme tamamlanıyor…" ekranında takılması
+# iPhone Google OAuth callback düzeltme planı
 
-## Kök neden (tespit edildi)
+## Doğrulanan kök neden
 
-Sorun bölge yöneticiliği yetkisiyle ilgili **değil**. `page_manager_roles`, `assertPanelAccess` ve `assertVerifiedEmail` kontrolleri Google callback akışında hiç çağrılmıyor — callback yalnızca kod takası + oturum kurma yapıyor.
+- Google girişinde tarayıcıya kaydedilen değer ham `nonce`, callback URL’sindeki `state` ise sunucuda mühürlenmiş `sc1...` değeridir. Mevcut kontrol bu iki farklı değeri doğrudan karşılaştırdığı için aynı tarayıcıda başlayan akışı bile “yetim callback” sayıyor.
+- `isLikelyMobileDevice()` Android dışındaki dokunmatik cihazları da mobil kabul ediyor. Bu nedenle iPhone Safari/Chrome, Android’e özel `intent://` aktarım dalına giriyor.
+- Sonuç olarak iPhone callback’i kod takasına geçmeden Android uygulamasına aktarılmaya çalışılıyor ve `/auth` bekleme ekranında kalıyor.
+- `dilanakay5@gmail.com` hesabı doğrulanmış durumda; son başarılı giriş 9 Eylül. Son denemelerde auth tarafında yeni token/oturum isteği veya hesap kaynaklı hata yok. Bu, akışın `page_manager_roles`, panel erişimi veya e-posta doğrulamasına ulaşmadan kesildiğini doğruluyor.
 
-Gerçek neden mobil cihaz tespiti:
+## Uygulama
 
-- `src/lib/google-oauth.ts` içindeki `shouldHandoffGoogleOAuthToAndroidApp()` şu koşulla `true` dönüyor: yerleşik uygulama köprüsü yok + cihaz mobil görünüyor (`Android` veya dokunmatik ekran) + adres çubuğunda callback parametreleri var.
-- `completeGoogleOAuthFromCallback()` bu durumda kodu **hiç takas etmeden** `intent://…` yönlendirmesi deniyor ve `{ ok: true }` dönüyor.
-- `src/routes/auth.tsx` bu senaryoda bilinçli olarak `googleCompleting` durumunu kapatmıyor → ekran "Yetkilendirme tamamlanıyor, lütfen bekleyin…" + "Uygulamaya dön" ile kilitli kalıyor.
-- Android uygulaması kurulu değilse (ya da paket adı eşleşmiyorsa) `intent://` hiçbir şey yapmıyor; butona basmak da aynı yönlendirmeyi tekrar denediği için giriş asla tamamlanmıyor.
+1. Android aktarımını yalnızca gerçek Android cihazlarda etkinleştir; iPhone/iPad hiçbir koşulda `intent://` dalına girmesin.
+2. “Bu tarayıcıda başladı” kontrolünü ham nonce ile mühürlü state’i karşılaştırmak yerine, geçerli yerel PKCE kaydının varlığına ve callback’in uygulamaya ait `sc1` state biçimine göre güvenli biçimde belirle. Nihai state/nonce doğrulaması mevcut sunucu kod takasında yapılmaya devam etsin.
+3. Yerel PKCE kaydı bulunan iPhone Safari/Chrome callback’ini doğrudan kod takası ve oturum oluşturma yoluna gönder.
+4. Gerçek Android uygulama→tarayıcı yetim callback aktarımını koru; masaüstü ve mobil web girişlerini etkileme.
+5. `/auth` ekranındaki zaman aşımı ve hata kapanışını koruyup, callback’in `ok: null` gibi olağandışı sonuçlarında kullanıcıya tekrar giriş yapabileceği açık bir hata durumu göster.
+6. Google OAuth birim testlerine iPhone Safari, iPhone Chrome, normal Android web ve Android yetim uygulama callback senaryolarını ekle.
 
-Yani: giriş **telefondaki normal tarayıcıdan** başlatıldığında her hesap için kilitleniyor. Sahip hesabının çalışması hesap türünden değil, girişin masaüstünden ya da uygulama içinden (köprü mevcut) yapılmasından kaynaklanıyor. Aynı hata Apple akışında da var.
+## Doğrulama
 
-Ek olarak tespit edilen küçük kusur: `/auth` giriş sonrası yönlendirmesi yalnızca `isFounder` ve `isVendor` durumlarını biliyor; bölge yöneticisi panele değil ana sayfaya gidiyor.
-
-## Yapılacak düzeltme
-
-1. `src/lib/google-oauth.ts`
-   - Handoff kararını "akış bu tarayıcıda başlamış mı" sinyaline bağla: bu tarayıcıda saklı PKCE kaydı varsa (nonce, gelen `state` ile eşleşiyorsa) **asla** handoff yapma, kodu burada takas et.
-   - Handoff sadece saklı PKCE kaydı yokken (gerçekten uygulamadan başlamış, tarayıcıda yetim kalmış sekme) denensin.
-   - `isOrphanedAndroidOAuthBrowser()` aynı yeni koşulu kullansın, böylece "Uygulamaya dön" kutusu yalnızca gerçekten gerekli olduğunda görünsün.
-2. `src/lib/apple-oauth.ts` — aynı düzeltmeyi simetrik uygula.
-3. `src/routes/auth.tsx`
-   - Takas sonucu `{ ok: null }` veya beklenmedik durumda ekran kilitlenmesin; hata olmadığında da bekleme durumu kapatılsın.
-   - Giriş sonrası yönlendirmede `useAccess().homePath` kullan; bölge yöneticisi `/kurucu` paneline gitsin.
-4. Doğrulama: `bunx tsgo --noEmit`, ilgili birim testleri (`tests/unit/google-oauth.test.ts`) ve build kontrolü. Handoff kararı için saklı PKCE kaydı olan/olmayan iki durumu kapsayan birim testi eklenecek.
-
-## Teknik notlar
-
-- Google `state` değeri `sc1` önekiyle sunucuda mühürlendiği için `isGoogleOAuthCallbackParams()` saklı kayıt olmadan da `true` dönüyor; handoff kararı bu yüzden yanlış tarafa düşüyordu. Yeni ayrım noktası `readGoogleOAuthPkce()?.nonce === state`.
-- Sunucu tarafı kod takası (`exchangeGoogleOAuthCode`) ve `supabase.auth.signInWithIdToken` akışı değişmiyor; yalnızca hangi durumda çağrıldığı düzeliyor.
+- İlgili OAuth birim testlerini çalıştır.
+- Typecheck ve uygulama derlemesini doğrula.
+- iPhone Safari kullanıcı aracısı ve dokunmatik sinyaliyle callback kararını test ederek Android aktarımının çağrılmadığını doğrula.
+- Android yetim callback senaryosunda uygulamaya dönüş davranışının korunduğunu doğrula.
