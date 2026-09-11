@@ -794,6 +794,7 @@ export const listUsers = createServerFn({ method: "GET" })
     if (profilesError) throw new Error(profilesError.message);
 
     const phoneByUser = new Map((profiles ?? []).map((row) => [row.id, row.phone]));
+    const fullNameByUser = new Map((profiles ?? []).map((row) => [row.id, row.full_name]));
     const rolesByUser = new Map<string, string[]>();
     for (const row of roles ?? []) {
       const bucket = rolesByUser.get(row.user_id);
