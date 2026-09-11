@@ -4,7 +4,10 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Store } from "lucide-react";
-import { RequireAuth } from "@/components/auth/RequireAuth";
+import { useAuth } from "@/hooks/useAuth";
+import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
+import { startAppleOAuth, humanizeOAuthError as humanizeAppleOAuthError } from "@/lib/apple-oauth";
+
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { slugify, formatDateTime } from "@/lib/format";
 import { toPublicErrorMessage } from "@/lib/public-error";
@@ -37,12 +40,78 @@ export const Route = createFileRoute("/isletme-basvuru")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: () => (
-    <RequireAuth requireVerified>
-      <BusinessApplicationPage />
-    </RequireAuth>
-  ),
+  component: BusinessApplicationGate,
 });
+
+/**
+ * Başvuru sayfasına girişte kimlik doğrulama: mevcut e-posta kodu (OTP) ve Apple
+ * akışları yeniden kullanılır; doğrulanınca asıl form açılır.
+ */
+function BusinessApplicationGate() {
+  const { user, loading } = useAuth();
+  const verified = Boolean(user && user.email_confirmed_at);
+
+  async function handleApple() {
+    try {
+      const result = await startAppleOAuth();
+      if (!result.ok) toast.error(humanizeAppleOAuthError(result.error));
+    } catch (error) {
+      toast.error(
+        humanizeAppleOAuthError(
+          error instanceof Error ? error.message : "Apple girişi başlatılamadı.",
+        ),
+      );
+    }
+  }
+
+  if (loading) {
+    return <p className="mx-auto max-w-3xl px-4 py-10 text-sm text-muted-foreground">Yükleniyor…</p>;
+  }
+
+  if (!verified) {
+    return (
+      <div className="mx-auto max-w-md px-4 py-10">
+        <header className="mb-6 text-center">
+          <p className="inline-flex items-center gap-2 rounded-full bg-accent/15 px-3 py-1 text-xs font-medium text-accent">
+            <Store className="size-4" /> İşletme başvurusu
+          </p>
+          <h1 className="mt-3 text-2xl font-semibold">Önce kimliğinizi doğrulayın</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            E-posta kodu veya Apple ile doğrulandıktan sonra başvuru formu açılır.
+          </p>
+        </header>
+
+        <div className="space-y-4 rounded-3xl border border-border bg-card p-5">
+          <EmailCodeLogin
+            idPrefix="application-otp"
+            allowSignUp
+            onVerified={() => {
+              toast.success("Doğrulama başarılı, formu doldurabilirsiniz.");
+            }}
+
+          />
+          <div className="border-t border-border/70 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full rounded-full"
+              onClick={() => void handleApple()}
+            >
+              Apple ile devam et
+            </Button>
+            <p className="mt-2 text-center text-xs text-muted-foreground">
+              Apple ile doğrulama tamamlandıktan sonra bu sayfaya geri dönüp başvurunuzu
+              gönderebilirsiniz.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return <BusinessApplicationPage />;
+}
+
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "İnceleniyor",
@@ -399,9 +468,16 @@ function BusinessApplicationPage() {
                 <p className="mt-1 text-xs text-muted-foreground">
                   {formatDateTime(row.created_at)} · /{row.slug}
                 </p>
+                {row.status === "approved" ? (
+                  <p className="mt-2 text-sm">
+                    İşletmenizi şu e-posta ile yönetebilirsiniz:{" "}
+                    <strong className="break-all">{row.contact_email}</strong>
+                  </p>
+                ) : null}
                 {row.founder_note ? (
                   <p className="mt-2 text-sm text-muted-foreground">Not: {row.founder_note}</p>
                 ) : null}
+
               </div>
             ))}
           </div>
