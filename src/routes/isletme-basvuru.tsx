@@ -105,13 +105,21 @@ function BusinessApplicationGate() {
               type="button"
               variant="outline"
               className="w-full rounded-full"
+              onClick={() => void handleGoogle()}
+            >
+              Google ile devam et
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3 w-full rounded-full"
               onClick={() => void handleApple()}
             >
               Apple ile devam et
             </Button>
             <p className="mt-2 text-center text-xs text-muted-foreground">
-              Apple ile doğrulama tamamlandıktan sonra bu sayfaya geri dönüp başvurunuzu
-              gönderebilirsiniz.
+              Google veya Apple ile doğrulama tamamlandıktan sonra bu sayfaya geri dönüp
+              başvurunuzu gönderebilirsiniz.
             </p>
           </div>
         </div>
