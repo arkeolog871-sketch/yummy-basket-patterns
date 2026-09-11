@@ -323,7 +323,7 @@ export type Database = {
           contact_email: string
           contact_person: string
           contact_phone: string
-          cover_image_url: string
+          cover_image_url: string | null
           created_at: string
           cuisines: string[]
           delivery_fee: number
@@ -334,7 +334,7 @@ export type Database = {
           is_open_manual: boolean
           latitude: number
           longitude: number
-          maps_url: string
+          maps_url: string | null
           min_order: number
           name: string
           opens_at: string | null
@@ -355,7 +355,7 @@ export type Database = {
           contact_email: string
           contact_person: string
           contact_phone: string
-          cover_image_url: string
+          cover_image_url?: string | null
           created_at?: string
           cuisines?: string[]
           delivery_fee?: number
@@ -366,7 +366,7 @@ export type Database = {
           is_open_manual?: boolean
           latitude: number
           longitude: number
-          maps_url: string
+          maps_url?: string | null
           min_order?: number
           name: string
           opens_at?: string | null
@@ -387,7 +387,7 @@ export type Database = {
           contact_email?: string
           contact_person?: string
           contact_phone?: string
-          cover_image_url?: string
+          cover_image_url?: string | null
           created_at?: string
           cuisines?: string[]
           delivery_fee?: number
@@ -398,7 +398,7 @@ export type Database = {
           is_open_manual?: boolean
           latitude?: number
           longitude?: number
-          maps_url?: string
+          maps_url?: string | null
           min_order?: number
           name?: string
           opens_at?: string | null
