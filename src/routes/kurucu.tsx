@@ -999,6 +999,7 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
                         maps_url: business.maps_url ?? "",
                         contact_email: business.contact_email ?? "",
                         contact_phone: business.contact_phone ?? "",
+                        contact_person: business.contact_person ?? "",
                         is_active: business.is_active,
                         opens_at: (business.opens_at ?? "").slice(0, 5),
                         closes_at: (business.closes_at ?? "").slice(0, 5),
