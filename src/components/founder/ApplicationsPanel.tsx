@@ -56,7 +56,7 @@ export function ApplicationsPanel({ onApproved }: { onApproved?: () => void }) {
       toast.success(
         variables.action === "reject"
           ? "Başvuru reddedildi"
-          : result?.verificationSent
+          : verificationSent
             ? "Başvuru onaylandı, işletme e-postasına doğrulama kodu gönderildi"
             : "Başvuru onaylandı ve işletme oluşturuldu",
       );
