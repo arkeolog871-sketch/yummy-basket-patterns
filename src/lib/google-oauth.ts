@@ -37,6 +37,8 @@ type GoogleOAuthPkceRecord = {
 
 type SilvanNativeOAuth = {
   openOAuth?: (url: string) => void;
+  supportsCredentialManagerGoogleSignIn?: () => boolean;
+  signInWithGoogleCredentialManager?: () => void;
 };
 
 const handledCodes = new Set<string>();
@@ -45,6 +47,45 @@ export function nativeOAuthBridge(): SilvanNativeOAuth | null {
   if (typeof window === "undefined") return null;
   const native = (window as Window & { SilvanNative?: SilvanNativeOAuth }).SilvanNative;
   return native && typeof native.openOAuth === "function" ? native : null;
+}
+
+/**
+ * Android uygulaması, Google'ın Credential Manager API'siyle hesap seçimini
+ * tarayıcıya hiç çıkmadan uygulama içinde yapabiliyor mu?
+ *
+ * Köprü adı kasıtlı olarak eski `signInWithGoogleNative`'den farklı: 2.10 ve
+ * öncesi build'ler kullanımdan kaldırılmış GoogleSignInClient'ı çağırıyor ve
+ * hesap seçildikten sonra token üretmeden sessizce başarısız oluyordu. Onların
+ * bu dala girmemesi, doğrudan çalışan tarayıcı akışını kullanması gerekiyor.
+ *
+ * `false` dönerse çağıran taraf `startGoogleOAuth()`'a düşmeli.
+ */
+export function startNativeGoogleSignIn(): boolean {
+  const native = nativeOAuthBridge();
+  if (!native?.signInWithGoogleCredentialManager) return false;
+  if (!native.supportsCredentialManagerGoogleSignIn?.()) return false;
+  native.signInWithGoogleCredentialManager();
+  return true;
+}
+
+/** MainActivity, hesap seçiminden aldığı ID token'ı buraya iletir. */
+export async function completeNativeGoogleSignIn(
+  idToken: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { error } = await supabase.auth.signInWithIdToken({ provider: "google", token: idToken });
+    if (error) return { ok: false, error: humanizeOAuthError(error.message) };
+    const { fillFullNameFromProvider } = await import("@/lib/social-profile");
+    await fillFullNameFromProvider();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: humanizeOAuthError(
+        error instanceof Error ? error.message : "Google girişi tamamlanamadı.",
+      ),
+    };
+  }
 }
 
 export function isInAppBrowser(): boolean {

@@ -21,6 +21,7 @@ import {
   startGoogleOAuth,
   stripOAuthCallbackFromUrl,
 } from "@/lib/google-oauth";
+import { useNativeGoogleSignIn } from "@/hooks/useNativeGoogleSignIn";
 import {
   APPLE_OAUTH_RETURN_PATH_KEY,
   completeAppleOAuthFromCallback,
@@ -111,6 +112,10 @@ function AuthPage() {
     typeof window === "undefined" ? false : isAppleOAuthCallbackParams(),
   );
   const [appleAndroidHandoffPending, setAppleAndroidHandoffPending] = useState(false);
+  // Native akış başlayıp başarısız olursa giriş sessizce ölmesin: tarayıcıya düş.
+  const { busy: googleNativeBusy, start: startNativeGoogle } = useNativeGoogleSignIn(() => {
+    void startBrowserGoogle();
+  });
 
   useEffect(() => {
     if (!oauthError) return;
@@ -266,7 +271,7 @@ function AuthPage() {
     }
   }
 
-  async function handleGoogle() {
+  async function startBrowserGoogle() {
     if (isInAppBrowser()) {
       toast.error(
         "Google girişi WhatsApp / Instagram / Facebook içi tarayıcıda çalışmaz. Bağlantıyı Chrome veya Safari ile açın.",
@@ -279,6 +284,12 @@ function AuthPage() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Google girişi başlatılamadı.");
     }
+  }
+
+  async function handleGoogle() {
+    // Credential Manager köprüsü varsa hesap seçimi uygulama içinde yapılır.
+    if (startNativeGoogle()) return;
+    await startBrowserGoogle();
   }
 
   async function handleApple() {
@@ -536,9 +547,10 @@ function AuthPage() {
             variant="outline"
             size="lg"
             className="mt-4 w-full rounded-full"
+            disabled={googleNativeBusy}
             onClick={() => void handleGoogle()}
           >
-            Google ile devam et
+            {googleNativeBusy ? "Google hesabı seçiliyor…" : "Google ile devam et"}
           </Button>
           <p className="mt-2 text-center text-xs text-muted-foreground">
             Google, uygulamanın kendi alan adına döner. Android uygulamasında sistem tarayıcısı

@@ -7,6 +7,15 @@
     @android.webkit.JavascriptInterface <methods>;
 }
 
+# --- Credential Manager / Sign in with Google ---
+# GoogleIdTokenCredential.createFrom(...) kimlik bilgisini Bundle anahtarları
+# üzerinden okur ve tip ayrımı TYPE_GOOGLE_ID_TOKEN_CREDENTIAL sabitiyle
+# yapılır; R8 bu sınıfları küçültürse hesap seçimi başarılı olsa bile ID token
+# çözülemez ve giriş sessizce başarısız olur.
+-keep class com.google.android.libraries.identity.googleid.** { *; }
+-keep class androidx.credentials.** { *; }
+-dontwarn androidx.credentials.**
+
 # --- Firebase Cloud Messaging ---
 # google-services.json isteğe bağlı (bkz. build.gradle.kts) ama bağımlılık
 # her zaman derlemeye dahil. Firebase'in kendi consumer-proguard kuralları
