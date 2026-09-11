@@ -159,10 +159,15 @@ export function Header() {
               ) : null}
             </Link>
           </Button>
-          <Button asChild variant="secondary" className="rounded-full">
+          <Button asChild variant="secondary" className="relative rounded-full">
             <Link to="/bildirimler" aria-label="Bildirimler">
               <Bell className="size-4" />
               <span className="hidden sm:inline">Bildirimler</span>
+              {unreadCount > 0 ? (
+                <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-accent text-[11px] font-semibold text-accent-foreground">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              ) : null}
             </Link>
           </Button>
 

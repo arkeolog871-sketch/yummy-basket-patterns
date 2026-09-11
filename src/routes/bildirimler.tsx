@@ -1,20 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
-import { toast } from "sonner";
-import { Bell, Megaphone } from "lucide-react";
-import { listMyOrders } from "@/lib/orders.functions";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { Bell } from "lucide-react";
+import {
+  listMyNotifications,
+  markNotificationsRead,
+  type NotificationItem,
+} from "@/lib/notifications.functions";
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import { PushNotificationButton } from "@/components/notifications/PushNotificationButton";
-import { formatPrice, formatDateTime, ORDER_STATUS_LABELS } from "@/lib/format";
+import { formatDateTime } from "@/lib/format";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import {
-  showNativeNotification,
-  loadSeenMessageIds,
-  saveSeenMessageIds,
-} from "@/lib/native-notify";
 
 export const Route = createFileRoute("/bildirimler")({
   head: () => ({
@@ -22,10 +19,10 @@ export const Route = createFileRoute("/bildirimler")({
       { title: "Bildirimler — SİLVAN CEBİMDE" },
       {
         name: "description",
-        content: "Sipariş durumu bildirimlerinizi SİLVAN CEBİMDE üzerinden takip edin.",
+        content: "Duyuru ve sipariş bildirimlerinizi SİLVAN CEBİMDE üzerinden takip edin.",
       },
       { property: "og:title", content: "Bildirimler — SİLVAN CEBİMDE" },
-      { property: "og:description", content: "Sipariş durumu bildirimlerinizi görüntüleyin." },
+      { property: "og:description", content: "Duyuru ve sipariş bildirimlerinizi görüntüleyin." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -38,52 +35,31 @@ export const Route = createFileRoute("/bildirimler")({
 });
 
 function NotificationsPage() {
-  const fetchOrders = useServerFn(listMyOrders);
+  const fetchNotifications = useServerFn(listMyNotifications);
+  const markRead = useServerFn(markNotificationsRead);
+  const queryClient = useQueryClient();
+
   const {
-    data: orders = [],
+    data: notifications = [],
     isLoading,
     isError,
     refetch,
   } = useQuery({
-    queryKey: ["orders"],
-    queryFn: () => fetchOrders(),
-    refetchInterval: 15000,
-  });
-
-  const { data: announcements = [] } = useQuery({
-    queryKey: ["admin-messages", "customers"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("admin_messages")
-        .select("id, title, body, created_at")
-        .in("target_type", ["all", "customers"])
-        .order("created_at", { ascending: false })
-        .limit(20);
-      if (error) throw new Error(error.message);
-      return data ?? [];
-    },
+    queryKey: ["notifications"],
+    queryFn: () => fetchNotifications(),
     refetchInterval: 30000,
   });
 
-  const notifiedMessageIds = useRef<Set<string> | null>(null);
+  const unreadIds = notifications.filter((item) => !item.read_at).map((item) => item.id);
 
+  // Sayfa açıldığında (veya yeni okunmamış bildirim geldiğinde) okundu işaretle.
   useEffect(() => {
-    if (!notifiedMessageIds.current) {
-      notifiedMessageIds.current = new Set(loadSeenMessageIds());
-    }
-    const seen = notifiedMessageIds.current;
-    let changed = false;
-    for (const announcement of announcements) {
-      if (seen.has(announcement.id)) continue;
-      seen.add(announcement.id);
-      changed = true;
-      toast.info(announcement.title, { description: announcement.body });
-      showNativeNotification(announcement.title, announcement.body);
-    }
-    if (changed) saveSeenMessageIds(seen);
-  }, [announcements]);
-
-  const active = orders.filter((o) => o.status !== "delivered" && o.status !== "cancelled");
+    if (unreadIds.length === 0) return;
+    void markRead({ data: { ids: unreadIds } }).then(() => {
+      void queryClient.invalidateQueries({ queryKey: ["notifications-unread"] });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unreadIds.join(",")]);
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-10">
@@ -94,26 +70,6 @@ function NotificationsPage() {
         <PushNotificationButton />
       </div>
 
-      {announcements.length > 0 ? (
-        <div className="mt-6 space-y-3">
-          <p className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
-            <Megaphone className="size-4" /> Duyurular
-          </p>
-          {announcements.map((announcement) => (
-            <div
-              key={announcement.id}
-              className="rounded-3xl border border-accent/30 bg-accent/5 p-4"
-            >
-              <p className="font-semibold">{announcement.title}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{announcement.body}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {formatDateTime(announcement.created_at)}
-              </p>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
       {isLoading ? (
         <p className="mt-6 text-sm text-muted-foreground">Yükleniyor…</p>
       ) : isError ? (
@@ -123,11 +79,11 @@ function NotificationsPage() {
             Tekrar dene
           </Button>
         </div>
-      ) : orders.length === 0 ? (
+      ) : notifications.length === 0 ? (
         <div className="mt-10 rounded-3xl border border-dashed border-border bg-card p-10 text-center">
           <p className="font-semibold">Henüz bildiriminiz yok</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Sipariş verdiğinizde durum bildirimleri burada görünür.
+            Duyurular ve sipariş durum bildirimleri burada görünür.
           </p>
           <Button asChild className="mt-5 rounded-full">
             <Link to="/restoranlar">Restoranları keşfet</Link>
@@ -135,40 +91,41 @@ function NotificationsPage() {
         </div>
       ) : (
         <div className="mt-6 space-y-3">
-          {active.length > 0 ? (
-            <p className="text-sm font-medium text-muted-foreground">
-              {active.length} aktif sipariş bildirimi
-            </p>
-          ) : null}
-          {orders.map((order) => (
-            <Link
-              key={order.id}
-              to="/siparis/$id"
-              params={{ id: order.id }}
-              className="flex items-start gap-4 rounded-3xl border border-border/70 bg-card p-4 shadow-card transition-colors hover:border-primary/40"
-            >
-              <span
-                className={`mt-1 size-2.5 shrink-0 rounded-full ${
-                  order.status === "delivered" || order.status === "cancelled"
-                    ? "bg-border"
-                    : "bg-accent"
-                }`}
-                aria-hidden
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">
-                  {order.restaurants?.name ?? "Restoran"} —{" "}
-                  {ORDER_STATUS_LABELS[order.status] ?? order.status}
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {formatDateTime(order.created_at)}
-                </p>
-              </div>
-              <p className="font-semibold">{formatPrice(Number(order.total))}</p>
-            </Link>
+          {notifications.map((item) => (
+            <NotificationCard key={item.id} item={item} />
           ))}
         </div>
       )}
     </div>
   );
+}
+
+function NotificationCard({ item }: { item: NotificationItem }) {
+  const unread = !item.read_at;
+  const content = (
+    <>
+      <span
+        className={`mt-1 size-2.5 shrink-0 rounded-full ${unread ? "bg-accent" : "bg-border"}`}
+        aria-hidden
+      />
+      <div className="min-w-0 flex-1">
+        <p className={`truncate ${unread ? "font-bold" : "font-medium"}`}>{item.title}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{item.body}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{formatDateTime(item.created_at)}</p>
+      </div>
+    </>
+  );
+
+  const className = `flex items-start gap-4 rounded-3xl border bg-card p-4 shadow-card transition-colors ${
+    unread ? "border-accent/40" : "border-border/70"
+  }`;
+
+  if (item.url) {
+    return (
+      <Link to={item.url} className={`${className} hover:border-primary/40`}>
+        {content}
+      </Link>
+    );
+  }
+  return <div className={className}>{content}</div>;
 }
