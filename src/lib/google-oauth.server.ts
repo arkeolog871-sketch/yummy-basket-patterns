@@ -1,7 +1,8 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
 export const GOOGLE_OAUTH_STATE_PREFIX = "sc1";
-export const GOOGLE_OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
+/** İstemci tarafındaki GOOGLE_OAUTH_PKCE_TTL_MS (google-oauth.ts) ile aynı tutulmalı. */
+export const GOOGLE_OAUTH_STATE_TTL_MS = 30 * 60 * 1000;
 export const PRODUCTION_OAUTH_ORIGIN = "https://uygulamamcebimde.online";
 
 export type GoogleOAuthStatePayload = {

@@ -10,6 +10,8 @@ import {
 } from "@/lib/google-oauth";
 
 const PENDING_STORAGE_KEY = "silvan.apple.oauth.pending.v1";
+/** google-oauth.ts'teki GOOGLE_OAUTH_PKCE_TTL_MS ile aynı gerekçe/süre. */
+const APPLE_OAUTH_PENDING_TTL_MS = 30 * 60 * 1000;
 const RETURN_PATH_KEY = "silvan.apple.oauth.return.v1";
 export const APPLE_OAUTH_RETURN_PATH_KEY = RETURN_PATH_KEY;
 const ANDROID_APP_PACKAGE = "online.uygulamamcebimde.app";
@@ -28,7 +30,7 @@ function readStorage(storage: Storage): AppleOAuthPending | null {
   try {
     const parsed = JSON.parse(raw) as AppleOAuthPending;
     if (typeof parsed?.ts !== "number") return null;
-    if (Date.now() - parsed.ts > 10 * 60 * 1000) {
+    if (Date.now() - parsed.ts > APPLE_OAUTH_PENDING_TTL_MS) {
       storage.removeItem(PENDING_STORAGE_KEY);
       return null;
     }

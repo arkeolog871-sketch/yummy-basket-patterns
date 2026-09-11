@@ -6,6 +6,15 @@ const IN_APP_BROWSER =
   /FBAN|FBAV|Instagram|Line\/|Twitter|LinkedInApp|MicroMessenger|Snapchat|TikTok|Pinterest|WhatsApp|Telegram|GSA\//i;
 
 const PKCE_STORAGE_KEY = "silvan.google.oauth.pkce.v1";
+/**
+ * Custom Tab'da hesap seçimi + şifre + 2FA gerçek kullanımda 10 dakikayı
+ * kolayca aşabiliyor; aşılınca "saklanan oturum bulunamadı" hatasıyla akış
+ * baştan başlatılmak zorunda kalıyordu. Google'ın kendi yetkilendirme kodu
+ * zaten çok daha kısa sürede geçersiz olduğu için bu sınırı gevşetmek ek
+ * risk oluşturmuyor; sunucudaki eşleniği (GOOGLE_OAUTH_STATE_TTL_MS) ile
+ * aynı tutulmalı.
+ */
+const GOOGLE_OAUTH_PKCE_TTL_MS = 30 * 60 * 1000;
 const ANDROID_APP_PACKAGE = "online.uygulamamcebimde.app";
 const GOOGLE_OAUTH_STATE_PREFIX = "sc1";
 export const GOOGLE_OAUTH_RETURN_PATH_KEY = "silvan-oauth-return";
@@ -90,7 +99,7 @@ function readStorage(storage: Storage): GoogleOAuthPkceRecord | null {
   try {
     const parsed = JSON.parse(raw) as GoogleOAuthPkceRecord;
     if (!parsed?.nonce || !parsed.verifier || !parsed.redirectUri) return null;
-    if (Date.now() - parsed.ts > 10 * 60 * 1000) {
+    if (Date.now() - parsed.ts > GOOGLE_OAUTH_PKCE_TTL_MS) {
       storage.removeItem(PKCE_STORAGE_KEY);
       return null;
     }
