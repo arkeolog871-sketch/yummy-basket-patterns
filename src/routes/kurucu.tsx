@@ -320,6 +320,7 @@ function FounderDashboard() {
           <TabsTrigger value="sektorler">Kategoriler</TabsTrigger>
           <TabsTrigger value="bolgeler">Bölgeler</TabsTrigger>
           <TabsTrigger value="isletmeler">İşletmeler</TabsTrigger>
+          <TabsTrigger value="basvurular">Başvurular</TabsTrigger>
           <TabsTrigger value="kategoriler">Menü kategorileri</TabsTrigger>
           <TabsTrigger value="urunler">Ürünler</TabsTrigger>
           <TabsTrigger value="kullanicilar">Kullanıcılar</TabsTrigger>
