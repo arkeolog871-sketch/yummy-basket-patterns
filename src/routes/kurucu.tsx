@@ -35,6 +35,7 @@ import { AdsPanel } from "@/components/founder/AdsPanel";
 import { MapsPanel } from "@/components/founder/MapsPanel";
 import { CategoryPanel } from "@/components/founder/CategoryPanel";
 import { ServiceAreaPanel } from "@/components/founder/ServiceAreaPanel";
+import { ApplicationsPanel } from "@/components/founder/ApplicationsPanel";
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { SECTORS } from "@/lib/sectors";
 import { formatPrice, formatDateTime, ORDER_STATUS_LABELS, slugify } from "@/lib/format";
