@@ -871,9 +871,25 @@ public class MainActivity extends Activity {
         Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
         try {
             GoogleSignInAccount account = task.getResult(ApiException.class);
-            deliverGoogleIdTokenToWebView(account != null ? account.getIdToken() : null);
+            String idToken = account != null ? account.getIdToken() : null;
+            if (idToken == null || idToken.isEmpty()) {
+                // Hesap seçimi başarılı ama ID token boş geldi — genelde
+                // requestIdToken() ile verilen Web istemci kimliği yanlış/eksik
+                // yapılandırılmış demektir. Sessizce yutmak yerine görünür yap.
+                Toast.makeText(this, "Google girişi: ID token alınamadı.", Toast.LENGTH_LONG).show();
+            }
+            deliverGoogleIdTokenToWebView(idToken);
         } catch (ApiException e) {
-            // Kod 12501 kullanıcının hesap seçmeden vazgeçmesidir; sessizce yut.
+            // Kod 12501 kullanıcının hesap seçmeden vazgeçmesidir; onu sessiz
+            // geç, diğer her şeyi (ör. 10 = DEVELOPER_ERROR: SHA-1/paket/istemci
+            // kimliği uyuşmazlığı) görünür yap ki teşhis edilebilsin.
+            if (e.getStatusCode() != 12501) {
+                Toast.makeText(
+                        this,
+                        "Google girişi hatası (kod " + e.getStatusCode() + "): " + e.getMessage(),
+                        Toast.LENGTH_LONG
+                ).show();
+            }
             deliverGoogleIdTokenToWebView(null);
         }
     }
