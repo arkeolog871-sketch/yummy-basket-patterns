@@ -270,3 +270,140 @@ export async function ensureBusinessVendorAccount(
 
   return { userId: matchedUserId, created, verificationSent, emailVerified };
 }
+
+/* ------------------------------------------------------------------ *
+ * Bölgesel sayfa yöneticiliği
+ * ------------------------------------------------------------------ */
+
+export type PanelRegion = { city: string; district: string };
+
+export type PanelAccess = {
+  /** Ana hesap sahibi (founder). Tüm panel yetkilerine sahiptir. */
+  isOwner: boolean;
+  /** Bölge yöneticisinin yetkili olduğu şehir/ilçe çiftleri. Sahip için boştur. */
+  regions: PanelRegion[];
+};
+
+function normalizeRegionPart(value: string | null | undefined): string {
+  return (value ?? "").trim().toLocaleLowerCase("tr");
+}
+
+/** Kullanıcının aktif bölge yöneticiliği yetkileri. */
+export async function listPageManagerRegions(userId: string): Promise<PanelRegion[]> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
+    .from("page_manager_roles")
+    .select("city, district")
+    .eq("user_id", userId)
+    .eq("is_active", true);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({ city: row.city, district: row.district }));
+}
+
+/**
+ * Panel erişimi: sahip için mevcut kurucu kontrolleri (e-posta + 2FA) aynen
+ * uygulanır; bölge yöneticisi için doğrulanmış e-posta ve en az bir aktif
+ * bölge yetkisi zorunludur. Yetkisiz istek "Forbidden" ile reddedilir.
+ */
+export async function assertPanelAccess(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  claims: JwtClaims,
+): Promise<PanelAccess> {
+  if (await isFounderUser(supabase, userId)) {
+    await assertFounder(supabase, userId, claims);
+    return { isOwner: true, regions: [] };
+  }
+  const { assertVerifiedEmail } = await import("./otp.server");
+  await assertVerifiedEmail(userId);
+  const regions = await listPageManagerRegions(userId);
+  if (regions.length === 0) throw new Error("Forbidden");
+  return { isOwner: false, regions };
+}
+
+/** Verilen şehir/ilçe, erişim kapsamında mı? */
+export function accessAllowsRegion(
+  access: PanelAccess,
+  city: string | null | undefined,
+  district: string | null | undefined,
+): boolean {
+  if (access.isOwner) return true;
+  const targetCity = normalizeRegionPart(city);
+  const targetDistrict = normalizeRegionPart(district);
+  if (!targetCity || !targetDistrict) return false;
+  return access.regions.some(
+    (region) =>
+      normalizeRegionPart(region.city) === targetCity &&
+      normalizeRegionPart(region.district) === targetDistrict,
+  );
+}
+
+export function assertRegionAllowed(
+  access: PanelAccess,
+  city: string | null | undefined,
+  district: string | null | undefined,
+): void {
+  if (!accessAllowsRegion(access, city, district)) throw new Error("Forbidden");
+}
+
+/** İşletmenin bölgesi erişim kapsamında mı? */
+export async function assertRestaurantInScope(
+  access: PanelAccess,
+  restaurantId: string,
+): Promise<void> {
+  if (access.isOwner) return;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
+    .from("restaurants")
+    .select("city, district")
+    .eq("id", restaurantId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("İşletme bulunamadı");
+  assertRegionAllowed(access, data.city, data.district);
+}
+
+/** Siparişin bağlı olduğu işletmenin bölgesi erişim kapsamında mı? */
+export async function assertOrderInScope(access: PanelAccess, orderId: string): Promise<void> {
+  if (access.isOwner) return;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
+    .from("orders")
+    .select("restaurant_id")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Sipariş bulunamadı");
+  await assertRestaurantInScope(access, data.restaurant_id);
+}
+
+/** Menü kategorisi/ürünü hangi işletmeye ait, o işletme kapsamda mı? */
+export async function assertMenuRowInScope(
+  access: PanelAccess,
+  table: "menu_categories" | "menu_items",
+  rowId: string,
+): Promise<void> {
+  if (access.isOwner) return;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
+    .from(table)
+    .select("restaurant_id")
+    .eq("id", rowId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Kayıt bulunamadı");
+  await assertRestaurantInScope(access, data.restaurant_id);
+}
+
+/** Hedef kullanıcı ana hesap sahibi mi? (sahip kimliğini koruma kontrolü) */
+export async function isOwnerAccount(userId: string): Promise<boolean> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
+    .from("user_roles")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("role", "founder")
+    .limit(1);
+  if (error) throw new Error(error.message);
+  return (data ?? []).length > 0;
+}
