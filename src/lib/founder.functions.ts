@@ -148,16 +148,21 @@ export const sendAdminMessage = createServerFn({ method: "POST" })
         detail: { target_type: data.target_type, restaurant_id: restaurantId, title: data.title },
       },
       async () => {
-        const { error } = await context.supabase.from("admin_messages").insert({
-          sender_id: context.userId,
-          target_type: data.target_type,
-          restaurant_id: restaurantId,
-          title: data.title,
-          body: data.body,
-        });
+        const { data: inserted, error } = await context.supabase
+          .from("admin_messages")
+          .insert({
+            sender_id: context.userId,
+            target_type: data.target_type,
+            restaurant_id: restaurantId,
+            title: data.title,
+            body: data.body,
+          })
+          .select("id")
+          .single();
         if (error) throw new Error(error.message);
         const { notifyAdminMessageAudience } = await import("./admin-message-alert.server");
         await notifyAdminMessageAudience({
+          messageId: inserted?.id ?? null,
           targetType: data.target_type,
           restaurantId,
           title: data.title,

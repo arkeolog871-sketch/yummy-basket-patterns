@@ -40,6 +40,7 @@ async function resolveAudience(
  * push başarısız olsa da duyuru akışını bozmaz.
  */
 export async function notifyAdminMessageAudience(input: {
+  messageId?: string | null;
   targetType: TargetType;
   restaurantId: string | null;
   title: string;
@@ -48,11 +49,25 @@ export async function notifyAdminMessageAudience(input: {
   try {
     const userIds = await resolveAudience(input.targetType, input.restaurantId);
     if (userIds.length === 0) return;
-    const { sendPushToUserIds } = await import("./push.server");
     const url =
       input.targetType === "vendors" || input.targetType === "restaurant"
         ? "/vendor/dashboard"
         : "/bildirimler";
+
+    // Kalıcı kayıt push'tan ÖNCE yazılır; okundu/okunmadı durumu buradan gelir.
+    const { insertNotifications } = await import("./notifications.server");
+    await insertNotifications(
+      userIds.map((userId) => ({
+        user_id: userId,
+        title: input.title,
+        body: input.body,
+        url,
+        source_type: "admin_message" as const,
+        source_id: input.messageId ?? null,
+      })),
+    );
+
+    const { sendPushToUserIds } = await import("./push.server");
     await sendPushToUserIds(userIds, { title: input.title, body: input.body, url });
   } catch (error) {
     console.error("[admin-message-alert] push bildirimi başarısız", {
