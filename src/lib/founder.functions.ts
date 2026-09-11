@@ -535,8 +535,12 @@ export const saveBusiness = createServerFn({ method: "POST" })
   .validator((input: unknown) => businessWithHoursSchema.parse(input))
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
-      const { assertPanelAccess, assertRegionAllowed, assertRestaurantInScope, ensureBusinessVendorAccount } =
-        await import("./founder.server");
+      const {
+        assertPanelAccess,
+        assertRegionAllowed,
+        assertRestaurantInScope,
+        ensureBusinessVendorAccount,
+      } = await import("./founder.server");
       const { audited } = await import("./audit.server");
       const access = await assertPanelAccess(
         context.supabase,

@@ -170,7 +170,9 @@ export function PageManagerPanel({ users }: { users: UserOption[] }) {
                   <p className="truncate text-sm font-medium">
                     {row.full_name?.trim() || "İsim belirtilmemiş"}
                   </p>
-                  <p className="truncate text-xs text-muted-foreground">{row.email ?? row.user_id}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {row.email ?? row.user_id}
+                  </p>
                   <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                     <MapPin className="size-3.5 text-accent" /> {row.district}, {row.city} ·{" "}
                     {formatDateTime(row.created_at)}

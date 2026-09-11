@@ -21,7 +21,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAccess } from "@/hooks/useAccess";
 import { AccessDenied } from "@/components/auth/AccessDenied";
 import { PushNotificationButton } from "@/components/notifications/PushNotificationButton";
-import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { readTwoFactorState, clearTwoFactorFlag } from "@/lib/two-factor";
 import { SecurityPanel } from "@/components/founder/SecurityPanel";
 import { AppearancePanel } from "@/components/founder/AppearancePanel";

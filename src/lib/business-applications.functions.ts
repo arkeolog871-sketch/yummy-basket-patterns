@@ -33,7 +33,10 @@ const applicationSchema = z.object({
     .max(500)
     .nullable()
     .default(null)
-    .refine((value) => !value || /^https?:\/\//i.test(value), "Geçerli bir görsel bağlantısı girin"),
+    .refine(
+      (value) => !value || /^https?:\/\//i.test(value),
+      "Geçerli bir görsel bağlantısı girin",
+    ),
   address: z.string().trim().min(5, "Açık adres girin").max(240),
   district: z.string().trim().min(2, "İlçe girin").max(80),
   city: z.string().trim().min(2, "Şehir girin").max(80),
@@ -154,9 +157,8 @@ export const reviewBusinessApplication = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
-      const { assertPanelAccess, assertRegionAllowed, ensureBusinessVendorAccount } = await import(
-        "./founder.server"
-      );
+      const { assertPanelAccess, assertRegionAllowed, ensureBusinessVendorAccount } =
+        await import("./founder.server");
       const { audited } = await import("./audit.server");
       const access = await assertPanelAccess(
         context.supabase,
@@ -186,9 +188,8 @@ export const reviewBusinessApplication = createServerFn({ method: "POST" })
           detail: { name: application.name, slug: application.slug },
         },
         async () => {
-          const { notifyApplicantOfApplicationReview } = await import(
-            "./business-application-alert.server"
-          );
+          const { notifyApplicantOfApplicationReview } =
+            await import("./business-application-alert.server");
 
           if (data.action === "reject") {
             const { error } = await supabaseAdmin
@@ -288,7 +289,6 @@ export const reviewBusinessApplication = createServerFn({ method: "POST" })
             throw error;
           }
         },
-
       );
     }),
   );
