@@ -128,13 +128,15 @@ export const listBusinessApplications = createServerFn({ method: "GET" })
         context.userId,
         context.claims as never,
       );
-      const { data, error } = await context.supabase
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data, error } = await supabaseAdmin
         .from("business_applications")
         .select(APPLICATION_COLUMNS)
         .order("created_at", { ascending: false })
         .limit(200);
       if (error) throw new Error(error.message);
-      return data ?? [];
+      // Bölge yöneticisi yalnızca kendi bölgesine yapılan başvuruları görür.
+      return (data ?? []).filter((row) => accessAllowsRegion(access, row.city, row.district));
     }),
   );
 
