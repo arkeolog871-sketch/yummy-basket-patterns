@@ -17,14 +17,26 @@ export async function notifyCustomerOfOrderStatus(
 ): Promise<void> {
   if (!order.user_id) return;
   try {
-    const { sendPushToUserIds } = await import("./push.server");
     const label = ORDER_STATUS_LABELS[status] ?? status;
     const restaurantName = order.restaurants?.name ?? "Siparişiniz";
-    await sendPushToUserIds([order.user_id], {
-      title: "Sipariş durumu güncellendi",
-      body: `${restaurantName} — ${label}`,
-      url: `/siparis/${order.id}`,
-    });
+    const title = "Sipariş durumu güncellendi";
+    const body = `${restaurantName} — ${label}`;
+    const url = `/siparis/${order.id}`;
+
+    const { insertNotifications } = await import("./notifications.server");
+    await insertNotifications([
+      {
+        user_id: order.user_id,
+        title,
+        body,
+        url,
+        source_type: "order_status" as const,
+        source_id: order.id,
+      },
+    ]);
+
+    const { sendPushToUserIds } = await import("./push.server");
+    await sendPushToUserIds([order.user_id], { title, body, url });
   } catch (error) {
     console.error("[order-customer-alert] push bildirimi başarısız", {
       orderId: order.id,

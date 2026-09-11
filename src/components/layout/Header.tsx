@@ -1,5 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getUnreadNotificationCount } from "@/lib/notifications.functions";
 import { useEffect, useState } from "react";
 import {
   ShoppingBag,
@@ -42,6 +44,14 @@ export function Header() {
   const { areas } = useServiceAreas();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const fetchUnread = useServerFn(getUnreadNotificationCount);
+  const { data: unread } = useQuery({
+    queryKey: ["notifications-unread"],
+    queryFn: () => fetchUnread(),
+    enabled: Boolean(user),
+    refetchInterval: 30000,
+  });
+  const unreadCount = user ? (unread?.count ?? 0) : 0;
   const [city, setCity] = useState<string>("");
   const [hydrated, setHydrated] = useState(false);
   const [term, setTerm] = useState("");
@@ -159,10 +169,15 @@ export function Header() {
               ) : null}
             </Link>
           </Button>
-          <Button asChild variant="secondary" className="rounded-full">
+          <Button asChild variant="secondary" className="relative rounded-full">
             <Link to="/bildirimler" aria-label="Bildirimler">
               <Bell className="size-4" />
               <span className="hidden sm:inline">Bildirimler</span>
+              {unreadCount > 0 ? (
+                <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-accent text-[11px] font-semibold text-accent-foreground">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              ) : null}
             </Link>
           </Button>
 
