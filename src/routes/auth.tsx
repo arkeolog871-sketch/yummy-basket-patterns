@@ -15,6 +15,7 @@ import {
   isGoogleOAuthCallbackParams,
   isInAppBrowser,
   isOrphanedAndroidOAuthBrowser,
+  readGoogleOAuthPkce,
   returnToAndroidApp,
   startGoogleOAuth,
   stripOAuthCallbackFromUrl,
@@ -96,6 +97,8 @@ function AuthPage() {
     typeof window === "undefined" ? false : isGoogleOAuthCallbackParams(),
   );
   const [androidHandoffPending, setAndroidHandoffPending] = useState(false);
+  // Bu sekme akışı başlatmadıysa giriş burada değil, uygulamada tamamlanır.
+  const [completesInApp, setCompletesInApp] = useState(false);
   const [appleCompleting, setAppleCompleting] = useState(() =>
     typeof window === "undefined" ? false : isAppleOAuthCallbackParams(),
   );
@@ -115,6 +118,7 @@ function AuthPage() {
     // tetiklenmeyebilir, bu yüzden bu durumu yakalayıp elle "Uygulamaya dön" göster.
     const isAndroidHandoff = isOrphanedAndroidOAuthBrowser();
     if (isAndroidHandoff) setAndroidHandoffPending(true);
+    if (!readGoogleOAuthPkce()?.nonce) setCompletesInApp(true);
     let cancelled = false;
     setGoogleCompleting(true);
     // Beklenmedik bir durumda ekran sonsuza kadar bekleme metninde kalmasın.
@@ -129,7 +133,7 @@ function AuthPage() {
           toast.error(result.error);
           setAndroidHandoffPending(false);
         }
-        if (result?.ok === true && isAndroidHandoff) return;
+        if (result?.ok === true && (isAndroidHandoff || !readGoogleOAuthPkce()?.nonce)) return;
         setGoogleCompleting(false);
       })
       .catch((error: unknown) => {
@@ -288,7 +292,9 @@ function AuthPage() {
       <div className="mx-auto w-full max-w-md px-4 py-16">
         <h1 className="text-3xl">Google ile giriş</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Yetkilendirme tamamlanıyor, lütfen bekleyin…
+          {completesInApp
+            ? "Giriş onaylandı. Uygulamaya dönün — giriş orada otomatik tamamlanıyor."
+            : "Yetkilendirme tamamlanıyor, lütfen bekleyin…"}
         </p>
         {androidHandoffPending ? (
           <div className="mt-6 rounded-3xl border border-border bg-card p-5 text-sm">
