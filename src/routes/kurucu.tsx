@@ -572,6 +572,7 @@ type BusinessRow = {
   maps_url?: string | null;
   contact_email?: string | null;
   contact_phone?: string | null;
+  contact_person?: string | null;
   is_active: boolean;
   opens_at?: string | null;
   closes_at?: string | null;
@@ -597,6 +598,7 @@ const emptyBusiness = {
   maps_url: "",
   contact_email: "",
   contact_phone: "",
+  contact_person: "",
   is_active: true,
   opens_at: "",
   closes_at: "",
@@ -662,6 +664,7 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
           maps_url: form.maps_url.trim() || null,
           contact_email: form.contact_email.trim(),
           contact_phone: form.contact_phone.trim(),
+          contact_person: form.contact_person.trim(),
           is_active: form.is_active,
           opens_at: /^\d{2}:\d{2}$/.test(form.opens_at) ? form.opens_at : null,
           closes_at: /^\d{2}:\d{2}$/.test(form.closes_at) ? form.closes_at : null,
@@ -863,6 +866,16 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
             onChange={(event) => setForm({ ...form, contact_phone: event.target.value })}
             required
           />
+          <Input
+            placeholder="Yetkili ad soyad (kişisel isim)"
+            autoComplete="name"
+            value={form.contact_person}
+            onChange={(event) => setForm({ ...form, contact_person: event.target.value })}
+            required
+          />
+          <p className="text-xs text-muted-foreground">
+            İşletme adı ayrı bir alandır; buraya işletmeyi yöneten kişinin ad soyadını yazın.
+          </p>
         </div>
         <div className="flex items-center justify-between rounded-2xl border border-border p-3">
           <span className="text-sm">Yayında</span>
@@ -986,6 +999,7 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
                         maps_url: business.maps_url ?? "",
                         contact_email: business.contact_email ?? "",
                         contact_phone: business.contact_phone ?? "",
+                        contact_person: business.contact_person ?? "",
                         is_active: business.is_active,
                         opens_at: (business.opens_at ?? "").slice(0, 5),
                         closes_at: (business.closes_at ?? "").slice(0, 5),

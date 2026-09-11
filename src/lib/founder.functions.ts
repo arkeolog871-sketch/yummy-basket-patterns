@@ -230,6 +230,8 @@ const businessSchema = z.object({
     .trim()
     .max(30)
     .regex(/^[0-9+()\s-]{10,30}$/, "Geçerli bir telefon numarası girin"),
+  // İşletme adından ayrı: yetkilinin kişisel ad soyadı. profiles.full_name'e yazılır.
+  contact_person: z.string().trim().min(2, "Yetkili ad soyad girin").max(120),
   is_active: z.boolean().default(true),
 });
 
@@ -537,6 +539,7 @@ export const saveBusiness = createServerFn({ method: "POST" })
             const vendor = await ensureBusinessVendorAccount({
               restaurantId: businessId,
               businessName: values.name,
+              ownerName: values.contact_person,
               email: values.contact_email,
               phone: values.contact_phone,
             });
