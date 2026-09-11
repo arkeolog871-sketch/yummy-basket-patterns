@@ -87,7 +87,7 @@ function BusinessApplicationGate() {
           </p>
           <h1 className="mt-3 text-2xl font-semibold">Önce kimliğinizi doğrulayın</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            E-posta kodu veya Apple ile doğrulandıktan sonra başvuru formu açılır.
+            E-posta kodu, Google veya Apple ile doğrulandıktan sonra başvuru formu açılır.
           </p>
         </header>
 
