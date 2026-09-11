@@ -140,7 +140,9 @@ function AuthPage() {
         if (cancelled) return;
         stripOAuthCallbackFromUrl();
         toast.error(
-          humanizeOAuthError(error instanceof Error ? error.message : "Google girişi tamamlanamadı."),
+          humanizeOAuthError(
+            error instanceof Error ? error.message : "Google girişi tamamlanamadı.",
+          ),
         );
         setAndroidHandoffPending(false);
         setGoogleCompleting(false);
@@ -221,7 +223,6 @@ function AuthPage() {
     navigate({ to: redirect === "/odeme" ? "/odeme" : "/", replace: true });
   }, [user, access.loading, access.homePath, redirect, navigate]);
 
-
   const vendorPortal = portal === "vendor";
 
   async function handleSubmit(event: React.FormEvent) {
@@ -283,7 +284,11 @@ function AuthPage() {
       const result = await startAppleOAuth();
       if (!result.ok) toast.error(humanizeAppleOAuthError(result.error));
     } catch (error) {
-      toast.error(humanizeAppleOAuthError(error instanceof Error ? error.message : "Apple girişi başlatılamadı."));
+      toast.error(
+        humanizeAppleOAuthError(
+          error instanceof Error ? error.message : "Apple girişi başlatılamadı.",
+        ),
+      );
     }
   }
 
@@ -407,7 +412,6 @@ function AuthPage() {
           </div>
         </div>
       ) : pendingVerification ? (
-
         <div className="mt-6 space-y-4 rounded-3xl border border-border/70 bg-card p-4 shadow-card sm:p-6">
           <p className="text-sm text-muted-foreground">
             Hesabınız oluşturuldu ancak <strong>e-posta doğrulanmadı</strong>.{" "}

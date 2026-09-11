@@ -127,9 +127,8 @@ export const parkGoogleOAuthCode = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
     await enforceSensitiveRateLimit("google-oauth-park", 20, 10 * 60 * 1000);
-    const { unsealGoogleOAuthStatePayload, parkAuthorizationCode } = await import(
-      "./google-oauth.server"
-    );
+    const { unsealGoogleOAuthStatePayload, parkAuthorizationCode } =
+      await import("./google-oauth.server");
     try {
       unsealGoogleOAuthStatePayload(data.state);
     } catch (error) {
@@ -148,9 +147,8 @@ export const claimGoogleOAuthCode = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
     await enforceSensitiveRateLimit("google-oauth-claim", 120, 10 * 60 * 1000);
-    const { unsealGoogleOAuthStatePayload, claimAuthorizationCode } = await import(
-      "./google-oauth.server"
-    );
+    const { unsealGoogleOAuthStatePayload, claimAuthorizationCode } =
+      await import("./google-oauth.server");
     try {
       const payload = unsealGoogleOAuthStatePayload(data.state);
       if (payload.n !== data.storedNonce) {

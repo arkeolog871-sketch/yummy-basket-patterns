@@ -18,7 +18,6 @@ export function GoogleOAuthRelayBridge() {
 
   useEffect(() => {
     let cancelled = false;
-    let timer: number | undefined;
 
     const attempt = async () => {
       if (cancelled || busy.current) return;
@@ -45,7 +44,7 @@ export function GoogleOAuthRelayBridge() {
     };
 
     void attempt();
-    timer = window.setInterval(() => void attempt(), POLL_INTERVAL_MS);
+    const timer = window.setInterval(() => void attempt(), POLL_INTERVAL_MS);
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onVisible);
 
