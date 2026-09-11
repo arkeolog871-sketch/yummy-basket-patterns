@@ -810,6 +810,7 @@ export const listUsers = createServerFn({ method: "GET" })
     return allUsers.map((user) => ({
       id: user.id,
       email: user.email ?? "—",
+      full_name: fullNameByUser.get(user.id) ?? null,
       phone: phoneByUser.get(user.id) ?? null,
       created_at: user.created_at,
       roles: rolesByUser.get(user.id) ?? [],
