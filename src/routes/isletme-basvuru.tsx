@@ -8,7 +8,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { startAppleOAuth, humanizeOAuthError as humanizeAppleOAuthError } from "@/lib/apple-oauth";
 import { nativeOAuthBridge, startGoogleOAuth } from "@/lib/google-oauth";
-import { useNativeGoogleSignIn } from "@/hooks/useNativeGoogleSignIn";
 
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { slugify, formatDateTime } from "@/lib/format";
@@ -52,10 +51,6 @@ export const Route = createFileRoute("/isletme-basvuru")({
 function BusinessApplicationGate() {
   const { user, loading } = useAuth();
   const verified = Boolean(user && user.email_confirmed_at);
-  // Native hesap seçici açılamaz/yetkisizse giriş sessizce ölmesin: tarayıcı akışına düş.
-  const { busy: googleNativeBusy, start: startNativeGoogle } = useNativeGoogleSignIn(() => {
-    void startBrowserGoogle();
-  });
   // Apple'ın Android için native bir giriş SDK'sı yok; tarayıcı tabanlı akış
   // orada güvenilir uygulamaya dönemiyor ve Apple'ın kendi App Store
   // incelemesi dışında bir gereksinim yok — Android'de hiç göstermiyoruz.
@@ -76,18 +71,13 @@ function BusinessApplicationGate() {
     }
   }
 
-  async function startBrowserGoogle() {
+  async function handleGoogle() {
     try {
       const result = await startGoogleOAuth();
       if (!result.ok) toast.error(result.error);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Google girişi başlatılamadı.");
     }
-  }
-
-  async function handleGoogle() {
-    if (startNativeGoogle()) return;
-    await startBrowserGoogle();
   }
 
   if (loading) {
@@ -121,10 +111,9 @@ function BusinessApplicationGate() {
               type="button"
               variant="outline"
               className="w-full rounded-full"
-              disabled={googleNativeBusy}
               onClick={() => void handleGoogle()}
             >
-              {googleNativeBusy ? "Google hesabı seçiliyor…" : "Google ile devam et"}
+              Google ile devam et
             </Button>
             {isAndroidNativeApp ? null : (
               <Button
