@@ -15,6 +15,7 @@ import {
   isGoogleOAuthCallbackParams,
   isInAppBrowser,
   isOrphanedAndroidOAuthBrowser,
+  readGoogleOAuthPkce,
   returnToAndroidApp,
   startGoogleOAuth,
   stripOAuthCallbackFromUrl,
@@ -96,6 +97,8 @@ function AuthPage() {
     typeof window === "undefined" ? false : isGoogleOAuthCallbackParams(),
   );
   const [androidHandoffPending, setAndroidHandoffPending] = useState(false);
+  // Bu sekme akışı başlatmadıysa giriş burada değil, uygulamada tamamlanır.
+  const [completesInApp, setCompletesInApp] = useState(false);
   const [appleCompleting, setAppleCompleting] = useState(() =>
     typeof window === "undefined" ? false : isAppleOAuthCallbackParams(),
   );
@@ -115,6 +118,7 @@ function AuthPage() {
     // tetiklenmeyebilir, bu yüzden bu durumu yakalayıp elle "Uygulamaya dön" göster.
     const isAndroidHandoff = isOrphanedAndroidOAuthBrowser();
     if (isAndroidHandoff) setAndroidHandoffPending(true);
+    if (!readGoogleOAuthPkce()?.nonce) setCompletesInApp(true);
     let cancelled = false;
     setGoogleCompleting(true);
     // Beklenmedik bir durumda ekran sonsuza kadar bekleme metninde kalmasın.
@@ -129,14 +133,16 @@ function AuthPage() {
           toast.error(result.error);
           setAndroidHandoffPending(false);
         }
-        if (result?.ok === true && isAndroidHandoff) return;
+        if (result?.ok === true && (isAndroidHandoff || !readGoogleOAuthPkce()?.nonce)) return;
         setGoogleCompleting(false);
       })
       .catch((error: unknown) => {
         if (cancelled) return;
         stripOAuthCallbackFromUrl();
         toast.error(
-          humanizeOAuthError(error instanceof Error ? error.message : "Google girişi tamamlanamadı."),
+          humanizeOAuthError(
+            error instanceof Error ? error.message : "Google girişi tamamlanamadı.",
+          ),
         );
         setAndroidHandoffPending(false);
         setGoogleCompleting(false);
@@ -217,7 +223,6 @@ function AuthPage() {
     navigate({ to: redirect === "/odeme" ? "/odeme" : "/", replace: true });
   }, [user, access.loading, access.homePath, redirect, navigate]);
 
-
   const vendorPortal = portal === "vendor";
 
   async function handleSubmit(event: React.FormEvent) {
@@ -279,7 +284,11 @@ function AuthPage() {
       const result = await startAppleOAuth();
       if (!result.ok) toast.error(humanizeAppleOAuthError(result.error));
     } catch (error) {
-      toast.error(humanizeAppleOAuthError(error instanceof Error ? error.message : "Apple girişi başlatılamadı."));
+      toast.error(
+        humanizeAppleOAuthError(
+          error instanceof Error ? error.message : "Apple girişi başlatılamadı.",
+        ),
+      );
     }
   }
 
@@ -288,7 +297,9 @@ function AuthPage() {
       <div className="mx-auto w-full max-w-md px-4 py-16">
         <h1 className="text-3xl">Google ile giriş</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Yetkilendirme tamamlanıyor, lütfen bekleyin…
+          {completesInApp
+            ? "Giriş onaylandı. Uygulamaya dönün — giriş orada otomatik tamamlanıyor."
+            : "Yetkilendirme tamamlanıyor, lütfen bekleyin…"}
         </p>
         {androidHandoffPending ? (
           <div className="mt-6 rounded-3xl border border-border bg-card p-5 text-sm">
@@ -401,7 +412,6 @@ function AuthPage() {
           </div>
         </div>
       ) : pendingVerification ? (
-
         <div className="mt-6 space-y-4 rounded-3xl border border-border/70 bg-card p-4 shadow-card sm:p-6">
           <p className="text-sm text-muted-foreground">
             Hesabınız oluşturuldu ancak <strong>e-posta doğrulanmadı</strong>.{" "}

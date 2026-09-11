@@ -107,3 +107,60 @@ export const exchangeGoogleOAuthCode = createServerFn({ method: "POST" })
     if (!exchanged.ok) return exchanged;
     return { ok: true as const, idToken: exchanged.idToken, accessToken: exchanged.accessToken };
   });
+
+const relaySchema = z.object({
+  state: z.string().min(8).max(4096),
+  code: z.string().min(8).max(2048),
+});
+
+const claimSchema = z.object({
+  state: z.string().min(8).max(4096),
+  storedNonce: z.string().min(8).max(128),
+});
+
+/**
+ * Tarayıcı sekmesi Google kodunu buraya bırakır; akışı başlatan uygulama
+ * WebView'i `claimGoogleOAuthCode` ile geri alıp girişi kendi içinde bitirir.
+ */
+export const parkGoogleOAuthCode = createServerFn({ method: "POST" })
+  .validator((input: unknown) => relaySchema.parse(input))
+  .handler(async ({ data }) => {
+    const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
+    await enforceSensitiveRateLimit("google-oauth-park", 20, 10 * 60 * 1000);
+    const { unsealGoogleOAuthStatePayload, parkAuthorizationCode } =
+      await import("./google-oauth.server");
+    try {
+      unsealGoogleOAuthStatePayload(data.state);
+    } catch (error) {
+      return {
+        ok: false as const,
+        error: error instanceof Error ? error.message : "Durum doğrulama başarısız oldu.",
+      };
+    }
+    await parkAuthorizationCode(data.state, data.code);
+    return { ok: true as const };
+  });
+
+/** Uygulama, kendi sakladığı nonce'u kanıtlayarak bekleyen kodu geri alır. */
+export const claimGoogleOAuthCode = createServerFn({ method: "POST" })
+  .validator((input: unknown) => claimSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
+    await enforceSensitiveRateLimit("google-oauth-claim", 120, 10 * 60 * 1000);
+    const { unsealGoogleOAuthStatePayload, claimAuthorizationCode } =
+      await import("./google-oauth.server");
+    try {
+      const payload = unsealGoogleOAuthStatePayload(data.state);
+      if (payload.n !== data.storedNonce) {
+        return { ok: false as const, error: "Durum doğrulama başarısız oldu." };
+      }
+    } catch (error) {
+      return {
+        ok: false as const,
+        error: error instanceof Error ? error.message : "Durum doğrulama başarısız oldu.",
+      };
+    }
+    const code = await claimAuthorizationCode(data.state);
+    if (!code) return { ok: true as const, code: null };
+    return { ok: true as const, code };
+  });
