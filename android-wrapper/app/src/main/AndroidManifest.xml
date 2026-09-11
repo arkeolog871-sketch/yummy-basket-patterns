@@ -123,17 +123,15 @@
                     android:host="uygulamamcebimde.online"
                     android:pathPrefix="/auth" />
             </intent-filter>
-            <!-- www autoVerify: Google assetlinks crawler 302 takip etmez.
-                 Cloudflare'de www /.well-known/assetlinks.json apex'e yönlenmemeli. -->
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:scheme="https"
-                    android:host="www.uygulamamcebimde.online"
-                    android:pathPrefix="/auth" />
-            </intent-filter>
+            <!-- www için autoVerify kasıtlı olarak kaldırıldı: Cloudflare artık
+                 www/.well-known/assetlinks.json'u apex'e 302 ile yönlendiriyor,
+                 Google'ın App Links doğrulama tarayıcısı 302'yi takip etmiyor.
+                 Bir uygulamanın birden fazla autoVerify alan adından biri
+                 doğrulanamazsa çoğu cihazda TÜM App Links doğrulaması düşüyor
+                 (apex/auth dahil) — Google OAuth dönüşü uygulamaya değil
+                 tarayıcıya düşüp kullanıcı orada kilitli kalıyordu. Üretimde
+                 OAuth dönüş adresi zaten hep apex (google-oauth.ts,
+                 PRODUCTION_OAUTH_ORIGIN); www intent-filter'ının işlevi yoktu. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
