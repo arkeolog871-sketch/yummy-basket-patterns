@@ -222,7 +222,7 @@ export async function startGoogleOAuth(): Promise<{ ok: true } | { ok: false; er
 
   try {
     sessionStorage.setItem(
-      "silvan-oauth-return",
+      GOOGLE_OAUTH_RETURN_PATH_KEY,
       `${window.location.pathname}${window.location.search}`,
     );
   } catch {
