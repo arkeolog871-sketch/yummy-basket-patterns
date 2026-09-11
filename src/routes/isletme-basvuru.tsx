@@ -65,6 +65,15 @@ function BusinessApplicationGate() {
     }
   }
 
+  async function handleGoogle() {
+    try {
+      const result = await startGoogleOAuth();
+      if (!result.ok) toast.error(result.error);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Google girişi başlatılamadı.");
+    }
+  }
+
   if (loading) {
     return <p className="mx-auto max-w-3xl px-4 py-10 text-sm text-muted-foreground">Yükleniyor…</p>;
   }
