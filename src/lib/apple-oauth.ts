@@ -11,6 +11,7 @@ import {
 
 const PENDING_STORAGE_KEY = "silvan.apple.oauth.pending.v1";
 const RETURN_PATH_KEY = "silvan.apple.oauth.return.v1";
+export const APPLE_OAUTH_RETURN_PATH_KEY = RETURN_PATH_KEY;
 const ANDROID_APP_PACKAGE = "online.uygulamamcebimde.app";
 
 type AppleOAuthPending = {

@@ -10,6 +10,7 @@ import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { VendorPhoneLogin } from "@/components/auth/VendorPhoneLogin";
 import {
   completeGoogleOAuthFromCallback,
+  GOOGLE_OAUTH_RETURN_PATH_KEY,
   humanizeOAuthError,
   isGoogleOAuthCallbackParams,
   isInAppBrowser,
@@ -19,6 +20,7 @@ import {
   stripOAuthCallbackFromUrl,
 } from "@/lib/google-oauth";
 import {
+  APPLE_OAUTH_RETURN_PATH_KEY,
   completeAppleOAuthFromCallback,
   humanizeOAuthError as humanizeAppleOAuthError,
   isAppleOAuthCallbackParams,
@@ -164,6 +166,22 @@ function AuthPage() {
       if (user.email) setPendingVerification({ email: user.email, startAtCode: false });
       return;
     }
+
+    // OAuth ile /isletme-basvuru sayfasından gelen kullanıcıyı önce oraya geri yönlendir.
+    try {
+      const googleReturn = sessionStorage.getItem(GOOGLE_OAUTH_RETURN_PATH_KEY);
+      const appleReturn = sessionStorage.getItem(APPLE_OAUTH_RETURN_PATH_KEY);
+      const oauthReturn = googleReturn || appleReturn;
+      if (oauthReturn && oauthReturn.startsWith("/isletme-basvuru")) {
+        sessionStorage.removeItem(GOOGLE_OAUTH_RETURN_PATH_KEY);
+        sessionStorage.removeItem(APPLE_OAUTH_RETURN_PATH_KEY);
+        navigate({ to: oauthReturn, replace: true });
+        return;
+      }
+    } catch {
+      /* private mode */
+    }
+
     if (access.isFounder) {
       navigate({ to: "/kurucu", replace: true });
       return;
