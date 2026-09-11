@@ -35,6 +35,7 @@ import { AdsPanel } from "@/components/founder/AdsPanel";
 import { MapsPanel } from "@/components/founder/MapsPanel";
 import { CategoryPanel } from "@/components/founder/CategoryPanel";
 import { ServiceAreaPanel } from "@/components/founder/ServiceAreaPanel";
+import { ApplicationsPanel } from "@/components/founder/ApplicationsPanel";
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { SECTORS } from "@/lib/sectors";
 import { formatPrice, formatDateTime, ORDER_STATUS_LABELS, slugify } from "@/lib/format";
@@ -320,6 +321,7 @@ function FounderDashboard() {
           <TabsTrigger value="sektorler">Kategoriler</TabsTrigger>
           <TabsTrigger value="bolgeler">Bölgeler</TabsTrigger>
           <TabsTrigger value="isletmeler">İşletmeler</TabsTrigger>
+          <TabsTrigger value="basvurular">Başvurular</TabsTrigger>
           <TabsTrigger value="kategoriler">Menü kategorileri</TabsTrigger>
           <TabsTrigger value="urunler">Ürünler</TabsTrigger>
           <TabsTrigger value="kullanicilar">Kullanıcılar</TabsTrigger>
@@ -374,6 +376,11 @@ function FounderDashboard() {
         <TabsContent value="isletmeler" className="mt-6">
           <BusinessPanel businesses={data.data?.businesses ?? []} onDone={invalidate} />
         </TabsContent>
+
+        <TabsContent value="basvurular" className="mt-6">
+          <ApplicationsPanel onApproved={invalidate} />
+        </TabsContent>
+
 
         <TabsContent value="kategoriler" className="mt-6">
           <MenuCategoryPanel businesses={data.data?.businesses ?? []} onDone={invalidate} />

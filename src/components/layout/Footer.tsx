@@ -33,6 +33,11 @@ export function Footer() {
               </Link>
             </li>
             <li>
+              <Link to="/isletme-basvuru" className="transition-colors hover:text-foreground">
+                İşletme başvurusu
+              </Link>
+            </li>
+            <li>
               <a
                 href={APK_URL}
                 download={APK_DOWNLOAD}

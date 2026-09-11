@@ -313,6 +313,105 @@ export type Database = {
         }
         Relationships: []
       }
+      business_applications: {
+        Row: {
+          address: string
+          applicant_user_id: string
+          category: string
+          city: string
+          closes_at: string | null
+          contact_email: string
+          contact_person: string
+          contact_phone: string
+          cover_image_url: string
+          created_at: string
+          cuisines: string[]
+          delivery_fee: number
+          delivery_minutes: number
+          district: string
+          founder_note: string | null
+          id: string
+          is_open_manual: boolean
+          latitude: number
+          longitude: number
+          maps_url: string
+          min_order: number
+          name: string
+          opens_at: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          sector: string
+          slug: string
+          status: string
+          tagline: string
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          applicant_user_id: string
+          category: string
+          city: string
+          closes_at?: string | null
+          contact_email: string
+          contact_person: string
+          contact_phone: string
+          cover_image_url: string
+          created_at?: string
+          cuisines?: string[]
+          delivery_fee?: number
+          delivery_minutes?: number
+          district: string
+          founder_note?: string | null
+          id?: string
+          is_open_manual?: boolean
+          latitude: number
+          longitude: number
+          maps_url: string
+          min_order?: number
+          name: string
+          opens_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sector?: string
+          slug: string
+          status?: string
+          tagline: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          applicant_user_id?: string
+          category?: string
+          city?: string
+          closes_at?: string | null
+          contact_email?: string
+          contact_person?: string
+          contact_phone?: string
+          cover_image_url?: string
+          created_at?: string
+          cuisines?: string[]
+          delivery_fee?: number
+          delivery_minutes?: number
+          district?: string
+          founder_note?: string | null
+          id?: string
+          is_open_manual?: boolean
+          latitude?: number
+          longitude?: number
+          maps_url?: string
+          min_order?: number
+          name?: string
+          opens_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sector?: string
+          slug?: string
+          status?: string
+          tagline?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       business_media: {
         Row: {
           created_at: string
