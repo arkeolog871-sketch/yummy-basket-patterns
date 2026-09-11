@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   isInAppBrowser,
   nativeOAuthBridge,
-  isLikelyMobileDevice,
+  isAndroidDevice,
   stripOAuthCallbackFromUrl,
   isGoogleOAuthCallbackParams,
   PRODUCTION_OAUTH_ORIGIN,
@@ -113,17 +113,16 @@ export function isAppleOAuthCallbackParams(
 /**
  * Apple callback'i yalnızca bu tarayıcıda saklı "pending" kaydı varken
  * tanınır; yani akış her zaman burada başlamıştır ve kod burada takas edilir.
- * Android uygulamasına devretme bu yüzden hiç denenmez (aksi halde ekran
- * "Yetkilendirme tamamlanıyor" adımında kilitli kalıyordu).
+ * Devretme yalnızca gerçek Android'de ve pending kaydı yokken düşünülür;
+ * iPhone/iPad hiçbir koşulda intent:// dalına girmez.
  */
 function shouldHandoffAppleOAuthToAndroidApp(): boolean {
   if (typeof window === "undefined") return false;
   if (nativeOAuthBridge()) return false;
-  if (!isLikelyMobileDevice()) return false;
+  if (!isAndroidDevice()) return false;
   if (readAppleOAuthPending()) return false;
   return isAppleOAuthCallbackParams();
 }
-
 
 export function isOrphanedAndroidAppleOAuthBrowser(): boolean {
   return shouldHandoffAppleOAuthToAndroidApp();
@@ -155,10 +154,7 @@ export async function startAppleOAuth(): Promise<{ ok: true } | { ok: false; err
   }
 
   try {
-    sessionStorage.setItem(
-      RETURN_PATH_KEY,
-      `${window.location.pathname}${window.location.search}`,
-    );
+    sessionStorage.setItem(RETURN_PATH_KEY, `${window.location.pathname}${window.location.search}`);
   } catch {
     /* private mode */
   }
@@ -232,7 +228,12 @@ export function humanizeOAuthError(message: string): string {
   if (text.includes("unsupported provider") || text.includes("missing oauth secret")) {
     return "Supabase Auth → Apple sağlayıcısı etkinleştirilmeli ve Apple Developer bilgileri eklenmeli.";
   }
-  if (text.includes("invalid_request") || text.includes("state") || text.includes("csrf") || text.includes("durum")) {
+  if (
+    text.includes("invalid_request") ||
+    text.includes("state") ||
+    text.includes("csrf") ||
+    text.includes("durum")
+  ) {
     return "Apple yetkilendirmesi kesintiye uğradı. Lütfen tekrar deneyin.";
   }
   if (text.includes("popup")) {
