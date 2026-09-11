@@ -1,5 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
-import { sealGoogleOAuthState, exchangeGoogleOAuthCode } from "@/lib/google-oauth.functions";
+import {
+  sealGoogleOAuthState,
+  exchangeGoogleOAuthCode,
+  parkGoogleOAuthCode,
+  claimGoogleOAuthCode,
+} from "@/lib/google-oauth.functions";
 import { getPublicSupabaseEnv } from "@/lib/public-env";
 
 const IN_APP_BROWSER =
