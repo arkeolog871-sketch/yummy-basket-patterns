@@ -28,7 +28,7 @@ describe("production release contract (no secrets)", () => {
   it("keeps Android package and the Play App Signing SHA-256", () => {
     expect(ANDROID_APP_PACKAGE_NAME).toBe("online.uygulamamcebimde.app");
     expect(ANDROID_ASSETLINKS[0]?.target.sha256_cert_fingerprints).toEqual([
-      "6C:D3:38:83:2F:42:70:FD:C9:B6:65:1C:18:07:89:D7:03:61:DA:61:08:B8:89:8F:26:74:DD:FB:1A:BD:98:24",
+      "05:A6:AC:8A:62:2D:B8:B1:97:57:01:D3:E7:66:EE:A6:AE:65:B2:95:E5:78:F2:9E:F0:58:D1:7D:56:73:45:48",
     ]);
   });
 
