@@ -452,7 +452,7 @@ export const listAdminData = createServerFn({ method: "GET" })
       const CATALOG_LIMIT = 1000;
       const [businesses, orders] = await Promise.all([
         supabaseAdmin.from("restaurants").select("*").order("name").limit(CATALOG_LIMIT),
-        context.supabase
+        supabaseAdmin
           .from("orders")
           .select(
             "id, status, payment_status, total, recipient_name, phone, street, district, city, created_at, restaurants(name)",
@@ -506,7 +506,7 @@ export const listBusinessCatalog = createServerFn({ method: "GET" })
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
       const [categories, items] = await Promise.all([
-        context.supabase
+        supabaseAdmin
           .from("menu_categories")
           .select("*")
           .eq("restaurant_id", data.restaurantId)
@@ -628,12 +628,12 @@ export const deleteBusiness = createServerFn({ method: "POST" })
         entityId: data.id,
       },
       async () => {
-        const { error } = await context.supabase.from("restaurants").delete().eq("id", data.id);
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { error } = await supabaseAdmin.from("restaurants").delete().eq("id", data.id);
         if (error) {
           // Sipariş geçmişi olan işletmeler orders.restaurant_id ON DELETE RESTRICT
           // yüzünden silinemez; kayıtları bozmamak için yayından kaldırıp gizleriz.
           if (error.code === "23503") {
-            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
             const { error: hideError } = await supabaseAdmin
               .from("restaurants")
               .update({ is_active: false })
@@ -727,9 +727,10 @@ export const saveMenuCategory = createServerFn({ method: "POST" })
         detail: { name: values.name, restaurant_id: values.restaurant_id },
       },
       async () => {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { error } = id
-          ? await context.supabase.from("menu_categories").update(values).eq("id", id)
-          : await context.supabase.from("menu_categories").insert(values);
+          ? await supabaseAdmin.from("menu_categories").update(values).eq("id", id)
+          : await supabaseAdmin.from("menu_categories").insert(values);
         if (error) throw new Error(error.message);
         return { ok: true };
       },
@@ -757,7 +758,8 @@ export const deleteMenuCategory = createServerFn({ method: "POST" })
         entityId: data.id,
       },
       async () => {
-        const { error } = await context.supabase.from("menu_categories").delete().eq("id", data.id);
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { error } = await supabaseAdmin.from("menu_categories").delete().eq("id", data.id);
         if (error) throw new Error(error.message);
         return { ok: true };
       },
@@ -787,9 +789,10 @@ export const saveMenuItem = createServerFn({ method: "POST" })
         detail: { name: values.name, price: values.price, restaurant_id: values.restaurant_id },
       },
       async () => {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { error } = id
-          ? await context.supabase.from("menu_items").update(values).eq("id", id)
-          : await context.supabase.from("menu_items").insert(values);
+          ? await supabaseAdmin.from("menu_items").update(values).eq("id", id)
+          : await supabaseAdmin.from("menu_items").insert(values);
         if (error) throw new Error(error.message);
         return { ok: true };
       },
@@ -817,7 +820,8 @@ export const deleteMenuItem = createServerFn({ method: "POST" })
         entityId: data.id,
       },
       async () => {
-        const { error } = await context.supabase.from("menu_items").delete().eq("id", data.id);
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { error } = await supabaseAdmin.from("menu_items").delete().eq("id", data.id);
         if (error) throw new Error(error.message);
         return { ok: true };
       },

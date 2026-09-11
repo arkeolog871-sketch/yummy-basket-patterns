@@ -122,8 +122,12 @@ export const listBusinessApplications = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) =>
     runServerFn(async () => {
-      const { assertFounder } = await import("./founder.server");
-      await assertFounder(context.supabase, context.userId, context.claims as never);
+      const { assertPanelAccess, accessAllowsRegion } = await import("./founder.server");
+      const access = await assertPanelAccess(
+        context.supabase,
+        context.userId,
+        context.claims as never,
+      );
       const { data, error } = await context.supabase
         .from("business_applications")
         .select(APPLICATION_COLUMNS)
@@ -148,9 +152,15 @@ export const reviewBusinessApplication = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
-      const { assertFounder, ensureBusinessVendorAccount } = await import("./founder.server");
+      const { assertPanelAccess, assertRegionAllowed, ensureBusinessVendorAccount } = await import(
+        "./founder.server"
+      );
       const { audited } = await import("./audit.server");
-      await assertFounder(context.supabase, context.userId, context.claims as never);
+      const access = await assertPanelAccess(
+        context.supabase,
+        context.userId,
+        context.claims as never,
+      );
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
       const { data: application, error: readError } = await supabaseAdmin
@@ -161,6 +171,8 @@ export const reviewBusinessApplication = createServerFn({ method: "POST" })
       if (readError) throw new Error(readError.message);
       if (!application) throw new Error("Başvuru bulunamadı");
       if (application.status !== "pending") throw new Error("Bu başvuru zaten sonuçlandırılmış");
+      // Bölge yöneticisi yalnızca kendi bölgesine yapılan başvuruyu sonuçlandırabilir.
+      assertRegionAllowed(access, application.city, application.district);
 
       return audited(
         {
