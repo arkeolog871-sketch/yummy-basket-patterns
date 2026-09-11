@@ -124,8 +124,6 @@ function shouldHandoffAppleOAuthToAndroidApp(): boolean {
   return isAppleOAuthCallbackParams();
 }
 
-
-
 export function isOrphanedAndroidAppleOAuthBrowser(): boolean {
   return shouldHandoffAppleOAuthToAndroidApp();
 }
@@ -156,10 +154,7 @@ export async function startAppleOAuth(): Promise<{ ok: true } | { ok: false; err
   }
 
   try {
-    sessionStorage.setItem(
-      RETURN_PATH_KEY,
-      `${window.location.pathname}${window.location.search}`,
-    );
+    sessionStorage.setItem(RETURN_PATH_KEY, `${window.location.pathname}${window.location.search}`);
   } catch {
     /* private mode */
   }
@@ -233,7 +228,12 @@ export function humanizeOAuthError(message: string): string {
   if (text.includes("unsupported provider") || text.includes("missing oauth secret")) {
     return "Supabase Auth → Apple sağlayıcısı etkinleştirilmeli ve Apple Developer bilgileri eklenmeli.";
   }
-  if (text.includes("invalid_request") || text.includes("state") || text.includes("csrf") || text.includes("durum")) {
+  if (
+    text.includes("invalid_request") ||
+    text.includes("state") ||
+    text.includes("csrf") ||
+    text.includes("durum")
+  ) {
     return "Apple yetkilendirmesi kesintiye uğradı. Lütfen tekrar deneyin.";
   }
   if (text.includes("popup")) {

@@ -225,7 +225,6 @@ export function isOrphanedAndroidOAuthBrowser(): boolean {
   return shouldHandoffGoogleOAuthToAndroidApp();
 }
 
-
 function handoffGoogleOAuthToAndroidApp() {
   const search = window.location.search || "";
   const intent =
