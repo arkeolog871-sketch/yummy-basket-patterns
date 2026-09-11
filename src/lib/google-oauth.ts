@@ -344,20 +344,39 @@ export async function completeGoogleOAuthFromCallback(): Promise<
   if (!isGoogleOAuthCallbackParams()) return { ok: null };
   if (handledCodes.has(code)) return { ok: true };
 
-  if (shouldHandoffGoogleOAuthToAndroidApp()) {
-    handoffGoogleOAuthToAndroidApp();
-    return { ok: true };
-  }
-
-  handledCodes.add(code);
   const stored = readGoogleOAuthPkce();
+
+  // Bu sekme akışı başlatmadıysa (uygulamadan açılan tarayıcı sekmesi): kodu
+  // sunucuda kısa süre bekleteceğiz, uygulama onu alıp girişi kendi içinde
+  // tamamlayacak. Ardından uygulamaya dönmeyi de deniyoruz.
   if (!stored?.nonce) {
-    handledCodes.delete(code);
+    let parked = false;
+    try {
+      const result = await parkGoogleOAuthCode({ data: { code, state } });
+      parked = result.ok === true;
+    } catch {
+      parked = false;
+    }
+    if (shouldHandoffGoogleOAuthToAndroidApp()) {
+      handoffGoogleOAuthToAndroidApp();
+      return { ok: true };
+    }
+    if (parked) return { ok: true };
     return {
       ok: false,
       error: humanizeOAuthError("Durum doğrulama başarısız oldu (saklanan oturum bulunamadı)."),
     };
   }
+
+  handledCodes.add(code);
+  return finishGoogleOAuthWithCode(code, state, stored);
+}
+
+async function finishGoogleOAuthWithCode(
+  code: string,
+  state: string,
+  stored: GoogleOAuthPkceRecord,
+): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
     const exchanged = await exchangeGoogleOAuthCode({
       data: {
@@ -396,6 +415,41 @@ export async function completeGoogleOAuthFromCallback(): Promise<
       ),
     };
   }
+}
+
+/** Uygulamada bekleyen bir Google girişi var mı? (tarayıcıda onay bekleniyor) */
+export function hasPendingGoogleOAuth(): boolean {
+  if (typeof window === "undefined") return false;
+  if (isGoogleOAuthCallbackParams()) return false;
+  return Boolean(readGoogleOAuthPkce()?.state);
+}
+
+/**
+ * Uygulama tarafı: tarayıcıda onaylanmış girişi sunucudan geri alıp burada
+ * tamamlar. Kullanıcının tarayıcı sayfasında beklemesine gerek kalmaz.
+ */
+export async function claimGoogleOAuthFromApp(): Promise<
+  { ok: true } | { ok: false; error: string } | { ok: null }
+> {
+  if (typeof window === "undefined") return { ok: null };
+  const stored = readGoogleOAuthPkce();
+  if (!stored?.state || !stored.nonce) return { ok: null };
+  let claimed: Awaited<ReturnType<typeof claimGoogleOAuthCode>>;
+  try {
+    claimed = await claimGoogleOAuthCode({
+      data: { state: stored.state, storedNonce: stored.nonce },
+    });
+  } catch {
+    return { ok: null };
+  }
+  if (!claimed.ok) {
+    clearGoogleOAuthPkce();
+    return { ok: false, error: humanizeOAuthError(claimed.error) };
+  }
+  if (!claimed.code) return { ok: null };
+  if (handledCodes.has(claimed.code)) return { ok: null };
+  handledCodes.add(claimed.code);
+  return finishGoogleOAuthWithCode(claimed.code, stored.state, stored);
 }
 
 export function stripOAuthCallbackFromUrl() {
