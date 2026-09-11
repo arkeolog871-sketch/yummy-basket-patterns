@@ -376,6 +376,11 @@ function FounderDashboard() {
           <BusinessPanel businesses={data.data?.businesses ?? []} onDone={invalidate} />
         </TabsContent>
 
+        <TabsContent value="basvurular" className="mt-6">
+          <ApplicationsPanel onApproved={invalidate} />
+        </TabsContent>
+
+
         <TabsContent value="kategoriler" className="mt-6">
           <MenuCategoryPanel businesses={data.data?.businesses ?? []} onDone={invalidate} />
         </TabsContent>
