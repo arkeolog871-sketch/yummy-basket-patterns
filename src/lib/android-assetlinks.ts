@@ -10,7 +10,7 @@ export const ANDROID_APP_PACKAGE_NAME = "online.uygulamamcebimde.app";
 
 /** Play App Signing (Google-held) certificate digest. */
 export const ANDROID_PLAY_APP_SIGNING_SHA256 =
-  "52:F0:37:72:53:80:CE:26:86:61:AF:3F:D3:70:FD:D9:27:67:D1:D6:FF:EC:8B:9D:14:85:03:92:FF:81:CE:A3";
+  "6C:D3:38:83:2F:42:70:FD:C9:B6:65:1C:18:07:89:D7:03:61:DA:61:08:B8:89:8F:26:74:DD:FB:1A:BD:98:24";
 
 export const ANDROID_ASSETLINKS = [
   {
