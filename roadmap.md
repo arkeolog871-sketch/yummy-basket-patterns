@@ -9,3 +9,4 @@
 - [x] Sahip hesabı koruması (setUserRole, deleteUser)
 - [x] PageManagerPanel (yetki ver/geri al)
 - [x] typecheck + build
+- [x] iPhone Google girişi: intent:// aktarımı yalnızca Android'de, doğru "bu tarayıcıda başladı" kontrolü + testler
