@@ -28,10 +28,18 @@ describe("Android wrapper static controls", () => {
 
   it("registers auth deep links", () => {
     expect(manifest).toMatch(/android:host="uygulamamcebimde.online"/);
-    expect(manifest).toMatch(/android:host="www.uygulamamcebimde.online"/);
     expect(manifest).toMatch(/android:pathPrefix="\/auth"/);
     expect(manifest).toMatch(/android:scheme="silvancebimde"/);
     expect(manifest).toMatch(/android:autoVerify="true"/);
+  });
+
+  // Cloudflare www/.well-known/assetlinks.json'u apex'e 302'liyor ve Google'ın
+  // App Links doğrulayıcısı 302'yi izlemiyor. autoVerify'lı alan adlarından biri
+  // doğrulanamazsa çoğu cihazda apex/auth dahil TÜM doğrulama düşer ve Google
+  // OAuth dönüşü uygulama yerine tarayıcıda kilitli kalır. www bu yüzden kayıtlı
+  // değil; geri eklenirse bu test o gerilemeyi yakalar.
+  it("does not register www as an App Links host", () => {
+    expect(manifest).not.toMatch(/android:host="www\.uygulamamcebimde\.online"/);
   });
 
   it("disables mixed content and WebView debugging", () => {
