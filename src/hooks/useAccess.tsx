@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/hooks/useAuth";
 import { getMyAccessContext } from "@/lib/vendor.functions";
 
-export type AccessRole = "founder" | "vendor" | "customer" | "guest";
+export type AccessRole = "founder" | "page_manager" | "vendor" | "customer" | "guest";
 
 /** Rol tabanlı yönlendirme ve panel korumaları için tek doğruluk kaynağı. */
 export function useAccess() {
@@ -20,16 +20,21 @@ export function useAccess() {
 
   const role: AccessRole = !user ? "guest" : (query.data?.role ?? "customer");
 
-  const homePath: "/kurucu" | "/vendor/dashboard" | "/" = query.data?.isFounder
-    ? "/kurucu"
-    : query.data?.isVendor
-      ? "/vendor/dashboard"
-      : "/";
+  const homePath: "/kurucu" | "/vendor/dashboard" | "/" =
+    query.data?.isFounder || query.data?.isPageManager
+      ? "/kurucu"
+      : query.data?.isVendor
+        ? "/vendor/dashboard"
+        : "/";
 
   return {
     loading: loading || (Boolean(user) && query.isLoading),
     role,
     isFounder: query.data?.isFounder ?? false,
+    isPageManager: query.data?.isPageManager ?? false,
+    regions: query.data?.regions ?? [],
+    /** Panele erişebilen her yetki (sahip veya bölge yöneticisi). */
+    canManagePage: Boolean(query.data?.isFounder || query.data?.isPageManager),
     isVendor: query.data?.isVendor ?? false,
     emailVerified: query.data?.emailVerified ?? false,
     restaurantId: query.data?.restaurantId ?? null,

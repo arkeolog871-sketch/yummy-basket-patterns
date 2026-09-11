@@ -33,7 +33,10 @@ const applicationSchema = z.object({
     .max(500)
     .nullable()
     .default(null)
-    .refine((value) => !value || /^https?:\/\//i.test(value), "Geçerli bir görsel bağlantısı girin"),
+    .refine(
+      (value) => !value || /^https?:\/\//i.test(value),
+      "Geçerli bir görsel bağlantısı girin",
+    ),
   address: z.string().trim().min(5, "Açık adres girin").max(240),
   district: z.string().trim().min(2, "İlçe girin").max(80),
   city: z.string().trim().min(2, "Şehir girin").max(80),
@@ -122,15 +125,21 @@ export const listBusinessApplications = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) =>
     runServerFn(async () => {
-      const { assertFounder } = await import("./founder.server");
-      await assertFounder(context.supabase, context.userId, context.claims as never);
-      const { data, error } = await context.supabase
+      const { assertPanelAccess, accessAllowsRegion } = await import("./founder.server");
+      const access = await assertPanelAccess(
+        context.supabase,
+        context.userId,
+        context.claims as never,
+      );
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data, error } = await supabaseAdmin
         .from("business_applications")
         .select(APPLICATION_COLUMNS)
         .order("created_at", { ascending: false })
         .limit(200);
       if (error) throw new Error(error.message);
-      return data ?? [];
+      // Bölge yöneticisi yalnızca kendi bölgesine yapılan başvuruları görür.
+      return (data ?? []).filter((row) => accessAllowsRegion(access, row.city, row.district));
     }),
   );
 
@@ -148,9 +157,14 @@ export const reviewBusinessApplication = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
-      const { assertFounder, ensureBusinessVendorAccount } = await import("./founder.server");
+      const { assertPanelAccess, assertRegionAllowed, ensureBusinessVendorAccount } =
+        await import("./founder.server");
       const { audited } = await import("./audit.server");
-      await assertFounder(context.supabase, context.userId, context.claims as never);
+      const access = await assertPanelAccess(
+        context.supabase,
+        context.userId,
+        context.claims as never,
+      );
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
       const { data: application, error: readError } = await supabaseAdmin
@@ -161,6 +175,8 @@ export const reviewBusinessApplication = createServerFn({ method: "POST" })
       if (readError) throw new Error(readError.message);
       if (!application) throw new Error("Başvuru bulunamadı");
       if (application.status !== "pending") throw new Error("Bu başvuru zaten sonuçlandırılmış");
+      // Bölge yöneticisi yalnızca kendi bölgesine yapılan başvuruyu sonuçlandırabilir.
+      assertRegionAllowed(access, application.city, application.district);
 
       return audited(
         {
@@ -172,9 +188,8 @@ export const reviewBusinessApplication = createServerFn({ method: "POST" })
           detail: { name: application.name, slug: application.slug },
         },
         async () => {
-          const { notifyApplicantOfApplicationReview } = await import(
-            "./business-application-alert.server"
-          );
+          const { notifyApplicantOfApplicationReview } =
+            await import("./business-application-alert.server");
 
           if (data.action === "reject") {
             const { error } = await supabaseAdmin
@@ -274,7 +289,6 @@ export const reviewBusinessApplication = createServerFn({ method: "POST" })
             throw error;
           }
         },
-
       );
     }),
   );

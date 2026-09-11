@@ -39,7 +39,7 @@ import {
 export function Header() {
   const { user } = useAuth();
   const { itemCount } = useCart();
-  const { settings, isFounder, founderExists } = useSiteSettings();
+  const { settings } = useSiteSettings();
   const access = useAccess();
   const { areas } = useServiceAreas();
   const navigate = useNavigate();
@@ -210,7 +210,7 @@ export function Header() {
                     </Link>
                   </DropdownMenuItem>
                 ) : null}
-                {isFounder || (!founderExists && !access.isVendor) ? (
+                {access.canManagePage ? (
                   <DropdownMenuItem asChild>
                     <Link to="/kurucu">
                       <Crown className="size-4" /> Sayfa yöneticisi paneli

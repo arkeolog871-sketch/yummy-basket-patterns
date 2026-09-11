@@ -853,6 +853,39 @@ export type Database = {
           },
         ]
       }
+      page_manager_roles: {
+        Row: {
+          city: string
+          created_at: string
+          district: string
+          granted_by: string | null
+          id: string
+          is_active: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          district: string
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          district?: string
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -1290,6 +1323,7 @@ export type Database = {
         Args: { p_delta: number; p_id: string }
         Returns: undefined
       }
+      is_page_manager: { Args: { _user_id: string }; Returns: boolean }
       is_vendor_of: {
         Args: { _restaurant_id: string; _user_id: string }
         Returns: boolean
@@ -1297,6 +1331,10 @@ export type Database = {
       issue_email_otp: {
         Args: { p_code_hash: string; p_email_hash: string; p_now?: string }
         Returns: Json
+      }
+      manages_region: {
+        Args: { _city: string; _district: string; _user_id: string }
+        Returns: boolean
       }
       place_customer_order: {
         Args: {

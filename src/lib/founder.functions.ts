@@ -436,8 +436,12 @@ export const listAdminData = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) =>
     runServerFn(async () => {
-      const { assertFounder } = await import("./founder.server");
-      await assertFounder(context.supabase, context.userId, context.claims as never);
+      const { assertPanelAccess, accessAllowsRegion } = await import("./founder.server");
+      const access = await assertPanelAccess(
+        context.supabase,
+        context.userId,
+        context.claims as never,
+      );
       // Kurucu doğrulandıktan sonra iletişim alanlarını da okuyabilmek için yetkili istemci.
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -448,7 +452,7 @@ export const listAdminData = createServerFn({ method: "GET" })
       const CATALOG_LIMIT = 1000;
       const [businesses, orders] = await Promise.all([
         supabaseAdmin.from("restaurants").select("*").order("name").limit(CATALOG_LIMIT),
-        context.supabase
+        supabaseAdmin
           .from("orders")
           .select(
             "id, status, payment_status, total, recipient_name, phone, street, district, city, created_at, restaurants(name)",
@@ -460,10 +464,21 @@ export const listAdminData = createServerFn({ method: "GET" })
       const firstError = businesses.error ?? orders.error ?? null;
       if (firstError) throw new Error(firstError.message);
 
-      return {
-        businesses: businesses.data ?? [],
-        orders: orders.data ?? [],
-      };
+      // Bölge yöneticisi yalnızca kendisine atanan şehir/ilçedeki işletmeleri ve
+      // bu işletmelere ait siparişleri görür.
+      const visibleBusinesses = (businesses.data ?? []).filter((business) =>
+        accessAllowsRegion(access, business.city, business.district),
+      );
+      if (access.isOwner) {
+        return { businesses: visibleBusinesses, orders: orders.data ?? [] };
+      }
+      const allowedNames = new Set(visibleBusinesses.map((business) => business.name));
+      const visibleOrders = (orders.data ?? []).filter((order) => {
+        const restaurantName = (order as { restaurants?: { name?: string } | null }).restaurants
+          ?.name;
+        return Boolean(restaurantName && allowedNames.has(restaurantName));
+      });
+      return { businesses: visibleBusinesses, orders: visibleOrders };
     }),
   );
 
@@ -479,14 +494,19 @@ export const listBusinessCatalog = createServerFn({ method: "GET" })
   .validator((input: unknown) => z.object({ restaurantId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
-      const { assertFounder } = await import("./founder.server");
-      await assertFounder(context.supabase, context.userId, context.claims as never);
+      const { assertPanelAccess, assertRestaurantInScope } = await import("./founder.server");
+      const access = await assertPanelAccess(
+        context.supabase,
+        context.userId,
+        context.claims as never,
+      );
+      await assertRestaurantInScope(access, data.restaurantId);
       // Ürünler için: müşteri tarafı is_available=true dışını göremez, kurucunun
       // satışta olmayan ürünleri de düzenleyebilmesi için yetkili istemci gerekli.
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
       const [categories, items] = await Promise.all([
-        context.supabase
+        supabaseAdmin
           .from("menu_categories")
           .select("*")
           .eq("restaurant_id", data.restaurantId)
@@ -515,10 +535,23 @@ export const saveBusiness = createServerFn({ method: "POST" })
   .validator((input: unknown) => businessWithHoursSchema.parse(input))
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
-      const { assertFounder, ensureBusinessVendorAccount } = await import("./founder.server");
+      const {
+        assertPanelAccess,
+        assertRegionAllowed,
+        assertRestaurantInScope,
+        ensureBusinessVendorAccount,
+      } = await import("./founder.server");
       const { audited } = await import("./audit.server");
-      await assertFounder(context.supabase, context.userId, context.claims as never);
+      const access = await assertPanelAccess(
+        context.supabase,
+        context.userId,
+        context.claims as never,
+      );
       const { id, ...values } = data;
+      // Bölge yöneticisi yalnızca kendi bölgesindeki işletmeyi düzenleyebilir ve
+      // yeni işletmeyi de yalnızca kendi bölgesine ekleyebilir.
+      if (id) await assertRestaurantInScope(access, id);
+      assertRegionAllowed(access, values.city, values.district);
       return audited(
         {
           actorId: context.userId,
@@ -582,9 +615,14 @@ export const deleteBusiness = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { assertFounder } = await import("./founder.server");
+    const { assertPanelAccess, assertRestaurantInScope } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId, context.claims as never);
+    const access = await assertPanelAccess(
+      context.supabase,
+      context.userId,
+      context.claims as never,
+    );
+    await assertRestaurantInScope(access, data.id);
     return audited(
       {
         actorId: context.userId,
@@ -594,12 +632,12 @@ export const deleteBusiness = createServerFn({ method: "POST" })
         entityId: data.id,
       },
       async () => {
-        const { error } = await context.supabase.from("restaurants").delete().eq("id", data.id);
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { error } = await supabaseAdmin.from("restaurants").delete().eq("id", data.id);
         if (error) {
           // Sipariş geçmişi olan işletmeler orders.restaurant_id ON DELETE RESTRICT
           // yüzünden silinemez; kayıtları bozmamak için yayından kaldırıp gizleriz.
           if (error.code === "23503") {
-            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
             const { error: hideError } = await supabaseAdmin
               .from("restaurants")
               .update({ is_active: false })
@@ -634,9 +672,14 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
-      const { assertFounder } = await import("./founder.server");
+      const { assertPanelAccess, assertOrderInScope } = await import("./founder.server");
       const { audited } = await import("./audit.server");
-      await assertFounder(context.supabase, context.userId, context.claims as never);
+      const access = await assertPanelAccess(
+        context.supabase,
+        context.userId,
+        context.claims as never,
+      );
+      await assertOrderInScope(access, data.id);
       return audited(
         {
           actorId: context.userId,
@@ -669,10 +712,15 @@ export const saveMenuCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => menuCategorySchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { assertFounder } = await import("./founder.server");
+    const { assertPanelAccess, assertRestaurantInScope } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId, context.claims as never);
+    const access = await assertPanelAccess(
+      context.supabase,
+      context.userId,
+      context.claims as never,
+    );
     const { id, ...values } = data;
+    await assertRestaurantInScope(access, values.restaurant_id);
     return audited(
       {
         actorId: context.userId,
@@ -683,9 +731,10 @@ export const saveMenuCategory = createServerFn({ method: "POST" })
         detail: { name: values.name, restaurant_id: values.restaurant_id },
       },
       async () => {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { error } = id
-          ? await context.supabase.from("menu_categories").update(values).eq("id", id)
-          : await context.supabase.from("menu_categories").insert(values);
+          ? await supabaseAdmin.from("menu_categories").update(values).eq("id", id)
+          : await supabaseAdmin.from("menu_categories").insert(values);
         if (error) throw new Error(error.message);
         return { ok: true };
       },
@@ -696,9 +745,14 @@ export const deleteMenuCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { assertFounder } = await import("./founder.server");
+    const { assertPanelAccess, assertMenuRowInScope } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId, context.claims as never);
+    const access = await assertPanelAccess(
+      context.supabase,
+      context.userId,
+      context.claims as never,
+    );
+    await assertMenuRowInScope(access, "menu_categories", data.id);
     return audited(
       {
         actorId: context.userId,
@@ -708,7 +762,8 @@ export const deleteMenuCategory = createServerFn({ method: "POST" })
         entityId: data.id,
       },
       async () => {
-        const { error } = await context.supabase.from("menu_categories").delete().eq("id", data.id);
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { error } = await supabaseAdmin.from("menu_categories").delete().eq("id", data.id);
         if (error) throw new Error(error.message);
         return { ok: true };
       },
@@ -719,10 +774,15 @@ export const saveMenuItem = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => menuItemSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { assertFounder } = await import("./founder.server");
+    const { assertPanelAccess, assertRestaurantInScope } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId, context.claims as never);
+    const access = await assertPanelAccess(
+      context.supabase,
+      context.userId,
+      context.claims as never,
+    );
     const { id, ...values } = data;
+    await assertRestaurantInScope(access, values.restaurant_id);
     return audited(
       {
         actorId: context.userId,
@@ -733,9 +793,10 @@ export const saveMenuItem = createServerFn({ method: "POST" })
         detail: { name: values.name, price: values.price, restaurant_id: values.restaurant_id },
       },
       async () => {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { error } = id
-          ? await context.supabase.from("menu_items").update(values).eq("id", id)
-          : await context.supabase.from("menu_items").insert(values);
+          ? await supabaseAdmin.from("menu_items").update(values).eq("id", id)
+          : await supabaseAdmin.from("menu_items").insert(values);
         if (error) throw new Error(error.message);
         return { ok: true };
       },
@@ -746,9 +807,14 @@ export const deleteMenuItem = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { assertFounder } = await import("./founder.server");
+    const { assertPanelAccess, assertMenuRowInScope } = await import("./founder.server");
     const { audited } = await import("./audit.server");
-    await assertFounder(context.supabase, context.userId, context.claims as never);
+    const access = await assertPanelAccess(
+      context.supabase,
+      context.userId,
+      context.claims as never,
+    );
+    await assertMenuRowInScope(access, "menu_items", data.id);
     return audited(
       {
         actorId: context.userId,
@@ -758,7 +824,8 @@ export const deleteMenuItem = createServerFn({ method: "POST" })
         entityId: data.id,
       },
       async () => {
-        const { error } = await context.supabase.from("menu_items").delete().eq("id", data.id);
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { error } = await supabaseAdmin.from("menu_items").delete().eq("id", data.id);
         if (error) throw new Error(error.message);
         return { ok: true };
       },
@@ -903,6 +970,13 @@ export const setUserRole = createServerFn({ method: "POST" })
       throw new Error("Kendi sayfa yöneticisi yetkinizi kaldıramazsınız");
     }
 
+    // Ana hesap sahibinin (founder) kimliği yalnızca kendisi tarafından
+    // değiştirilebilir; devredilen yetkiler bu hesaba dokunamaz.
+    const { isOwnerAccount } = await import("./founder.server");
+    if (data.userId !== context.userId && (await isOwnerAccount(data.userId))) {
+      throw new Error("Ana hesap sahibinin yetkileri değiştirilemez");
+    }
+
     return audited(
       {
         actorId: context.userId,
@@ -1042,6 +1116,10 @@ export const deleteUser = createServerFn({ method: "POST" })
     const { audited } = await import("./audit.server");
     await assertFounder(context.supabase, context.userId, context.claims as never);
     if (data.userId === context.userId) throw new Error("Kendi hesabınızı silemezsiniz");
+    const { isOwnerAccount } = await import("./founder.server");
+    if (await isOwnerAccount(data.userId)) {
+      throw new Error("Ana hesap sahibinin hesabı silinemez");
+    }
 
     return audited(
       {
