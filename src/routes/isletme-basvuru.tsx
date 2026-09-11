@@ -225,8 +225,9 @@ function BusinessApplicationPage() {
         </p>
         <h1 className="mt-3 text-3xl font-semibold">İşletmenizi platforma ekleyin</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Tüm alanlar zorunludur. Başvurunuz kurucu tarafından incelenip onaylandığında işletme
-          hesabınız oluşturulur ve iletişim e-postanıza doğrulama kodu gönderilir.
+          Görsel adresi, harita bağlantısı ve etiketler dışındaki alanlar zorunludur. Başvurunuz
+          kurucu tarafından incelenip onaylandığında işletme hesabınız oluşturulur ve iletişim
+          e-postanıza doğrulama kodu gönderilir.
         </p>
       </header>
 
@@ -306,11 +307,10 @@ function BusinessApplicationPage() {
           />
         </div>
         <div className="space-y-1">
-          <Label>Etiketler (virgülle)</Label>
+          <Label>Etiketler (virgülle, isteğe bağlı)</Label>
           <Input
             value={form.cuisines}
             onChange={(event) => setForm({ ...form, cuisines: event.target.value })}
-            required
           />
         </div>
 
@@ -350,11 +350,10 @@ function BusinessApplicationPage() {
         </div>
 
         <div className="space-y-1">
-          <Label>Görsel adresi (https://…)</Label>
+          <Label>Görsel adresi (https://…, isteğe bağlı)</Label>
           <Input
             value={form.cover_image_url}
             onChange={(event) => setForm({ ...form, cover_image_url: event.target.value })}
-            required
           />
         </div>
 
@@ -395,10 +394,9 @@ function BusinessApplicationPage() {
             />
           </div>
           <Input
-            placeholder="WhatsApp konum veya Google Maps bağlantısı (https://maps…)"
+            placeholder="WhatsApp konum veya Google Maps bağlantısı (https://maps…, isteğe bağlı)"
             value={form.maps_url}
             onChange={(event) => setForm({ ...form, maps_url: event.target.value })}
-            required
           />
         </div>
 
