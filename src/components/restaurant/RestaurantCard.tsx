@@ -81,6 +81,15 @@ export function RestaurantCard({
       </div>
 
       <div className="space-y-3 p-4">
+        {/* Çalışma saatleri afişin hemen altında, kendi satırında: bilgi
+            satırının sonunda diğer rakamların arasında kaybolmuyordu. */}
+        {hours ? (
+          <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+            <Clock className="size-3.5 shrink-0" />
+            <span className="truncate">{hours}</span>
+          </p>
+        ) : null}
+
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             {restaurant.logo_url ? (
@@ -115,7 +124,6 @@ export function RestaurantCard({
             {deliverySummary(restaurant.delivery_type, Number(restaurant.delivery_fee))}
           </span>
           <span>Min. {formatPrice(Number(restaurant.min_order))}</span>
-          {hours ? <span>{hours}</span> : null}
         </div>
 
         <LocationButton business={restaurant} className="text-xs text-muted-foreground" />
