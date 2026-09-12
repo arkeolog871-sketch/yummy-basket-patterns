@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { reportAppError } from "@/lib/errors.functions";
 import {
   completeNativeGoogleSignIn,
@@ -32,6 +33,43 @@ declare global {
  * `onUnavailable`, native akış başlayıp başarısız olduğunda çağrılır; oraya da
  * tarayıcı akışı bağlanır, böylece giriş hiçbir durumda sessizce ölmez.
  */
+/**
+ * Oturumun cihazda gerçekten kalıcı olup olmadığını ölçer. "Supabase tamam
+ * dedi ama uygulama çıkış yapmış görünüyor" tablosunda kritik olan tek şey
+ * bu: token geldi mi, localStorage'a yazılabiliyor mu, anahtar orada mı.
+ * WebView'da localStorage sessizce başarısız olabiliyor ve sarmalayıcı
+ * hatayı yutup belleğe düşüyor — o durumda giriş sayfa ömrü kadar yaşıyor.
+ */
+async function traceSessionHealth() {
+  try {
+    const probe = "__silvan_storage_probe__";
+    let health: string;
+    try {
+      window.localStorage.setItem(probe, "1");
+      health =
+        window.localStorage.getItem(probe) === "1" ? "yazılıp okunuyor" : "yazıldı ama okunamadı";
+      window.localStorage.removeItem(probe);
+    } catch (error) {
+      health = `hata: ${error instanceof Error ? error.name : String(error)}`;
+    }
+    traceNativeAuth(`localStorage: ${health}`);
+
+    const authKeys = Object.keys(window.localStorage).filter((key) => key.includes("auth-token"));
+    traceNativeAuth(`oturum anahtarı: ${authKeys.length ? authKeys.join(", ") : "YOK"}`);
+
+    const { data, error } = await supabase.auth.getSession();
+    traceNativeAuth(
+      error
+        ? `getSession hatası: ${error.message}`
+        : `getSession: ${data.session ? `oturum var (${data.session.user.email ?? "e-posta yok"})` : "OTURUM YOK"}`,
+    );
+  } catch (error) {
+    traceNativeAuth(
+      `sağlık ölçümü çöktü: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
 export function useNativeGoogleSignIn(onUnavailable?: () => void) {
   const [busy, setBusy] = useState(false);
   const report = useServerFn(reportAppError);
@@ -54,7 +92,7 @@ export function useNativeGoogleSignIn(onUnavailable?: () => void) {
             toast.error(result.error);
             return;
           }
-          finishNativeAuthDiagnostics("ok");
+          void traceSessionHealth().finally(() => finishNativeAuthDiagnostics("ok"));
         })
         .catch((error: unknown) => {
           finishNativeAuthDiagnostics(

@@ -16,6 +16,7 @@ import {
   isInAppBrowser,
   isOrphanedAndroidOAuthBrowser,
   nativeOAuthBridge,
+  showNativeAuthDiagnostics,
   readGoogleOAuthPkce,
   returnToAndroidApp,
   startGoogleOAuth,
@@ -570,7 +571,18 @@ function AuthPage() {
             ile giriş her zaman kullanılabilir.
           </p>
 
-          {isAndroidNativeApp ? null : (
+          {isAndroidNativeApp ? (
+            // Native akış sessiz kaldığında son denemenin adım adım kaydını
+            // ekranda gösterir. Uygulama sürümü 2.13+ bu köprüyü sunuyor;
+            // sunmayan sürümlerde düğme hiç görünmez.
+            <button
+              type="button"
+              className="mt-3 w-full text-center text-xs text-muted-foreground underline-offset-4 hover:underline"
+              onClick={() => showNativeAuthDiagnostics()}
+            >
+              Giriş tanı raporunu göster
+            </button>
+          ) : (
             <>
               <Button
                 type="button"

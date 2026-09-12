@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 
 /**
+ * Splash en fazla bu kadar bekler. Ayarlar isteği hiç sonuçlanmazsa (kopuk
+ * ya da çok yavaş bağlantı, DNS takılması) örtü kalkmıyordu; tam ekran ve
+ * z-999 olduğu için de uygulama hiçbir dokunuşa cevap vermiyor, kullanıcıya
+ * donmuş gibi görünüyordu. Renk şemasının bir an geç gelmesi, uygulamanın
+ * hiç açılmamasından iyidir.
+ */
+const SPLASH_MAX_MS = 4_000;
+
+/**
  * Site ayarları (renk şeması) yüklenene kadar geçen 1-2 saniyede eski/varsayılan
  * renklerin bir an görünmesini (FOUC) tam ekran logo ile örter; ayarlar hazır
  * olduğunda yumuşak geçişle kaybolur. `logo-mark.png`'nin kendi krem arka planıyla
@@ -10,13 +19,19 @@ import { useEffect, useState } from "react";
 export function SplashScreen({ ready }: { ready: boolean }) {
   const [visible, setVisible] = useState(true);
   const [fading, setFading] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
-    if (!ready || fading) return;
+    const timer = setTimeout(() => setTimedOut(true), SPLASH_MAX_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if ((!ready && !timedOut) || fading) return;
     setFading(true);
     const timer = setTimeout(() => setVisible(false), 320);
     return () => clearTimeout(timer);
-  }, [ready, fading]);
+  }, [ready, timedOut, fading]);
 
   if (!visible) return null;
 
