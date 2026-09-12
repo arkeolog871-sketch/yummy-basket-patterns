@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { areaLabel, useServiceAreas } from "@/hooks/useTaxonomy";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
-import { APK_DOWNLOAD, APK_URL } from "@/lib/android-apk";
 
 export function Footer() {
   const { areas } = useServiceAreas();
@@ -39,20 +38,6 @@ export function Footer() {
             <li>
               <Link to="/isletme-basvuru" className="transition-colors hover:text-foreground">
                 İşletme başvurusu
-              </Link>
-            </li>
-            <li>
-              <a
-                href={APK_URL}
-                download={APK_DOWNLOAD}
-                className="transition-colors hover:text-foreground"
-              >
-                Android uygulamasını indir
-              </a>
-            </li>
-            <li>
-              <Link to="/iphone" className="transition-colors hover:text-foreground">
-                iPhone’a kur
               </Link>
             </li>
           </ul>
