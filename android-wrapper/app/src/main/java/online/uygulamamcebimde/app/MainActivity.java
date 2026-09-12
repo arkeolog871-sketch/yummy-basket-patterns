@@ -960,7 +960,8 @@ public class MainActivity extends Activity {
                             traceAuth("   sınıf : " + error.getClass().getName());
                             traceAuth("   tür   : " + safeText(error.getType()));
                             traceAuth("   mesaj : " + safeText(error.getMessage()));
-                            if (error instanceof GetCredentialCancellationException) {
+                            if (error instanceof GetCredentialCancellationException
+                                    && !isAccountProblemDisguisedAsCancel(error.getMessage())) {
                                 // Kullanıcı vazgeçti: boş token "vazgeçildi" demek,
                                 // tanı penceresi açmaya gerek yok.
                                 traceAuth("6) Kullanıcı hesap seçmeden vazgeçti.");
@@ -983,6 +984,20 @@ public class MainActivity extends Activity {
             reportGoogleNativeSignInUnavailable(
                     error.getClass().getSimpleName() + ": " + error.getMessage());
         }
+    }
+
+    /**
+     * Play Services, cihazdaki Google hesabının yeniden doğrulanması
+     * gerektiğinde ("[16] Account reauth failed") bunu iptal gibi bildiriyor:
+     * sınıf GetCredentialCancellationException, tür TYPE_USER_CANCELED. Oysa
+     * kullanıcı vazgeçmedi. Bunu vazgeçme saymak girişin ekranda hiçbir iz
+     * bırakmadan ölmesi demekti — ne hata, ne tarayıcı yedeği. Böyle bir
+     * mesaj görünce yedek akışa düşülür ve sebep kullanıcıya bildirilir.
+     */
+    private boolean isAccountProblemDisguisedAsCancel(String message) {
+        if (message == null || message.isEmpty()) return false;
+        String lower = message.toLowerCase(java.util.Locale.ROOT);
+        return lower.contains("reauth") || lower.contains("[16]");
     }
 
     private void handleGoogleCredential(Credential credential) {

@@ -105,6 +105,16 @@ export function useNativeGoogleSignIn(onUnavailable?: () => void) {
     window.__onNativeGoogleSignInUnavailable = (reason?: string) => {
       setBusy(false);
       traceNativeAuth(`native yol kullanılamadı, tarayıcı akışına düşülüyor: ${reason ?? "?"}`);
+      // Play Services "Account reauth failed" derse hesabın cihazdaki
+      // doğrulaması bayatlamış demektir; tarayıcı akışı çalışsa bile
+      // kullanıcının bunu bilmesi gerekiyor, yoksa her seferinde tarayıcıya
+      // düşmesinin sebebini anlamıyor.
+      if (reason && /reauth|\[16\]/i.test(reason)) {
+        toast.error(
+          "Google hesabının cihazdaki doğrulaması yenilenmeli. Ayarlar › Hesaplar › Google adımından hesabı yeniden doğrulayın. Giriş tarayıcıdan sürdürülüyor.",
+          { duration: 10_000 },
+        );
+      }
       // Native tarafın hataları şimdiye kadar hiçbir yere düşmüyordu; sistem
       // hata kaydına yaz ki bir dahaki başarısızlıkta sebebi tahmin etmeyelim.
       void report({
