@@ -38,6 +38,18 @@ declare global {
 
 const LEAFLET_VERSION = "1.9.4";
 const LEAFLET_BASE = `https://unpkg.com/leaflet@${LEAFLET_VERSION}/dist`;
+/**
+ * Leaflet üçüncü taraf bir CDN'den yükleniyor ve uygulamanın kendi origin'inde
+ * çalışıyor; ele geçirilmiş ya da değiştirilmiş bir dosya kullanıcının Supabase
+ * oturumuna tam erişim kazanırdı. Sürümü sabitlemek CDN'in kendisi bozulursa
+ * yetmez, bu yüzden içerik hash'i de doğrulanır: dosya birebir eşleşmezse
+ * tarayıcı çalıştırmaz ve harita sessizce devre dışı kalır (giriş/sipariş
+ * akışları etkilenmez). Sürüm yükseltilirse bu hash'ler de yenilenmeli.
+ */
+const LEAFLET_JS_INTEGRITY =
+  "sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH";
+const LEAFLET_CSS_INTEGRITY =
+  "sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H";
 const LEAFLET_IMAGES = `${LEAFLET_BASE}/images/`;
 
 let leafletReady: Promise<LeafletNamespace> | null = null;
@@ -47,6 +59,7 @@ function loadStylesheet(href: string) {
   const link = document.createElement("link");
   link.rel = "stylesheet";
   link.href = href;
+  link.integrity = LEAFLET_CSS_INTEGRITY;
   link.crossOrigin = "anonymous";
   link.setAttribute("data-leaflet", "true");
   document.head.appendChild(link);
@@ -95,6 +108,7 @@ export function ensureLeaflet(): Promise<LeafletNamespace> {
       const script = document.createElement("script");
       script.src = `${LEAFLET_BASE}/leaflet.js`;
       script.async = true;
+      script.integrity = LEAFLET_JS_INTEGRITY;
       script.crossOrigin = "anonymous";
       script.setAttribute("data-leaflet", "true");
       script.onload = () => {
