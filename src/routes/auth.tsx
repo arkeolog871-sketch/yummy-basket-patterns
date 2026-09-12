@@ -108,16 +108,22 @@ function AuthPage() {
     email: string;
     startAtCode: boolean;
   } | null>(null);
-  const [googleCompleting, setGoogleCompleting] = useState(() =>
-    typeof window === "undefined" ? false : isGoogleOAuthCallbackParams(),
-  );
+  // Sunucu URL'deki OAuth dönüş parametrelerini göremez, bu yüzden ilk
+  // render'da mutlaka false olmalı. Değeri useState başlatıcısında okumak,
+  // sunucunun bastığı giriş formuyla istemcinin bastığı "tamamlanıyor"
+  // ekranını ayırıyordu; React bunu hydration uyuşmazlığı sayıp (#418) tüm
+  // /auth ağacını atıp yeniden kuruyor ve bu sırada sayfa tepkisiz kalıyordu.
+  // Gerçek değer aşağıdaki efektte, bağlanma sonrası yazılıyor.
+  const [googleCompleting, setGoogleCompleting] = useState(false);
   const [androidHandoffPending, setAndroidHandoffPending] = useState(false);
   // Bu sekme akışı başlatmadıysa giriş burada değil, uygulamada tamamlanır.
   const [completesInApp, setCompletesInApp] = useState(false);
-  const [appleCompleting, setAppleCompleting] = useState(() =>
-    typeof window === "undefined" ? false : isAppleOAuthCallbackParams(),
-  );
+  const [appleCompleting, setAppleCompleting] = useState(false);
   const [appleAndroidHandoffPending, setAppleAndroidHandoffPending] = useState(false);
+  useEffect(() => {
+    if (isGoogleOAuthCallbackParams()) setGoogleCompleting(true);
+    if (isAppleOAuthCallbackParams()) setAppleCompleting(true);
+  }, []);
   // Native akış başlayıp başarısız olursa giriş sessizce ölmesin: tarayıcıya düş.
   const { busy: googleNativeBusy, start: startNativeGoogle } = useNativeGoogleSignIn(() => {
     void startBrowserGoogle();
