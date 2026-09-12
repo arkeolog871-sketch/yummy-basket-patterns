@@ -9,7 +9,6 @@ import {
   User,
   LogOut,
   MapPin,
-  ClipboardList,
   Search,
   ChevronDown,
   Crown,
@@ -196,11 +195,6 @@ export function Header() {
                 <DropdownMenuItem asChild>
                   <Link to="/hesabim">
                     <User className="size-4" /> Hesabım
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/hesabim" search={{ sekme: "siparisler" }}>
-                    <ClipboardList className="size-4" /> Siparişlerim
                   </Link>
                 </DropdownMenuItem>
                 {access.isVendor ? (
