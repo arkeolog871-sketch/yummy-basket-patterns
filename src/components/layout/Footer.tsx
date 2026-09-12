@@ -28,7 +28,11 @@ export function Footer() {
               </Link>
             </li>
             <li>
-              <Link to="/siparislerim" className="transition-colors hover:text-foreground">
+              <Link
+                to="/hesabim"
+                search={{ sekme: "siparisler" }}
+                className="transition-colors hover:text-foreground"
+              >
                 Siparişlerim
               </Link>
             </li>
@@ -83,7 +87,11 @@ export function Footer() {
           Hizmet Sağlayıcı Bilgileri
         </Link>
         {" · "}
-        <Link to="/hesabim" className="underline-offset-4 hover:underline">
+        <Link
+          to="/hesabim"
+          search={{ sekme: "hesap" }}
+          className="underline-offset-4 hover:underline"
+        >
           Hesabımı Sil
         </Link>
         {" · "}
