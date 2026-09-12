@@ -97,6 +97,7 @@ public class MainActivity extends Activity {
     private PermissionRequest webPermissionRequest;
     private boolean askedNotificationPermission;
     private boolean pageReady;
+    private CredentialManager credentialManager;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Runnable loadTimeout = this::showLoadError;
 
@@ -866,12 +867,20 @@ public class MainActivity extends Activity {
      */
     private void startNativeGoogleSignIn() {
         try {
+            // CredentialManager alanda tutuluyor: `CredentialManager.create(this)`
+            // sonucunu geçici bir ifade olarak bırakmak, asenkron istek sürerken
+            // nesnenin toplanabilmesi anlamına geliyordu ve o durumda geri çağrı
+            // hiç tetiklenmiyor — ne sonuç, ne hata, ne yedek akış. Kullanıcı
+            // hesabını seçtikten sonra ekranda hiçbir şey olmamasının sebebi buydu.
+            if (credentialManager == null) {
+                credentialManager = CredentialManager.create(this);
+            }
             GetSignInWithGoogleOption option =
                     new GetSignInWithGoogleOption.Builder(GOOGLE_WEB_CLIENT_ID).build();
             GetCredentialRequest request = new GetCredentialRequest.Builder()
                     .addCredentialOption(option)
                     .build();
-            CredentialManager.create(this).getCredentialAsync(
+            credentialManager.getCredentialAsync(
                     this,
                     request,
                     null,
@@ -890,19 +899,24 @@ public class MainActivity extends Activity {
                                 return;
                             }
                             // Hesap yok, Play Services eski, yapılandırma eksik…
-                            // Sessizce ölmek yerine web'e bildir; o tarayıcı akışına düşer.
-                            reportGoogleNativeSignInUnavailable();
+                            // Sessizce ölmek yerine web'e bildir; o hem tarayıcı
+                            // akışına düşer hem sebebi sistem hata kaydına yazar.
+                            reportGoogleNativeSignInUnavailable(
+                                    error.getClass().getSimpleName() + ": " + error.getMessage());
                         }
                     });
-        } catch (Exception ignored) {
-            reportGoogleNativeSignInUnavailable();
+        } catch (Exception error) {
+            reportGoogleNativeSignInUnavailable(
+                    error.getClass().getSimpleName() + ": " + error.getMessage());
         }
     }
 
     private void handleGoogleCredential(Credential credential) {
         if (!(credential instanceof CustomCredential)
                 || !GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL.equals(credential.getType())) {
-            reportGoogleNativeSignInUnavailable();
+            reportGoogleNativeSignInUnavailable(
+                    "Beklenmeyen kimlik bilgisi türü: "
+                            + (credential == null ? "null" : credential.getType()));
             return;
         }
         String idToken;
@@ -910,12 +924,13 @@ public class MainActivity extends Activity {
             idToken = GoogleIdTokenCredential
                     .createFrom(((CustomCredential) credential).getData())
                     .getIdToken();
-        } catch (Exception ignored) {
-            reportGoogleNativeSignInUnavailable();
+        } catch (Exception error) {
+            reportGoogleNativeSignInUnavailable(
+                    "ID token çözülemedi: " + error.getClass().getSimpleName());
             return;
         }
         if (idToken == null || idToken.isEmpty()) {
-            reportGoogleNativeSignInUnavailable();
+            reportGoogleNativeSignInUnavailable("Kimlik bilgisi geldi ama ID token boş");
             return;
         }
         deliverGoogleIdTokenToWebView(idToken);
@@ -926,9 +941,13 @@ public class MainActivity extends Activity {
      * tarayıcı tabanlı Google akışını başlatır, böylece kullanıcı hiçbir zaman
      * sessiz bir çıkmazda kalmaz.
      */
-    private void reportGoogleNativeSignInUnavailable() {
+    private void reportGoogleNativeSignInUnavailable(String reason) {
         if (webView == null) return;
-        String script = "window.__onNativeGoogleSignInUnavailable && window.__onNativeGoogleSignInUnavailable();";
+        String safeReason = (reason == null ? "" : reason).replace("\\", "\\\\").replace("'", "\\'");
+        String script =
+                "window.__onNativeGoogleSignInUnavailable && window.__onNativeGoogleSignInUnavailable('"
+                        + safeReason
+                        + "');";
         runOnUiThread(() -> webView.evaluateJavascript(script, null));
     }
 

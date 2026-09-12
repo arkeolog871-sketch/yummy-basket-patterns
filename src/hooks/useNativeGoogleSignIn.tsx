@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { reportAppError } from "@/lib/errors.functions";
 import {
   completeNativeGoogleSignIn,
   humanizeOAuthError,
@@ -13,8 +15,10 @@ declare global {
     /**
      * Native akış bu cihazda kullanılamıyor (Play Services eski, kayıtlı hesap
      * yok, yapılandırma eksik…). Sessiz çıkmaz yerine tarayıcı akışına düşülür.
+     * `reason` native tarafın verdiği hata sınıfı/mesajı; sistem hata kaydına
+     * yazılır, aksi hâlde native hatalar hiçbir yerde görünmüyor.
      */
-    __onNativeGoogleSignInUnavailable?: () => void;
+    __onNativeGoogleSignInUnavailable?: (reason?: string) => void;
   }
 }
 
@@ -28,6 +32,7 @@ declare global {
  */
 export function useNativeGoogleSignIn(onUnavailable?: () => void) {
   const [busy, setBusy] = useState(false);
+  const report = useServerFn(reportAppError);
   const fallbackRef = useRef(onUnavailable);
   fallbackRef.current = onUnavailable;
 
@@ -47,15 +52,26 @@ export function useNativeGoogleSignIn(onUnavailable?: () => void) {
         })
         .finally(() => setBusy(false));
     };
-    window.__onNativeGoogleSignInUnavailable = () => {
+    window.__onNativeGoogleSignInUnavailable = (reason?: string) => {
       setBusy(false);
+      // Native tarafın hataları şimdiye kadar hiçbir yere düşmüyordu; sistem
+      // hata kaydına yaz ki bir dahaki başarısızlıkta sebebi tahmin etmeyelim.
+      void report({
+        data: {
+          message: `Native Google girişi kullanılamadı: ${reason || "sebep bildirilmedi"}`.slice(
+            0,
+            1_000,
+          ),
+          path: window.location.pathname + window.location.search,
+        },
+      }).catch(() => undefined);
       fallbackRef.current?.();
     };
     return () => {
       delete window.__onNativeGoogleSignIn;
       delete window.__onNativeGoogleSignInUnavailable;
     };
-  }, []);
+  }, [report]);
 
   function start(): boolean {
     const started = startNativeGoogleSignIn();
