@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Store } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -59,9 +59,12 @@ function BusinessApplicationGate() {
   // Apple'ın Android için native bir giriş SDK'sı yok; tarayıcı tabanlı akış
   // orada güvenilir uygulamaya dönemiyor ve Apple'ın kendi App Store
   // incelemesi dışında bir gereksinim yok — Android'de hiç göstermiyoruz.
-  const [isAndroidNativeApp] = useState(() =>
-    typeof window === "undefined" ? false : Boolean(nativeOAuthBridge()),
-  );
+  // Sunucu köprüyü göremez; ilk render sunucuyla aynı olmalı, yoksa hydration
+  // uyuşmazlığı oluşur (bkz. auth.tsx'teki aynı düzeltme).
+  const [isAndroidNativeApp, setIsAndroidNativeApp] = useState(false);
+  useEffect(() => {
+    setIsAndroidNativeApp(Boolean(nativeOAuthBridge()));
+  }, []);
 
   async function handleApple() {
     try {
