@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
-import { Bell } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Bell, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import {
+  deleteMyNotifications,
   listMyNotifications,
   markNotificationsRead,
   type NotificationItem,
@@ -37,7 +39,23 @@ export const Route = createFileRoute("/bildirimler")({
 function NotificationsPage() {
   const fetchNotifications = useServerFn(listMyNotifications);
   const markRead = useServerFn(markNotificationsRead);
+  const removeNotifications = useServerFn(deleteMyNotifications);
   const queryClient = useQueryClient();
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  /** `ids` verilmezse kullanıcının tüm bildirimleri silinir. */
+  async function remove(ids?: string[]) {
+    setBusyId(ids && ids.length === 1 ? (ids[0] as string) : "all");
+    try {
+      await removeNotifications({ data: ids && ids.length > 0 ? { ids } : {} });
+      await queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      await queryClient.invalidateQueries({ queryKey: ["notifications-unread"] });
+    } catch {
+      toast.error("Bildirim silinemedi. Tekrar deneyin.");
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   const {
     data: notifications = [],
@@ -67,7 +85,19 @@ function NotificationsPage() {
         <h1 className="flex items-center gap-2 text-3xl">
           <Bell className="size-7 text-accent" /> Bildirimler
         </h1>
-        <PushNotificationButton />
+        <div className="flex items-center gap-2">
+          {notifications.length > 0 ? (
+            <Button
+              variant="outline"
+              className="rounded-full"
+              disabled={busyId !== null}
+              onClick={() => void remove()}
+            >
+              <Trash2 className="size-4" /> Tümünü sil
+            </Button>
+          ) : null}
+          <PushNotificationButton />
+        </div>
       </div>
 
       {isLoading ? (
@@ -92,7 +122,12 @@ function NotificationsPage() {
       ) : (
         <div className="mt-6 space-y-3">
           {notifications.map((item) => (
-            <NotificationCard key={item.id} item={item} />
+            <NotificationCard
+              key={item.id}
+              item={item}
+              busy={busyId !== null}
+              onDelete={() => void remove([item.id])}
+            />
           ))}
         </div>
       )}
@@ -100,7 +135,15 @@ function NotificationsPage() {
   );
 }
 
-function NotificationCard({ item }: { item: NotificationItem }) {
+function NotificationCard({
+  item,
+  busy,
+  onDelete,
+}: {
+  item: NotificationItem;
+  busy: boolean;
+  onDelete: () => void;
+}) {
   const unread = !item.read_at;
   const content = (
     <>
@@ -113,6 +156,21 @@ function NotificationCard({ item }: { item: NotificationItem }) {
         <p className="mt-1 text-sm text-muted-foreground">{item.body}</p>
         <p className="mt-1 text-xs text-muted-foreground">{formatDateTime(item.created_at)}</p>
       </div>
+      <button
+        type="button"
+        aria-label="Bildirimi sil"
+        title="Bildirimi sil"
+        disabled={busy}
+        onClick={(event) => {
+          // Kart bir bağlantı olabiliyor; silme dokunuşu sayfayı açmasın.
+          event.preventDefault();
+          event.stopPropagation();
+          onDelete();
+        }}
+        className="shrink-0 rounded-full p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+      >
+        <Trash2 className="size-4" />
+      </button>
     </>
   );
 

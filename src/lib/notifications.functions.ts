@@ -63,3 +63,31 @@ export const markNotificationsRead = createServerFn({ method: "POST" })
       return { ok: true };
     }),
   );
+
+const deleteSchema = z.object({
+  /** Boş bırakılırsa kullanıcının tüm bildirimleri silinir. */
+  ids: z.array(z.string().uuid()).min(1).max(200).optional(),
+});
+
+/**
+ * Kullanıcının kendi bildirimlerini siler. RLS politikası sahiplik üzerinden
+ * kurulu olduğu için sorgu yalnızca çağıran kullanıcının satırlarına dokunur;
+ * rol ayrımı yok, herkes yalnızca kendi bildirimini silebilir.
+ */
+export const deleteMyNotifications = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => deleteSchema.parse(input ?? {}))
+  .handler(async ({ data, context }) =>
+    runServerFn(async () => {
+      let query = context.supabase.from("notifications").delete();
+      if (data.ids && data.ids.length > 0) {
+        query = query.in("id", data.ids);
+      } else {
+        // Tümünü sil: filtre zorunlu, sahiplik zaten RLS'te. `id` her satırda dolu.
+        query = query.not("id", "is", null);
+      }
+      const { error } = await query;
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }),
+  );
