@@ -86,18 +86,6 @@ export function Footer() {
         <Link to="/hizmet-saglayici-bilgileri" className="underline-offset-4 hover:underline">
           Hizmet Sağlayıcı Bilgileri
         </Link>
-        {" · "}
-        <Link
-          to="/hesabim"
-          search={{ sekme: "hesap" }}
-          className="underline-offset-4 hover:underline"
-        >
-          Hesabımı Sil
-        </Link>
-        {" · "}
-        <Link to="/kurucu-giris" className="underline-offset-4 hover:underline">
-          Sayfa yöneticisi girişi
-        </Link>
       </div>
     </footer>
   );
