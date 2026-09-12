@@ -21,7 +21,6 @@ import {
   startGoogleOAuth,
   stripOAuthCallbackFromUrl,
 } from "@/lib/google-oauth";
-import { useNativeGoogleSignIn } from "@/hooks/useNativeGoogleSignIn";
 import {
   APPLE_OAUTH_RETURN_PATH_KEY,
   completeAppleOAuthFromCallback,
@@ -118,10 +117,6 @@ function AuthPage() {
     typeof window === "undefined" ? false : isAppleOAuthCallbackParams(),
   );
   const [appleAndroidHandoffPending, setAppleAndroidHandoffPending] = useState(false);
-  // Native akış başlayıp başarısız olursa giriş sessizce ölmesin: tarayıcıya düş.
-  const { busy: googleNativeBusy, start: startNativeGoogle } = useNativeGoogleSignIn(() => {
-    void startBrowserGoogle();
-  });
 
   useEffect(() => {
     if (!oauthError) return;
@@ -292,9 +287,15 @@ function AuthPage() {
     }
   }
 
+  /**
+   * Google girişi tek yoldan yapılır: tarayıcı tabanlı OAuth. Android'in native
+   * hesap seçicisi bu sayfadan kaldırıldı — hem eski GoogleSignInClient hem
+   * Credential Manager ile denendi, ikisinde de hesap seçiminden sonra geri
+   * çağrı hiç tetiklenmedi ve giriş sessizce ölüyordu. Tarayıcı akışı ise
+   * çalışıyor ve assetlinks düzeltildiğinden beri uygulamaya kendiliğinden
+   * dönüyor.
+   */
   async function handleGoogle() {
-    // Credential Manager köprüsü varsa hesap seçimi uygulama içinde yapılır.
-    if (startNativeGoogle()) return;
     await startBrowserGoogle();
   }
 
@@ -553,10 +554,9 @@ function AuthPage() {
             variant="outline"
             size="lg"
             className="mt-4 w-full rounded-full"
-            disabled={googleNativeBusy}
             onClick={() => void handleGoogle()}
           >
-            {googleNativeBusy ? "Google hesabı seçiliyor…" : "Google ile devam et"}
+            Google ile devam et
           </Button>
           <p className="mt-2 text-center text-xs text-muted-foreground">
             Google, uygulamanın kendi alan adına döner. Android uygulamasında sistem tarayıcısı
