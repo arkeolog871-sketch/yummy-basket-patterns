@@ -194,12 +194,17 @@ export function Header() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to="/siparislerim">
+                  <Link to="/hesabim">
+                    <User className="size-4" /> Hesabım
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/hesabim" search={{ sekme: "siparisler" }}>
                     <ClipboardList className="size-4" /> Siparişlerim
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link to="/adreslerim">
+                  <Link to="/hesabim" search={{ sekme: "adresler" }}>
                     <MapPin className="size-4" /> Adreslerim
                   </Link>
                 </DropdownMenuItem>
