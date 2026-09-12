@@ -203,11 +203,6 @@ export function Header() {
                     <ClipboardList className="size-4" /> Siparişlerim
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/hesabim" search={{ sekme: "adresler" }}>
-                    <MapPin className="size-4" /> Adreslerim
-                  </Link>
-                </DropdownMenuItem>
                 {access.isVendor ? (
                   <DropdownMenuItem asChild>
                     <Link to="/vendor/dashboard">
