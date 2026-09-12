@@ -39,9 +39,40 @@ type SilvanNativeOAuth = {
   openOAuth?: (url: string) => void;
   supportsCredentialManagerGoogleSignIn?: () => boolean;
   signInWithGoogleCredentialManager?: () => void;
+  /** 2.13+ tanı köprüsü; eski build'lerde tanımsız, çağrılar sessizce atlanır. */
+  logAuthStep?: (step: string) => void;
+  finishAuthDiagnostics?: (outcome: string) => void;
 };
 
 const handledCodes = new Set<string>();
+
+/**
+ * Native Google akışının web yarısını, Android tarafındaki tanı raporuna
+ * yazar (MainActivity.logAuthStep). Native taraf zaten kendi adımlarını
+ * kaydediyor; ikisi birleşince "hesap seçildi ama sonra ne oldu" zinciri tek
+ * ekranda görünür oluyor. Köprü yoksa (tarayıcı, iOS, eski APK) hiçbir şey
+ * yapmaz.
+ */
+export function traceNativeAuth(step: string): void {
+  try {
+    if (typeof window === "undefined") return;
+    (window as Window & { SilvanNative?: SilvanNativeOAuth }).SilvanNative?.logAuthStep?.(step);
+  } catch {
+    /* köprü yok veya çağrı reddedildi; tanı kaydı hiçbir akışı bozmamalı */
+  }
+}
+
+/** `"ok"` dışında her sonuç native tarafta tanı penceresini açar. */
+export function finishNativeAuthDiagnostics(outcome: string): void {
+  try {
+    if (typeof window === "undefined") return;
+    (window as Window & { SilvanNative?: SilvanNativeOAuth }).SilvanNative?.finishAuthDiagnostics?.(
+      outcome,
+    );
+  } catch {
+    /* köprü yok; sessizce geç */
+  }
+}
 
 export function nativeOAuthBridge(): SilvanNativeOAuth | null {
   if (typeof window === "undefined") return null;
@@ -64,6 +95,7 @@ export function startNativeGoogleSignIn(): boolean {
   const native = nativeOAuthBridge();
   if (!native?.signInWithGoogleCredentialManager) return false;
   if (!native.supportsCredentialManagerGoogleSignIn?.()) return false;
+  traceNativeAuth("kullanıcı Google düğmesine bastı, native akış isteniyor");
   native.signInWithGoogleCredentialManager();
   return true;
 }
@@ -73,12 +105,21 @@ export async function completeNativeGoogleSignIn(
   idToken: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
+    traceNativeAuth("supabase.signInWithIdToken çağrılıyor");
     const { error } = await supabase.auth.signInWithIdToken({ provider: "google", token: idToken });
-    if (error) return { ok: false, error: humanizeOAuthError(error.message) };
+    if (error) {
+      traceNativeAuth(`Supabase reddetti: ${error.message}`);
+      return { ok: false, error: humanizeOAuthError(error.message) };
+    }
+    traceNativeAuth("Supabase oturumu açıldı");
     const { fillFullNameFromProvider } = await import("@/lib/social-profile");
     await fillFullNameFromProvider();
+    traceNativeAuth("profil adı senkronlandı");
     return { ok: true };
   } catch (error) {
+    traceNativeAuth(
+      `beklenmeyen istisna: ${error instanceof Error ? error.message : String(error)}`,
+    );
     return {
       ok: false,
       error: humanizeOAuthError(

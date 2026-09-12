@@ -4,8 +4,10 @@ import { toast } from "sonner";
 import { reportAppError } from "@/lib/errors.functions";
 import {
   completeNativeGoogleSignIn,
+  finishNativeAuthDiagnostics,
   humanizeOAuthError,
   startNativeGoogleSignIn,
+  traceNativeAuth,
 } from "@/lib/google-oauth";
 
 declare global {
@@ -39,21 +41,32 @@ export function useNativeGoogleSignIn(onUnavailable?: () => void) {
   useEffect(() => {
     window.__onNativeGoogleSignIn = (idToken: string) => {
       if (!idToken) {
+        traceNativeAuth("boş token alındı (vazgeçme)");
         setBusy(false); // kullanıcı hesap seçmeden vazgeçti
         return;
       }
+      traceNativeAuth(`ID token alındı (${idToken.length} karakter)`);
       setBusy(true);
       void completeNativeGoogleSignIn(idToken)
         .then((result) => {
-          if (!result.ok) toast.error(result.error);
+          if (!result.ok) {
+            finishNativeAuthDiagnostics(`supabase-hatasi: ${result.error}`);
+            toast.error(result.error);
+            return;
+          }
+          finishNativeAuthDiagnostics("ok");
         })
-        .catch(() => {
+        .catch((error: unknown) => {
+          finishNativeAuthDiagnostics(
+            `istisna: ${error instanceof Error ? error.message : String(error)}`,
+          );
           toast.error(humanizeOAuthError("Google girişi tamamlanamadı."));
         })
         .finally(() => setBusy(false));
     };
     window.__onNativeGoogleSignInUnavailable = (reason?: string) => {
       setBusy(false);
+      traceNativeAuth(`native yol kullanılamadı, tarayıcı akışına düşülüyor: ${reason ?? "?"}`);
       // Native tarafın hataları şimdiye kadar hiçbir yere düşmüyordu; sistem
       // hata kaydına yaz ki bir dahaki başarısızlıkta sebebi tahmin etmeyelim.
       void report({

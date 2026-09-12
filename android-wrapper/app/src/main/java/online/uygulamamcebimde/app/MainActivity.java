@@ -7,6 +7,9 @@ import android.app.AlertDialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.ActivityNotFoundException;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -21,6 +24,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.provider.MediaStore;
 import android.provider.Settings;
+import android.util.Log;
 import android.view.View;
 import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
@@ -84,6 +88,18 @@ public class MainActivity extends Activity {
      */
     private static final String GOOGLE_WEB_CLIENT_ID =
             "690305033747-s0q65dae6feqfpndvrcmlmoictvehp99.apps.googleusercontent.com";
+    /**
+     * Native Google akışının her adımı bu etiketle logcat'e de yazılır:
+     * {@code adb logcat -s SILVAN_AUTH}. Cihazda kablo yoksa aynı kayıt
+     * ekranda kopyalanabilir bir pencerede gösterilir.
+     */
+    private static final String AUTH_TAG = "SILVAN_AUTH";
+    /**
+     * Credential Manager ne sonuç ne hata döndürmezse akış sonsuza kadar
+     * sessiz kalıyordu — "hesabı seçiyorum, hiçbir şey olmuyor" tam olarak bu.
+     * Bu süre dolduğunda tanı penceresi kendiliğinden açılır.
+     */
+    private static final int AUTH_WATCHDOG_MS = 45_000;
 
     private WebView webView;
     private View loadingOverlay;
@@ -98,8 +114,14 @@ public class MainActivity extends Activity {
     private boolean askedNotificationPermission;
     private boolean pageReady;
     private CredentialManager credentialManager;
+    private final StringBuilder authTrace = new StringBuilder();
+    private long authTraceStartedAt;
+    /** Bu deneme için tanı penceresi hâlâ gösterilebilir mi (tek sefer). */
+    private volatile boolean authTraceArmed;
+    private AlertDialog authTraceDialog;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Runnable loadTimeout = this::showLoadError;
+    private final Runnable authWatchdog = this::onAuthWatchdogFired;
 
     @Override
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
@@ -692,6 +714,11 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         mainHandler.removeCallbacks(loadTimeout);
+        mainHandler.removeCallbacks(authWatchdog);
+        if (authTraceDialog != null && authTraceDialog.isShowing()) {
+            authTraceDialog.dismiss();
+        }
+        authTraceDialog = null;
         super.onDestroy();
     }
 
@@ -791,6 +818,38 @@ public class MainActivity extends Activity {
         public void signInWithGoogleCredentialManager() {
             runOnUiThread(MainActivity.this::startNativeGoogleSignIn);
         }
+
+        /**
+         * Web tarafı kendi adımlarını (Supabase çağrısı, hata, tamamlanma) aynı
+         * tanı raporuna yazar. Böylece tek ekranda "native nereye kadar geldi,
+         * web nereden devam etti" zinciri bütün olarak görünür.
+         */
+        @JavascriptInterface
+        public void logAuthStep(final String step) {
+            traceAuth("web · " + safeText(step));
+        }
+
+        /**
+         * Web akışı bitti. {@code "ok"} ise giriş gerçekten tamamlandı ve tanı
+         * penceresi hiç açılmaz; başka her değerde rapor ekrana gelir.
+         */
+        @JavascriptInterface
+        public void finishAuthDiagnostics(final String outcome) {
+            traceAuth("web · akış bitti: " + safeText(outcome));
+            disarmAuthWatchdog();
+            if ("ok".equals(outcome)) {
+                authTraceArmed = false;
+                return;
+            }
+            showAuthTraceDialog("Google girişi tamamlanamadı");
+        }
+
+        /** Pencere kapatıldıysa son denemenin raporu tekrar açılabilsin. */
+        @JavascriptInterface
+        public void showAuthDiagnostics() {
+            authTraceArmed = true;
+            showAuthTraceDialog("Son Google giriş denemesi");
+        }
     }
 
     private boolean loadIncomingOAuthIntent(Intent intent) {
@@ -866,20 +925,21 @@ public class MainActivity extends Activity {
      * API'nin kendisi kalmıştı.
      */
     private void startNativeGoogleSignIn() {
+        beginAuthTrace();
         try {
-            // CredentialManager alanda tutuluyor: `CredentialManager.create(this)`
-            // sonucunu geçici bir ifade olarak bırakmak, asenkron istek sürerken
-            // nesnenin toplanabilmesi anlamına geliyordu ve o durumda geri çağrı
-            // hiç tetiklenmiyor — ne sonuç, ne hata, ne yedek akış. Kullanıcı
-            // hesabını seçtikten sonra ekranda hiçbir şey olmamasının sebebi buydu.
             if (credentialManager == null) {
                 credentialManager = CredentialManager.create(this);
+                traceAuth("2) CredentialManager oluşturuldu (alanda tutuluyor).");
+            } else {
+                traceAuth("2) Mevcut CredentialManager yeniden kullanıldı.");
             }
             GetSignInWithGoogleOption option =
                     new GetSignInWithGoogleOption.Builder(GOOGLE_WEB_CLIENT_ID).build();
             GetCredentialRequest request = new GetCredentialRequest.Builder()
                     .addCredentialOption(option)
                     .build();
+            traceAuth("3) İstek hazır. Client ID: " + shortClientId());
+            armAuthWatchdog();
             credentialManager.getCredentialAsync(
                     this,
                     request,
@@ -888,13 +948,23 @@ public class MainActivity extends Activity {
                     new CredentialManagerCallback<GetCredentialResponse, GetCredentialException>() {
                         @Override
                         public void onResult(GetCredentialResponse response) {
-                            handleGoogleCredential(response.getCredential());
+                            disarmAuthWatchdog();
+                            traceAuth("5) onResult geldi — hesap seçimi tamamlandı.");
+                            handleGoogleCredential(response == null ? null : response.getCredential());
                         }
 
                         @Override
                         public void onError(GetCredentialException error) {
+                            disarmAuthWatchdog();
+                            traceAuth("5) onError geldi.");
+                            traceAuth("   sınıf : " + error.getClass().getName());
+                            traceAuth("   tür   : " + safeText(error.getType()));
+                            traceAuth("   mesaj : " + safeText(error.getMessage()));
                             if (error instanceof GetCredentialCancellationException) {
-                                // Kullanıcı vazgeçti: boş token "vazgeçildi" demek.
+                                // Kullanıcı vazgeçti: boş token "vazgeçildi" demek,
+                                // tanı penceresi açmaya gerek yok.
+                                traceAuth("6) Kullanıcı hesap seçmeden vazgeçti.");
+                                authTraceArmed = false;
                                 deliverGoogleIdTokenToWebView(null);
                                 return;
                             }
@@ -905,13 +975,20 @@ public class MainActivity extends Activity {
                                     error.getClass().getSimpleName() + ": " + error.getMessage());
                         }
                     });
-        } catch (Exception error) {
+            traceAuth("4) getCredentialAsync çağrıldı, yanıt bekleniyor.");
+        } catch (Throwable error) {
+            disarmAuthWatchdog();
+            traceAuth("HATA: istek kurulurken " + error.getClass().getName()
+                    + ": " + safeText(error.getMessage()));
             reportGoogleNativeSignInUnavailable(
                     error.getClass().getSimpleName() + ": " + error.getMessage());
         }
     }
 
     private void handleGoogleCredential(Credential credential) {
+        traceAuth("6) Kimlik bilgisi türü: "
+                + (credential == null ? "null" : credential.getType())
+                + " / sınıf: " + (credential == null ? "null" : credential.getClass().getName()));
         if (!(credential instanceof CustomCredential)
                 || !GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL.equals(credential.getType())) {
             reportGoogleNativeSignInUnavailable(
@@ -924,7 +1001,9 @@ public class MainActivity extends Activity {
             idToken = GoogleIdTokenCredential
                     .createFrom(((CustomCredential) credential).getData())
                     .getIdToken();
-        } catch (Exception error) {
+        } catch (Throwable error) {
+            traceAuth("   createFrom hatası: " + error.getClass().getName()
+                    + ": " + safeText(error.getMessage()));
             reportGoogleNativeSignInUnavailable(
                     "ID token çözülemedi: " + error.getClass().getSimpleName());
             return;
@@ -933,30 +1012,184 @@ public class MainActivity extends Activity {
             reportGoogleNativeSignInUnavailable("Kimlik bilgisi geldi ama ID token boş");
             return;
         }
+        traceAuth("7) ID token çözüldü (" + idToken.length() + " karakter).");
         deliverGoogleIdTokenToWebView(idToken);
     }
 
     /**
      * Native giriş bu yapılandırmada kullanılamıyor — web tarafı bunu alınca
      * tarayıcı tabanlı Google akışını başlatır, böylece kullanıcı hiçbir zaman
-     * sessiz bir çıkmazda kalmaz.
+     * sessiz bir çıkmazda kalmaz. Sebep aynı anda ekrandaki tanı raporuna da
+     * yazılır; cihazda logcat okumak mümkün olmayabiliyor.
      */
     private void reportGoogleNativeSignInUnavailable(String reason) {
-        if (webView == null) return;
-        String safeReason = (reason == null ? "" : reason).replace("\\", "\\\\").replace("'", "\\'");
-        String script =
-                "window.__onNativeGoogleSignInUnavailable && window.__onNativeGoogleSignInUnavailable('"
-                        + safeReason
-                        + "');";
-        runOnUiThread(() -> webView.evaluateJavascript(script, null));
+        traceAuth("SONUÇ: native giriş kullanılamadı — " + safeText(reason));
+        if (webView == null) {
+            traceAuth("WebView yok, yedek akış bildirilemedi.");
+            showAuthTraceDialog("Google girişi başarısız");
+            return;
+        }
+        String script = wrapBridgeCall(
+                "__onNativeGoogleSignInUnavailable", escapeForJs(reason));
+        runOnUiThread(() -> webView.evaluateJavascript(script, value -> {
+            traceAuth("   yedek akış köprüsü yanıtı: " + unquote(value));
+            showAuthTraceDialog("Google girişi başarısız");
+        }));
     }
 
     /** idToken null/boşsa JS tarafı bunu "kullanıcı vazgeçti" olarak yorumlar. */
     private void deliverGoogleIdTokenToWebView(String idToken) {
-        if (webView == null) return;
-        String safeToken = idToken == null ? "" : idToken.replace("\\", "\\\\").replace("'", "\\'");
-        String script = "window.__onNativeGoogleSignIn && window.__onNativeGoogleSignIn('" + safeToken + "');";
-        runOnUiThread(() -> webView.evaluateJavascript(script, null));
+        final boolean cancelled = idToken == null || idToken.isEmpty();
+        if (webView == null) {
+            traceAuth("WebView yok, token iletilemedi.");
+            showAuthTraceDialog("Google girişi başarısız");
+            return;
+        }
+        traceAuth("8) " + (cancelled ? "İptal bildirimi" : "ID token") + " web'e iletiliyor.");
+        String script = wrapBridgeCall("__onNativeGoogleSignIn", escapeForJs(idToken));
+        runOnUiThread(() -> webView.evaluateJavascript(script, value -> {
+            String status = unquote(value);
+            traceAuth("9) JS köprüsü yanıtı: " + status);
+            if (cancelled) return;
+            if (!"ILETILDI".equals(status)) {
+                // Token üretildi ama sayfadaki alıcı yoktu: buradan sonrası web
+                // tarafının sorunu, ve tam olarak bu ayrım şimdiye kadar hiç
+                // ölçülmemişti.
+                showAuthTraceDialog("Token web tarafına ulaşmadı");
+                return;
+            }
+            // Web tarafı Supabase'e gidiyor; oradan da ses çıkmazsa rapor açılsın.
+            armAuthWatchdog();
+        }));
+    }
+
+    /**
+     * JS köprüsünü çağırırken sonucu geri döndürür: alıcı fonksiyon sayfada
+     * tanımlı mı, çağrı hata attı mı — {@code evaluateJavascript} geri
+     * çağrısında görülür. Eskiden çağrı ateşlenip unutuluyordu, bu yüzden
+     * "native token üretti ama web hiç almadı" durumu görünmezdi.
+     */
+    private String wrapBridgeCall(String handler, String argument) {
+        return "(function(){try{"
+                + "if(typeof window." + handler + "!=='function')return 'KOPRU_YOK';"
+                + "window." + handler + "('" + argument + "');"
+                + "return 'ILETILDI';"
+                + "}catch(e){return 'JS_HATASI:'+e;}})();";
+    }
+
+    private String escapeForJs(String value) {
+        if (value == null) return "";
+        return value.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", " ");
+    }
+
+    private String unquote(String value) {
+        if (value == null) return "null";
+        String trimmed = value.trim();
+        if (trimmed.length() >= 2 && trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
+            trimmed = trimmed.substring(1, trimmed.length() - 1);
+        }
+        return trimmed.replace("\\\"", "\"");
+    }
+
+    private String safeText(String value) {
+        return value == null || value.isEmpty() ? "(boş)" : value;
+    }
+
+    private String shortClientId() {
+        int dash = GOOGLE_WEB_CLIENT_ID.indexOf('-');
+        return dash > 0 ? GOOGLE_WEB_CLIENT_ID.substring(0, dash) + "-… .apps.googleusercontent.com"
+                : GOOGLE_WEB_CLIENT_ID;
+    }
+
+    // ---------------------------------------------------------------------
+    // Tanı kaydı: native akışın hangi adımda durduğunu ölçer.
+    // Aynı satırlar hem logcat'e (adb logcat -s SILVAN_AUTH) hem de kablo
+    // gerekmeden ekrandaki kopyalanabilir pencereye düşer.
+    // ---------------------------------------------------------------------
+
+    private void beginAuthTrace() {
+        synchronized (authTrace) {
+            authTrace.setLength(0);
+        }
+        authTraceStartedAt = System.currentTimeMillis();
+        authTraceArmed = true;
+        traceAuth("1) Native akış başlatıldı (Credential Manager).");
+        traceAuth("   uygulama : " + packageVersion(getPackageName()));
+        traceAuth("   cihaz    : " + Build.MANUFACTURER + " " + Build.MODEL
+                + " · Android " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")");
+        traceAuth("   Play Services : " + packageVersion("com.google.android.gms"));
+        traceAuth("   Hesap seçici  : " + packageVersion("com.google.android.credentialmanager")
+                + " / sistem: " + packageVersion("com.android.credentialmanager"));
+    }
+
+    private void traceAuth(String line) {
+        long elapsed = authTraceStartedAt == 0 ? 0 : System.currentTimeMillis() - authTraceStartedAt;
+        String entry = elapsed + " ms · " + (line == null ? "" : line);
+        Log.i(AUTH_TAG, entry);
+        synchronized (authTrace) {
+            if (authTrace.length() > 12_000) authTrace.setLength(0);
+            authTrace.append(entry).append('\n');
+        }
+    }
+
+    private String authTraceSnapshot() {
+        synchronized (authTrace) {
+            return authTrace.length() == 0 ? "(kayıt yok)" : authTrace.toString();
+        }
+    }
+
+    private void armAuthWatchdog() {
+        mainHandler.removeCallbacks(authWatchdog);
+        mainHandler.postDelayed(authWatchdog, AUTH_WATCHDOG_MS);
+    }
+
+    private void disarmAuthWatchdog() {
+        mainHandler.removeCallbacks(authWatchdog);
+    }
+
+    private void onAuthWatchdogFired() {
+        traceAuth("ZAMAN AŞIMI: " + (AUTH_WATCHDOG_MS / 1000)
+                + " saniyede hiçbir sonuç gelmedi. Akış son satırdaki adımda takıldı.");
+        showAuthTraceDialog("Google girişi yanıt vermedi");
+    }
+
+    private void showAuthTraceDialog(String title) {
+        if (!authTraceArmed) return;
+        authTraceArmed = false;
+        disarmAuthWatchdog();
+        final String report = authTraceSnapshot();
+        runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) return;
+            if (authTraceDialog != null && authTraceDialog.isShowing()) {
+                authTraceDialog.dismiss();
+            }
+            authTraceDialog = new AlertDialog.Builder(this)
+                    .setTitle(title)
+                    .setMessage(report)
+                    .setPositiveButton("Kopyala", (dialog, which) -> copyAuthTrace(report))
+                    .setNegativeButton("Kapat", null)
+                    .create();
+            authTraceDialog.show();
+        });
+    }
+
+    private void copyAuthTrace(String report) {
+        try {
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            if (clipboard == null) return;
+            clipboard.setPrimaryClip(ClipData.newPlainText("Silvan giriş tanılama", report));
+            Toast.makeText(this, "Tanı raporu panoya kopyalandı.", Toast.LENGTH_LONG).show();
+        } catch (Exception ignored) {
+            // Pano yoksa rapor zaten ekranda okunabiliyor.
+        }
+    }
+
+    private String packageVersion(String packageName) {
+        try {
+            return getPackageManager().getPackageInfo(packageName, 0).versionName;
+        } catch (Exception ignored) {
+            return "yok";
+        }
     }
 
     private boolean shouldLeaveWebView(String url) {

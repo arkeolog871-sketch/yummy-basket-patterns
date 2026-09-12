@@ -18,8 +18,8 @@ android {
         applicationId = "online.uygulamamcebimde.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 23
-        versionName = "2.12"
+        versionCode = 24
+        versionName = "2.13"
     }
 
     val signingStore = providers.gradleProperty("android.keystorePath")
