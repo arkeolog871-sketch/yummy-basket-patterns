@@ -1120,6 +1120,8 @@ public class MainActivity extends Activity {
         traceAuth("   Play Services : " + packageVersion("com.google.android.gms"));
         traceAuth("   Hesap seçici  : " + packageVersion("com.google.android.credentialmanager")
                 + " / sistem: " + packageVersion("com.android.credentialmanager"));
+        traceAuth("   İmza SHA-1    : " + signingCertificateSha1());
+        traceAuth("   Kurulum kaynağı: " + installerName());
     }
 
     private void traceAuth(String line) {
@@ -1181,6 +1183,61 @@ public class MainActivity extends Activity {
             Toast.makeText(this, "Tanı raporu panoya kopyalandı.", Toast.LENGTH_LONG).show();
         } catch (Exception ignored) {
             // Pano yoksa rapor zaten ekranda okunabiliyor.
+        }
+    }
+
+    /**
+     * Çalışan uygulamanın imza sertifikasının SHA-1'i. Google Cloud'daki
+     * "Android" OAuth istemcisine kayıtlı parmak izi ile bu değer birebir
+     * aynı değilse Credential Manager isteği reddeder. Play'den kurulan
+     * sürüm Play App Signing anahtarıyla, doğrudan kurulan APK ise yükleme
+     * anahtarıyla imzalıdır; ikisi farklıdır ve karışıklığın büyük kısmı
+     * bundan çıkıyor. Ölçüp yazmak, tahmin etmekten iyidir.
+     */
+    private String signingCertificateSha1() {
+        try {
+            byte[] certificate;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                android.content.pm.SigningInfo info = getPackageManager()
+                        .getPackageInfo(getPackageName(), PackageManager.GET_SIGNING_CERTIFICATES)
+                        .signingInfo;
+                android.content.pm.Signature[] signatures = info.hasMultipleSigners()
+                        ? info.getApkContentsSigners()
+                        : info.getSigningCertificateHistory();
+                certificate = signatures[0].toByteArray();
+            } else {
+                @SuppressWarnings("deprecation")
+                android.content.pm.Signature[] signatures = getPackageManager()
+                        .getPackageInfo(getPackageName(), PackageManager.GET_SIGNATURES)
+                        .signatures;
+                certificate = signatures[0].toByteArray();
+            }
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-1").digest(certificate);
+            StringBuilder hex = new StringBuilder(digest.length * 3);
+            for (byte value : digest) {
+                if (hex.length() > 0) hex.append(':');
+                hex.append(String.format(java.util.Locale.ROOT, "%02X", value));
+            }
+            return hex.toString();
+        } catch (Throwable ignored) {
+            return "okunamadı";
+        }
+    }
+
+    /** Play Store mu, doğrudan kurulum mu — tanı raporundaki SHA-1'i yorumlamak için. */
+    private String installerName() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                String installer = getPackageManager()
+                        .getInstallSourceInfo(getPackageName())
+                        .getInstallingPackageName();
+                return installer == null ? "doğrudan kurulum" : installer;
+            }
+            @SuppressWarnings("deprecation")
+            String installer = getPackageManager().getInstallerPackageName(getPackageName());
+            return installer == null ? "doğrudan kurulum" : installer;
+        } catch (Throwable ignored) {
+            return "bilinmiyor";
         }
     }
 
