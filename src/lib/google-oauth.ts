@@ -42,7 +42,6 @@ type SilvanNativeOAuth = {
   /** 2.13+ tanı köprüsü; eski build'lerde tanımsız, çağrılar sessizce atlanır. */
   logAuthStep?: (step: string) => void;
   finishAuthDiagnostics?: (outcome: string) => void;
-  showAuthDiagnostics?: () => void;
 };
 
 const handledCodes = new Set<string>();
@@ -60,20 +59,6 @@ export function traceNativeAuth(step: string): void {
     (window as Window & { SilvanNative?: SilvanNativeOAuth }).SilvanNative?.logAuthStep?.(step);
   } catch {
     /* köprü yok veya çağrı reddedildi; tanı kaydı hiçbir akışı bozmamalı */
-  }
-}
-
-/**
- * Son denemenin tanı raporunu ekranda açar (Android 2.13+). Akış sessiz
- * kaldığında kullanıcı raporu buradan görüp kopyalayabiliyor; aksi hâlde
- * kayıt yalnızca logcat'te kalıyor ve cihazda okunamıyor.
- */
-export function showNativeAuthDiagnostics(): void {
-  try {
-    if (typeof window === "undefined") return;
-    (window as Window & { SilvanNative?: SilvanNativeOAuth }).SilvanNative?.showAuthDiagnostics?.();
-  } catch {
-    /* köprü yok; sessizce geç */
   }
 }
 

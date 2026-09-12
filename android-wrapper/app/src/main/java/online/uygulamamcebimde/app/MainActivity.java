@@ -7,9 +7,6 @@ import android.app.AlertDialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.ActivityNotFoundException;
-import android.content.ClipData;
-import android.content.ClipboardManager;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -114,11 +111,7 @@ public class MainActivity extends Activity {
     private boolean askedNotificationPermission;
     private boolean pageReady;
     private CredentialManager credentialManager;
-    private final StringBuilder authTrace = new StringBuilder();
     private long authTraceStartedAt;
-    /** Bu deneme için tanı penceresi hâlâ gösterilebilir mi (tek sefer). */
-    private volatile boolean authTraceArmed;
-    private AlertDialog authTraceDialog;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Runnable loadTimeout = this::showLoadError;
     private final Runnable authWatchdog = this::onAuthWatchdogFired;
@@ -715,10 +708,6 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         mainHandler.removeCallbacks(loadTimeout);
         mainHandler.removeCallbacks(authWatchdog);
-        if (authTraceDialog != null && authTraceDialog.isShowing()) {
-            authTraceDialog.dismiss();
-        }
-        authTraceDialog = null;
         super.onDestroy();
     }
 
@@ -829,26 +818,11 @@ public class MainActivity extends Activity {
             traceAuth("web · " + safeText(step));
         }
 
-        /**
-         * Web akışı bitti. {@code "ok"} ise giriş gerçekten tamamlandı ve tanı
-         * penceresi hiç açılmaz; başka her değerde rapor ekrana gelir.
-         */
+        /** Web akışı bitti; gözcüyü durdurur, kayıt logcat'te kalır. */
         @JavascriptInterface
         public void finishAuthDiagnostics(final String outcome) {
             traceAuth("web · akış bitti: " + safeText(outcome));
             disarmAuthWatchdog();
-            if ("ok".equals(outcome)) {
-                authTraceArmed = false;
-                return;
-            }
-            showAuthTraceDialog("Google girişi tamamlanamadı");
-        }
-
-        /** Pencere kapatıldıysa son denemenin raporu tekrar açılabilsin. */
-        @JavascriptInterface
-        public void showAuthDiagnostics() {
-            authTraceArmed = true;
-            showAuthTraceDialog("Son Google giriş denemesi");
         }
     }
 
@@ -965,7 +939,6 @@ public class MainActivity extends Activity {
                                 // Kullanıcı vazgeçti: boş token "vazgeçildi" demek,
                                 // tanı penceresi açmaya gerek yok.
                                 traceAuth("6) Kullanıcı hesap seçmeden vazgeçti.");
-                                authTraceArmed = false;
                                 deliverGoogleIdTokenToWebView(null);
                                 return;
                             }
@@ -1041,15 +1014,12 @@ public class MainActivity extends Activity {
         traceAuth("SONUÇ: native giriş kullanılamadı — " + safeText(reason));
         if (webView == null) {
             traceAuth("WebView yok, yedek akış bildirilemedi.");
-            showAuthTraceDialog("Google girişi başarısız");
             return;
         }
         String script = wrapBridgeCall(
                 "__onNativeGoogleSignInUnavailable", escapeForJs(reason));
-        runOnUiThread(() -> webView.evaluateJavascript(script, value -> {
-            traceAuth("   yedek akış köprüsü yanıtı: " + unquote(value));
-            showAuthTraceDialog("Google girişi başarısız");
-        }));
+        runOnUiThread(() -> webView.evaluateJavascript(script, value ->
+                traceAuth("   yedek akış köprüsü yanıtı: " + unquote(value))));
     }
 
     /** idToken null/boşsa JS tarafı bunu "kullanıcı vazgeçti" olarak yorumlar. */
@@ -1057,7 +1027,6 @@ public class MainActivity extends Activity {
         final boolean cancelled = idToken == null || idToken.isEmpty();
         if (webView == null) {
             traceAuth("WebView yok, token iletilemedi.");
-            showAuthTraceDialog("Google girişi başarısız");
             return;
         }
         traceAuth("8) " + (cancelled ? "İptal bildirimi" : "ID token") + " web'e iletiliyor.");
@@ -1065,15 +1034,8 @@ public class MainActivity extends Activity {
         runOnUiThread(() -> webView.evaluateJavascript(script, value -> {
             String status = unquote(value);
             traceAuth("9) JS köprüsü yanıtı: " + status);
-            if (cancelled) return;
-            if (!"ILETILDI".equals(status)) {
-                // Token üretildi ama sayfadaki alıcı yoktu: buradan sonrası web
-                // tarafının sorunu, ve tam olarak bu ayrım şimdiye kadar hiç
-                // ölçülmemişti.
-                showAuthTraceDialog("Token web tarafına ulaşmadı");
-                return;
-            }
-            // Web tarafı Supabase'e gidiyor; oradan da ses çıkmazsa rapor açılsın.
+            if (cancelled || !"ILETILDI".equals(status)) return;
+            // Web tarafı Supabase'e gidiyor; oradan da ses çıkmazsa logcat'e düşsün.
             armAuthWatchdog();
         }));
     }
@@ -1123,11 +1085,7 @@ public class MainActivity extends Activity {
     // ---------------------------------------------------------------------
 
     private void beginAuthTrace() {
-        synchronized (authTrace) {
-            authTrace.setLength(0);
-        }
         authTraceStartedAt = System.currentTimeMillis();
-        authTraceArmed = true;
         traceAuth("1) Native akış başlatıldı (Credential Manager).");
         traceAuth("   uygulama : " + packageVersion(getPackageName()));
         traceAuth("   cihaz    : " + Build.MANUFACTURER + " " + Build.MODEL
@@ -1141,18 +1099,7 @@ public class MainActivity extends Activity {
 
     private void traceAuth(String line) {
         long elapsed = authTraceStartedAt == 0 ? 0 : System.currentTimeMillis() - authTraceStartedAt;
-        String entry = elapsed + " ms · " + (line == null ? "" : line);
-        Log.i(AUTH_TAG, entry);
-        synchronized (authTrace) {
-            if (authTrace.length() > 12_000) authTrace.setLength(0);
-            authTrace.append(entry).append('\n');
-        }
-    }
-
-    private String authTraceSnapshot() {
-        synchronized (authTrace) {
-            return authTrace.length() == 0 ? "(kayıt yok)" : authTrace.toString();
-        }
+        Log.i(AUTH_TAG, elapsed + " ms · " + (line == null ? "" : line));
     }
 
     private void armAuthWatchdog() {
@@ -1167,38 +1114,6 @@ public class MainActivity extends Activity {
     private void onAuthWatchdogFired() {
         traceAuth("ZAMAN AŞIMI: " + (AUTH_WATCHDOG_MS / 1000)
                 + " saniyede hiçbir sonuç gelmedi. Akış son satırdaki adımda takıldı.");
-        showAuthTraceDialog("Google girişi yanıt vermedi");
-    }
-
-    private void showAuthTraceDialog(String title) {
-        if (!authTraceArmed) return;
-        authTraceArmed = false;
-        disarmAuthWatchdog();
-        final String report = authTraceSnapshot();
-        runOnUiThread(() -> {
-            if (isFinishing() || isDestroyed()) return;
-            if (authTraceDialog != null && authTraceDialog.isShowing()) {
-                authTraceDialog.dismiss();
-            }
-            authTraceDialog = new AlertDialog.Builder(this)
-                    .setTitle(title)
-                    .setMessage(report)
-                    .setPositiveButton("Kopyala", (dialog, which) -> copyAuthTrace(report))
-                    .setNegativeButton("Kapat", null)
-                    .create();
-            authTraceDialog.show();
-        });
-    }
-
-    private void copyAuthTrace(String report) {
-        try {
-            ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-            if (clipboard == null) return;
-            clipboard.setPrimaryClip(ClipData.newPlainText("Silvan giriş tanılama", report));
-            Toast.makeText(this, "Tanı raporu panoya kopyalandı.", Toast.LENGTH_LONG).show();
-        } catch (Exception ignored) {
-            // Pano yoksa rapor zaten ekranda okunabiliyor.
-        }
     }
 
     /**
