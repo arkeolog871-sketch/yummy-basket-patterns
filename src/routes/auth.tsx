@@ -95,9 +95,15 @@ function AuthPage() {
   // tarayıcı tabanlı akış güvenilir uygulamaya dönemiyor. Apple'ın kendi App
   // Store incelemesi (Guideline 4.8) dışında bir gereksinim olmadığı için
   // burada hiç göstermiyoruz — iOS/web'de aynen kalıyor.
-  const [isAndroidNativeApp] = useState(() =>
-    typeof window === "undefined" ? false : Boolean(nativeOAuthBridge()),
-  );
+  // Sunucu bu köprüyü göremediği için ilk render'da mutlaka false olmalı.
+  // Değeri useState başlatıcısında okumak, uygulama içinde sunucunun bastığı
+  // Apple düğmesinin istemcide hiç basılmaması demekti; React bunu hydration
+  // uyuşmazlığı sayıp (#418) giriş sayfasının ağacını atıp yeniden kuruyordu.
+  // Gerçek değer bağlanmadan sonra yazılıyor.
+  const [isAndroidNativeApp, setIsAndroidNativeApp] = useState(false);
+  useEffect(() => {
+    setIsAndroidNativeApp(Boolean(nativeOAuthBridge()));
+  }, []);
   const [pendingVerification, setPendingVerification] = useState<{
     email: string;
     startAtCode: boolean;
