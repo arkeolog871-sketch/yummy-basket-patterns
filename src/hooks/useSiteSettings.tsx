@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { SplashScreen } from "@/components/system/SplashScreen";
+import { readableOnWarm } from "@/lib/warm-contrast";
 import {
   applyTypographyCss,
   DEFAULT_TYPOGRAPHY,
@@ -203,6 +204,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     root.style.setProperty("--secondary", settings.secondary_color);
     root.style.setProperty("--background", settings.background_color);
     root.style.setProperty("--warm", settings.warm_color);
+    root.style.setProperty("--warm-foreground", readableOnWarm(settings.warm_color));
     root.style.setProperty(
       "--gradient-warm",
       `linear-gradient(120deg, ${settings.warm_color} 0%, ${settings.accent_color} 100%)`,
