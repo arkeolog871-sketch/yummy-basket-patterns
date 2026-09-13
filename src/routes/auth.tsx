@@ -126,9 +126,18 @@ function AuthPage() {
   const [completesInApp, setCompletesInApp] = useState(false);
   const [appleCompleting, setAppleCompleting] = useState(false);
   const [appleAndroidHandoffPending, setAppleAndroidHandoffPending] = useState(false);
+  /**
+   * Native kabuğun içindeyken köprünün durumunu ekranda gösterir. Cihaza
+   * bağlanmadan native tarafı görmenin başka yolu yok ve eklenti kayıtlı
+   * değilse giriş sessizce tarayıcıya düşüyor — sebebi görünür olmalı.
+   * Sunucuda köprü yok, o yüzden ilk render'dan sonra yazılır.
+   */
+  const [bridgeInfo, setBridgeInfo] = useState("");
   useEffect(() => {
     if (isGoogleOAuthCallbackParams()) setGoogleCompleting(true);
     if (isAppleOAuthCallbackParams()) setAppleCompleting(true);
+    const cap = (window as Window & { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+    if (cap?.isNativePlatform?.()) setBridgeInfo(nativeIosAuthDiagnostics());
   }, []);
   // Native akış başlayıp başarısız olursa giriş sessizce ölmesin: tarayıcıya düş.
   const { busy: googleNativeBusy, start: startNativeGoogle } = useNativeGoogleSignIn(() => {
@@ -610,6 +619,12 @@ function AuthPage() {
             veya
             <span className="h-px flex-1 bg-border" />
           </div>
+
+          {bridgeInfo ? (
+            <p className="mt-3 rounded-2xl border border-border bg-muted/40 p-3 text-center font-mono text-[11px] leading-relaxed break-words text-muted-foreground">
+              {bridgeInfo}
+            </p>
+          ) : null}
 
           <Button
             type="button"
