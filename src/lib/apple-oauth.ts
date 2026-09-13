@@ -230,6 +230,11 @@ export function humanizeOAuthError(message: string): string {
   if (text.includes("unsupported provider") || text.includes("missing oauth secret")) {
     return "Supabase Auth → Apple sağlayıcısı etkinleştirilmeli ve Apple Developer bilgileri eklenmeli.";
   }
+  // Native iOS akışında jetonun audience'ı uygulamanın bundle ID'si olur;
+  // Services ID değil. Ham hata sebebi söylemediği için açık yazılır.
+  if (text.includes("audience")) {
+    return "Apple girişi reddedildi: uygulama kimliği (online.uygulamamcebimde.app) Supabase'in izin listesinde yok. Auth ayarlarında Apple Client ID alanına Services ID'nin yanına eklenmeli.";
+  }
   if (
     text.includes("invalid_request") ||
     text.includes("state") ||

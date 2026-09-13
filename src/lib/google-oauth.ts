@@ -563,6 +563,12 @@ export function humanizeOAuthError(message: string): string {
   if (text.includes("unsupported provider") || text.includes("missing oauth secret")) {
     return "Supabase Auth → Google sağlayıcısına aynı Web istemci kimliği ve gizli anahtar eklenmeli.";
   }
+  // Native iOS akışında jetonun audience'ı iOS istemci kimliği olur. Ham hâli
+  // ("Unacceptable audience in id_token") sebebi söylemiyor; tek çözümü
+  // Supabase'in izin listesine o kimliği eklemek olduğu için doğrudan yazılır.
+  if (text.includes("audience")) {
+    return "Google girişi reddedildi: iOS istemci kimliği Supabase'in izin listesinde yok. Auth ayarlarında Google Client ID alanına iOS istemci kimliği de eklenmeli.";
+  }
   if (
     text.includes("invalid_request") ||
     text.includes("state") ||
