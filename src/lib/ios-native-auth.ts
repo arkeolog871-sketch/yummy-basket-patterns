@@ -22,6 +22,8 @@ type CapacitorGlobal = {
   getPlatform?: () => string;
   isNativePlatform?: () => boolean;
   PluginHeaders?: CapacitorPluginHeader[];
+  /** Native köprünün doğrudan çağrı kanalı; native-bridge.js enjekte eder. */
+  nativePromise?: <T>(pluginName: string, methodName: string, options?: unknown) => Promise<T>;
 };
 
 type NativeAuthResponse = {
@@ -29,11 +31,6 @@ type NativeAuthResponse = {
   idToken?: string;
   nonce?: string;
   fullName?: string;
-};
-
-type SilvanAuthPlugin = {
-  signInWithGoogle: () => Promise<NativeAuthResponse>;
-  signInWithApple: () => Promise<NativeAuthResponse>;
 };
 
 /**
@@ -55,7 +52,9 @@ function capacitorGlobal(): CapacitorGlobal | null {
  * üzerinden ölçer. Yalnızca platforma bakmak yetmez: mağazadaki eski sürümler
  * `SilvanAuth`'u içermiyor ve orada native çağrı "Unimplemented" ile ölürdü.
  */
-export function hasNativeIosAuth(method: "signInWithGoogle" | "signInWithApple"): boolean {
+type PluginMethod = "signInWithGoogle" | "signInWithApple";
+
+export function hasNativeIosAuth(method: PluginMethod): boolean {
   const cap = capacitorGlobal();
   if (!cap?.isNativePlatform?.()) return false;
   if (cap.getPlatform?.() !== "ios") return false;
@@ -63,17 +62,22 @@ export function hasNativeIosAuth(method: "signInWithGoogle" | "signInWithApple")
   return Boolean(header?.methods?.some((entry) => entry.name === method));
 }
 
-async function loadPlugin(): Promise<SilvanAuthPlugin> {
-  const { registerPlugin } = await import("@capacitor/core");
-  return registerPlugin<SilvanAuthPlugin>(PLUGIN_NAME);
-}
-
-let cached: Promise<SilvanAuthPlugin> | null = null;
-
-/** registerPlugin aynı ad için iki kez çağrılırsa konsola uyarı basıyor. */
-function plugin(): Promise<SilvanAuthPlugin> {
-  cached ??= loadPlugin();
-  return cached;
+/**
+ * Native metodu köprünün kendi kanalıyla çağırır.
+ *
+ * Burada bilerek `@capacitor/core`'un registerPlugin'i kullanılmıyor: onu
+ * getirmek için gereken dinamik import, WKWebView içinde ne çözülen ne
+ * reddedilen bir sözde asılı kalıyordu ve giriş Swift'e hiç ulaşmadan
+ * ölüyordu. registerPlugin'in native eklenti için yaptığı şey zaten bu
+ * çağrının aynısı; köprü nesnesi de sayfa açılışında enjekte edildiği için
+ * ağdan ek bir şey beklemeye gerek yok.
+ */
+function callNative(method: PluginMethod): Promise<NativeAuthResponse> {
+  const cap = capacitorGlobal();
+  if (!cap?.nativePromise) {
+    return Promise.reject(new Error(`Köprü çağrı kanalı yok. ${nativeIosAuthDiagnostics()}`));
+  }
+  return cap.nativePromise<NativeAuthResponse>(PLUGIN_NAME, method, {});
 }
 
 /**
@@ -125,13 +129,10 @@ export async function signInWithNativeIosGoogle(
   try {
     onStep("başladı");
     const { humanizeOAuthError } = await import("@/lib/google-oauth");
-    // plugin() de bekçi kapsamında: @capacitor/core parçası ağdan geliyor ve
-    // orada takılırsa dışarıda kalan bir bekçi hiç devreye girmez.
     const result = await withWatchdog(
-      (async () => {
-        const api = await plugin();
-        onStep("köprü hazır, native çağrı gönderiliyor");
-        return api.signInWithGoogle();
+      (() => {
+        onStep("native çağrı gönderiliyor");
+        return callNative("signInWithGoogle");
       })(),
       "Google",
     );
@@ -158,10 +159,9 @@ export async function signInWithNativeIosApple(
     onStep("başladı");
     const { humanizeOAuthError } = await import("@/lib/apple-oauth");
     const result = await withWatchdog(
-      (async () => {
-        const api = await plugin();
-        onStep("köprü hazır, native çağrı gönderiliyor");
-        return api.signInWithApple();
+      (() => {
+        onStep("native çağrı gönderiliyor");
+        return callNative("signInWithApple");
       })(),
       "Apple",
     );
