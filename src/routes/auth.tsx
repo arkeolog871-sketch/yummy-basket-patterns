@@ -23,6 +23,11 @@ import {
 } from "@/lib/google-oauth";
 import { useNativeGoogleSignIn } from "@/hooks/useNativeGoogleSignIn";
 import {
+  hasNativeIosAuth,
+  signInWithNativeIosApple,
+  signInWithNativeIosGoogle,
+} from "@/lib/ios-native-auth";
+import {
   APPLE_OAUTH_RETURN_PATH_KEY,
   completeAppleOAuthFromCallback,
   humanizeOAuthError as humanizeAppleOAuthError,
@@ -301,10 +306,34 @@ function AuthPage() {
   async function handleGoogle() {
     // Credential Manager köprüsü varsa hesap seçimi uygulama içinde yapılır.
     if (startNativeGoogle()) return;
+    // iOS: GoogleSignIn SDK'sı hesap seçimini uygulama içinde tamamlar.
+    if (hasNativeIosAuth("signInWithGoogle")) {
+      setBusy(true);
+      try {
+        const result = await signInWithNativeIosGoogle();
+        if (result.ok === null) return; // kullanıcı vazgeçti
+        if (!result.ok) toast.error(result.error);
+        return;
+      } finally {
+        setBusy(false);
+      }
+    }
     await startBrowserGoogle();
   }
 
   async function handleApple() {
+    // iOS: ASAuthorizationController ile gerçek native ekran; tarayıcı yok.
+    if (hasNativeIosAuth("signInWithApple")) {
+      setBusy(true);
+      try {
+        const result = await signInWithNativeIosApple();
+        if (result.ok === null) return; // kullanıcı vazgeçti
+        if (!result.ok) toast.error(result.error);
+        return;
+      } finally {
+        setBusy(false);
+      }
+    }
     if (isInAppBrowser()) {
       toast.error(
         "Apple girişi WhatsApp / Instagram / Facebook içi tarayıcıda çalışmaz. Bağlantıyı Chrome veya Safari ile açın.",

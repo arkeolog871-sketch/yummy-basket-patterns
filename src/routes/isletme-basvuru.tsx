@@ -8,6 +8,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { startAppleOAuth, humanizeOAuthError as humanizeAppleOAuthError } from "@/lib/apple-oauth";
 import { nativeOAuthBridge, startGoogleOAuth } from "@/lib/google-oauth";
+import {
+  hasNativeIosAuth,
+  signInWithNativeIosApple,
+  signInWithNativeIosGoogle,
+} from "@/lib/ios-native-auth";
 import { useNativeGoogleSignIn } from "@/hooks/useNativeGoogleSignIn";
 
 import { useAppCategories } from "@/hooks/useTaxonomy";
@@ -67,6 +72,13 @@ function BusinessApplicationGate() {
   }, []);
 
   async function handleApple() {
+    // iOS: giriş uygulama içinde tamamlanır (bkz. src/lib/ios-native-auth.ts).
+    if (hasNativeIosAuth("signInWithApple")) {
+      const native = await signInWithNativeIosApple();
+      if (native.ok === null) return; // kullanıcı vazgeçti
+      if (!native.ok) toast.error(native.error);
+      return;
+    }
     try {
       const result = await startAppleOAuth();
       if (!result.ok) toast.error(humanizeAppleOAuthError(result.error));
@@ -91,6 +103,12 @@ function BusinessApplicationGate() {
   async function handleGoogle() {
     // Credential Manager köprüsü varsa hesap seçimi uygulama içinde yapılır.
     if (startNativeGoogle()) return;
+    if (hasNativeIosAuth("signInWithGoogle")) {
+      const native = await signInWithNativeIosGoogle();
+      if (native.ok === null) return; // kullanıcı vazgeçti
+      if (!native.ok) toast.error(native.error);
+      return;
+    }
     await startBrowserGoogle();
   }
 

@@ -22,6 +22,29 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<!-- Google girişi uygulama içinde tamamlanır (bkz. SilvanAuthPlugin).
+	     GIDClientID: bu uygulamanın iOS OAuth istemcisi.
+	     GIDServerClientID: Supabase'in doğruladığı Web istemcisi; Android
+	     tarafı da aynı Web kimliğini kullanıyor. -->
+	<key>GIDClientID</key>
+	<string>690305033747-8f8nb3epkb00i45p7h3fh8hu74ibt415.apps.googleusercontent.com</string>
+	<key>GIDServerClientID</key>
+	<string>690305033747-s0q65dae6feqfpndvrcmlmoictvehp99.apps.googleusercontent.com</string>
+	<!-- GoogleSignIn oturumu bu şema ile uygulamaya döner. Değer, iOS
+	     istemci kimliğinin ters çevrilmiş hâlidir; başka bir şey yazılamaz. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>google-signin</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.690305033747-8f8nb3epkb00i45p7h3fh8hu74ibt415</string>
+			</array>
+		</dict>
+	</array>
 	<key>FirebaseAppDelegateProxyEnabled</key>
 	<false/>
 	<key>ITSAppUsesNonExemptEncryption</key>

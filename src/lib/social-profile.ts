@@ -1,10 +1,14 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Sosyal giriş (Google) sonrası profildeki ad soyad boşsa sağlayıcıdan gelen
- * isimle doldurur. Var olan ismin üzerine asla yazmaz.
+ * Sosyal giriş (Google / Apple) sonrası profildeki ad soyad boşsa sağlayıcıdan
+ * gelen isimle doldurur. Var olan ismin üzerine asla yazmaz.
+ *
+ * `fallbackName` yalnızca Apple için gerekli: Apple adı ID token'a koymaz,
+ * sadece ilk yetkilendirmede native kimlik bilgisiyle bir kez verir. Bu yüzden
+ * user_metadata'da hiç görünmez ve kaçırılırsa bir daha gelmez.
  */
-export async function fillFullNameFromProvider(): Promise<void> {
+export async function fillFullNameFromProvider(fallbackName?: string): Promise<void> {
   try {
     const { data, error } = await supabase.auth.getUser();
     const user = data?.user;
@@ -16,7 +20,8 @@ export async function fillFullNameFromProvider(): Promise<void> {
       str(meta["full_name"]) ||
       str(meta["name"]) ||
       str(meta["displayName"]) ||
-      [str(meta["given_name"]), str(meta["family_name"])].filter(Boolean).join(" ");
+      [str(meta["given_name"]), str(meta["family_name"])].filter(Boolean).join(" ") ||
+      str(fallbackName);
     const fullName = candidate.slice(0, 120);
     if (!fullName) return;
 
