@@ -31,11 +31,25 @@ permissions:
 jobs:
   simulator:
     name: Unsigned simulator compile
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # Capacitor 8 ships as a prebuilt XCFramework whose .swiftinterface
+      # guards 106 declarations behind `#if compiler(>=5.3) &&
+      # $NonescapableTypes` — a Swift 6 feature flag. Under macos-14's default
+      # Xcode 15.4 (Swift 5.10) that condition is false, so members like
+      # CAPPluginCall.reject and CAPBridgeProtocol.viewController silently
+      # vanish from the module and any code using them fails to compile.
+      # Nothing in the app touched them before, so the gap went unnoticed;
+      # matching ios-release.yml's Xcode keeps this check representative of
+      # the build that actually ships.
+      - name: Select Xcode 26
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26.2"
 
       - name: Setup Node
         uses: actions/setup-node@v4

@@ -3,6 +3,7 @@ import Capacitor
 import CryptoKit
 import Foundation
 import GoogleSignIn
+import UIKit
 import os
 
 /**
