@@ -46,9 +46,14 @@ public class SilvanAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     // MARK: - Google
 
     @objc func signInWithGoogle(_ call: CAPPluginCall) {
+        // Tamamlama bloğu metot döndükten çok sonra çalışıyor; çağrı canlı
+        // tutulmazsa köprü onu bırakabiliyor ve sonuç hiçbir yere ulaşmıyor.
+        // Aralıklı yaşanan "yanıt gelmedi" tablosunun sebebi buydu.
+        call.keepAlive = true
         let info = Bundle.main.infoDictionary
         guard let clientID = info?["GIDClientID"] as? String, !clientID.isEmpty else {
             Self.log.error("GIDClientID Info.plist'te yok")
+            call.keepAlive = false
             call.reject("Google yapılandırması eksik: GIDClientID")
             return
         }
@@ -59,6 +64,7 @@ public class SilvanAuthPlugin: CAPPlugin, CAPBridgedPlugin {
         DispatchQueue.main.async {
             guard let viewController = self.bridge?.viewController else {
                 Self.log.error("Sunum yapacak görünüm bulunamadı")
+                call.keepAlive = false
                 call.reject("Giriş ekranı açılamadı")
                 return
             }
@@ -79,6 +85,7 @@ public class SilvanAuthPlugin: CAPPlugin, CAPBridgedPlugin {
                 additionalScopes: nil,
                 nonce: rawNonce
             ) { result, error in
+                call.keepAlive = false
                 if let error = error as NSError? {
                     if error.code == GIDSignInError.canceled.rawValue {
                         Self.log.info("Google: kullanıcı vazgeçti")
@@ -195,14 +202,32 @@ extension SilvanAuthPlugin: ASAuthorizationControllerDelegate {
                 call.resolve(["cancelled": true])
                 return
             }
-            Self.log.error("Apple hatası: \(error.localizedDescription, privacy: .public)")
-            call.reject(error.localizedDescription)
+            // Salt "error 1000" hiçbir şey anlatmıyor; alan, kod ve userInfo
+            // olmadan bu hatayı cihaza bağlanmadan ayırt etmek mümkün değil.
+            let ns = error as NSError
+            let detail = "\(error.localizedDescription) [\(ns.domain) \(ns.code)] \(ns.userInfo)"
+            Self.log.error("Apple hatası: \(detail, privacy: .public)")
+            call.reject(String(detail.prefix(400)))
         }
     }
 }
 
 extension SilvanAuthPlugin: ASAuthorizationControllerPresentationContextProviding {
+    /// Boş bir `ASPresentationAnchor()` döndürmek, hiçbir sahneye bağlı olmayan
+    /// bir pencere demek; sistem ekranı sunamıyor ve akış anında
+    /// AuthorizationError 1000 ile ölüyor. Köprünün penceresi yoksa öndeki
+    /// sahnenin gerçek penceresi aranır.
     public func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        bridge?.viewController?.view.window ?? ASPresentationAnchor()
+        if let window = bridge?.viewController?.view.window {
+            return window
+        }
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let active = scenes.first { $0.activationState == .foregroundActive } ?? scenes.first
+        if let window = active?.windows.first(where: { $0.isKeyWindow }) ?? active?.windows.first {
+            Self.log.info("Apple: köprü penceresi yok, sahne penceresi kullanılıyor")
+            return window
+        }
+        Self.log.error("Apple: sunum penceresi bulunamadı")
+        return ASPresentationAnchor()
     }
 }
