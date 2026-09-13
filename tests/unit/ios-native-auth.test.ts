@@ -164,3 +164,18 @@ describe("app-target plugin registration", () => {
     expect(pkg.scripts["cap:sync"]).toContain("register-ios-app-plugins.mjs");
   });
 });
+
+/**
+ * Google, kendi ürettiği nonce'u jetona koyup dışarı vermiyor; Supabase de
+ * "jetonda nonce var, sen göndermedin" diyerek jetonu reddediyor. Nonce'u
+ * çağıran tarafın verebilmesi GoogleSignIn 9.0.0 ile geldi. 9'un altına
+ * düşülürse giriş yeniden kırılır.
+ */
+describe("GoogleSignIn sürümü", () => {
+  it("özel nonce destekleyen bir sürüme sabitlenmiş", () => {
+    const pbxproj = readFileSync(join(ROOT, "ios/App/App.xcodeproj/project.pbxproj"), "utf8");
+    const pinned = /GoogleSignIn-iOS[\s\S]*?version = (\d+)\.(\d+)\.(\d+);/.exec(pbxproj);
+    expect(pinned).not.toBeNull();
+    expect(Number(pinned![1])).toBeGreaterThanOrEqual(9);
+  });
+});
