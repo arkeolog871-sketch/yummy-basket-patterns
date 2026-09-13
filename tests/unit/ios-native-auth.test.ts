@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { hasNativeIosAuth } from "@/lib/ios-native-auth";
+// @ts-expect-error -- .mjs derleme betiği, tip bildirimi yok
+import { appTargetPluginClasses } from "../../scripts/register-ios-app-plugins.mjs";
 
 const ROOT = join(import.meta.dirname, "../..");
 const IOS_CLIENT_ID = "690305033747-8f8nb3epkb00i45p7h3fh8hu74ibt415.apps.googleusercontent.com";
@@ -121,5 +123,44 @@ describe("iOS Google sign-in configuration", () => {
   it("sends the hashed nonce to Apple and returns the raw one to the web layer", () => {
     expect(plugin).toContain("request.nonce = Self.sha256(rawNonce)");
     expect(plugin).toContain('"nonce": rawNonce');
+  });
+});
+
+/**
+ * Capacitor iOS'ta eklenti taraması yok: köprü yalnızca uygulama paketindeki
+ * capacitor.config.json'daki packageClassList'i okuyor ve registerPluginType()
+ * autoRegisterPlugins açıkken hiçbir şey yapmıyor. `cap sync` o listeyi sadece
+ * npm eklenti paketlerinden üretip her seferinde baştan yazdığı için uygulama
+ * hedefindeki SilvanAuthPlugin derlenir ama kaydolmaz. Kaydolmadığında hiçbir
+ * şey patlamaz — PluginHeaders'a düşmez, hasNativeIosAuth false döner ve giriş
+ * sessizce tarayıcıya çıkar. Yani Apple'ın reddettiği davranış geri gelir.
+ * Bu yüzden kayıt adımı testle sabitleniyor.
+ */
+describe("app-target plugin registration", () => {
+  const workflows = ["ios-build", "ios-release"].map((name) => ({
+    name,
+    yaml: readFileSync(join(ROOT, `.github/workflows/${name}.yml`), "utf8"),
+  }));
+
+  /** Gerçek Swift kaynağına bakar: sınıf adı betikte sabit yazılı değil. */
+  it("finds SilvanAuthPlugin by scanning the app target sources", () => {
+    expect(appTargetPluginClasses()).toContain("SilvanAuthPlugin");
+  });
+
+  it.each(workflows)("$name registers app-target plugins after cap sync", ({ yaml }) => {
+    const sync = yaml.indexOf("cap sync ios");
+    const register = yaml.indexOf("scripts/register-ios-app-plugins.mjs");
+    expect(sync).toBeGreaterThan(-1);
+    expect(register).toBeGreaterThan(sync);
+  });
+
+  /** Kayıt düşerse derleme geçmesin; sessizce yanlış uygulama yayınlanmasın. */
+  it.each(workflows)("$name fails the build when the plugin is not registered", ({ yaml }) => {
+    expect(yaml).toContain('assert "SilvanAuthPlugin" in cfg.get("packageClassList", [])');
+  });
+
+  it("keeps the local cap:sync in step with CI", () => {
+    const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
+    expect(pkg.scripts["cap:sync"]).toContain("register-ios-app-plugins.mjs");
   });
 });

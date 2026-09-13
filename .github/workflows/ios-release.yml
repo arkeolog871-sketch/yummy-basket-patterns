@@ -50,6 +50,16 @@ jobs:
         working-directory: .
         run: bunx cap sync ios
 
+      # Capacitor iOS'ta eklenti taraması yok: köprü yalnızca
+      # capacitor.config.json'daki packageClassList'i okuyor ve `cap sync` o
+      # listeyi sadece npm eklenti paketlerinden üretip her seferinde baştan
+      # yazıyor. Uygulama hedefindeki SilvanAuthPlugin derlenir ama kaydolmaz;
+      # kaydolmazsa web tarafı köprüyü göremez ve sessizce tarayıcı akışına
+      # düşer — Apple'ın reddettiği davranışın ta kendisi.
+      - name: Register app-target Capacitor plugins
+        working-directory: .
+        run: node scripts/register-ios-app-plugins.mjs
+
       - name: Verify production Capacitor config
         working-directory: .
         run: |
@@ -59,6 +69,9 @@ jobs:
           cfg = json.loads(Path("ios/App/App/capacitor.config.json").read_text())
           assert cfg.get("appId") == "online.uygulamamcebimde.app", cfg.get("appId")
           assert cfg.get("server", {}).get("url") == "https://uygulamamcebimde.online", cfg.get("server")
+          # Kaydedilmemis eklenti sessizce tarayici akisina duser; burada patlasin.
+          assert "SilvanAuthPlugin" in cfg.get("packageClassList", []), cfg.get("packageClassList")
+          print("packageClassList", cfg["packageClassList"])
           print("appId", cfg["appId"])
           print("server.url", cfg["server"]["url"])
           PY

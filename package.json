@@ -21,7 +21,7 @@
     "staging:migrate": "node scripts/staging-migrate.mjs",
     "ios:prepare": "node scripts/prepare-ios-pwa.mjs",
     "build:ios": "node scripts/prepare-ios-pwa.mjs && vite build",
-    "cap:sync": "cap sync ios",
+    "cap:sync": "cap sync ios && node scripts/register-ios-app-plugins.mjs",
     "ios:open": "cap open ios"
   },
   "dependencies": {
