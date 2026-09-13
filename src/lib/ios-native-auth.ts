@@ -73,6 +73,43 @@ function plugin(): Promise<SilvanAuthPlugin> {
   return cached;
 }
 
+/**
+ * Köprünün o anki hâlini tek satırda özetler. Hata mesajına ekleniyor çünkü
+ * cihaza bağlanmadan native tarafı görmenin başka yolu yok.
+ */
+export function nativeIosAuthDiagnostics(): string {
+  const cap = capacitorGlobal();
+  if (!cap) return "Capacitor köprüsü yok";
+  const header = cap.PluginHeaders?.find((entry) => entry.name === PLUGIN_NAME);
+  const names = cap.PluginHeaders?.map((entry) => entry.name).join(", ") || "yok";
+  return [
+    `platform=${cap.getPlatform?.() ?? "?"}`,
+    `native=${cap.isNativePlatform?.() ?? "?"}`,
+    `${PLUGIN_NAME}=${header ? (header.methods?.map((m) => m.name).join("+") ?? "metotsuz") : "KAYITLI DEĞİL"}`,
+    `eklentiler=[${names}]`,
+  ].join(" · ");
+}
+
+/**
+ * Capacitor, çağrıyı gönderemediğinde (eklenti bulunamadı, metot yok, seçici
+ * eşleşmedi) yalnızca konsola yazıp `return` ediyor — söz ne çözülüyor ne
+ * reddediliyor. O yüzden ekranda hiçbir şey olmuyor ve sebep görünmüyor.
+ * Bekçi, gelmeyen yanıtı görünür bir hataya çevirir; asıl söz iptal edilmez,
+ * geç de olsa gelirse giriş normal şekilde tamamlanır.
+ */
+const NATIVE_CALL_TIMEOUT_MS = 12_000;
+
+function withWatchdog<T>(promise: Promise<T>, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`${label}: native taraf yanıt vermedi. ${nativeIosAuthDiagnostics()}`));
+      }, NATIVE_CALL_TIMEOUT_MS);
+    }),
+  ]);
+}
+
 function errorText(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message) return error.message;
   if (typeof error === "string" && error) return error;
@@ -80,9 +117,9 @@ function errorText(error: unknown, fallback: string): string {
 }
 
 export async function signInWithNativeIosGoogle(): Promise<NativeIosAuthResult> {
-  const { humanizeOAuthError } = await import("@/lib/google-oauth");
   try {
-    const result = await (await plugin()).signInWithGoogle();
+    const { humanizeOAuthError } = await import("@/lib/google-oauth");
+    const result = await withWatchdog((await plugin()).signInWithGoogle(), "Google");
     if (result?.cancelled) return { ok: null };
     const token = result?.idToken;
     if (!token) return { ok: false, error: "Google kimlik bilgisi alınamadı." };
@@ -94,17 +131,14 @@ export async function signInWithNativeIosGoogle(): Promise<NativeIosAuthResult> 
     await fillFullNameFromProvider();
     return { ok: true };
   } catch (error) {
-    return {
-      ok: false,
-      error: humanizeOAuthError(errorText(error, "Google girişi tamamlanamadı.")),
-    };
+    return { ok: false, error: errorText(error, "Google girişi tamamlanamadı.") };
   }
 }
 
 export async function signInWithNativeIosApple(): Promise<NativeIosAuthResult> {
-  const { humanizeOAuthError } = await import("@/lib/apple-oauth");
   try {
-    const result = await (await plugin()).signInWithApple();
+    const { humanizeOAuthError } = await import("@/lib/apple-oauth");
+    const result = await withWatchdog((await plugin()).signInWithApple(), "Apple");
     if (result?.cancelled) return { ok: null };
     const token = result?.idToken;
     // Supabase, Apple'a gönderilen SHA-256'nın değil ham nonce'un kendisini
@@ -125,9 +159,6 @@ export async function signInWithNativeIosApple(): Promise<NativeIosAuthResult> {
     await fillFullNameFromProvider(result?.fullName);
     return { ok: true };
   } catch (error) {
-    return {
-      ok: false,
-      error: humanizeOAuthError(errorText(error, "Apple girişi tamamlanamadı.")),
-    };
+    return { ok: false, error: errorText(error, "Apple girişi tamamlanamadı.") };
   }
 }

@@ -24,6 +24,7 @@ import {
 import { useNativeGoogleSignIn } from "@/hooks/useNativeGoogleSignIn";
 import {
   hasNativeIosAuth,
+  nativeIosAuthDiagnostics,
   signInWithNativeIosApple,
   signInWithNativeIosGoogle,
 } from "@/lib/ios-native-auth";
@@ -303,6 +304,20 @@ function AuthPage() {
     }
   }
 
+  /**
+   * iOS uygulamasında olup köprüyü bulamıyorsak sebebi görünür olmalı. Aksi
+   * hâlde akış sessizce tarayıcıya düşüyor ve "neden hâlâ Safari açılıyor"
+   * sorusunu cihaza bakmadan cevaplamak imkânsız oluyor.
+   */
+  function reportMissingIosBridge(provider: string) {
+    if (typeof window === "undefined") return;
+    const cap = (window as Window & { Capacitor?: { getPlatform?: () => string } }).Capacitor;
+    if (cap?.getPlatform?.() !== "ios") return;
+    toast.error(`${provider}: uygulama içi köprü bulunamadı. ${nativeIosAuthDiagnostics()}`, {
+      duration: 20_000,
+    });
+  }
+
   async function handleGoogle() {
     // Credential Manager köprüsü varsa hesap seçimi uygulama içinde yapılır.
     if (startNativeGoogle()) return;
@@ -312,12 +327,19 @@ function AuthPage() {
       try {
         const result = await signInWithNativeIosGoogle();
         if (result.ok === null) return; // kullanıcı vazgeçti
-        if (!result.ok) toast.error(result.error);
+        if (!result.ok) toast.error(result.error, { duration: 20_000 });
+        return;
+      } catch (error) {
+        // Buraya düşen her şey aksi hâlde sessizce yutulurdu.
+        toast.error(error instanceof Error ? error.message : String(error), {
+          duration: 20_000,
+        });
         return;
       } finally {
         setBusy(false);
       }
     }
+    reportMissingIosBridge("Google");
     await startBrowserGoogle();
   }
 
@@ -328,12 +350,18 @@ function AuthPage() {
       try {
         const result = await signInWithNativeIosApple();
         if (result.ok === null) return; // kullanıcı vazgeçti
-        if (!result.ok) toast.error(result.error);
+        if (!result.ok) toast.error(result.error, { duration: 20_000 });
+        return;
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : String(error), {
+          duration: 20_000,
+        });
         return;
       } finally {
         setBusy(false);
       }
     }
+    reportMissingIosBridge("Apple");
     if (isInAppBrowser()) {
       toast.error(
         "Apple girişi WhatsApp / Instagram / Facebook içi tarayıcıda çalışmaz. Bağlantıyı Chrome veya Safari ile açın.",
