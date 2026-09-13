@@ -133,6 +133,10 @@ function AuthPage() {
    * Sunucuda köprü yok, o yüzden ilk render'dan sonra yazılır.
    */
   const [bridgeInfo, setBridgeInfo] = useState("");
+  /** Native akışın adımları; toast'a bağlı kalmadan ekranda görünür. */
+  const [flowLog, setFlowLog] = useState<string[]>([]);
+  const pushStep = (step: string) =>
+    setFlowLog((previous) => [...previous, `${new Date().toLocaleTimeString("tr-TR")} ${step}`]);
   useEffect(() => {
     if (isGoogleOAuthCallbackParams()) setGoogleCompleting(true);
     if (isAppleOAuthCallbackParams()) setAppleCompleting(true);
@@ -333,16 +337,24 @@ function AuthPage() {
     // iOS: GoogleSignIn SDK'sı hesap seçimini uygulama içinde tamamlar.
     if (hasNativeIosAuth("signInWithGoogle")) {
       setBusy(true);
+      setFlowLog([]);
+      pushStep("Google düğmesine basıldı");
       try {
-        const result = await signInWithNativeIosGoogle();
-        if (result.ok === null) return; // kullanıcı vazgeçti
-        if (!result.ok) toast.error(result.error, { duration: 20_000 });
+        const result = await signInWithNativeIosGoogle(pushStep);
+        if (result.ok === null) {
+          pushStep("kullanıcı vazgeçti");
+          return;
+        }
+        if (!result.ok) {
+          pushStep(`hata: ${result.error}`);
+          toast.error(result.error, { duration: 20_000 });
+        }
         return;
       } catch (error) {
         // Buraya düşen her şey aksi hâlde sessizce yutulurdu.
-        toast.error(error instanceof Error ? error.message : String(error), {
-          duration: 20_000,
-        });
+        const text = error instanceof Error ? error.message : String(error);
+        pushStep(`istisna: ${text}`);
+        toast.error(text, { duration: 20_000 });
         return;
       } finally {
         setBusy(false);
@@ -356,15 +368,23 @@ function AuthPage() {
     // iOS: ASAuthorizationController ile gerçek native ekran; tarayıcı yok.
     if (hasNativeIosAuth("signInWithApple")) {
       setBusy(true);
+      setFlowLog([]);
+      pushStep("Apple düğmesine basıldı");
       try {
-        const result = await signInWithNativeIosApple();
-        if (result.ok === null) return; // kullanıcı vazgeçti
-        if (!result.ok) toast.error(result.error, { duration: 20_000 });
+        const result = await signInWithNativeIosApple(pushStep);
+        if (result.ok === null) {
+          pushStep("kullanıcı vazgeçti");
+          return;
+        }
+        if (!result.ok) {
+          pushStep(`hata: ${result.error}`);
+          toast.error(result.error, { duration: 20_000 });
+        }
         return;
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : String(error), {
-          duration: 20_000,
-        });
+        const text = error instanceof Error ? error.message : String(error);
+        pushStep(`istisna: ${text}`);
+        toast.error(text, { duration: 20_000 });
         return;
       } finally {
         setBusy(false);
@@ -624,6 +644,14 @@ function AuthPage() {
             <p className="mt-3 rounded-2xl border border-border bg-muted/40 p-3 text-center font-mono text-[11px] leading-relaxed break-words text-muted-foreground">
               {bridgeInfo}
             </p>
+          ) : null}
+
+          {flowLog.length ? (
+            <ol className="mt-2 space-y-1 rounded-2xl border border-border bg-muted/40 p-3 font-mono text-[11px] leading-relaxed break-words text-muted-foreground">
+              {flowLog.map((line, index) => (
+                <li key={`${index}-${line}`}>{line}</li>
+              ))}
+            </ol>
           ) : null}
 
           <Button

@@ -42,6 +42,9 @@ type SilvanAuthPlugin = {
  */
 export type NativeIosAuthResult = { ok: true } | { ok: false; error: string } | { ok: null };
 
+/** Akışın hangi adımda olduğunu ekrana yazdırmak için; tanı dışında etkisi yok. */
+export type NativeAuthStep = (step: string) => void;
+
 function capacitorGlobal(): CapacitorGlobal | null {
   if (typeof window === "undefined") return null;
   return (window as Window & { Capacitor?: CapacitorGlobal }).Capacitor ?? null;
@@ -116,10 +119,23 @@ function errorText(error: unknown, fallback: string): string {
   return fallback;
 }
 
-export async function signInWithNativeIosGoogle(): Promise<NativeIosAuthResult> {
+export async function signInWithNativeIosGoogle(
+  onStep: NativeAuthStep = () => {},
+): Promise<NativeIosAuthResult> {
   try {
+    onStep("başladı");
     const { humanizeOAuthError } = await import("@/lib/google-oauth");
-    const result = await withWatchdog((await plugin()).signInWithGoogle(), "Google");
+    // plugin() de bekçi kapsamında: @capacitor/core parçası ağdan geliyor ve
+    // orada takılırsa dışarıda kalan bir bekçi hiç devreye girmez.
+    const result = await withWatchdog(
+      (async () => {
+        const api = await plugin();
+        onStep("köprü hazır, native çağrı gönderiliyor");
+        return api.signInWithGoogle();
+      })(),
+      "Google",
+    );
+    onStep(`native yanıt: ${JSON.stringify(result)?.slice(0, 120)}`);
     if (result?.cancelled) return { ok: null };
     const token = result?.idToken;
     if (!token) return { ok: false, error: "Google kimlik bilgisi alınamadı." };
@@ -135,10 +151,21 @@ export async function signInWithNativeIosGoogle(): Promise<NativeIosAuthResult> 
   }
 }
 
-export async function signInWithNativeIosApple(): Promise<NativeIosAuthResult> {
+export async function signInWithNativeIosApple(
+  onStep: NativeAuthStep = () => {},
+): Promise<NativeIosAuthResult> {
   try {
+    onStep("başladı");
     const { humanizeOAuthError } = await import("@/lib/apple-oauth");
-    const result = await withWatchdog((await plugin()).signInWithApple(), "Apple");
+    const result = await withWatchdog(
+      (async () => {
+        const api = await plugin();
+        onStep("köprü hazır, native çağrı gönderiliyor");
+        return api.signInWithApple();
+      })(),
+      "Apple",
+    );
+    onStep(`native yanıt: ${JSON.stringify(result)?.slice(0, 120)}`);
     if (result?.cancelled) return { ok: null };
     const token = result?.idToken;
     // Supabase, Apple'a gönderilen SHA-256'nın değil ham nonce'un kendisini
