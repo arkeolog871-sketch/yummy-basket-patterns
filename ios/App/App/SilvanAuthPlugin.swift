@@ -67,7 +67,18 @@ public class SilvanAuthPlugin: CAPPlugin, CAPBridgedPlugin {
                 clientID: clientID,
                 serverClientID: serverClientID
             )
-            GIDSignIn.sharedInstance.signIn(withPresenting: viewController) { result, error in
+            // Nonce'u SDK kendi üretirse jetona koyuyor ama bize vermiyor;
+            // Supabase de "jetonda nonce var, sen göndermedin" diyerek jetonu
+            // reddediyor. Kendimiz üretip hem SDK'ya veriyor hem web tarafına
+            // döndürüyoruz. Apple'ın aksine Google nonce'u olduğu gibi jetona
+            // yazar, bu yüzden hash'lenmemiş hâli gönderilir.
+            let rawNonce = Self.randomNonce()
+            GIDSignIn.sharedInstance.signIn(
+                withPresenting: viewController,
+                hint: nil,
+                additionalScopes: nil,
+                nonce: rawNonce
+            ) { result, error in
                 if let error = error as NSError? {
                     if error.code == GIDSignInError.canceled.rawValue {
                         Self.log.info("Google: kullanıcı vazgeçti")
@@ -84,7 +95,7 @@ public class SilvanAuthPlugin: CAPPlugin, CAPBridgedPlugin {
                     return
                 }
                 Self.log.info("Google: ID token alındı (\(idToken.count) karakter)")
-                call.resolve(["idToken": idToken])
+                call.resolve(["idToken": idToken, "nonce": rawNonce])
             }
         }
     }

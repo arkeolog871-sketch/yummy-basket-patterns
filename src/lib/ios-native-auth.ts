@@ -141,7 +141,14 @@ export async function signInWithNativeIosGoogle(
     const token = result?.idToken;
     if (!token) return { ok: false, error: "Google kimlik bilgisi alınamadı." };
 
-    const { error } = await supabase.auth.signInWithIdToken({ provider: "google", token });
+    // Nonce native tarafta üretilip Google'a verildiği için jetonda da yer
+    // alıyor; Supabase ikisinin de bulunmasını ya da ikisinin de olmamasını
+    // istiyor. Eski build'lerde nonce gelmiyor, o yüzden koşullu ekleniyor.
+    const { error } = await supabase.auth.signInWithIdToken({
+      provider: "google",
+      token,
+      ...(result?.nonce ? { nonce: result.nonce } : {}),
+    });
     if (error) return { ok: false, error: humanizeOAuthError(error.message) };
 
     const { fillFullNameFromProvider } = await import("@/lib/social-profile");
