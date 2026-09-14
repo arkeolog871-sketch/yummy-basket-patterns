@@ -103,8 +103,15 @@ export function nativeIosAuthDiagnostics(): string {
  * reddediliyor. O yüzden ekranda hiçbir şey olmuyor ve sebep görünmüyor.
  * Bekçi, gelmeyen yanıtı görünür bir hataya çevirir; asıl söz iptal edilmez,
  * geç de olsa gelirse giriş normal şekilde tamamlanır.
+ *
+ * Süre cömert tutulmalı: bu akışın ortasında kullanıcı hesap seçiyor, gerekirse
+ * şifre ve iki adımlı doğrulama giriyor. Süre 12 saniyeyken cihazda iki ölçüm
+ * de tam 12 saniye sürdü — biri kıl payı yetişti, diğerinde bekçi kazandı ve
+ * çalışan bir girişi "yanıt gelmedi" diye raporladı. Yakalamak istediğimiz
+ * gönderilememe hatası ise anında oluşuyor; onu geç bildirmek, çalışan girişi
+ * yanlışlıkla kesmekten iyidir.
  */
-const NATIVE_CALL_TIMEOUT_MS = 12_000;
+const NATIVE_CALL_TIMEOUT_MS = 3 * 60 * 1000;
 
 function withWatchdog<T>(promise: Promise<T>, label: string): Promise<T> {
   return Promise.race([
