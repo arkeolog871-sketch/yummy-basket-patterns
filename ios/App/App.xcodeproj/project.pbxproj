@@ -19,6 +19,7 @@
 		A1B2C3D40000000000000102 /* SilvanAuthPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D40000000000000101 /* SilvanAuthPlugin.swift */; };
 		A1B2C3D40000000000000104 /* SilvanPushPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D40000000000000103 /* SilvanPushPlugin.swift */; };
 		F1A2B3C41D5E6F708192A011 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F1A2B3C41D5E6F708192A010 /* GoogleService-Info.plist */; };
+		A1B2C3D40000000000000106 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D40000000000000105 /* PrivacyInfo.xcprivacy */; };
 		F1A2B3C41D5E6F708192A020 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = F1A2B3C41D5E6F708192A002 /* FirebaseCore */; };
 		F1A2B3C41D5E6F708192A021 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = F1A2B3C41D5E6F708192A003 /* FirebaseMessaging */; };
 /* End PBXBuildFile section */
@@ -38,6 +39,7 @@
 		A1B2C3D40000000000000103 /* SilvanPushPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SilvanPushPlugin.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		F1A2B3C41D5E6F708192A010 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		A1B2C3D40000000000000105 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F1A2B3C41D5E6F708192A012 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -85,6 +87,7 @@
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
 				504EC3131FED79650016851F /* Info.plist */,
 				F1A2B3C41D5E6F708192A010 /* GoogleService-Info.plist */,
+				A1B2C3D40000000000000105 /* PrivacyInfo.xcprivacy */,
 				F1A2B3C41D5E6F708192A012 /* App.entitlements */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
@@ -169,6 +172,7 @@
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
 				F1A2B3C41D5E6F708192A011 /* GoogleService-Info.plist in Resources */,
+				A1B2C3D40000000000000106 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

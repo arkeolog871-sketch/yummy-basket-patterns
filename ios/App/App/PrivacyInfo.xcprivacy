@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Uygulamanın kendi gizlilik bildirimi. Çerçeveler (Capacitor, Firebase,
+	  GoogleSignIn) kendi bildirimlerini ayrıca gönderiyor; bu dosya yalnızca
+	  uygulama hedefinin kendi kodunu anlatır.
+
+	  Uygulama hedefindeki Swift kodu (AppDelegate, SceneDelegate,
+	  SilvanAuthPlugin, SilvanPushPlugin) Apple'ın gerekçe istediği API'lerin
+	  hiçbirini kullanmıyor: UserDefaults yok, dosya zaman damgası yok, disk
+	  alanı yok, sistem açılış süresi yok, etkin klavye listesi yok. Liste bu
+	  yüzden bilerek boş; doldurulmuş olsaydı beyan yanlış olurdu.
+	-->
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array/>
+	<!-- Uygulama reklam veya ölçüm amacıyla kullanıcı takibi yapmıyor. -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<!--
+	  Toplanan veri türleri App Store Connect'teki gizlilik formunda beyan
+	  ediliyor; asıl kaynak orası. Burada ikinci bir liste tutmak, iki beyanın
+	  zamanla birbirinden ayrılması riskini getirirdi.
+	-->
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+</dict>
+</plist>

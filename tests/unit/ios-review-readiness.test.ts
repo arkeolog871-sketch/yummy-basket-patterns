@@ -299,3 +299,54 @@ describe("açılış ve durum çubuğu", () => {
     expect(capConfig).toContain('backgroundColor: "#F4EDDA"');
   });
 });
+
+/**
+ * Apple 2024'ten beri uygulamaların gizlilik bildirimi göndermesini bekliyor.
+ * Çerçeveler (Capacitor, Firebase, GoogleSignIn) kendi bildirimlerini
+ * gönderiyor ama uygulama hedefinin kendi bildirimi yoktu.
+ *
+ * Beyan doğru olmak zorunda: uygulama hedefindeki Swift kodu Apple'ın gerekçe
+ * istediği API'lerin hiçbirini kullanmıyor, o yüzden listeler boş. Dolu bir
+ * liste yazmak, yanlış beyan olurdu.
+ */
+describe("gizlilik bildirimi", () => {
+  const manifestPath = "ios/App/App/PrivacyInfo.xcprivacy";
+  const pbxproj = readFileSync(join(ROOT, "ios/App/App.xcodeproj/project.pbxproj"), "utf8");
+  const manifest = readFileSync(join(ROOT, manifestPath), "utf8");
+
+  it("uygulama hedefinde bir bildirim var", () => {
+    expect(existsSync(join(ROOT, manifestPath))).toBe(true);
+  });
+
+  /** Kaynak olarak değil, pakete kopyalanan dosya olarak eklenmeli. */
+  it("uygulama paketine kopyalanıyor", () => {
+    expect(pbxproj).toContain("PrivacyInfo.xcprivacy in Resources */,");
+    expect(pbxproj).not.toContain("PrivacyInfo.xcprivacy in Sources");
+  });
+
+  it("takip yapılmadığını beyan ediyor", () => {
+    expect(manifest).toMatch(/<key>NSPrivacyTracking<\/key>\s*<false\/>/);
+    expect(manifest).toMatch(/<key>NSPrivacyTrackingDomains<\/key>\s*<array\/>/);
+  });
+
+  /**
+   * Beyanın doğruluğu koda bağlı: uygulama hedefi gerekçe isteyen bir API
+   * kullanmaya başlarsa bu test kırmızıya döner ve bildirim güncellenmeli.
+   */
+  it("beyan, uygulama kodunun gerçekten kullandığıyla tutarlı", () => {
+    const swift = ["AppDelegate", "SceneDelegate", "SilvanAuthPlugin", "SilvanPushPlugin"]
+      .map((name) => readFileSync(join(ROOT, `ios/App/App/${name}.swift`), "utf8"))
+      .join("\n");
+    const reasonApis = [
+      "UserDefaults",
+      "systemUptime",
+      "creationDate",
+      "modificationDate",
+      "volumeAvailableCapacity",
+      "activeInputModes",
+    ];
+    const used = reasonApis.filter((api) => swift.includes(api));
+    expect(used).toEqual([]);
+    expect(manifest).toMatch(/<key>NSPrivacyAccessedAPITypes<\/key>\s*<array\/>/);
+  });
+});
