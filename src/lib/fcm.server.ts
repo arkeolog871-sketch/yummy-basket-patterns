@@ -79,6 +79,23 @@ async function getAccessToken(account: ServiceAccount): Promise<string> {
 export type FcmSendResult = "sent" | "invalid_token" | "error" | "unconfigured";
 
 /**
+ * FCM'in hata gövdesinden yalnızca makine tarafından okunabilir kodu ayıklar.
+ * Gövdenin tamamı günlüğe yazılmıyor: içinde jeton ve bildirim metni geçebilir.
+ */
+function fcmErrorCode(body: string): string | undefined {
+  try {
+    const parsed = JSON.parse(body) as {
+      error?: { status?: string; details?: { errorCode?: string }[] };
+    };
+    return (
+      parsed.error?.details?.find((detail) => detail.errorCode)?.errorCode ?? parsed.error?.status
+    );
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Uygulamanın açılışta oluşturduğu yüksek önemli bildirim kanalı
  * (MainActivity.ORDER_CHANNEL_ID ve PushService.CHANNEL_ID ile aynı olmak
  * zorunda). Mesajda bu belirtilmezse uygulama arka plandayken bildirimi
@@ -163,11 +180,28 @@ export async function sendFcmMessage(
       },
     );
     if (response.ok) return "sent";
-    if (response.status === 404 || response.status === 400) {
-      const text = await response.text();
-      if (/UNREGISTERED|INVALID_ARGUMENT|NOT_FOUND/i.test(text)) return "invalid_token";
+
+    const text = await response.text();
+    if (
+      (response.status === 404 || response.status === 400) &&
+      /UNREGISTERED|INVALID_ARGUMENT|NOT_FOUND/i.test(text)
+    ) {
+      return "invalid_token";
     }
-    console.error("[fcm] gönderim başarısız", { status: response.status });
+
+    const errorCode = fcmErrorCode(text);
+    if (errorCode === "THIRD_PARTY_AUTH_ERROR") {
+      // iOS'a teslimatı Google değil APNs yapıyor ve Firebase bunun için bir
+      // APNs anahtarına ihtiyaç duyuyor. Anahtar yüklü değilse -- ya da başka
+      // bir uygulamaya/takıma aitse -- gönderim tam burada ölür: kod tarafında
+      // her şey doğru olsa bile hiçbir iOS cihazına bildirim ulaşmaz. Sebep
+      // açıkça yazılmazsa günlükte yalnızca "401" görünüyor ve bu, kodda
+      // saatlerce yanlış yerde aranan bir hataya dönüşüyor.
+      console.error(
+        "[fcm] APNs kimlik doğrulaması reddedildi: Firebase projesinde APNs anahtarı yok ya da bu uygulamaya ait değil (Firebase Console > Project Settings > Cloud Messaging > Apple app configuration). iOS bildirimleri bu düzeltilene kadar teslim edilemez.",
+      );
+    }
+    console.error("[fcm] gönderim başarısız", { status: response.status, errorCode });
     return "error";
   } catch (error) {
     console.error("[fcm] gönderim hatası", error);

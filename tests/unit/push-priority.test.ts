@@ -225,3 +225,25 @@ describe("web push", () => {
     expect(Number(web!.replace(/_/g, ""))).toBe(Number(fcm!.replace(/_/g, "")));
   });
 });
+
+/**
+ * iOS'a teslimatı Google değil APNs yapıyor; Firebase bunun için bir APNs
+ * anahtarına ihtiyaç duyuyor. Anahtar yoksa gönderim FCM'de ölür ve eski kod
+ * yalnızca "401" yazıyordu — sebebi görünmediği için hata kodda aranırdı.
+ */
+describe("APNs yapılandırma hatası", () => {
+  it("hata kodunu günlüğe yazıyor", () => {
+    expect(fcmServer).toContain("fcmErrorCode");
+    expect(fcmServer).toContain("errorCode");
+  });
+
+  it("APNs anahtarı eksikse sebebi açıkça söylüyor", () => {
+    expect(fcmServer).toContain("THIRD_PARTY_AUTH_ERROR");
+    expect(fcmServer).toContain("Cloud Messaging");
+  });
+
+  /** Gövdenin tamamı jeton ve bildirim metni içerebiliyor; günlüğe girmemeli. */
+  it("hata gövdesinin tamamını günlüğe basmıyor", () => {
+    expect(fcmServer).not.toMatch(/console\.error\([^)]*\btext\b/);
+  });
+});
