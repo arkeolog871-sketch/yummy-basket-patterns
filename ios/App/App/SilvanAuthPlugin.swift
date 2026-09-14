@@ -75,15 +75,18 @@ public class SilvanAuthPlugin: CAPPlugin, CAPBridgedPlugin {
             )
             // Nonce'u SDK kendi üretirse jetona koyuyor ama bize vermiyor;
             // Supabase de "jetonda nonce var, sen göndermedin" diyerek jetonu
-            // reddediyor. Kendimiz üretip hem SDK'ya veriyor hem web tarafına
-            // döndürüyoruz. Apple'ın aksine Google nonce'u olduğu gibi jetona
-            // yazar, bu yüzden hash'lenmemiş hâli gönderilir.
+            // reddediyor. Bu yüzden kendimiz üretiyoruz.
+            //
+            // Sağlayıcıya hash'i, Supabase'e ham hâli gider — Apple akışındaki
+            // ile aynı kural. Ham nonce'u Google'a verip Supabase'e de ham
+            // göndermek "Nonces mismatch" veriyordu: Supabase verdiğimiz
+            // nonce'un SHA-256'sını alıp jetondaki değerle karşılaştırıyor.
             let rawNonce = Self.randomNonce()
             GIDSignIn.sharedInstance.signIn(
                 withPresenting: viewController,
                 hint: nil,
                 additionalScopes: nil,
-                nonce: rawNonce
+                nonce: Self.sha256(rawNonce)
             ) { result, error in
                 call.keepAlive = false
                 if let error = error as NSError? {
