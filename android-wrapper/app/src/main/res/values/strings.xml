@@ -7,4 +7,9 @@
     <string name="retry">Tekrar dene</string>
     <string name="order_channel_name">Sipariş bildirimleri</string>
     <string name="order_channel_desc">Yeni sipariş ve sipariş güncellemeleri</string>
+    <string name="battery_prompt_title">Bildirimler gecikmesin</string>
+    <string name="battery_prompt_body">Telefonunuzun pil ayarı uygulamayı uykuya aldığında sipariş ve duyuru bildirimleri saatler sonra gelebilir.\n\nAçılacak listeden SİLVAN CEBİMDE\'yi seçip \"İzin ver\" (bazı telefonlarda \"Optimize etme\") derseniz bildirimler anında ulaşır.</string>
+    <string name="battery_prompt_open">Ayarı aç</string>
+    <string name="battery_prompt_later">Şimdi değil</string>
+    <string name="battery_prompt_failed">Pil ayarı ekranı açılamadı. Ayarlar &gt; Uygulamalar &gt; SİLVAN CEBİMDE &gt; Pil yolunu izleyebilirsiniz.</string>
 </resources>

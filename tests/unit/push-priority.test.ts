@@ -108,3 +108,47 @@ describe("çift teslimat", () => {
     expect(pushService).not.toContain("manager.notify((int) System.currentTimeMillis()");
   });
 });
+
+/**
+ * Telefonun pil yönetimi uygulamayı uykuya aldığında bildirim saatler sonra
+ * düşebiliyor ve sunucu tarafında bunu aşacak hiçbir ayar yok: mesaj Google'a
+ * ulaşıyor, Google cihaza ulaştırmaya çalışıyor, ama işletim sistemi
+ * uygulamayı uyandırmıyor. Tek çözüm kullanıcının uygulamayı optimizasyondan
+ * muaf tutması — WhatsApp'ın kurulumda istediği izin de budur.
+ */
+describe("pil optimizasyonu muafiyeti", () => {
+  it("kullanıcıya muafiyeti bir kez öneriyor", () => {
+    expect(activity).toContain("maybeOfferBatteryExemption");
+    expect(activity).toContain("isIgnoringBatteryOptimizations");
+  });
+
+  it("muafiyet zaten varsa hiç sormuyor", () => {
+    expect(activity).toMatch(
+      /power\.isIgnoringBatteryOptimizations\(getPackageName\(\)\)\)\s*return;/,
+    );
+  });
+
+  it("reddedilirse ısrar etmiyor", () => {
+    const interval = /BATTERY_PROMPT_INTERVAL_MS = (\d+)L \* 24 \* 60 \* 60 \* 1000/.exec(activity);
+    expect(interval).not.toBeNull();
+    expect(Number(interval![1])).toBeGreaterThanOrEqual(7);
+  });
+
+  /**
+   * Muafiyeti doğrudan isteyen izin Google Play politikasında kısıtlı ve
+   * yayından kaldırma sebebi olabiliyor. Kullanıcıyı sistemin kendi ayar
+   * ekranına yönlendirmek izin gerektirmiyor; sonuç aynı, risk yok. Bu izin
+   * manifeste sonradan eklenirse uygulama reddedilebilir.
+   */
+  it("Play politikasında kısıtlı izni istemiyor", () => {
+    expect(manifest).not.toContain("REQUEST_IGNORE_BATTERY_OPTIMIZATIONS");
+    expect(activity).not.toContain("ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS");
+    expect(activity).toContain("ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS");
+  });
+
+  /** O ekran bazı üretici ROM'larında yok; kullanıcı boşluğa düşmemeli. */
+  it("ayar ekranı bulunamazsa yedek yola düşüyor", () => {
+    expect(activity).toContain("ACTION_APPLICATION_DETAILS_SETTINGS");
+    expect(activity).toContain("R.string.battery_prompt_failed");
+  });
+});

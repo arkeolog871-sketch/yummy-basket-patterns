@@ -8,6 +8,7 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
@@ -19,6 +20,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.PowerManager;
 import android.provider.MediaStore;
 import android.provider.Settings;
 import android.util.Log;
@@ -72,6 +74,12 @@ public class MainActivity extends Activity {
     private static final int LOCATION_PERMISSION_REQUEST = 1004;
     private static final int WEB_CAMERA_PERMISSION_REQUEST = 1005;
     private static final int NOTIFICATION_PERMISSION_REQUEST = 1006;
+    private static final String PREFS_NAME = "silvan_app";
+    private static final String KEY_BATTERY_PROMPT_AT = "battery_prompt_at";
+    /** Pil uyarısı reddedilirse bu süre dolmadan bir daha çıkmaz. */
+    private static final long BATTERY_PROMPT_INTERVAL_MS = 14L * 24 * 60 * 60 * 1000;
+    /** Bildirim izni diyaloğuyla üst üste binmesin diye beklenen süre. */
+    private static final long BATTERY_PROMPT_DELAY_MS = 2_500L;
     private static final String ORDER_CHANNEL_ID = "orders";
     private static final int LOAD_TIMEOUT_MS = 25000;
     /**
@@ -109,6 +117,8 @@ public class MainActivity extends Activity {
     private GeolocationPermissions.Callback geolocationCallback;
     private PermissionRequest webPermissionRequest;
     private boolean askedNotificationPermission;
+    /** Pil uyarısı oturum başına en fazla bir kez değerlendirilir. */
+    private boolean batteryPromptChecked;
     private boolean pageReady;
     private CredentialManager credentialManager;
     private long authTraceStartedAt;
@@ -226,6 +236,10 @@ public class MainActivity extends Activity {
                 hideErrorOverlay();
                 requestNotificationPermissionIfNeeded();
                 syncFcmToken();
+                mainHandler.postDelayed(
+                        MainActivity.this::maybeOfferBatteryExemption,
+                        BATTERY_PROMPT_DELAY_MS
+                );
             }
         }
 
@@ -1551,6 +1565,75 @@ public class MainActivity extends Activity {
                 new String[] { Manifest.permission.POST_NOTIFICATIONS },
                 NOTIFICATION_PERMISSION_REQUEST
         );
+    }
+
+    /**
+     * Telefonun pil yönetimi uygulamayı uykuya aldığında bildirim saatler sonra
+     * düşebiliyor. Sunucu tarafında yapılabilecek hiçbir ayar bunu aşmıyor:
+     * mesaj Google'a ulaşıyor, Google cihaza ulaştırmaya çalışıyor, ama işletim
+     * sistemi uygulamayı uyandırmıyor. Tek çözüm kullanıcının uygulamayı pil
+     * optimizasyonundan muaf tutması — WhatsApp'ın kurulumda istediği izin de
+     * budur.
+     *
+     * Muafiyeti doğrudan isteyen izin (REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+     * Google Play politikasında kısıtlı ve yayından kaldırma sebebi olabiliyor.
+     * Bu yüzden izin istenmiyor; kullanıcı sistemin kendi ayar ekranına
+     * yönderiliyor. Sonuç aynı, politika riski yok.
+     *
+     * Uyarı ısrarcı değil: muafiyet zaten varsa hiç çıkmaz, reddedilirse iki
+     * hafta boyunca bir daha çıkmaz.
+     */
+    private void maybeOfferBatteryExemption() {
+        if (batteryPromptChecked) return;
+        batteryPromptChecked = true;
+        if (isFinishing() || isDestroyed()) return;
+
+        // Bildirim izni henüz verilmediyse önce o soruluyor; iki diyalog
+        // üst üste binmesin, uyarı bir sonraki açılışa kalsın.
+        if (Build.VERSION.SDK_INT >= 33
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            batteryPromptChecked = false;
+            return;
+        }
+
+        PowerManager power = getSystemService(PowerManager.class);
+        if (power == null || power.isIgnoringBatteryOptimizations(getPackageName())) return;
+
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        long now = System.currentTimeMillis();
+        long lastAsked = prefs.getLong(KEY_BATTERY_PROMPT_AT, 0L);
+        if (lastAsked > 0 && now - lastAsked < BATTERY_PROMPT_INTERVAL_MS) return;
+        prefs.edit().putLong(KEY_BATTERY_PROMPT_AT, now).apply();
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.battery_prompt_title)
+                .setMessage(R.string.battery_prompt_body)
+                .setPositiveButton(R.string.battery_prompt_open,
+                        (dialog, which) -> openBatteryOptimizationSettings())
+                .setNegativeButton(R.string.battery_prompt_later, null)
+                .show();
+    }
+
+    /**
+     * Önce pil optimizasyonu listesi denenir; bazı üretici ROM'larında o ekran
+     * bulunmuyor, orada uygulama bilgisi ekranına düşülür (pil ayarı oradan bir
+     * dokunuş uzakta).
+     */
+    private void openBatteryOptimizationSettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
+            return;
+        } catch (ActivityNotFoundException ignored) {
+            // Aşağıdaki yedek yola düşülür.
+        }
+        try {
+            Intent details = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            details.setData(Uri.fromParts("package", getPackageName(), null));
+            startActivity(details);
+        } catch (ActivityNotFoundException ignored) {
+            Toast.makeText(this, R.string.battery_prompt_failed, Toast.LENGTH_LONG).show();
+        }
     }
 
     /**
