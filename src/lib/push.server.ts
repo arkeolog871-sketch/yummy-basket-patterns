@@ -6,6 +6,9 @@ export type PushPayload = {
   url?: string;
 };
 
+/** FCM tarafındaki ömür sınırıyla aynı: bir günü geçen bildirim düşer. */
+const WEB_PUSH_TTL_SECONDS = 86_400;
+
 let webPushConfigured: boolean | null = null;
 
 /** VAPID anahtarları env'de yoksa web push sessizce atlanır (diğer kanallar etkilenmez). */
@@ -51,6 +54,10 @@ async function sendWebPush(userIds: string[], payload: PushPayload): Promise<voi
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           body,
+          // Varsayılan ömür 4 hafta: cihaz kapalıyken gönderilen bildirim
+          // haftalar sonra açılışta düşüyordu. "high" aciliyeti de tarayıcı
+          // push sunucusuna bildirimi bekletmemesini söyler.
+          { TTL: WEB_PUSH_TTL_SECONDS, urgency: "high" },
         );
       } catch (sendError) {
         const status = statusCodeOf(sendError);

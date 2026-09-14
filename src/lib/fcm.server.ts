@@ -97,7 +97,8 @@ const ANDROID_CHANNEL_ID = "orders";
  * seferde düşmesinin sebebi buydu. Bir günü geçmiş bildirim zaten
  * kullanıcıya bir şey ifade etmiyor; geç gelmektense hiç gelmesin.
  */
-const ANDROID_TTL = "86400s";
+const TTL_SECONDS = 86_400;
+const ANDROID_TTL = `${TTL_SECONDS}s`;
 
 /** Tek bir FCM token'ına bildirim gönderir. VAPID'siz ortamda olduğu gibi,
  * servis hesabı tanımlı değilse sessizce "unconfigured" döner. */
@@ -123,6 +124,26 @@ export async function sendFcmMessage(
             token,
             notification: { title: payload.title, body: payload.body },
             ...(payload.url ? { data: { url: payload.url } } : {}),
+            apns: {
+              headers: {
+                // 10 = "hemen teslim et". Varsayılan 5 ve "uygun bir zamanda"
+                // demek; sistem onu pil durumuna göre geciktirebiliyor.
+                "apns-priority": "10",
+                // Android'deki ttl'in iOS karşılığı. Burada süre değil mutlak
+                // zaman damgası isteniyor, o yüzden her gönderimde hesaplanır.
+                "apns-expiration": String(Math.floor(Date.now() / 1000) + TTL_SECONDS),
+              },
+              payload: {
+                // Başlık ve gövde üstteki `notification` alanından geliyor;
+                // burada yalnızca sesi açıkça istiyoruz.
+                // Odak/Rahatsız Etmeyin modunu delen "interruption-level":
+                // "time-sensitive" bilerek eklenmedi — Apple Developer
+                // portalında "Time Sensitive Notifications" yetkisi
+                // açılmadan hiçbir etkisi yok (Sign In with Apple'da olduğu
+                // gibi ayrı bir capability).
+                aps: { sound: "default" },
+              },
+            },
             android: {
               // "high": Doze/uyku modunu delip anında teslim edilir.
               priority: "high",

@@ -156,7 +156,8 @@ describe("app-target plugin registration", () => {
 
   /** Kayıt düşerse derleme geçmesin; sessizce yanlış uygulama yayınlanmasın. */
   it.each(workflows)("$name fails the build when the plugin is not registered", ({ yaml }) => {
-    expect(yaml).toContain('assert "SilvanAuthPlugin" in cfg.get("packageClassList", [])');
+    expect(yaml).toContain('for plugin in ("SilvanAuthPlugin", "SilvanPushPlugin"):');
+    expect(yaml).toContain('assert plugin in cfg.get("packageClassList", [])');
   });
 
   it("keeps the local cap:sync in step with CI", () => {

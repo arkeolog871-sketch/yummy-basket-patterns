@@ -13,6 +13,10 @@ const manifest = readFileSync(
 );
 const pushService = readFileSync(join(ROOT, `${ANDROID_SRC}/PushService.java`), "utf8");
 const activity = readFileSync(join(ROOT, `${ANDROID_SRC}/MainActivity.java`), "utf8");
+const pushServer = readFileSync(join(ROOT, "src/lib/push.server.ts"), "utf8");
+const iosPlugin = readFileSync(join(ROOT, "ios/App/App/SilvanPushPlugin.swift"), "utf8");
+const pbxproj = readFileSync(join(ROOT, "ios/App/App.xcodeproj/project.pbxproj"), "utf8");
+const tokenBridge = readFileSync(join(ROOT, "src/hooks/useFcmTokenBridge.tsx"), "utf8");
 
 /**
  * Uygulama arka plandayken bildirimi bizim kodumuz değil, Firebase'in kendi
@@ -82,10 +86,12 @@ describe("bayat bildirim", () => {
   });
 
   it("ömür sınırı bir günü aşmıyor", () => {
-    const ttl = /const ANDROID_TTL = "(\d+)s"/.exec(fcmServer)?.[1];
+    expect(fcmServer).toContain("const ANDROID_TTL = `${TTL_SECONDS}s`");
+    const ttl = /const TTL_SECONDS = ([\d_]+)/.exec(fcmServer)?.[1];
     expect(ttl).toBeDefined();
-    expect(Number(ttl)).toBeGreaterThan(0);
-    expect(Number(ttl)).toBeLessThanOrEqual(86_400);
+    const seconds = Number(ttl!.replace(/_/g, ""));
+    expect(seconds).toBeGreaterThan(0);
+    expect(seconds).toBeLessThanOrEqual(86_400);
   });
 
   /** Gecikmiş bildirim, teslim saatini değil gönderim saatini göstermeli. */
@@ -150,5 +156,72 @@ describe("pil optimizasyonu muafiyeti", () => {
   it("ayar ekranı bulunamazsa yedek yola düşüyor", () => {
     expect(activity).toContain("ACTION_APPLICATION_DETAILS_SETTINGS");
     expect(activity).toContain("R.string.battery_prompt_failed");
+  });
+});
+
+/**
+ * iOS'ta bildirim altyapısının tamamı vardı — Firebase kuruluyor, izin
+ * isteniyor, APNs kaydı yapılıyor, token üretiliyor — ama AppDelegate token'ı
+ * `_ = fcmToken` ile çöpe atıyordu. Token sunucuya hiç ulaşmadığı için sunucu
+ * iOS uygulamasına bildirim gönderemiyordu ve hiçbir yerde hata çıkmıyordu:
+ * native iOS bildirimi sessizce hiç çalışmıyordu.
+ */
+describe("iOS bildirim kaydı", () => {
+  it("native taraf token'ı web katmanına açıyor", () => {
+    expect(iosPlugin).toContain('public let jsName = "SilvanPush"');
+    expect(iosPlugin).toContain('CAPPluginMethod(name: "getFcmToken"');
+  });
+
+  /**
+   * Capacitor iOS'ta eklenti taraması yapmıyor; derlenen sınıf Xcode
+   * hedefinde yoksa hiç var olmuyor, varsa da packageClassList'e girmeden
+   * kaydolmuyor. İkisi de sessizce başarısız olur.
+   */
+  it("eklenti Xcode hedefinde derleniyor", () => {
+    expect(pbxproj).toContain("SilvanPushPlugin.swift in Sources */,");
+  });
+
+  it("token sunucuya kaydediliyor", () => {
+    expect(tokenBridge).toContain("getNativeIosFcmToken");
+    expect(tokenBridge).toContain("saveFcmToken");
+  });
+});
+
+/**
+ * Android'de önceliği kanal belirliyor; iOS'ta APNs başlıkları belirliyor.
+ * Varsayılan apns-priority 5, "uygun bir zamanda teslim et" demek ve sistem
+ * onu pil durumuna göre geciktirebiliyor. Ömür sınırı da Android'deki ttl'in
+ * karşılığı; iOS'ta süre değil mutlak zaman damgası isteniyor.
+ */
+describe("iOS bildirim önceliği", () => {
+  it("hemen teslim önceliğiyle gönderiyor", () => {
+    expect(fcmServer).toContain('"apns-priority": "10"');
+  });
+
+  it("iOS tarafında da ömür sınırı koyuyor", () => {
+    expect(fcmServer).toContain('"apns-expiration"');
+    expect(fcmServer).toContain("Math.floor(Date.now() / 1000) + TTL_SECONDS");
+  });
+
+  it("sesi açıkça istiyor", () => {
+    expect(fcmServer).toMatch(/aps:\s*\{\s*sound:\s*"default"\s*\}/);
+  });
+});
+
+/** PWA/tarayıcı aboneleri de aynı kurala tabi olmalı. */
+describe("web push", () => {
+  it("bayat bildirimin düşmesi için ömür sınırı var", () => {
+    expect(pushServer).toContain("TTL: WEB_PUSH_TTL_SECONDS");
+  });
+
+  it("acil olarak işaretleniyor", () => {
+    expect(pushServer).toContain('urgency: "high"');
+  });
+
+  it("ömür sınırı FCM tarafıyla aynı", () => {
+    const web = /WEB_PUSH_TTL_SECONDS = ([\d_]+)/.exec(pushServer)?.[1];
+    const fcm = /TTL_SECONDS = ([\d_]+)/.exec(fcmServer)?.[1];
+    expect(web).toBeDefined();
+    expect(Number(web!.replace(/_/g, ""))).toBe(Number(fcm!.replace(/_/g, "")));
   });
 });
