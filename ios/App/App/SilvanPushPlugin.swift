@@ -30,10 +30,36 @@ public class SilvanPushPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private static let log = Logger(subsystem: "online.uygulamamcebimde.app", category: "SilvanPush")
 
+    /**
+     * Firebase token'ı verdiğinde AppDelegate onu buraya yazar.
+     *
+     * Gerekli, çünkü sıralama ilk kurulumda aleyhimize işliyor: uygulama
+     * açılır açılmaz bildirim izni soruluyor, ama web sayfası kullanıcı daha
+     * "İzin Ver"e basmadan yükleniyor ve token'ı istiyor. O anda APNs kaydı
+     * henüz yapılmadığı için Firebase token veremiyor. Kullanıcı izni
+     * verdiğinde token geliyor — ama isteyen kimse kalmamış oluyor. Sonuç:
+     * ilk kurulumda token hiç kaydedilmiyor ve o cihaz bildirim almıyor.
+     * Hiçbir yerde hata çıkmıyor, sadece bildirim gelmiyor.
+     *
+     * Önbellek, geç gelen token'ı web tarafı tekrar sorduğunda hazır tutuyor.
+     */
+    private static var cachedToken: String?
+
+    static func cacheToken(_ token: String?) {
+        guard let token = token, !token.isEmpty else { return }
+        cachedToken = token
+        log.info("Token önbelleğe alındı (\(token.count) karakter)")
+    }
+
     @objc func getFcmToken(_ call: CAPPluginCall) {
         guard Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil else {
             Self.log.info("Firebase yapılandırılmamış, token yok")
             call.resolve([:])
+            return
+        }
+
+        if let cached = Self.cachedToken {
+            call.resolve(["token": cached])
             return
         }
 
@@ -43,16 +69,18 @@ public class SilvanPushPlugin: CAPPlugin, CAPBridgedPlugin {
         Messaging.messaging().token { token, error in
             call.keepAlive = false
             if let error = error {
-                Self.log.error("Token alınamadı: \(error.localizedDescription, privacy: .public)")
+                // İzin ekranı hâlâ açıkken beklenen durum: APNs kaydı yok.
+                // Web tarafı yeniden soruyor, o yüzden bu ölümcül değil.
+                Self.log.info("Token henüz hazır değil: \(error.localizedDescription, privacy: .public)")
                 call.resolve([:])
                 return
             }
             guard let token = token, !token.isEmpty else {
-                Self.log.error("Token boş geldi")
+                Self.log.info("Token henüz hazır değil (boş)")
                 call.resolve([:])
                 return
             }
-            Self.log.info("Token alındı (\(token.count) karakter)")
+            Self.cacheToken(token)
             call.resolve(["token": token])
         }
     }

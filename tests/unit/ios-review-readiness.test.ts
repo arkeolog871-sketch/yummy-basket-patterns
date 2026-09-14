@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { isNativeApp } from "@/lib/native-notify";
 
 const ROOT = join(import.meta.dirname, "../..");
 
@@ -117,25 +118,131 @@ describe("bağlantı kurulamadığında", () => {
  * kendisi.
  */
 describe("bildirim desteği uyarısı", () => {
-  const nativeNotify = readFileSync(join(ROOT, "src/lib/native-notify.ts"), "utf8");
   const pushButton = readFileSync(
     join(ROOT, "src/components/notifications/PushNotificationButton.tsx"),
     "utf8",
   );
 
-  it("native kabuk kontrolü iOS'u da kapsıyor", () => {
-    expect(nativeNotify).toContain("Capacitor?.isNativePlatform");
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
-  it("yalnızca Android köprüsüne bakmıyor", () => {
-    expect(nativeNotify).not.toMatch(
-      /return Boolean\(\(window as Window & \{ SilvanNative\?: unknown \}\)\.SilvanNative\);/,
-    );
+  function stubShell(shell: Record<string, unknown>) {
+    vi.stubGlobal("window", shell);
+  }
+
+  it("iOS kabuğunu native sayıyor", () => {
+    stubShell({ Capacitor: { isNativePlatform: () => true, getPlatform: () => "ios" } });
+    expect(isNativeApp()).toBe(true);
+  });
+
+  it("Android sarmalayıcısını native sayıyor", () => {
+    stubShell({ SilvanNative: {} });
+    expect(isNativeApp()).toBe(true);
+  });
+
+  it("düz tarayıcıda native saymıyor", () => {
+    stubShell({});
+    expect(isNativeApp()).toBe(false);
+  });
+
+  /** Tarayıcıda açılan web sitesi Capacitor nesnesini hiç görmez. */
+  it("Capacitor olmayan sayfada native saymıyor", () => {
+    stubShell({ Capacitor: { isNativePlatform: () => false, getPlatform: () => "web" } });
+    expect(isNativeApp()).toBe(false);
   });
 
   it("uyarı native uygulamada gösterilmiyor", () => {
     const at = pushButton.indexOf("Bu tarayıcı anlık bildirimleri desteklemiyor");
     expect(at).toBeGreaterThan(-1);
     expect(pushButton.slice(0, at)).toContain("if (isNativeApp()) return null;");
+  });
+});
+
+/**
+ * Bildirim token'ı ilk kurulumda geç geliyor: uygulama açılır açılmaz izin
+ * soruluyor, ama web sayfası kullanıcı daha "İzin Ver"e basmadan yükleniyor
+ * ve token'ı istiyor. O an APNs kaydı olmadığı için Firebase token veremiyor.
+ * Token izin verildikten sonra geliyor — isteyen kimse kalmamışsa kayboluyor.
+ * Sonuç: ilk kurulumda cihaz hiç bildirim almıyor ve hiçbir yerde hata
+ * görünmüyor. İki taraflı çözüldü: native taraf geç geleni saklıyor, web
+ * tarafı aralıkları açarak tekrar soruyor.
+ */
+describe("iOS bildirim token'ı yarışı", () => {
+  const plugin = readFileSync(join(ROOT, "ios/App/App/SilvanPushPlugin.swift"), "utf8");
+  const appDelegate = readFileSync(join(ROOT, "ios/App/App/AppDelegate.swift"), "utf8");
+  const bridge = readFileSync(join(ROOT, "src/hooks/useFcmTokenBridge.tsx"), "utf8");
+
+  it("geç gelen token çöpe atılmıyor", () => {
+    // Yorum satırları sebebi anlatırken o ifadeyi anıyor; kodun kendisine bak.
+    const code = appDelegate
+      .split("\n")
+      .filter((line) => !/^\s*(\*|\/\/|\/\*)/.test(line))
+      .join("\n");
+    expect(code).not.toMatch(/^\s*_ = fcmToken\s*$/m);
+    expect(code).toContain("SilvanPushPlugin.cacheToken(fcmToken)");
+  });
+
+  it("native taraf token'ı saklıyor", () => {
+    expect(plugin).toContain("private static var cachedToken: String?");
+    expect(plugin).toContain("static func cacheToken");
+  });
+
+  it("saklanan token tekrar sorulduğunda veriliyor", () => {
+    const at = plugin.indexOf("Messaging.messaging().token");
+    expect(at).toBeGreaterThan(-1);
+    expect(plugin.slice(0, at)).toContain("if let cached = Self.cachedToken {");
+  });
+
+  it("web tarafı tek denemeyle yetinmiyor", () => {
+    expect(bridge).toContain("retryDelaysMs");
+    const delays = /retryDelaysMs = \[([^\]]+)\]/.exec(bridge)?.[1] ?? "";
+    expect(delays.split(",").length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("denemeler bileşen kaldırılınca duruyor", () => {
+    expect(bridge).toContain("cancelled = true");
+    expect(bridge).toContain("clearTimeout(timer)");
+  });
+});
+
+/**
+ * Capacitor iOS'ta window.open bağlantıyı sistemde açıyor ama JS'e her zaman
+ * null dönüyor (createWebViewWith → UIApplication.open, sonra nil). "Açılmadı"
+ * sanıp location'a da yazmak, aynı adresi ikinci kez açtırıyordu: kullanıcı
+ * tek dokunuşta iki kez uygulamadan çıkıyordu.
+ */
+describe("harici bağlantı iOS'ta bir kez açılıyor", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const MAPS = "https://www.google.com/maps/search/?api=1&query=Silvan";
+
+  function stubWindow(capacitor: unknown) {
+    const location = { href: "" };
+    const open = vi.fn(() => null);
+    vi.stubGlobal("window", { open, location, Capacitor: capacitor });
+    return { location, open };
+  }
+
+  it("iOS kabuğunda location'a yazmıyor", async () => {
+    const { location, open } = stubWindow({
+      isNativePlatform: () => true,
+      getPlatform: () => "ios",
+    });
+    const { openExternalUrl } = await import("@/lib/maps");
+    expect(openExternalUrl(MAPS)).toBe(true);
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(location.href).toBe("");
+  });
+
+  /** Tarayıcıda window.open'ı açılır pencere engelleyici durdurabilir; orada
+   *  yedek dal gerçekten gerekli ve kalmalı. */
+  it("tarayıcıda yedek dal korunuyor", async () => {
+    const { location } = stubWindow(undefined);
+    const { openExternalUrl } = await import("@/lib/maps");
+    expect(openExternalUrl(MAPS)).toBe(true);
+    expect(location.href).toBe(MAPS);
   });
 });

@@ -1,3 +1,4 @@
+import { isIosNativeShell } from "@/lib/native-shell";
 export type BusinessLocation = {
   name: string;
   address?: string | null;
@@ -46,7 +47,13 @@ function isGoogleMapsUrl(value: string): boolean {
     const url = new URL(value);
     const host = url.hostname.toLowerCase();
     if (host === "maps.google.com" || host === "maps.app.goo.gl" || host === "goo.gl") return true;
-    if (url.pathname.toLowerCase().includes("/maps") && (host === "google.com" || host === "www.google.com" || host.endsWith(".google.com") || host.endsWith(".google.com.tr"))) {
+    if (
+      url.pathname.toLowerCase().includes("/maps") &&
+      (host === "google.com" ||
+        host === "www.google.com" ||
+        host.endsWith(".google.com") ||
+        host.endsWith(".google.com.tr"))
+    ) {
       return true;
     }
     return false;
@@ -58,7 +65,11 @@ function isGoogleMapsUrl(value: string): boolean {
 function firstGoogleMapsUrl(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const decoded = tryDecode(raw.trim());
-  const candidates = [raw.trim(), decoded, ...((decoded.match(/https?:\/\/[^\s"'<>]+/gi) as string[] | null) ?? [])];
+  const candidates = [
+    raw.trim(),
+    decoded,
+    ...((decoded.match(/https?:\/\/[^\s"'<>]+/gi) as string[] | null) ?? []),
+  ];
   for (const candidate of candidates) {
     if (isGoogleMapsUrl(candidate)) return candidate;
     const fromIntent = toSafeHttpsMapsUrl(candidate);
@@ -131,7 +142,10 @@ export function toSafeHttpsMapsUrl(raw: string, queryFallback = ""): string | nu
   if (!trimmed) return null;
   if (/^intent:/i.test(trimmed)) return httpsFromIntentUrl(trimmed, queryFallback);
   if (/^geo:/i.test(trimmed) || /^google\.navigation:/i.test(trimmed)) {
-    return httpsFromGeoUrl(trimmed) ?? (queryFallback.trim() ? googleMapsSearchUrl(queryFallback.trim()) : googleMapsSearchUrl(""));
+    return (
+      httpsFromGeoUrl(trimmed) ??
+      (queryFallback.trim() ? googleMapsSearchUrl(queryFallback.trim()) : googleMapsSearchUrl(""))
+    );
   }
   if (/^https:\/\//i.test(trimmed)) return trimmed;
   return null;
@@ -163,7 +177,12 @@ export function openExternalUrl(raw: string, queryFallback = ""): boolean {
     }
 
     const opened = window.open(https, "_blank", "noopener,noreferrer");
-    if (!opened) window.location.href = https;
+    // iOS kabuğunda window.open bağlantıyı sistemde açar ama JS'e her zaman
+    // null döner (Capacitor'ın createWebViewWith'i UIApplication.open çağırıp
+    // nil döndürüyor). Yedek dal o yüzden orada hep çalışıyor ve aynı adresi
+    // ikinci kez açtırıyordu — kullanıcı tek dokunuşta iki kez uygulamadan
+    // çıkıyordu. Kabuk zaten açtığı için yedeğe gerek yok.
+    if (!opened && !isIosNativeShell()) window.location.href = https;
     return true;
   } catch {
     return false;
@@ -250,7 +269,11 @@ function matchCoords(source: string): { lat: number; lng: number } | null {
 export function coordsFromMapsUrl(url: string | null | undefined) {
   if (!url) return null;
   const decoded = tryDecode(url);
-  const pieces = [url, decoded, ...((decoded.match(/https?:\/\/[^\s"'<>]+/gi) as string[] | null) ?? [])];
+  const pieces = [
+    url,
+    decoded,
+    ...((decoded.match(/https?:\/\/[^\s"'<>]+/gi) as string[] | null) ?? []),
+  ];
   for (const piece of pieces) {
     const found = matchCoords(piece);
     if (found) return found;

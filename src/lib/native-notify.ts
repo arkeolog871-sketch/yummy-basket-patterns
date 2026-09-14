@@ -1,3 +1,5 @@
+import { isNativeShell } from "@/lib/native-shell";
+
 /** Android WebView köprüsü ile gerçek cihaz bildirimi; tarayıcıda sessizce atlanır. */
 type NativeNotifyBridge = {
   showNotification?: (title: string, body: string) => void;
@@ -25,13 +27,7 @@ function bridge(): NativeNotifyBridge | null {
  * uygulamanın içinde kullanıcıya tarayıcıda olduğunu söylüyordu.
  */
 export function isNativeApp(): boolean {
-  if (typeof window === "undefined") return false;
-  const win = window as Window & {
-    SilvanNative?: unknown;
-    Capacitor?: { isNativePlatform?: () => boolean };
-  };
-  if (win.SilvanNative) return true;
-  return Boolean(win.Capacitor?.isNativePlatform?.());
+  return isNativeShell();
 }
 
 /** Android uygulaması içindeyse cihaz bildirimi gösterir, değilse false döner. */

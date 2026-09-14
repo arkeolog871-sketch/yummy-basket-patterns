@@ -53,8 +53,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
     }
 
+    /**
+     * Token burada geliyor ve eskiden çöpe atılıyordu (`_ = fcmToken`), yani
+     * sunucu iOS uygulamasına hiç bildirim gönderemiyordu. Artık eklentinin
+     * önbelleğine yazılıyor; web katmanı sorduğunda oradan alıyor.
+     *
+     * Bu yol özellikle ilk kurulumda kritik: web sayfası token'ı kullanıcı
+     * izin vermeden önce istiyor ve o an Firebase token veremiyor. Token izin
+     * verildikten sonra buraya düşüyor.
+     */
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        _ = fcmToken
+        SilvanPushPlugin.cacheToken(fcmToken)
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter,

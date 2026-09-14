@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { isIosNativeShell } from "@/lib/native-shell";
 
 /**
  * iOS'ta Google ve Apple girişinin uygulama içinde tamamlanan yarısı.
@@ -70,9 +71,7 @@ type PluginMethod = "signInWithGoogle" | "signInWithApple";
  * gösterir. Native yol kapatılmıyor — kapatılan yalnızca uygulamadan çıkış.
  */
 export function isIosNativeApp(): boolean {
-  const cap = capacitorGlobal();
-  if (!cap?.isNativePlatform?.()) return false;
-  return cap.getPlatform?.() === "ios";
+  return isIosNativeShell();
 }
 
 export function hasNativeIosAuth(method: PluginMethod): boolean {

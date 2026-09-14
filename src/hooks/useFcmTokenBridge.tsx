@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/hooks/useAuth";
 import { saveFcmToken } from "@/lib/push.functions";
-import { getNativeIosFcmToken } from "@/lib/ios-native-push";
+import { getNativeIosFcmToken, hasNativeIosPush } from "@/lib/ios-native-push";
 
 declare global {
   interface Window {
@@ -36,15 +36,39 @@ export function FcmTokenBridge() {
     };
 
     // iOS: token native taraftan çekilir. Eklentisiz build'lerde ve
-    // Android'de null döner, hiçbir şey olmaz.
-    void getNativeIosFcmToken().then((token) => {
-      if (!token) return;
-      void save({ data: { token } }).catch(() => {
-        // Sessizce yut: token kaydı başarısız olsa bile uygulama akışı bozulmaz.
-      });
-    });
+    // Android'de hiç denenmez.
+    //
+    // Tek deneme yetmiyor. İlk kurulumda uygulama açılır açılmaz bildirim
+    // izni soruluyor, ama bu sayfa kullanıcı daha "İzin Ver"e basmadan
+    // yükleniyor; o an APNs kaydı olmadığı için Firebase token veremiyor.
+    // Tek deneme yapılsaydı ilk kurulumda token hiç kaydedilmez, o cihaz
+    // hiç bildirim almaz ve hiçbir yerde hata görünmezdi. Aralıkları açarak
+    // birkaç kez soruluyor; token gelir gelmez duruluyor.
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const retryDelaysMs = [0, 3_000, 8_000, 20_000, 45_000];
+
+    function attempt(index: number) {
+      if (cancelled || index >= retryDelaysMs.length) return;
+      timer = setTimeout(() => {
+        void getNativeIosFcmToken().then((token) => {
+          if (cancelled) return;
+          if (!token) {
+            attempt(index + 1);
+            return;
+          }
+          void save({ data: { token } }).catch(() => {
+            // Sessizce yut: token kaydı başarısız olsa bile uygulama akışı bozulmaz.
+          });
+        });
+      }, retryDelaysMs[index] ?? 0);
+    }
+
+    if (hasNativeIosPush()) attempt(0);
 
     return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
       delete window.__onFcmToken;
     };
   }, [user, save]);
