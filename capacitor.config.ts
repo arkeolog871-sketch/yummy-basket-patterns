@@ -10,6 +10,10 @@ const config: CapacitorConfig = {
   webDir: "public",
   server: {
     url: "https://uygulamamcebimde.online",
+    // Uzaktaki adres yüklenemezse (kopuk bağlantı, DNS, inceleme sırasındaki
+    // kısıtlı ağ) WKWebView boş beyaz bir ekran gösteriyor ve uygulama bozuk
+    // görünüyor. Bu yerel sayfa sebebi söylüyor ve tekrar deneme veriyor.
+    errorPath: "baglanti-hatasi.html",
   },
   ios: {
     contentInset: "automatic",

@@ -60,6 +60,21 @@ function capacitorGlobal(): CapacitorGlobal | null {
  */
 type PluginMethod = "signInWithGoogle" | "signInWithApple";
 
+/**
+ * iOS uygulamasının kabuğunun içinde miyiz?
+ *
+ * Apple sürümü Guideline 4 kapsamında "kullanıcı giriş yapmak için varsayılan
+ * tarayıcıya çıkarılıyor" diyerek reddetti. Köprü herhangi bir sebeple
+ * bulunamazsa tarayıcı akışına düşmek o davranışı birebir geri getirir; bu
+ * yüzden çağıran taraf iOS'ta tarayıcıya düşmek yerine görünür bir hata
+ * gösterir. Native yol kapatılmıyor — kapatılan yalnızca uygulamadan çıkış.
+ */
+export function isIosNativeApp(): boolean {
+  const cap = capacitorGlobal();
+  if (!cap?.isNativePlatform?.()) return false;
+  return cap.getPlatform?.() === "ios";
+}
+
 export function hasNativeIosAuth(method: PluginMethod): boolean {
   const cap = capacitorGlobal();
   if (!cap?.isNativePlatform?.()) return false;

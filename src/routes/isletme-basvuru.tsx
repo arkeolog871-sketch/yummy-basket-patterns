@@ -10,6 +10,7 @@ import { startAppleOAuth, humanizeOAuthError as humanizeAppleOAuthError } from "
 import { nativeOAuthBridge, startGoogleOAuth } from "@/lib/google-oauth";
 import {
   hasNativeIosAuth,
+  isIosNativeApp,
   signInWithNativeIosApple,
   signInWithNativeIosGoogle,
 } from "@/lib/ios-native-auth";
@@ -80,6 +81,17 @@ function BusinessApplicationGate() {
       if (!native.ok) toast.error(native.error);
       return;
     }
+    // Buraya düşmek, köprünün bulunamadığı anlamına gelir. iOS'ta tarayıcı
+    // akışına geçmek Apple'ın reddettiği davranışı birebir geri getirir
+    // (Guideline 4: "kullanıcı giriş için varsayılan tarayıcıya çıkarılıyor").
+    // Uygulama içinde görünür bir hata vermek, uygulamadan çıkmaktan iyidir;
+    // e-posta ile giriş her koşulda açık duruyor.
+    if (isIosNativeApp()) {
+      toast.error(
+        "Giriş şu anda başlatılamadı. Uygulamayı kapatıp yeniden açın ya da e-posta ile giriş yapın.",
+      );
+      return;
+    }
     try {
       const result = await startAppleOAuth();
       if (!result.ok) toast.error(humanizeAppleOAuthError(result.error));
@@ -108,6 +120,17 @@ function BusinessApplicationGate() {
       const native = await signInWithNativeIosGoogle();
       if (native.ok === null) return; // kullanıcı vazgeçti
       if (!native.ok) toast.error(native.error);
+      return;
+    }
+    // Buraya düşmek, köprünün bulunamadığı anlamına gelir. iOS'ta tarayıcı
+    // akışına geçmek Apple'ın reddettiği davranışı birebir geri getirir
+    // (Guideline 4: "kullanıcı giriş için varsayılan tarayıcıya çıkarılıyor").
+    // Uygulama içinde görünür bir hata vermek, uygulamadan çıkmaktan iyidir;
+    // e-posta ile giriş her koşulda açık duruyor.
+    if (isIosNativeApp()) {
+      toast.error(
+        "Giriş şu anda başlatılamadı. Uygulamayı kapatıp yeniden açın ya da e-posta ile giriş yapın.",
+      );
       return;
     }
     await startBrowserGoogle();

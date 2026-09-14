@@ -55,6 +55,12 @@
 	<string>Yemek fotoğrafı ve fiş yüklemek için kamera erişimi gerekir.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Adresinizi haritada göstermek ve teslimat konumunu almak için konum izni gerekir.</string>
+	<!-- Dosya seçicide "Fotoğraf Seç" yolu modern seçiciyi kullandığı için izin
+	     istemiyor; ama izin isteyen herhangi bir yol bu metin olmadan
+	     uygulamayı ANINDA çökertir ve inceleme sırasındaki bir çökme kesin
+	     rettir. Metnin bedeli yok, yokluğunun bedeli büyük. -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>İşletme ve ürün görseli yüklemek için fotoğraflarınıza erişim gerekir.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Video kaydı için mikrofon erişimi gerekir.</string>
 	<key>UIApplicationSceneManifest</key>

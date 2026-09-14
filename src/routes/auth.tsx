@@ -24,6 +24,7 @@ import {
 import { useNativeGoogleSignIn } from "@/hooks/useNativeGoogleSignIn";
 import {
   hasNativeIosAuth,
+  isIosNativeApp,
   signInWithNativeIosApple,
   signInWithNativeIosGoogle,
 } from "@/lib/ios-native-auth";
@@ -106,8 +107,18 @@ function AuthPage() {
   // uyuşmazlığı sayıp (#418) giriş sayfasının ağacını atıp yeniden kuruyordu.
   // Gerçek değer bağlanmadan sonra yazılıyor.
   const [isAndroidNativeApp, setIsAndroidNativeApp] = useState(false);
+  /**
+   * iOS uygulamasında giriş tamamen uygulama içinde tamamlanıyor; tarayıcıyla
+   * ilgili yönlendirmeler orada hem yanlış hem zararlı. Apple sürümü "giriş
+   * için varsayılan tarayıcıya çıkarılıyor" diye reddetti; inceleyene giriş
+   * ekranında "Safari ile en iyi sonucu verir" yazan bir metin göstermek, tam
+   * da düzelttiğimiz kusuru işaret etmek olurdu. Aynı hydration kuralı burada
+   * da geçerli: değer ilk render'da false, bağlanmadan sonra yazılıyor.
+   */
+  const [isIosApp, setIsIosApp] = useState(false);
   useEffect(() => {
     setIsAndroidNativeApp(Boolean(nativeOAuthBridge()));
+    setIsIosApp(isIosNativeApp());
   }, []);
   const [pendingVerification, setPendingVerification] = useState<{
     email: string;
@@ -322,6 +333,17 @@ function AuthPage() {
         setBusy(false);
       }
     }
+    // Buraya düşmek, köprünün bulunamadığı anlamına gelir. iOS'ta tarayıcı
+    // akışına geçmek Apple'ın reddettiği davranışı birebir geri getirir
+    // (Guideline 4: "kullanıcı giriş için varsayılan tarayıcıya çıkarılıyor").
+    // Uygulama içinde görünür bir hata vermek, uygulamadan çıkmaktan iyidir;
+    // e-posta ile giriş her koşulda açık duruyor.
+    if (isIosNativeApp()) {
+      toast.error(
+        "Giriş şu anda başlatılamadı. Uygulamayı kapatıp yeniden açın ya da e-posta ile giriş yapın.",
+      );
+      return;
+    }
     await startBrowserGoogle();
   }
 
@@ -340,6 +362,17 @@ function AuthPage() {
       } finally {
         setBusy(false);
       }
+    }
+    // Buraya düşmek, köprünün bulunamadığı anlamına gelir. iOS'ta tarayıcı
+    // akışına geçmek Apple'ın reddettiği davranışı birebir geri getirir
+    // (Guideline 4: "kullanıcı giriş için varsayılan tarayıcıya çıkarılıyor").
+    // Uygulama içinde görünür bir hata vermek, uygulamadan çıkmaktan iyidir;
+    // e-posta ile giriş her koşulda açık duruyor.
+    if (isIosNativeApp()) {
+      toast.error(
+        "Giriş şu anda başlatılamadı. Uygulamayı kapatıp yeniden açın ya da e-posta ile giriş yapın.",
+      );
+      return;
     }
     if (isInAppBrowser()) {
       toast.error(
@@ -600,11 +633,13 @@ function AuthPage() {
           >
             {googleNativeBusy ? "Google hesabı seçiliyor…" : "Google ile devam et"}
           </Button>
-          <p className="mt-2 text-center text-xs text-muted-foreground">
-            Google, uygulamanın kendi alan adına döner. Android uygulamasında sistem tarayıcısı
-            (Chrome) açılır. WhatsApp, Instagram veya Facebook içi tarayıcıda çalışmaz. E-posta kodu
-            ile giriş her zaman kullanılabilir.
-          </p>
+          {isIosApp ? null : (
+            <p className="mt-2 text-center text-xs text-muted-foreground">
+              Google, uygulamanın kendi alan adına döner. Android uygulamasında sistem tarayıcısı
+              (Chrome) açılır. WhatsApp, Instagram veya Facebook içi tarayıcıda çalışmaz. E-posta
+              kodu ile giriş her zaman kullanılabilir.
+            </p>
+          )}
 
           {isAndroidNativeApp ? null : (
             <>
@@ -617,11 +652,12 @@ function AuthPage() {
               >
                 Apple ile devam et
               </Button>
-              <p className="mt-2 text-center text-xs text-muted-foreground">
-                Apple ile giriş, uygulamanın kendi alan adına döner. iPhone veya iPad'de Safari ile
-                en iyi sonucu verir. Supabase Auth üzerinde Apple sağlayıcısı etkinleştirildikten
-                sonra çalışır.
-              </p>
+              {isIosApp ? null : (
+                <p className="mt-2 text-center text-xs text-muted-foreground">
+                  Apple ile giriş, uygulamanın kendi alan adına döner. E-posta kodu ile giriş her
+                  zaman kullanılabilir.
+                </p>
+              )}
             </>
           )}
         </>
