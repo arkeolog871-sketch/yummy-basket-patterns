@@ -78,6 +78,27 @@ async function getAccessToken(account: ServiceAccount): Promise<string> {
 
 export type FcmSendResult = "sent" | "invalid_token" | "error" | "unconfigured";
 
+/**
+ * Uygulamanın açılışta oluşturduğu yüksek önemli bildirim kanalı
+ * (MainActivity.ORDER_CHANNEL_ID ve PushService.CHANNEL_ID ile aynı olmak
+ * zorunda). Mesajda bu belirtilmezse uygulama arka plandayken bildirimi
+ * Firebase'in kendi kodu gösteriyor ve kanalı bilmediği için sistemin
+ * varsayılan "Diğer" kanalına düşürüyor — o kanal normal önem seviyesinde,
+ * yani ekranın üstünde belirmiyor ve titremiyor. Kanalın yüksek önemi tam da
+ * en çok gerektiği anda, uygulama kapalıyken, devre dışı kalıyordu.
+ */
+const ANDROID_CHANNEL_ID = "orders";
+
+/**
+ * Teslim edilemeyen mesaj bu süre sonunda düşer. Varsayılan 4 hafta: cihaz
+ * (zorla durdurma, pil kısıtlaması, kapalı internet) mesajı alamadığında
+ * Google onu haftalarca saklıyor ve bağlantı kurulduğu an hepsini birden
+ * boşaltıyor — 1-2 Eylül'deki sekiz test bildiriminin 14 Eylül'de tek
+ * seferde düşmesinin sebebi buydu. Bir günü geçmiş bildirim zaten
+ * kullanıcıya bir şey ifade etmiyor; geç gelmektense hiç gelmesin.
+ */
+const ANDROID_TTL = "86400s";
+
 /** Tek bir FCM token'ına bildirim gönderir. VAPID'siz ortamda olduğu gibi,
  * servis hesabı tanımlı değilse sessizce "unconfigured" döner. */
 export async function sendFcmMessage(
@@ -102,7 +123,20 @@ export async function sendFcmMessage(
             token,
             notification: { title: payload.title, body: payload.body },
             ...(payload.url ? { data: { url: payload.url } } : {}),
-            android: { priority: "high" },
+            android: {
+              // "high": Doze/uyku modunu delip anında teslim edilir.
+              priority: "high",
+              ttl: ANDROID_TTL,
+              notification: {
+                channel_id: ANDROID_CHANNEL_ID,
+                // Android 8 öncesinde kanal yok; öncelik buradan geliyor.
+                notification_priority: "PRIORITY_MAX",
+                default_sound: true,
+                default_vibrate_timings: true,
+                // Kilit ekranında içeriğiyle görünsün.
+                visibility: "PUBLIC",
+              },
+            },
           },
         }),
       },

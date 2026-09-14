@@ -142,6 +142,20 @@
             </intent-filter>
         </activity>
 
+        <!-- Sunucu her mesajda kanalı zaten belirtiyor; bunlar emniyet kemeri.
+             Kanal adı belirtilmeyen bir mesaj gelirse (Firebase konsolundan
+             gönderilen test, eski sunucu sürümü) Firebase bildirimi sistemin
+             normal önemli "Diğer" kanalına düşürür ve bildirim ekranın
+             üstünde belirmez. Burada tanımlanan varsayılan, o durumda da
+             yüksek önemli "orders" kanalının kullanılmasını sağlıyor.
+             Değer MainActivity.ORDER_CHANNEL_ID ile birebir aynı olmalı. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="orders" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_notify" />
+
         <!-- Uygulama kapalıyken de bildirim: google-services.json eklenmediği
              sürece bu servis hiç tetiklenmez (token üretilemez), mevcut
              davranışı bozmaz. -->

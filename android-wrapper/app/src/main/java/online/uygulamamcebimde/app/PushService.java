@@ -40,15 +40,31 @@ public class PushService extends FirebaseMessagingService {
             body = data.get("body");
         }
         if (title == null || title.trim().isEmpty()) return;
+        String safeTitle = title.trim();
+        String safeBody = body == null ? "" : body.trim();
 
         try {
             ensureChannel();
             NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_stat_notify)
-                    .setContentTitle(title.trim())
-                    .setContentText(body == null ? "" : body.trim())
+                    .setContentTitle(safeTitle)
+                    .setContentText(safeBody)
+                    // Uzun duyuru tek satıra kırpılmasın.
+                    .setStyle(new NotificationCompat.BigTextStyle().bigText(safeBody))
                     .setAutoCancel(true)
-                    .setPriority(NotificationCompat.PRIORITY_HIGH);
+                    // Android 8 öncesinde kanal yok, öncelik buradan gelir;
+                    // 8 ve sonrasında kanalın önemi belirleyici.
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    // Rahatsız Etmeyin modunda "öncelikli" sayılmasını sağlar.
+                    .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                    .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                    .setDefaults(NotificationCompat.DEFAULT_ALL);
+
+            // Teslimat gecikmişse kart, geldiği anı değil gönderildiği anı
+            // göstersin. Birikmiş bildirimlerin hepsi aynı dakikayla görünüp
+            // "hepsi şimdi geldi" izlenimi vermesin.
+            long sentTime = message.getSentTime();
+            if (sentTime > 0) builder.setWhen(sentTime).setShowWhen(true);
 
             // Bildirime dokununca uygulamayı açar (mevcut yerel bildirim davranışıyla
             // aynı hedef sayfa — belirli bir yola yönlendirme yapılmıyor).
@@ -62,9 +78,17 @@ public class PushService extends FirebaseMessagingService {
             );
             builder.setContentIntent(pendingIntent);
 
+            // FCM "en az bir kez" teslim garantisi veriyor; aynı mesaj iki kez
+            // gelebiliyor. Kimlik mesajın kendi kimliğinden türetilince ikinci
+            // teslimat yeni bir kart açmak yerine mevcut kartın üstüne yazar.
+            String messageId = message.getMessageId();
+            int notificationId = (messageId != null && !messageId.isEmpty())
+                    ? messageId.hashCode()
+                    : (safeTitle + "\n" + safeBody).hashCode();
+
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) {
-                manager.notify((int) System.currentTimeMillis(), builder.build());
+                manager.notify(notificationId, builder.build());
             }
         } catch (Throwable ignored) {
             // Bildirim gösterimi başarısız olsa bile servis çökmemeli.
