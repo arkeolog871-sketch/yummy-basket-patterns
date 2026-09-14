@@ -19,6 +19,7 @@ import { useAppCategories } from "@/hooks/useTaxonomy";
 import { slugify, formatDateTime } from "@/lib/format";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { LATITUDE_FIELD_PLACEHOLDER, LONGITUDE_FIELD_PLACEHOLDER } from "@/lib/location";
+import { parseDecimalInput } from "@/lib/decimal-input";
 import {
   submitBusinessApplication,
   listMyBusinessApplications,
@@ -113,7 +114,9 @@ function BusinessApplicationGate() {
   }
 
   if (loading) {
-    return <p className="mx-auto max-w-3xl px-4 py-10 text-sm text-muted-foreground">Yükleniyor…</p>;
+    return (
+      <p className="mx-auto max-w-3xl px-4 py-10 text-sm text-muted-foreground">Yükleniyor…</p>
+    );
   }
 
   if (!verified) {
@@ -136,7 +139,6 @@ function BusinessApplicationGate() {
             onVerified={() => {
               toast.success("Doğrulama başarılı, formu doldurabilirsiniz.");
             }}
-
           />
           <div className="border-t border-border/70 pt-4">
             <Button
@@ -172,12 +174,24 @@ function BusinessApplicationGate() {
   return <BusinessApplicationPage />;
 }
 
-
 const STATUS_LABELS: Record<string, string> = {
   pending: "İnceleniyor",
   approved: "Onaylandı",
   rejected: "Reddedildi",
 };
+
+/**
+ * Sayıya çevrilen alanlar ve kullanıcının ekranda gördüğü adları. Ad olmadan
+ * hata mesajı "bir sayı hatalı" demekten öteye geçemiyor; formda beş sayı
+ * alanı var ve hangisi olduğunu bulmak kullanıcıya kalıyordu.
+ */
+const NUMERIC_FIELDS = [
+  { key: "delivery_minutes", label: "Teslimat süresi (dk)" },
+  { key: "delivery_fee", label: "Teslimat ücreti" },
+  { key: "min_order", label: "Min. sepet" },
+  { key: "latitude", label: "Enlem" },
+  { key: "longitude", label: "Boylam" },
+] as const;
 
 const emptyForm = {
   name: "",
@@ -218,8 +232,26 @@ function BusinessApplicationPage() {
 
   const activeSector = form.sector || categories[0]?.slug || "";
 
+  /**
+   * Sayı alanları gönderimden önce burada okunur. Biri okunamazsa istek hiç
+   * gönderilmez: sunucuya NaN gidince dönen cevap "Expected number, received
+   * nan" oluyordu — İngilizce ve hangi alan olduğunu söylemiyor.
+   */
+  function readNumbers(): Record<(typeof NUMERIC_FIELDS)[number]["key"], number> | null {
+    const parsed = {} as Record<(typeof NUMERIC_FIELDS)[number]["key"], number>;
+    for (const field of NUMERIC_FIELDS) {
+      const value = parseDecimalInput(form[field.key]);
+      if (value === null) {
+        toast.error(`${field.label}: sayı olarak girin. Ondalık için virgül kullanabilirsiniz.`);
+        return null;
+      }
+      parsed[field.key] = value;
+    }
+    return parsed;
+  }
+
   const submitMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (numbers: Record<(typeof NUMERIC_FIELDS)[number]["key"], number>) =>
       submit({
         data: {
           slug: form.slug,
@@ -231,15 +263,15 @@ function BusinessApplicationPage() {
             .split(",")
             .map((value) => value.trim())
             .filter(Boolean),
-          delivery_minutes: Number(form.delivery_minutes),
-          delivery_fee: Number(form.delivery_fee),
-          min_order: Number(form.min_order),
+          delivery_minutes: numbers.delivery_minutes,
+          delivery_fee: numbers.delivery_fee,
+          min_order: numbers.min_order,
           cover_image_url: form.cover_image_url.trim(),
           address: form.address.trim(),
           district: form.district.trim(),
           city: form.city.trim(),
-          latitude: Number(form.latitude),
-          longitude: Number(form.longitude),
+          latitude: numbers.latitude,
+          longitude: numbers.longitude,
           maps_url: form.maps_url.trim(),
           contact_email: form.contact_email.trim(),
           contact_phone: form.contact_phone.trim(),
@@ -281,7 +313,9 @@ function BusinessApplicationPage() {
             toast.error("Kategori seçin.");
             return;
           }
-          submitMutation.mutate();
+          const numbers = readNumbers();
+          if (!numbers) return;
+          submitMutation.mutate(numbers);
         }}
       >
         <div className="space-y-1">
@@ -535,7 +569,6 @@ function BusinessApplicationPage() {
                 {row.founder_note ? (
                   <p className="mt-2 text-sm text-muted-foreground">Not: {row.founder_note}</p>
                 ) : null}
-
               </div>
             ))}
           </div>

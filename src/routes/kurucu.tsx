@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { LATITUDE_FIELD_PLACEHOLDER, LONGITUDE_FIELD_PLACEHOLDER } from "@/lib/location";
+import { parseDecimalInput } from "@/lib/decimal-input";
 import {
   Crown,
   Plus,
@@ -707,14 +708,10 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
           address: form.address.trim() || null,
           district: form.district.trim() || null,
           city: form.city.trim() || null,
-          latitude:
-            form.latitude.trim() && Number.isFinite(Number(form.latitude))
-              ? Number(form.latitude)
-              : null,
-          longitude:
-            form.longitude.trim() && Number.isFinite(Number(form.longitude))
-              ? Number(form.longitude)
-              : null,
+          // Virgüllü yazılan koordinat burada NaN olmuyordu ama sessizce
+          // atılıyordu: işletme konumsuz kaydediliyor, haritada çıkmıyordu.
+          latitude: parseDecimalInput(form.latitude),
+          longitude: parseDecimalInput(form.longitude),
           maps_url: form.maps_url.trim() || null,
           contact_email: form.contact_email.trim(),
           contact_phone: form.contact_phone.trim(),
