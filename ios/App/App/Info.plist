@@ -51,6 +51,18 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Uygulamanın teması cihazın karanlık moduna değil, site ayarına bağlı;
+	     ekran her zaman krem. iOS ise durum çubuğu rengini cihazın moduna göre
+	     seçiyordu: karanlık moddaki bir telefonda saat ve pil BEYAZ çiziliyor,
+	     krem başlığın üstünde okunmuyordu. Ayrıca açılış ekranının sistem
+	     zemini karanlık modda siyah oluyordu. Arayüz stilini sabitlemek
+	     ikisini birden çözüyor; Apple giriş sayfası, uyarılar ve paylaşım
+	     sayfası gibi sistem ekranları da uygulamayla aynı tonda kalıyor. -->
+	<key>UIUserInterfaceStyle</key>
+	<string>Light</string>
+	<!-- Niyet açıkça yazılsın: koyu içerik, yani açık zemin üzerinde okunur. -->
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleDarkContent</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Yemek fotoğrafı ve fiş yüklemek için kamera erişimi gerekir.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

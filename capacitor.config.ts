@@ -17,6 +17,9 @@ const config: CapacitorConfig = {
   },
   ios: {
     contentInset: "automatic",
+    // Sayfanın sonuna gelip çekince WKWebView'in kendi zemini görünüyor;
+    // varsayılan beyaz, uygulamanın kremi üzerinde göze çarpıyordu.
+    backgroundColor: "#F4EDDA",
     preferredContentMode: "mobile",
     // Xcode target/scheme name (not the display name).
     scheme: "App",

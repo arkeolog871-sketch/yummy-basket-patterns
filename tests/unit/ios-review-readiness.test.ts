@@ -246,3 +246,56 @@ describe("harici bağlantı iOS'ta bir kez açılıyor", () => {
     expect(location.href).toBe(MAPS);
   });
 });
+
+/**
+ * Uygulamanın teması cihazın karanlık moduna değil, site ayarına bağlı; ekran
+ * her zaman krem. iOS ise durum çubuğu rengini cihazın moduna göre seçiyordu:
+ * karanlık moddaki bir telefonda saat ve pil BEYAZ çiziliyor, krem başlığın
+ * üstünde okunmuyordu. Aynı sebeple açılış ekranının sistem zemini karanlık
+ * modda siyah oluyordu -- uygulama her açılışta siyahtan kreme atlıyordu.
+ */
+describe("açılış ve durum çubuğu", () => {
+  const storyboard = readFileSync(
+    join(ROOT, "ios/App/App/Base.lproj/LaunchScreen.storyboard"),
+    "utf8",
+  );
+
+  it("arayüz stili sabitlenmiş", () => {
+    expect(infoPlist).toMatch(/<key>UIUserInterfaceStyle<\/key>\s*<string>Light<\/string>/);
+  });
+
+  it("durum çubuğu koyu içerik istiyor", () => {
+    expect(infoPlist).toMatch(
+      /<key>UIStatusBarStyle<\/key>\s*<string>UIStatusBarStyleDarkContent<\/string>/,
+    );
+  });
+
+  it("açılış ekranı sistem rengine bırakılmamış", () => {
+    expect(storyboard).not.toContain("systemBackgroundColor");
+  });
+
+  /** Açılış görseli Capacitor'ın varsayılan beyazıydı; marka rengine çevrildi. */
+  it("açılış görseli marka renginde", async () => {
+    const { readFileSync: read } = await import("node:fs");
+    const png = read(
+      join(ROOT, "ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732.png"),
+    );
+    const zlib = await import("node:zlib");
+    let idat = Buffer.alloc(0);
+    let at = 8;
+    while (at < png.length) {
+      const length = png.readUInt32BE(at);
+      if (png.subarray(at + 4, at + 8).toString() === "IDAT") {
+        idat = Buffer.concat([idat, png.subarray(at + 8, at + 8 + length)]);
+      }
+      at += 12 + length;
+    }
+    const raw = zlib.inflateSync(idat);
+    // İlk bayt satır filtresi; ardından ilk pikselin RGB'si geliyor.
+    expect([raw[1], raw[2], raw[3]]).toEqual([244, 237, 218]);
+  });
+
+  it("aşırı kaydırmada beyaz yerine marka rengi görünüyor", () => {
+    expect(capConfig).toContain('backgroundColor: "#F4EDDA"');
+  });
+});
