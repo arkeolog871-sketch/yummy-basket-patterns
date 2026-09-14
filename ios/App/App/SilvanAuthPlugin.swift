@@ -205,12 +205,14 @@ extension SilvanAuthPlugin: ASAuthorizationControllerDelegate {
                 call.resolve(["cancelled": true])
                 return
             }
-            // Salt "error 1000" hiçbir şey anlatmıyor; alan, kod ve userInfo
-            // olmadan bu hatayı cihaza bağlanmadan ayırt etmek mümkün değil.
+            // Alan, kod ve userInfo günlüğe gider: "error 1000" tek başına
+            // hiçbir şey ayırt ettirmiyor ve cihaza bağlanmadan görmenin
+            // başka yolu yok. Kullanıcı bu dökümü görmez.
             let ns = error as NSError
-            let detail = "\(error.localizedDescription) [\(ns.domain) \(ns.code)] \(ns.userInfo)"
-            Self.log.error("Apple hatası: \(detail, privacy: .public)")
-            call.reject(String(detail.prefix(400)))
+            Self.log.error(
+                "Apple hatası: \(error.localizedDescription, privacy: .public) [\(ns.domain, privacy: .public) \(ns.code, privacy: .public)] \(String(describing: ns.userInfo), privacy: .public)"
+            )
+            call.reject("Apple ile giriş tamamlanamadı. Lütfen tekrar deneyin.")
         }
     }
 }

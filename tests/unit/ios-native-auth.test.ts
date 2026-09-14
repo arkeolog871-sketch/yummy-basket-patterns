@@ -206,3 +206,25 @@ describe("Sign in with Apple yetkisi", () => {
     expect(pbxproj).toContain("CODE_SIGN_ENTITLEMENTS = App/App.entitlements;");
   });
 });
+
+/**
+ * Köprü dökümü ve adım günlüğü cihazda hata ayıklamak için giriş ekranına
+ * konmuştu; ikisi de "platform=ios · SilvanAuth=…" gibi ham teknik metin
+ * basıyor. Bunlar App Review'ın gördüğü ekranda kalmamalı. Tanı hâlâ
+ * mümkün — yalnızca konsola yazılıyor.
+ */
+describe("giriş ekranı tanı çıktısı", () => {
+  const authRoute = readFileSync(join(ROOT, "src/routes/auth.tsx"), "utf8");
+
+  it("köprü dökümünü ekrana basmıyor", () => {
+    expect(authRoute).not.toContain("nativeIosAuthDiagnostics");
+  });
+
+  it("adım günlüğünü ekranda tutmuyor", () => {
+    expect(authRoute).not.toContain("flowLog");
+  });
+
+  it("tanı kutularının tek biçimi olan mono kutuyu içermiyor", () => {
+    expect(authRoute).not.toContain("font-mono");
+  });
+});

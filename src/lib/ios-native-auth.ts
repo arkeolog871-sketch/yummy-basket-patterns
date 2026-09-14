@@ -39,8 +39,14 @@ type NativeAuthResponse = {
  */
 export type NativeIosAuthResult = { ok: true } | { ok: false; error: string } | { ok: null };
 
-/** Akışın hangi adımda olduğunu ekrana yazdırmak için; tanı dışında etkisi yok. */
+/**
+ * Akışın hangi adımını geçtiğini bildirir. Varsayılan alıcı konsol: cihazda
+ * Web Inspector ile bakılabilsin diye tutuluyor, kullanıcıya hiçbir şey
+ * göstermiyor.
+ */
 export type NativeAuthStep = (step: string) => void;
+
+const logStep: NativeAuthStep = (step) => console.debug("[ios-auth]", step);
 
 function capacitorGlobal(): CapacitorGlobal | null {
   if (typeof window === "undefined") return null;
@@ -75,14 +81,17 @@ export function hasNativeIosAuth(method: PluginMethod): boolean {
 function callNative(method: PluginMethod): Promise<NativeAuthResponse> {
   const cap = capacitorGlobal();
   if (!cap?.nativePromise) {
-    return Promise.reject(new Error(`Köprü çağrı kanalı yok. ${nativeIosAuthDiagnostics()}`));
+    // Sebep konsola; kullanıcıya teknik döküm değil ne yapacağı söylenir.
+    console.error("[ios-auth] köprü çağrı kanalı yok.", nativeIosAuthDiagnostics());
+    return Promise.reject(new Error("Uygulama içi giriş başlatılamadı."));
   }
   return cap.nativePromise<NativeAuthResponse>(PLUGIN_NAME, method, {});
 }
 
 /**
- * Köprünün o anki hâlini tek satırda özetler. Hata mesajına ekleniyor çünkü
- * cihaza bağlanmadan native tarafı görmenin başka yolu yok.
+ * Köprünün o anki hâlini tek satırda özetler. Yalnızca konsola yazılır:
+ * cihaza bağlanmadan native tarafı görmenin başka yolu yok, ama bu döküm
+ * kullanıcıya gösterilecek bir şey değil.
  */
 export function nativeIosAuthDiagnostics(): string {
   const cap = capacitorGlobal();
@@ -118,7 +127,8 @@ function withWatchdog<T>(promise: Promise<T>, label: string): Promise<T> {
     promise,
     new Promise<never>((_, reject) => {
       setTimeout(() => {
-        reject(new Error(`${label}: native taraf yanıt vermedi. ${nativeIosAuthDiagnostics()}`));
+        console.error(`[ios-auth] ${label}: yanıt yok.`, nativeIosAuthDiagnostics());
+        reject(new Error(`${label} girişi yanıt vermedi. Lütfen tekrar deneyin.`));
       }, NATIVE_CALL_TIMEOUT_MS);
     }),
   ]);
@@ -131,7 +141,7 @@ function errorText(error: unknown, fallback: string): string {
 }
 
 export async function signInWithNativeIosGoogle(
-  onStep: NativeAuthStep = () => {},
+  onStep: NativeAuthStep = logStep,
 ): Promise<NativeIosAuthResult> {
   try {
     onStep("başladı");
@@ -167,7 +177,7 @@ export async function signInWithNativeIosGoogle(
 }
 
 export async function signInWithNativeIosApple(
-  onStep: NativeAuthStep = () => {},
+  onStep: NativeAuthStep = logStep,
 ): Promise<NativeIosAuthResult> {
   try {
     onStep("başladı");

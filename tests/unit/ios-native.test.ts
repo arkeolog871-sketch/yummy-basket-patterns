@@ -61,3 +61,31 @@ describe("iOS native shell static controls", () => {
     expect(capConfig).toContain("android-wrapper");
   });
 });
+
+/**
+ * WKWebView'de yarı saydam + bulanık bir `sticky` başlık kendi derleme
+ * katmanına taşınıyor ve o katmanın dokunma bölgesi ilk boyamada
+ * güncellenmiyor. Sonuç: başlık görünüyor ama düğmeleri dokunuşa cevap
+ * vermiyor; sayfa birazcık kaydırılınca çalışmaya başlıyor. Cihazda tam
+ * olarak bu yaşandı — giriş sonrası hesap menüsü hiç açılmıyordu. Sticky
+ * başlığa bulanıklık geri eklenirse hata da geri gelir.
+ */
+describe("başlık dokunma katmanı", () => {
+  const header = readFileSync(join(ROOT, "src/components/layout/Header.tsx"), "utf8");
+  const headerTag = /<header className="([^"]+)"/.exec(header);
+
+  it("başlık sınıflarını okuyabiliyor", () => {
+    expect(headerTag).not.toBeNull();
+  });
+
+  it("sticky başlıkta backdrop-blur kullanmıyor", () => {
+    expect(headerTag![1]).toContain("sticky");
+    expect(headerTag![1]).not.toContain("backdrop-blur");
+  });
+
+  /** Bulanıklık gidince zemin opak olmalı; yoksa içerik başlığın içinden görünür. */
+  it("başlık zeminini opak bırakıyor", () => {
+    expect(headerTag![1]).toContain("bg-background");
+    expect(headerTag![1]).not.toMatch(/bg-background\/\d+/);
+  });
+});

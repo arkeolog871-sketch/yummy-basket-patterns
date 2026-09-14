@@ -24,7 +24,6 @@ import {
 import { useNativeGoogleSignIn } from "@/hooks/useNativeGoogleSignIn";
 import {
   hasNativeIosAuth,
-  nativeIosAuthDiagnostics,
   signInWithNativeIosApple,
   signInWithNativeIosGoogle,
 } from "@/lib/ios-native-auth";
@@ -126,22 +125,9 @@ function AuthPage() {
   const [completesInApp, setCompletesInApp] = useState(false);
   const [appleCompleting, setAppleCompleting] = useState(false);
   const [appleAndroidHandoffPending, setAppleAndroidHandoffPending] = useState(false);
-  /**
-   * Native kabuğun içindeyken köprünün durumunu ekranda gösterir. Cihaza
-   * bağlanmadan native tarafı görmenin başka yolu yok ve eklenti kayıtlı
-   * değilse giriş sessizce tarayıcıya düşüyor — sebebi görünür olmalı.
-   * Sunucuda köprü yok, o yüzden ilk render'dan sonra yazılır.
-   */
-  const [bridgeInfo, setBridgeInfo] = useState("");
-  /** Native akışın adımları; toast'a bağlı kalmadan ekranda görünür. */
-  const [flowLog, setFlowLog] = useState<string[]>([]);
-  const pushStep = (step: string) =>
-    setFlowLog((previous) => [...previous, `${new Date().toLocaleTimeString("tr-TR")} ${step}`]);
   useEffect(() => {
     if (isGoogleOAuthCallbackParams()) setGoogleCompleting(true);
     if (isAppleOAuthCallbackParams()) setAppleCompleting(true);
-    const cap = (window as Window & { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
-    if (cap?.isNativePlatform?.()) setBridgeInfo(nativeIosAuthDiagnostics());
   }, []);
   // Native akış başlayıp başarısız olursa giriş sessizce ölmesin: tarayıcıya düş.
   const { busy: googleNativeBusy, start: startNativeGoogle } = useNativeGoogleSignIn(() => {
@@ -317,50 +303,25 @@ function AuthPage() {
     }
   }
 
-  /**
-   * iOS uygulamasında olup köprüyü bulamıyorsak sebebi görünür olmalı. Aksi
-   * hâlde akış sessizce tarayıcıya düşüyor ve "neden hâlâ Safari açılıyor"
-   * sorusunu cihaza bakmadan cevaplamak imkânsız oluyor.
-   */
-  function reportMissingIosBridge(provider: string) {
-    if (typeof window === "undefined") return;
-    const cap = (window as Window & { Capacitor?: { getPlatform?: () => string } }).Capacitor;
-    if (cap?.getPlatform?.() !== "ios") return;
-    toast.error(`${provider}: uygulama içi köprü bulunamadı. ${nativeIosAuthDiagnostics()}`, {
-      duration: 20_000,
-    });
-  }
-
   async function handleGoogle() {
     // Credential Manager köprüsü varsa hesap seçimi uygulama içinde yapılır.
     if (startNativeGoogle()) return;
     // iOS: GoogleSignIn SDK'sı hesap seçimini uygulama içinde tamamlar.
     if (hasNativeIosAuth("signInWithGoogle")) {
       setBusy(true);
-      setFlowLog([]);
-      pushStep("Google düğmesine basıldı");
       try {
-        const result = await signInWithNativeIosGoogle(pushStep);
-        if (result.ok === null) {
-          pushStep("kullanıcı vazgeçti");
-          return;
-        }
-        if (!result.ok) {
-          pushStep(`hata: ${result.error}`);
-          toast.error(result.error, { duration: 20_000 });
-        }
+        const result = await signInWithNativeIosGoogle();
+        if (result.ok === null) return;
+        if (!result.ok) toast.error(result.error);
         return;
       } catch (error) {
         // Buraya düşen her şey aksi hâlde sessizce yutulurdu.
-        const text = error instanceof Error ? error.message : String(error);
-        pushStep(`istisna: ${text}`);
-        toast.error(text, { duration: 20_000 });
+        toast.error(error instanceof Error ? error.message : String(error));
         return;
       } finally {
         setBusy(false);
       }
     }
-    reportMissingIosBridge("Google");
     await startBrowserGoogle();
   }
 
@@ -368,29 +329,18 @@ function AuthPage() {
     // iOS: ASAuthorizationController ile gerçek native ekran; tarayıcı yok.
     if (hasNativeIosAuth("signInWithApple")) {
       setBusy(true);
-      setFlowLog([]);
-      pushStep("Apple düğmesine basıldı");
       try {
-        const result = await signInWithNativeIosApple(pushStep);
-        if (result.ok === null) {
-          pushStep("kullanıcı vazgeçti");
-          return;
-        }
-        if (!result.ok) {
-          pushStep(`hata: ${result.error}`);
-          toast.error(result.error, { duration: 20_000 });
-        }
+        const result = await signInWithNativeIosApple();
+        if (result.ok === null) return;
+        if (!result.ok) toast.error(result.error);
         return;
       } catch (error) {
-        const text = error instanceof Error ? error.message : String(error);
-        pushStep(`istisna: ${text}`);
-        toast.error(text, { duration: 20_000 });
+        toast.error(error instanceof Error ? error.message : String(error));
         return;
       } finally {
         setBusy(false);
       }
     }
-    reportMissingIosBridge("Apple");
     if (isInAppBrowser()) {
       toast.error(
         "Apple girişi WhatsApp / Instagram / Facebook içi tarayıcıda çalışmaz. Bağlantıyı Chrome veya Safari ile açın.",
@@ -640,20 +590,6 @@ function AuthPage() {
             <span className="h-px flex-1 bg-border" />
           </div>
 
-          {bridgeInfo ? (
-            <p className="mt-3 rounded-2xl border border-border bg-muted/40 p-3 text-center font-mono text-[11px] leading-relaxed break-words text-muted-foreground">
-              {bridgeInfo}
-            </p>
-          ) : null}
-
-          {flowLog.length ? (
-            <ol className="mt-2 space-y-1 rounded-2xl border border-border bg-muted/40 p-3 font-mono text-[11px] leading-relaxed break-words text-muted-foreground">
-              {flowLog.map((line, index) => (
-                <li key={`${index}-${line}`}>{line}</li>
-              ))}
-            </ol>
-          ) : null}
-
           <Button
             type="button"
             variant="outline"
@@ -682,9 +618,9 @@ function AuthPage() {
                 Apple ile devam et
               </Button>
               <p className="mt-2 text-center text-xs text-muted-foreground">
-                Apple ile giriş, uygulamanın kendi alan adına döner. iPhone veya iPad'de Safari ile en
-                iyi sonucu verir. Supabase Auth üzerinde Apple sağlayıcısı etkinleştirildikten sonra
-                çalışır.
+                Apple ile giriş, uygulamanın kendi alan adına döner. iPhone veya iPad'de Safari ile
+                en iyi sonucu verir. Supabase Auth üzerinde Apple sağlayıcısı etkinleştirildikten
+                sonra çalışır.
               </p>
             </>
           )}
