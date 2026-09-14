@@ -179,3 +179,30 @@ describe("GoogleSignIn sürümü", () => {
     expect(Number(pinned![1])).toBeGreaterThanOrEqual(9);
   });
 });
+
+/**
+ * Apple, "Sign in with Apple" yetkisini `com.apple.developer.applesignin`
+ * anahtarında **dizi** olarak bekliyor: <array><string>Default</string></array>.
+ * Değer düz bir <string> yazılırsa imzalama patlamıyor, uygulama kuruluyor,
+ * ama ASAuthorizationController isteği çalışma anında yetkisiz sayıp aynı
+ * saniyede boş userInfo'lu AuthorizationError 1000 döndürüyor — yani Apple
+ * girişi sessizce ölüyor. Biçimi testle sabitliyoruz.
+ */
+describe("Sign in with Apple yetkisi", () => {
+  const entitlements = readFileSync(join(ROOT, "ios/App/App/App.entitlements"), "utf8");
+
+  it("applesignin anahtarını dizi olarak tanımlıyor", () => {
+    expect(entitlements).toMatch(
+      /<key>com\.apple\.developer\.applesignin<\/key>\s*<array>\s*<string>Default<\/string>\s*<\/array>/,
+    );
+  });
+
+  it("düz string biçimine geri dönmüyor", () => {
+    expect(entitlements).not.toMatch(/<key>com\.apple\.developer\.applesignin<\/key>\s*<string>/);
+  });
+
+  it("hedef bu yetki dosyasıyla imzalanıyor", () => {
+    const pbxproj = readFileSync(join(ROOT, "ios/App/App.xcodeproj/project.pbxproj"), "utf8");
+    expect(pbxproj).toContain("CODE_SIGN_ENTITLEMENTS = App/App.entitlements;");
+  });
+});
