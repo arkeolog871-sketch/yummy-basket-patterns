@@ -106,3 +106,36 @@ describe("bağlantı kurulamadığında", () => {
     expect(remote).toEqual([]);
   });
 });
+
+/**
+ * Bildirimler sayfası başlıktaki zil simgesinden bir dokunuş uzakta; inceleyen
+ * kişi oraya kesinlikle bakar. Native kabuk kontrolü yalnızca Android
+ * köprüsüne baktığı için iOS uygulamasında sayfa "bu TARAYICI anlık
+ * bildirimleri desteklemiyor" diyordu. Hem yanlış (uygulama APNs ile bildirim
+ * alıyor) hem de native bir uygulamanın içinde kullanıcıya tarayıcıda olduğunu
+ * söylüyor -- bir webview sarmalayıcısının vermemesi gereken izlenimin tam
+ * kendisi.
+ */
+describe("bildirim desteği uyarısı", () => {
+  const nativeNotify = readFileSync(join(ROOT, "src/lib/native-notify.ts"), "utf8");
+  const pushButton = readFileSync(
+    join(ROOT, "src/components/notifications/PushNotificationButton.tsx"),
+    "utf8",
+  );
+
+  it("native kabuk kontrolü iOS'u da kapsıyor", () => {
+    expect(nativeNotify).toContain("Capacitor?.isNativePlatform");
+  });
+
+  it("yalnızca Android köprüsüne bakmıyor", () => {
+    expect(nativeNotify).not.toMatch(
+      /return Boolean\(\(window as Window & \{ SilvanNative\?: unknown \}\)\.SilvanNative\);/,
+    );
+  });
+
+  it("uyarı native uygulamada gösterilmiyor", () => {
+    const at = pushButton.indexOf("Bu tarayıcı anlık bildirimleri desteklemiyor");
+    expect(at).toBeGreaterThan(-1);
+    expect(pushButton.slice(0, at)).toContain("if (isNativeApp()) return null;");
+  });
+});

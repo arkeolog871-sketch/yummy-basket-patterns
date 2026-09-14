@@ -11,14 +11,27 @@ function bridge(): NativeNotifyBridge | null {
 }
 
 /**
- * Android native uygulama (WebView) içinde miyiz? WebView, tarayıcının Web
- * Push API'sini desteklemez — bildirimler bunun yerine ayrı FCM köprüsüyle
- * (useFcmTokenBridge) sessizce çalışır. Bu, "tarayıcı desteklemiyor" gibi
- * kafa karıştırıcı uyarıları yalnızca gerçekten tarayıcıda gösterebilmek için.
+ * Native uygulama kabuğunun (Android WebView ya da iOS) içinde miyiz?
+ *
+ * İkisi de tarayıcının Web Push API'sini desteklemiyor; bildirimler orada ayrı
+ * bir köprüyle (useFcmTokenBridge) zaten çalışıyor. Bu kontrol, "bu tarayıcı
+ * bildirimleri desteklemiyor" uyarısının yalnızca gerçekten tarayıcıda
+ * çıkmasını sağlıyor.
+ *
+ * iOS başta kapsam dışındaydı ve yalnızca Android köprüsüne bakılıyordu; o
+ * yüzden iOS uygulamasında Bildirimler sayfası -- başlıktaki zil simgesinden
+ * bir dokunuş uzakta -- kullanıcıya "bu TARAYICI bildirimleri desteklemiyor"
+ * diyordu. Hem yanlış (uygulama APNs ile bildirim alıyor) hem de native bir
+ * uygulamanın içinde kullanıcıya tarayıcıda olduğunu söylüyordu.
  */
 export function isNativeApp(): boolean {
   if (typeof window === "undefined") return false;
-  return Boolean((window as Window & { SilvanNative?: unknown }).SilvanNative);
+  const win = window as Window & {
+    SilvanNative?: unknown;
+    Capacitor?: { isNativePlatform?: () => boolean };
+  };
+  if (win.SilvanNative) return true;
+  return Boolean(win.Capacitor?.isNativePlatform?.());
 }
 
 /** Android uygulaması içindeyse cihaz bildirimi gösterir, değilse false döner. */
