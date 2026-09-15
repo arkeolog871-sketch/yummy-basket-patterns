@@ -352,45 +352,37 @@ describe("gizlilik bildirimi", () => {
 });
 
 /**
- * App Store arşivi dağıtım sertifikasıyla imzalanmalı. Proje her iki
- * yapılandırmada da "iPhone Developer" (geliştirme kimliğinin eski adı)
- * diyordu, yani Release arşivi de geliştirme kimliği istiyordu.
+ * Otomatik imzalama açıkken kod imzalama kimliği elle yazılmamalı; Xcode onu
+ * eyleme göre kendisi seçer (derlemede geliştirme, arşivde dağıtım).
  *
- * Bunun bedeli gecikmeli çıktı: her CI çalışması boş bir makinede başladığı
- * için Apple'dan yeni bir GELİŞTİRME sertifikası isteniyordu. Sekiz yayın
- * build'i sonunda hesabın sertifika kotası doldu ve build 22 "Your account
- * has reached the maximum number of certificates" ile düştü. Hata imzalama
- * gibi görünüyordu; sebebi buydu.
+ * Proje her iki yapılandırmada da CODE_SIGN_IDENTITY = "iPhone Developer"
+ * diyordu. Bu çakışma üretmediği için sessiz kaldı, ama App Store arşivini de
+ * geliştirme kimliğine zorluyordu: her CI çalışması boş bir makinede
+ * başladığı için Apple'dan yeni bir GELİŞTİRME sertifikası isteniyordu.
+ * Sekiz yayın build'i sonunda hesabın kotası doldu ve build "Your account has
+ * reached the maximum number of certificates" ile düştü.
+ *
+ * Değeri "Apple Distribution" yapmak çözüm değil, ikinci bir elle sabitleme:
+ * Xcode bu kez "conflicting provisioning settings" diyerek reddediyor. Doğru
+ * olan, anahtarı hiç yazmamak.
  */
-describe("kod imzalama kimliği", () => {
+describe("kod imzalama", () => {
   const pbxproj = readFileSync(join(ROOT, "ios/App/App.xcodeproj/project.pbxproj"), "utf8");
 
-  /** Her XCBuildConfiguration bloğunu ayrı ayrı okur; bloklar iç içe değil. */
-  function identityOf(configName: "Debug" | "Release"): string[] {
-    const found: string[] = [];
-    const block = /= \{\s*isa = XCBuildConfiguration;([\s\S]*?)\n\t\t\};/g;
-    let match: RegExpExecArray | null;
-    while ((match = block.exec(pbxproj)) !== null) {
-      const body = match[1] ?? "";
-      if (!new RegExp(`name = ${configName};`).test(body)) continue;
-      const identity = /CODE_SIGN_IDENTITY = "([^"]+)"/.exec(body)?.[1];
-      if (identity) found.push(identity);
-    }
-    return found;
-  }
-
-  it("Release dağıtım kimliği istiyor", () => {
-    const release = identityOf("Release");
-    expect(release.length).toBeGreaterThan(0);
-    for (const identity of release) expect(identity).toBe("Apple Distribution");
+  it("otomatik imzalama kullanıyor", () => {
+    expect(pbxproj).toContain("CODE_SIGN_STYLE = Automatic;");
+    expect(pbxproj).toContain("DEVELOPMENT_TEAM = YP8PRJ4Q6M;");
   });
 
-  it("Debug geliştirme kimliği istiyor", () => {
-    for (const identity of identityOf("Debug")) expect(identity).toBe("Apple Development");
+  /**
+   * Her iki başarısızlık biçiminin de tek sebebi buydu: biri sessizce yanlış
+   * sertifika türünü yakıyor, diğeri açıkça çakışıyor.
+   */
+  it("kimliği elle sabitlemiyor", () => {
+    expect(pbxproj).not.toContain("CODE_SIGN_IDENTITY");
   });
 
-  /** Eski ad geri gelirse arşiv yine geliştirme sertifikası istemeye başlar. */
-  it("eski 'iPhone Developer' kimliği kullanılmıyor", () => {
-    expect(pbxproj).not.toContain("iPhone Developer");
+  it("elle profil de dayatmıyor", () => {
+    expect(pbxproj).not.toContain("PROVISIONING_PROFILE_SPECIFIER");
   });
 });
