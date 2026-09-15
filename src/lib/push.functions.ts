@@ -54,17 +54,43 @@ export const deletePushSubscription = createServerFn({ method: "POST" })
 
 const fcmTokenSchema = z.object({
   token: z.string().trim().min(20).max(500),
+  /** Kurulum başına sabit kimlik (tarayıcı localStorage). Eski sürümlerde yok. */
+  deviceId: z.string().trim().min(8).max(64).optional(),
 });
 
-/** Android native uygulamadan (FCM) alınan cihaz token'ını kaydeder/günceller. */
+/**
+ * Android/iOS native uygulamadan alınan cihaz token'ını kaydeder.
+ *
+ * FCM jetonu zamanla yenileniyor. Yalnızca `token` üzerinden upsert etmek,
+ * yenilenen her jeton için yeni bir satır açıyor ve eskisini bırakıyordu; eski
+ * jeton bir süre daha geçerli olduğu için duyuru aynı telefona iki kez
+ * gidiyordu. `deviceId` geldiğinde o cihazın önceki jetonları siliniyor.
+ */
 export const saveFcmToken = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => fcmTokenSchema.parse(input))
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
-      const { error } = await context.supabase
-        .from("fcm_tokens")
-        .upsert({ user_id: context.userId, token: data.token }, { onConflict: "token" });
+      if (data.deviceId) {
+        const { error: cleanupError } = await context.supabase
+          .from("fcm_tokens")
+          .delete()
+          .eq("user_id", context.userId)
+          .eq("device_id", data.deviceId)
+          .neq("token", data.token);
+        // Temizlik başarısız olursa kayıt yine de yapılmalı: bildirim
+        // gelmemesindense iki kez gelmesi yeğdir.
+        if (cleanupError) console.error("[push] eski cihaz jetonu silinemedi");
+      }
+
+      const { error } = await context.supabase.from("fcm_tokens").upsert(
+        {
+          user_id: context.userId,
+          token: data.token,
+          ...(data.deviceId ? { device_id: data.deviceId } : {}),
+        },
+        { onConflict: "token" },
+      );
       if (error) throw new Error(error.message);
       return { ok: true };
     }),

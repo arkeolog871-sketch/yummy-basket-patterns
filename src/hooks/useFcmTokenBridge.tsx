@@ -42,6 +42,32 @@ let pendingToken: string | null = null;
  * Artık token geldiği anda tamponlanıyor, oturum çözülünce kaydediliyor.
  * Sıra hangisi olursa olsun kayıp yok.
  */
+const DEVICE_ID_KEY = "silvan.device.v1";
+
+/**
+ * Kurulum başına sabit kimlik. FCM jetonu yenilendiğinde "aynı cihazın yeni
+ * jetonu" ile "ikinci cihaz"ı ayırt etmenin tek yolu bu; olmadan eski jeton
+ * kayıtta kalıyor ve duyuru aynı telefona iki kez düşüyordu.
+ *
+ * localStorage native kabuğun WebView'ında da kalıcı. Erişilemezse (gizli
+ * pencere, kapalı site verisi) kimlik üretilmiyor ve kayıt eskisi gibi
+ * yalnızca token ile yapılıyor — davranış bozulmuyor.
+ */
+function readOrCreateDeviceId(): string | null {
+  try {
+    const existing = window.localStorage.getItem(DEVICE_ID_KEY);
+    if (existing && existing.length >= 8) return existing;
+    const created =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+    window.localStorage.setItem(DEVICE_ID_KEY, created);
+    return created;
+  } catch {
+    return null;
+  }
+}
+
 export function FcmTokenBridge() {
   const { user } = useAuth();
   const save = useServerFn(saveFcmToken);
@@ -106,7 +132,8 @@ export function FcmTokenBridge() {
   // Kayıt: token ve oturum hazır olduğunda, sıraları ne olursa olsun.
   useEffect(() => {
     if (!user || !token) return;
-    void save({ data: { token } }).catch(() => {
+    const deviceId = readOrCreateDeviceId();
+    void save({ data: { token, ...(deviceId ? { deviceId } : {}) } }).catch(() => {
       // Sessizce yut: token kaydı başarısız olsa bile uygulama akışı bozulmaz.
     });
   }, [user, token, save]);
