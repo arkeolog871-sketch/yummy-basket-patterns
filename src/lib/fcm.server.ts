@@ -139,6 +139,14 @@ export async function sendFcmMessage(
   token: string,
   payload: FcmPayload,
 ): Promise<FcmSendResult> {
+  return (await sendFcm({ token }, payload)).result;
+}
+
+/** Aynı gönderim, ama başarısızlığın sebebini de döndürür. */
+export async function sendFcmMessageReport(
+  token: string,
+  payload: FcmPayload,
+): Promise<FcmSendReport> {
   return sendFcm({ token }, payload);
 }
 
@@ -148,7 +156,7 @@ export async function sendFcmMessage(
  * eşzamanlı ve cihaz sayısından bağımsız.
  */
 export async function sendFcmTopicMessage(payload: FcmPayload): Promise<FcmSendResult> {
-  return sendFcm({ topic: FCM_BROADCAST_TOPIC }, payload);
+  return (await sendFcm({ topic: FCM_BROADCAST_TOPIC }, payload)).result;
 }
 
 /**
@@ -165,12 +173,15 @@ export type FcmPayload = {
   collapseKey?: string;
 };
 
+/** Gönderim sonucu + FCM'in kendi hata kodu (jeton ve metin içermez). */
+export type FcmSendReport = { result: FcmSendResult; code?: string; status?: number };
+
 async function sendFcm(
   target: { token: string } | { topic: string },
   payload: FcmPayload,
-): Promise<FcmSendResult> {
+): Promise<FcmSendReport> {
   const account = readServiceAccount();
-  if (!account) return "unconfigured";
+  if (!account) return { result: "unconfigured" };
 
   try {
     const accessToken = await getAccessToken(account);
@@ -229,14 +240,14 @@ async function sendFcm(
         }),
       },
     );
-    if (response.ok) return "sent";
+    if (response.ok) return { result: "sent" };
 
     const text = await response.text();
     if (
       (response.status === 404 || response.status === 400) &&
       /UNREGISTERED|INVALID_ARGUMENT|NOT_FOUND/i.test(text)
     ) {
-      return "invalid_token";
+      return { result: "invalid_token", status: response.status };
     }
 
     const errorCode = fcmErrorCode(text);
@@ -252,9 +263,9 @@ async function sendFcm(
       );
     }
     console.error("[fcm] gönderim başarısız", { status: response.status, errorCode });
-    return "error";
+    return { result: "error", ...(errorCode ? { code: errorCode } : {}), status: response.status };
   } catch (error) {
     console.error("[fcm] gönderim hatası", error);
-    return "error";
+    return { result: "error", code: "exception" };
   }
 }

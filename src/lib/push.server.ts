@@ -204,17 +204,36 @@ async function sendFcmToAllTokens(payload: PushPayload): Promise<number> {
   }
   if (!tokens || tokens.length === 0) return 0;
 
-  const { sendFcmMessage } = await import("./fcm.server");
+  const { sendFcmMessageReport } = await import("./fcm.server");
   let delivered = 0;
+  const failures = new Map<string, number>();
   await Promise.all(
     tokens.map(async (row) => {
-      const result = await sendFcmMessage(row.token, payload);
-      if (result === "sent") delivered += 1;
-      if (result === "invalid_token") {
+      const report = await sendFcmMessageReport(row.token, payload);
+      if (report.result === "sent") {
+        delivered += 1;
+        return;
+      }
+      const label = `${report.result}${report.code ? `/${report.code}` : ""}${
+        report.status ? `/${report.status}` : ""
+      }`;
+      failures.set(label, (failures.get(label) ?? 0) + 1);
+      if (report.result === "invalid_token") {
         await supabaseAdmin.from("fcm_tokens").delete().eq("id", row.id);
       }
     }),
   );
+
+  // Bir gönderimin neden düşmediği yalnızca sunucu günlüğüne yazılıyordu ve
+  // oraya bakılamıyor. Başarısız her sonucu sayısıyla birlikte hata kaydına
+  // yazmak, "gönderdim ama gelmedi" durumunu tahmin etmeden çözülebilir kılıyor.
+  if (failures.size > 0) {
+    const summary = [...failures.entries()].map(([label, count]) => `${label}×${count}`).join(", ");
+    await recordAppError({
+      source: "server",
+      message: `[push] duyuru ${tokens.length} kayıtlı cihazdan ${delivered} tanesine ulaştı; başarısızlar: ${summary}`,
+    });
+  }
   return delivered;
 }
 

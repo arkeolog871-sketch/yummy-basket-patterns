@@ -34,6 +34,14 @@ describe("herkese duyuru", () => {
     expect(push).not.toContain("devices: -1");
   });
 
+  /** "Gönderdim ama gelmedi" durumu tahminle değil kayıtla çözülmeli. */
+  it("başarısız gönderimin sebebini hata kaydına yazıyor", () => {
+    const fn = push.slice(push.indexOf("async function sendFcmToAllTokens"));
+    expect(fn).toContain("sendFcmMessageReport");
+    expect(fn).toContain("başarısızlar:");
+    expect(fn).toContain("recordAppError");
+  });
+
   it("geçersiz token'ı siliyor", () => {
     const fn = push.slice(push.indexOf("async function sendFcmToAllTokens"));
     expect(fn).toContain('result === "invalid_token"');
