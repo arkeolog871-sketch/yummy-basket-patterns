@@ -72,10 +72,18 @@ export const saveFcmToken = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
       if (data.deviceId) {
-        const { error: cleanupError } = await context.supabase
+        // Temizlik kullanıcıya göre DEĞİL cihaza göre yapılıyor. Aynı telefonda
+        // hesap değiştirildiğinde (test sırasında olan buydu) o telefonun
+        // jetonu ikinci bir kullanıcının altına da yazılıyor ve "herkese"
+        // duyuru aynı telefona iki kez düşüyordu. Bir telefonun tek bir güncel
+        // sahibi vardır: en son giriş yapan.
+        //
+        // Yan fayda: çıkış yapmış eski kullanıcının sipariş bildirimi, o
+        // telefonu şimdi kullanan kişiye düşmüyor.
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { error: cleanupError } = await supabaseAdmin
           .from("fcm_tokens")
           .delete()
-          .eq("user_id", context.userId)
           .eq("device_id", data.deviceId)
           .neq("token", data.token);
         // Temizlik başarısız olursa kayıt yine de yapılmalı: bildirim

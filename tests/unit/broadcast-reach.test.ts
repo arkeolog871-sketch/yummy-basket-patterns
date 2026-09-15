@@ -25,8 +25,14 @@ describe("herkese duyuru", () => {
 
   it("kayıtlı cihaz sorgusu kullanıcıya göre süzülmüyor", () => {
     const fn = push.slice(push.indexOf("async function sendFcmToAllTokens"));
-    expect(fn).toContain('from("fcm_tokens").select("id, token")');
+    expect(fn).toContain('.select("id, token, device_id")');
     expect(fn).not.toContain('.in("user_id"');
+  });
+
+  it("aynı cihazın birden çok kaydına bir kez gönderiyor", () => {
+    const fn = push.slice(push.indexOf("async function sendFcmToAllTokens"));
+    expect(fn).toContain("seenDevices");
+    expect(fn).toContain("if (!device) return true;");
   });
 
   it("gerçekte ulaşılan cihaz sayısını döndürüyor", () => {

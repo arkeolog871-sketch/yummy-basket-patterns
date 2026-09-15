@@ -194,7 +194,10 @@ export async function broadcastPush(
  */
 async function sendFcmToAllTokens(payload: PushPayload): Promise<number> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: tokens, error } = await supabaseAdmin.from("fcm_tokens").select("id, token");
+  const { data: rows, error } = await supabaseAdmin
+    .from("fcm_tokens")
+    .select("id, token, device_id")
+    .order("created_at", { ascending: false });
   if (error) {
     await recordAppError({
       source: "server",
@@ -202,7 +205,19 @@ async function sendFcmToAllTokens(payload: PushPayload): Promise<number> {
     });
     return 0;
   }
-  if (!tokens || tokens.length === 0) return 0;
+  if (!rows || rows.length === 0) return 0;
+
+  // Duyuru kişiye değil cihaza gidiyor: aynı telefon birden çok kayıt
+  // taşıyorsa (hesap değiştirilmiş, jeton yenilenmiş) yalnızca en yenisi
+  // kullanılır. Kimliği olmayan eski kayıtlar tek tek korunur.
+  const seenDevices = new Set<string>();
+  const tokens = rows.filter((row) => {
+    const device = row.device_id;
+    if (!device) return true;
+    if (seenDevices.has(device)) return false;
+    seenDevices.add(device);
+    return true;
+  });
 
   const { sendFcmMessageReport } = await import("./fcm.server");
   let delivered = 0;

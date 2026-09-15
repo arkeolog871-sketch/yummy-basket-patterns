@@ -24,6 +24,19 @@ describe("cihaz jetonu tekilliği", () => {
     expect(fn).toContain('.neq("token", data.token)');
   });
 
+  /**
+   * Aynı telefonda hesap değiştirildiğinde jeton ikinci bir kullanıcının
+   * altına da yazılıyor ve "herkese" duyuru o telefona iki kez düşüyordu.
+   * Temizlik bu yüzden kullanıcıya değil cihaza göre yapılmalı.
+   */
+  it("temizlik kullanıcıya göre değil cihaza göre", () => {
+    const handler = fn.slice(fn.indexOf("export const saveFcmToken"));
+    const cleanup = handler.slice(0, handler.indexOf("upsert"));
+    expect(cleanup).toContain('.eq("device_id", data.deviceId)');
+    expect(cleanup).not.toContain('.eq("user_id", context.userId)');
+    expect(cleanup).toContain("supabaseAdmin");
+  });
+
   it("cihaz kimliğini kayda yazıyor", () => {
     expect(fn).toContain("device_id: data.deviceId");
   });
