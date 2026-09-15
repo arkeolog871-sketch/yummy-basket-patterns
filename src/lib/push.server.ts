@@ -1,5 +1,7 @@
 import webpush from "web-push";
 
+import { recordAppError } from "./errors.server";
+
 export type PushPayload = {
   title: string;
   body: string;
@@ -37,15 +39,22 @@ function statusCodeOf(error: unknown): number | undefined {
 
 /** Tarayıcı/PWA abonelerine Web Push (VAPID) ile gönderir. Süresi dolmuş/geçersiz
  * abonelikler (404/410) otomatik silinir. */
-async function sendWebPush(userIds: string[], payload: PushPayload): Promise<void> {
-  if (!ensureWebPushConfigured()) return;
+async function sendWebPush(userIds: string[], payload: PushPayload): Promise<number> {
+  if (!ensureWebPushConfigured()) return 0;
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: subs, error } = await supabaseAdmin
     .from("push_subscriptions")
     .select("id, endpoint, p256dh, auth")
     .in("user_id", userIds);
-  if (error || !subs || subs.length === 0) return;
+  if (error) {
+    await recordAppError({
+      source: "server",
+      message: `[push] web push abonelikleri okunamadı: ${error.message}`,
+    });
+    return 0;
+  }
+  if (!subs || subs.length === 0) return 0;
 
   const body = JSON.stringify(payload);
   await Promise.all(
@@ -69,27 +78,46 @@ async function sendWebPush(userIds: string[], payload: PushPayload): Promise<voi
       }
     }),
   );
+  return subs.length;
 }
 
 /** Android native uygulama (FCM token'ı olan) abonelerine gönderir. Servis
  * hesabı tanımlı değilse sessizce atlanır. Geçersiz token'lar silinir. */
-async function sendFcmPush(userIds: string[], payload: PushPayload): Promise<void> {
+async function sendFcmPush(userIds: string[], payload: PushPayload): Promise<number> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: tokens, error } = await supabaseAdmin
     .from("fcm_tokens")
     .select("id, token")
     .in("user_id", userIds);
-  if (error || !tokens || tokens.length === 0) return;
+  if (error) {
+    await recordAppError({
+      source: "server",
+      message: `[push] cihaz kayıtları okunamadı: ${error.message}`,
+    });
+    return 0;
+  }
+  if (!tokens || tokens.length === 0) return 0;
 
   const { sendFcmMessage } = await import("./fcm.server");
+  let unconfigured = false;
   await Promise.all(
     tokens.map(async (row) => {
       const result = await sendFcmMessage(row.token, payload);
       if (result === "invalid_token") {
         await supabaseAdmin.from("fcm_tokens").delete().eq("id", row.id);
       }
+      if (result === "unconfigured") unconfigured = true;
     }),
   );
+  if (unconfigured) {
+    await recordAppError({
+      source: "server",
+      message:
+        "[push] FCM servis hesabı tanımlı değil: hiçbir Android/iOS cihazına bildirim gönderilemiyor",
+    });
+    return 0;
+  }
+  return tokens.length;
 }
 
 /**
@@ -101,12 +129,24 @@ export async function sendPushToUserIds(userIds: string[], payload: PushPayload)
   const uniqueIds = [...new Set(userIds)].filter(Boolean);
   if (uniqueIds.length === 0) return;
 
-  await Promise.all([
+  const [web, fcm] = await Promise.all([
     sendWebPush(uniqueIds, payload).catch((error) => {
       console.error("[push] web push toplu gönderim başarısız", error);
+      return 0;
     }),
     sendFcmPush(uniqueIds, payload).catch((error) => {
       console.error("[push] fcm toplu gönderim başarısız", error);
+      return 0;
     }),
   ]);
+
+  // Gönderim hiçbir cihaza ulaşmadıysa bunu kimse fark etmiyordu: duyuru
+  // "gönderildi" görünüyor, telefonlarda hiçbir şey olmuyordu. Kayıtlı cihazı
+  // olmayan bir hedef kitle, gönderenin bilmesi gereken bir durum.
+  if (web === 0 && fcm === 0) {
+    await recordAppError({
+      source: "server",
+      message: `[push] bildirim hiçbir cihaza gönderilemedi: ${uniqueIds.length} kullanıcının hiçbirinde kayıtlı cihaz yok`,
+    });
+  }
 }
