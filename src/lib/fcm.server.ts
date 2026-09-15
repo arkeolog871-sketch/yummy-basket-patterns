@@ -196,8 +196,29 @@ async function sendFcm(
         body: JSON.stringify({
           message: {
             ...target,
-            notification: { title: payload.title, body: payload.body },
-            ...(payload.url ? { data: { url: payload.url } } : {}),
+            // ÜST DÜZEY `notification` BİLEREK YOK.
+            //
+            // Android'de mesaj `notification` taşıdığında ve uygulama ekranda
+            // değilken, bildirimi bizim PushService'imiz değil Firebase SDK'sı
+            // gösterir; `onMessageReceived` hiç çağrılmaz. O yol bizim
+            // denetimimizde olmayan şeylere bağlı: manifest'teki varsayılan
+            // bildirim simgesi (2.14'te yok — SDK o zaman renkli uygulama
+            // simgesini kullanmaya çalışıyor), üreticinin bildirim çekmecesi
+            // davranışı, kanal geri düşüşü. "Uygulama açıkken geliyor,
+            // kapalıyken gelmiyor" tablosunun sebebi tam olarak bu ayrım.
+            //
+            // Veri-only mesajda `onMessageReceived` her durumda çalışır:
+            // önplan, arkaplan ve kapalı (zorla durdurulmuş uygulama hariç —
+            // orada hiçbir mesaj türü teslim edilmez). Bildirimi kendi
+            // kodumuz kuruyor: doğru kanal, silüet simge, BigTextStyle,
+            // PRIORITY_HIGH. PushService bu alanları zaten okuyor
+            // (`data.get("title")`), yani kurulu 2.14 bunu bugün destekliyor.
+            data: {
+              title: payload.title,
+              body: payload.body,
+              ...(payload.url ? { url: payload.url } : {}),
+              ...(payload.collapseKey ? { dedupe_key: payload.collapseKey } : {}),
+            },
             apns: {
               headers: {
                 // 10 = "hemen teslim et". Varsayılan 5 ve "uygun bir zamanda"
@@ -211,30 +232,27 @@ async function sendFcm(
                   : {}),
               },
               payload: {
-                // Başlık ve gövde üstteki `notification` alanından geliyor;
-                // burada yalnızca sesi açıkça istiyoruz.
+                // iOS'ta bildirimi APNs gösteriyor ve bunun için `alert`
+                // şart. Üst düzey `notification` kaldırıldığı için başlık ve
+                // gövde artık burada açıkça veriliyor; yoksa iPhone'a sessiz
+                // bir mesaj gider ve hiçbir şey görünmez.
+                //
                 // Odak/Rahatsız Etmeyin modunu delen "interruption-level":
                 // "time-sensitive" bilerek eklenmedi — Apple Developer
                 // portalında "Time Sensitive Notifications" yetkisi
                 // açılmadan hiçbir etkisi yok (Sign In with Apple'da olduğu
                 // gibi ayrı bir capability).
-                aps: { sound: "default" },
+                aps: {
+                  alert: { title: payload.title, body: payload.body },
+                  sound: "default",
+                },
               },
             },
             android: {
-              // "high": Doze/uyku modunu delip anında teslim edilir.
+              // "high": Doze/uyku modunu delip anında teslim edilir. Veri-only
+              // mesajda ayrıca uygulamayı uyandırma iznini de bu veriyor.
               priority: "high",
               ttl: ANDROID_TTL,
-              notification: {
-                channel_id: ANDROID_CHANNEL_ID,
-                // Android 8 öncesinde kanal yok; öncelik buradan geliyor.
-                notification_priority: "PRIORITY_MAX",
-                default_sound: true,
-                default_vibrate_timings: true,
-                // Kilit ekranında içeriğiyle görünsün.
-                visibility: "PUBLIC",
-                ...(payload.collapseKey ? { tag: payload.collapseKey } : {}),
-              },
             },
           },
         }),

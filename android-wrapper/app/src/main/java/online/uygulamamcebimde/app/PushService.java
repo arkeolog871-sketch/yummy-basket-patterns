@@ -78,13 +78,22 @@ public class PushService extends FirebaseMessagingService {
             );
             builder.setContentIntent(pendingIntent);
 
-            // FCM "en az bir kez" teslim garantisi veriyor; aynı mesaj iki kez
-            // gelebiliyor. Kimlik mesajın kendi kimliğinden türetilince ikinci
-            // teslimat yeni bir kart açmak yerine mevcut kartın üstüne yazar.
+            // Aynı bildirimin iki kez kart açmasını engelleyen kimlik.
+            // İki ayrı tekrar kaynağı var: FCM'in "en az bir kez" teslim
+            // garantisi (aynı mesaj iki kez gelebilir) ve duyurunun hem yayın
+            // konusundan hem cihazın kendi token'ından gelmesi. İkincisinde
+            // mesaj kimlikleri farklı olduğu için sunucu duyurunun kendi
+            // kimliğini `dedupe_key` olarak taşıyor.
+            String dedupeKey = data.get("dedupe_key");
             String messageId = message.getMessageId();
-            int notificationId = (messageId != null && !messageId.isEmpty())
-                    ? messageId.hashCode()
-                    : (safeTitle + "\n" + safeBody).hashCode();
+            int notificationId;
+            if (dedupeKey != null && !dedupeKey.isEmpty()) {
+                notificationId = dedupeKey.hashCode();
+            } else if (messageId != null && !messageId.isEmpty()) {
+                notificationId = messageId.hashCode();
+            } else {
+                notificationId = (safeTitle + "\n" + safeBody).hashCode();
+            }
 
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) {

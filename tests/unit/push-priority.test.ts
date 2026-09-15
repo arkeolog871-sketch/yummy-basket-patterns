@@ -19,52 +19,58 @@ const pbxproj = readFileSync(join(ROOT, "ios/App/App.xcodeproj/project.pbxproj")
 const tokenBridge = readFileSync(join(ROOT, "src/hooks/useFcmTokenBridge.tsx"), "utf8");
 
 /**
- * Uygulama arka plandayken bildirimi bizim kodumuz değil, Firebase'in kendi
- * kodu gösteriyor. Mesajda kanal adı yazmazsa hangi kanalı kullanacağını
- * bilemiyor ve sistemin normal önemli varsayılan kanalına düşürüyor: bildirim
- * ekranın üstünde belirmiyor, titremiyor, sessizce listeye ekleniyor. Yani
- * uygulamanın yüksek önemli kanalı tam da en çok gerektiği anda —
- * uygulama kapalıyken — devre dışı kalıyor.
+ * Mesaj `notification` taşıdığında ve uygulama ekranda değilken bildirimi
+ * bizim kodumuz değil Firebase SDK'sı gösterir; `onMessageReceived` hiç
+ * çağrılmaz. O yol denetimimizde olmayan şeylere bağlı: manifest'teki
+ * varsayılan bildirim simgesi, üreticinin bildirim çekmecesi davranışı, kanal
+ * geri düşüşü. "Uygulama açıkken geliyor, kapalıyken gelmiyor" tablosunun
+ * sebebi buydu.
+ *
+ * Veri-only mesajda `onMessageReceived` her durumda çalışır ve bildirimi
+ * PushService kurar: kanal, simge, öncelik, ses hep bizim kodumuzda.
  */
-describe("Android bildirim önceliği", () => {
-  it("her mesajda yüksek önemli kanalı belirtiyor", () => {
-    expect(fcmServer).toMatch(/channel_id:\s*ANDROID_CHANNEL_ID/);
-    expect(fcmServer).toMatch(/const ANDROID_CHANNEL_ID = "orders"/);
+describe("Android bildirimini uygulamanın kendisi gösteriyor", () => {
+  it("sunucu Android'e notification bloğu göndermiyor", () => {
+    expect(fcmServer).not.toMatch(/^\s*notification:\s*\{\s*title:/m);
+    expect(fcmServer).not.toContain("channel_id:");
+    expect(fcmServer).not.toContain('notification_priority: "PRIORITY_MAX"');
+  });
+
+  it("başlık ve gövde data alanında gidiyor (PushService oradan okuyor)", () => {
+    expect(fcmServer).toMatch(/data:\s*\{\s*\n\s*title: payload\.title/);
+    expect(fcmServer).toContain("body: payload.body");
+    expect(pushService).toContain('data.get("title")');
+    expect(pushService).toContain('data.get("body")');
   });
 
   it("Doze/uyku modunu delen yüksek öncelikle gönderiyor", () => {
     expect(fcmServer).toMatch(/priority:\s*"high"/);
-    expect(fcmServer).toContain('notification_priority: "PRIORITY_MAX"');
   });
 
-  it("sesi, titreşimi ve kilit ekranı görünürlüğünü açıkça istiyor", () => {
-    expect(fcmServer).toContain("default_sound: true");
-    expect(fcmServer).toContain("default_vibrate_timings: true");
-    expect(fcmServer).toContain('visibility: "PUBLIC"');
+  it("bildirimi yüksek önemli kanalda, silüet simgeyle kuruyor", () => {
+    expect(pushService).toContain("NotificationCompat.PRIORITY_HIGH");
+    expect(pushService).toContain("NotificationCompat.DEFAULT_ALL");
+    expect(pushService).toContain("NotificationCompat.VISIBILITY_PUBLIC");
+    expect(pushService).toContain("R.drawable.ic_stat_notify");
+    expect(pushService).toContain("NotificationManager.IMPORTANCE_HIGH");
   });
 
   /**
-   * Kanal adı üç yerde geçiyor ve üçü de birebir aynı olmak zorunda: sunucu
-   * mesajı, uygulamanın açılışta oluşturduğu kanal ve arka plan servisi.
-   * Biri kayarsa mesaj var olmayan bir kanala gider ve Android sessizce
-   * varsayılana düşer — hata vermez, sadece bildirim önemsizleşir.
+   * Kanal adı üç yerde geçiyor ve üçü de birebir aynı olmak zorunda:
+   * uygulamanın açılışta oluşturduğu kanal, arka plan servisi ve manifest
+   * varsayılanı. Biri kayarsa bildirim var olmayan bir kanala gider ve
+   * Android sessizce varsayılana düşer — hata vermez, sadece önemsizleşir.
    */
-  it("kanal adı sunucu, uygulama ve servis arasında aynı", () => {
-    const fromServer = /const ANDROID_CHANNEL_ID = "([^"]+)"/.exec(fcmServer)?.[1];
+  it("kanal adı uygulama, servis ve manifest arasında aynı", () => {
     const fromManifest = /default_notification_channel_id"\s*\n?\s*android:value="([^"]+)"/.exec(
       manifest,
     )?.[1];
     const fromService = /CHANNEL_ID = "([^"]+)"/.exec(pushService)?.[1];
     const fromActivity = /ORDER_CHANNEL_ID = "([^"]+)"/.exec(activity)?.[1];
 
-    expect(fromServer).toBe("orders");
-    expect(fromManifest).toBe(fromServer);
-    expect(fromService).toBe(fromServer);
-    expect(fromActivity).toBe(fromServer);
-  });
-
-  it("kanal adsız bir mesaj gelse bile varsayılanı yüksek önemli kanal", () => {
-    expect(manifest).toContain("com.google.firebase.messaging.default_notification_channel_id");
+    expect(fromService).toBe("orders");
+    expect(fromManifest).toBe(fromService);
+    expect(fromActivity).toBe(fromService);
   });
 
   it("uygulama kanalı yüksek önemle oluşturuyor", () => {
@@ -74,12 +80,16 @@ describe("Android bildirim önceliği", () => {
 });
 
 /**
- * Teslim edilemeyen mesajın varsayılan ömrü 4 hafta. Cihaz mesajı alamadığında
- * (zorla durdurulmuş uygulama, pil kısıtlaması, kapalı internet) Google onu
- * haftalarca saklıyor ve bağlantı kurulur kurulmaz hepsini birden boşaltıyor.
- * 1-2 Eylül'de gönderilen sekiz test bildirimi cihaza 14 Eylül'de tek seferde
- * düştü; sebebi buydu.
+ * iOS'ta bildirimi APNs gösteriyor; üst düzey `notification` kaldırıldığı için
+ * başlık ve gövde `aps.alert` içinde açıkça verilmeli. Verilmezse iPhone'a
+ * sessiz bir mesaj gider ve hiçbir şey görünmez.
  */
+describe("iOS bildirimi", () => {
+  it("aps.alert içinde başlık ve gövde gönderiyor", () => {
+    expect(fcmServer).toMatch(/alert:\s*\{\s*title: payload\.title, body: payload\.body\s*\}/);
+  });
+});
+
 describe("bayat bildirim", () => {
   it("mesaja ömür sınırı koyuyor", () => {
     expect(fcmServer).toMatch(/ttl:\s*ANDROID_TTL/);
@@ -204,7 +214,7 @@ describe("iOS bildirim önceliği", () => {
   });
 
   it("sesi açıkça istiyor", () => {
-    expect(fcmServer).toMatch(/aps:\s*\{\s*sound:\s*"default"\s*\}/);
+    expect(fcmServer).toMatch(/sound:\s*"default"/);
   });
 });
 

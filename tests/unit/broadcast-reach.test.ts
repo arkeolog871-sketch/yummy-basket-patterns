@@ -56,8 +56,18 @@ describe("çift bildirim koruması", () => {
     expect(alert).toContain("collapseKey: input.messageId");
   });
 
-  it("Android tarafında notification.tag olarak gidiyor", () => {
-    expect(fcm).toContain("tag: payload.collapseKey");
+  it("Android tarafında data alanında dedupe_key olarak gidiyor", () => {
+    // Bildirimi PushService kurduğu için daraltma da onun işi: sunucu
+    // anahtarı taşır, uygulama bildirim kimliğini ondan türetir.
+    expect(fcm).toContain("dedupe_key: payload.collapseKey");
+  });
+
+  it("uygulama bildirim kimliğini dedupe_key'den türetiyor", () => {
+    const service = codeOnly(
+      "android-wrapper/app/src/main/java/online/uygulamamcebimde/app/PushService.java",
+    );
+    expect(service).toContain('data.get("dedupe_key")');
+    expect(service).toContain("notificationId = dedupeKey.hashCode()");
   });
 
   it("iOS tarafında apns-collapse-id olarak gidiyor", () => {
