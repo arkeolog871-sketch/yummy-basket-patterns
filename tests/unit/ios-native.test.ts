@@ -72,20 +72,23 @@ describe("iOS native shell static controls", () => {
  */
 describe("başlık dokunma katmanı", () => {
   const header = readFileSync(join(ROOT, "src/components/layout/Header.tsx"), "utf8");
-  const headerTag = /<header className="([^"]+)"/.exec(header);
+  const headerTag = /<header\b[\s\S]{0,400}?>/.exec(header);
 
-  it("başlık sınıflarını okuyabiliyor", () => {
+  it("başlık etiketini okuyabiliyor", () => {
     expect(headerTag).not.toBeNull();
   });
 
-  it("sticky başlıkta backdrop-blur kullanmıyor", () => {
-    expect(headerTag![1]).toContain("sticky");
-    expect(headerTag![1]).not.toContain("backdrop-blur");
+  /**
+   * Yapışkanlık kuralı ios-header-touch.test.ts'te; burada yalnızca zeminin
+   * katman oluşturmayacak kadar sade kaldığı sabitleniyor.
+   */
+  it("başlıkta backdrop-blur kullanmıyor", () => {
+    expect(headerTag![0]).not.toContain("backdrop-blur");
   });
 
   /** Bulanıklık gidince zemin opak olmalı; yoksa içerik başlığın içinden görünür. */
   it("başlık zeminini opak bırakıyor", () => {
-    expect(headerTag![1]).toContain("bg-background");
-    expect(headerTag![1]).not.toMatch(/bg-background\/\d+/);
+    expect(headerTag![0]).toContain("bg-background");
+    expect(headerTag![0]).not.toMatch(/bg-background\/\d+/);
   });
 });

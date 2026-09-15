@@ -18,6 +18,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccess } from "@/hooks/useAccess";
+import { isIosNativeShell } from "@/lib/native-shell";
 import { useCart } from "@/hooks/useCart";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useServiceAreas, areaLabel } from "@/hooks/useTaxonomy";
@@ -36,6 +37,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function Header() {
+  // Kabuk tespiti sunucuda yapılamaz (window yok) ve ilk boyamada hatalı
+  // sınıf basmamak için efektte okunuyor. Kusur dokunmada ortaya çıkıyor;
+  // kullanıcı dokunana kadar efekt çoktan çalışmış oluyor.
+  const [iosShell, setIosShell] = useState(false);
+  useEffect(() => {
+    setIosShell(isIosNativeShell());
+  }, []);
+
   const { user } = useAuth();
   const { itemCount } = useCart();
   const { settings } = useSiteSettings();
@@ -76,17 +85,26 @@ export function Header() {
   }
 
   return (
-    // backdrop-blur burada bilerek yok. Yarı saydam + bulanık bir `sticky`
-    // başlık, WKWebView'de kendi derleme katmanına taşınıyor ve o katmanın
-    // dokunma bölgesi ilk boyamada güncellenmiyor: başlık görünüyor ama
-    // düğmeleri dokunuşa cevap vermiyor. Sayfa birazcık kaydırılınca
-    // derleyici katmanı tazeliyor ve düğmeler çalışmaya başlıyor — cihazda
-    // görülen davranış tam olarak buydu (giriş sonrası hesap menüsü hiç
-    // açılmıyor, kaydırınca açılıyor). Sebep geometrik değil: sticky başlık
-    // her kaydırma konumunda aynı yerde duruyor, değişen tek şey boyama.
-    // Zemin tam opak olunca bulanıklaştıracak bir şey kalmıyor, katman da
-    // oluşmuyor. Görsel fark: %85 yerine %100 opaklık.
-    <header className="sticky top-0 z-40 border-b border-border/70 bg-background pt-[env(safe-area-inset-top)]">
+    // iOS'ta başlık YAPIŞKAN DEĞİL, bilerek.
+    //
+    // WKWebView'de `position: sticky` bir öğe kendi derleme katmanına
+    // taşınıyor ve o katmanın dokunma bölgesi ilk boyamada kurulmuyor:
+    // başlık görünüyor ama düğmeleri dokunuşa cevap vermiyor. Sayfa birazcık
+    // kaydırılınca katman tazeleniyor ve düğmeler çalışmaya başlıyor.
+    //
+    // Daha önce bunu yarı saydamlığı (backdrop-blur) kaldırarak çözmeyi
+    // denedim; katmanın tek sebebi o değilmiş, kusur cihazda geri geldi.
+    // Sebebi azaltmak yerine mekanizmayı kaldırmak gerekiyor: iOS kabuğunda
+    // başlık akışta duruyor, yani ortada tazelenecek bir katman yok.
+    //
+    // Tarayıcı ve Android bundan etkilenmiyor; onlarda yapışkan başlık
+    // olduğu gibi kalıyor.
+    <header
+      data-app-header
+      className={`z-40 border-b border-border/70 bg-background pt-[env(safe-area-inset-top)] ${
+        iosShell ? "" : "sticky top-0"
+      }`}
+    >
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
         <Link to="/" className="flex items-center gap-2">
           {settings.logo_url ? (
