@@ -121,6 +121,49 @@ async function sendFcmPush(userIds: string[], payload: PushPayload): Promise<num
 }
 
 /**
+ * Herkese açık duyuruyu yayınlar.
+ *
+ * Native uygulamalara FCM yayın konusu üzerinden gider: cihaz açılışta bir kez
+ * abone olduğu için sunucunun cihaz listesi tutmasına -- dolayısıyla
+ * kullanıcının giriş yapmış olmasına -- gerek yok. Uygulamayı kurup hiç giriş
+ * yapmamış bir telefon da duyuruyu alır. Eskiden yalnızca token listesine
+ * gönderiliyordu ve token da yalnızca giriş yapılmışsa kaydediliyordu; kurulu
+ * uygulamaların çoğu duyuruları hiç görmüyordu.
+ *
+ * Tarayıcı/PWA aboneleri konu yayınını desteklemiyor, onlara ayrıca gidilir.
+ * Native cihazlara token ile İKİNCİ bir gönderim yapılmıyor: aynı bildirimi
+ * iki kez gösterirdi.
+ */
+export async function broadcastPush(webPushUserIds: string[], payload: PushPayload): Promise<void> {
+  const { sendFcmTopicMessage } = await import("./fcm.server");
+
+  const [web, topic] = await Promise.all([
+    sendWebPush([...new Set(webPushUserIds)].filter(Boolean), payload).catch((error) => {
+      console.error("[push] web push yayını başarısız", error);
+      return 0;
+    }),
+    sendFcmTopicMessage(payload).catch((error) => {
+      console.error("[push] konu yayını başarısız", error);
+      return "error" as const;
+    }),
+  ]);
+
+  if (topic === "unconfigured") {
+    await recordAppError({
+      source: "server",
+      message: "[push] FCM servis hesabı tanımlı değil: duyuru hiçbir native cihaza gönderilemiyor",
+    });
+    return;
+  }
+  if (topic !== "sent" && web === 0) {
+    await recordAppError({
+      source: "server",
+      message: `[push] duyuru yayınlanamadı (konu sonucu: ${topic}, web abonesi: ${web})`,
+    });
+  }
+}
+
+/**
  * Verilen kullanıcıların hem Web Push (tarayıcı/PWA) hem FCM (Android native
  * uygulama) aboneliklerine bildirim gönderir. Hiçbir zaman throw etmez — bir
  * çağıranın ana akışını (sipariş, durum güncelleme, duyuru) asla bozmaz.

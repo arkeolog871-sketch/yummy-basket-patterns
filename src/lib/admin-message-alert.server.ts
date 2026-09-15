@@ -67,8 +67,17 @@ export async function notifyAdminMessageAudience(input: {
       })),
     );
 
-    const { sendPushToUserIds } = await import("./push.server");
-    await sendPushToUserIds(userIds, { title: input.title, body: input.body, url });
+    // "Herkese" duyuru, cihaz listesinden bağımsız yayın konusuyla gider:
+    // uygulamayı kurmuş her telefona ulaşır, giriş yapılmış olması gerekmez.
+    // Hedefli duyurular (işletmeler, tek işletme) doğal olarak belirli
+    // kullanıcıları hedeflediği için token ile gönderilmeye devam ediyor.
+    if (input.targetType === "all") {
+      const { broadcastPush } = await import("./push.server");
+      await broadcastPush(userIds, { title: input.title, body: input.body, url });
+    } else {
+      const { sendPushToUserIds } = await import("./push.server");
+      await sendPushToUserIds(userIds, { title: input.title, body: input.body, url });
+    }
   } catch (error) {
     console.error("[admin-message-alert] push bildirimi başarısız", {
       code: error && typeof error === "object" && "code" in error ? error.code : undefined,

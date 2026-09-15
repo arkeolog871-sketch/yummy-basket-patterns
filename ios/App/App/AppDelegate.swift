@@ -9,6 +9,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
 
     var window: UIWindow?
 
+    /// Herkese açık duyuruların yayınlandığı konu. Sunucudaki
+    /// FCM_BROADCAST_TOPIC ve Android tarafındaki adla birebir aynı olmak
+    /// zorunda; biri kayarsa yayın o platforma hiç ulaşmaz ve hiçbir hata
+    /// görünmez.
+    private static let broadcastTopic = "tum-cihazlar"
+
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         if Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil {
             FirebaseApp.configure()
@@ -64,6 +70,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
      */
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         SilvanPushPlugin.cacheToken(fcmToken)
+
+        // Duyuru yayınına abonelik burada yapılıyor: token gelmeden önce
+        // abone olmak çalışmıyor, çünkü Firebase henüz hazır değil. Token
+        // kaydından bağımsız ve kasıtlı olarak giriş şartı taşımıyor --
+        // uygulamayı kurup giriş yapmamış bir telefon da duyuruları alsın.
+        guard fcmToken != nil else { return }
+        Messaging.messaging().subscribe(toTopic: Self.broadcastTopic) { error in
+            if let error = error {
+                print("[SilvanPush] konu aboneliği başarısız: \(error.localizedDescription)")
+            }
+        }
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter,

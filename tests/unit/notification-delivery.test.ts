@@ -79,3 +79,70 @@ describe("gönderim görünürlüğü", () => {
     expect(push).toContain("FCM servis hesabı tanımlı değil");
   });
 });
+
+/**
+ * "Herkese duyuru" eskiden cihaz listesine tek tek gönderiliyordu ve token
+ * yalnızca GİRİŞ YAPILMIŞ kullanıcı için kaydediliyordu. Sonuç: uygulamayı
+ * kurup giriş yapmamış her telefon duyuruları hiç görmüyordu -- 14 kayıtlı
+ * kullanıcıdan 8'inin cihazı yoktu.
+ *
+ * Konu yayınında cihaz açılışta bir kez abone oluyor ve sunucu tek mesajı
+ * konuya gönderiyor: kurulu her uygulamaya ulaşıyor, giriş şartı yok, üstelik
+ * cihaz sayısından bağımsız tek istek.
+ */
+describe("herkese duyuru yayını", () => {
+  const fcm = codeOnly("src/lib/fcm.server.ts");
+  const alert = codeOnly("src/lib/admin-message-alert.server.ts");
+  const android = codeOnly(
+    "android-wrapper/app/src/main/java/online/uygulamamcebimde/app/MainActivity.java",
+  );
+  const ios = codeOnly("ios/App/App/AppDelegate.swift");
+
+  it("sunucu konu yayınını destekliyor", () => {
+    expect(fcm).toContain("sendFcmTopicMessage");
+    expect(fcm).toContain("FCM_BROADCAST_TOPIC");
+  });
+
+  it("herkese duyuru konuya gidiyor, cihaz listesine değil", () => {
+    expect(alert).toContain('input.targetType === "all"');
+    // Adın geçmesi yetmez, çağrılıyor olmalı: import satırı da adı içeriyor.
+    expect(alert).toMatch(/await broadcastPush\(/);
+    const start = alert.indexOf('input.targetType === "all"');
+    const elseAt = alert.indexOf("} else {", start);
+    expect(elseAt).toBeGreaterThan(start);
+    // "all" dalında token listesine gönderim olmamalı.
+    expect(alert.slice(start, elseAt)).not.toContain("sendPushToUserIds(");
+  });
+
+  /** Aynı bildirimi hem konudan hem token'dan göndermek iki kez gösterirdi. */
+  it("yayınla birlikte ikinci bir token gönderimi yapmıyor", () => {
+    const start = push.indexOf("export async function broadcastPush");
+    expect(start).toBeGreaterThan(-1);
+    const next = push.indexOf("export async function", start + 1);
+    const body = push.slice(start, next === -1 ? undefined : next);
+    expect(body).toContain("sendFcmTopicMessage");
+    expect(body).not.toContain("sendFcmPush");
+  });
+
+  it("Android açılışta abone oluyor", () => {
+    expect(android).toContain("subscribeToBroadcastTopic()");
+    expect(android).toContain("subscribeToTopic(BROADCAST_TOPIC)");
+  });
+
+  it("iOS abone oluyor", () => {
+    expect(ios).toContain("subscribe(toTopic: Self.broadcastTopic)");
+  });
+
+  /**
+   * Konu adı üç yerde geçiyor ve üçü de birebir aynı olmak zorunda. Biri
+   * kayarsa yayın o platforma hiç ulaşmaz ve hiçbir hata görünmez.
+   */
+  it("konu adı sunucu, Android ve iOS arasında aynı", () => {
+    const server = /FCM_BROADCAST_TOPIC = "([^"]+)"/.exec(fcm)?.[1];
+    const droid = /BROADCAST_TOPIC = "([^"]+)"/.exec(android)?.[1];
+    const apple = /broadcastTopic = "([^"]+)"/.exec(ios)?.[1];
+    expect(server).toBeTruthy();
+    expect(droid).toBe(server);
+    expect(apple).toBe(server);
+  });
+});

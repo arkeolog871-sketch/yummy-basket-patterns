@@ -117,10 +117,46 @@ const ANDROID_CHANNEL_ID = "orders";
 const TTL_SECONDS = 86_400;
 const ANDROID_TTL = `${TTL_SECONDS}s`;
 
+/**
+ * Tüm kurulumların abone olduğu yayın konusu.
+ *
+ * Konu yayını, "herkese duyuru"nun tek doğru yolu: cihaz açılışta bir kez
+ * abone oluyor ve sunucu tek mesajı konuya gönderiyor. Cihaz listesi
+ * tutmaya, dolayısıyla kullanıcının giriş yapmış olmasına gerek kalmıyor --
+ * uygulamayı kurup hiç giriş yapmamış bir telefon da duyuruyu alıyor.
+ *
+ * Kişiye özel bildirimler (sipariş durumu) bunun dışında: onlar doğal olarak
+ * belirli bir kullanıcıyı hedeflediği için token ile gönderiliyor.
+ *
+ * Android ve iOS tarafında aynı ad kullanılıyor; değişirse üçü birden
+ * değişmeli, yoksa yayın kimseye ulaşmaz.
+ */
+export const FCM_BROADCAST_TOPIC = "tum-cihazlar";
+
 /** Tek bir FCM token'ına bildirim gönderir. VAPID'siz ortamda olduğu gibi,
  * servis hesabı tanımlı değilse sessizce "unconfigured" döner. */
 export async function sendFcmMessage(
   token: string,
+  payload: { title: string; body: string; url?: string },
+): Promise<FcmSendResult> {
+  return sendFcm({ token }, payload);
+}
+
+/**
+ * Yayın konusuna gönderir: konuya abone olan her cihaza ulaşır. Tek istek,
+ * kaç cihaz olursa olsun -- token listesiyle tek tek göndermenin aksine
+ * eşzamanlı ve cihaz sayısından bağımsız.
+ */
+export async function sendFcmTopicMessage(payload: {
+  title: string;
+  body: string;
+  url?: string;
+}): Promise<FcmSendResult> {
+  return sendFcm({ topic: FCM_BROADCAST_TOPIC }, payload);
+}
+
+async function sendFcm(
+  target: { token: string } | { topic: string },
   payload: { title: string; body: string; url?: string },
 ): Promise<FcmSendResult> {
   const account = readServiceAccount();
@@ -138,7 +174,7 @@ export async function sendFcmMessage(
         },
         body: JSON.stringify({
           message: {
-            token,
+            ...target,
             notification: { title: payload.title, body: payload.body },
             ...(payload.url ? { data: { url: payload.url } } : {}),
             apns: {

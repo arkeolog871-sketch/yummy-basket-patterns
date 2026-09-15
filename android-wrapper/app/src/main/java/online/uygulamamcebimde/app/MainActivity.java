@@ -74,6 +74,12 @@ public class MainActivity extends Activity {
     private static final int LOCATION_PERMISSION_REQUEST = 1004;
     private static final int WEB_CAMERA_PERMISSION_REQUEST = 1005;
     private static final int NOTIFICATION_PERMISSION_REQUEST = 1006;
+    /**
+     * Herkese açık duyuruların yayınlandığı konu. Sunucudaki
+     * FCM_BROADCAST_TOPIC ve iOS tarafındaki adla birebir aynı olmak zorunda;
+     * biri kayarsa yayın o platforma hiç ulaşmaz ve hiçbir hata görünmez.
+     */
+    private static final String BROADCAST_TOPIC = "tum-cihazlar";
     private static final String PREFS_NAME = "silvan_app";
     private static final String KEY_BATTERY_PROMPT_AT = "battery_prompt_at";
     /** Pil uyarısı reddedilirse bu süre dolmadan bir daha çıkmaz. */
@@ -140,6 +146,7 @@ public class MainActivity extends Activity {
         webView.setBackgroundColor(Color.parseColor("#F4EDDA"));
         applySafeAreaInsets();
         createOrderNotificationChannel();
+        subscribeToBroadcastTopic();
 
         CookieManager cookies = CookieManager.getInstance();
         cookies.setAcceptCookie(true);
@@ -1643,6 +1650,27 @@ public class MainActivity extends Activity {
      * tanımlanır). google-services.json eklenmemişse Firebase yapılandırılmamış
      * olur ve bu tamamen sessizce (çökmeden) atlanır.
      */
+    /**
+     * Duyuru yayınına abone olur.
+     *
+     * Bu, token kaydından bağımsız ve kasıtlı olarak giriş şartı taşımıyor:
+     * token yalnızca giriş yapılmış kullanıcı için kaydediliyor, dolayısıyla
+     * uygulamayı kurup giriş yapmamış telefonlar duyuruları hiç görmüyordu.
+     * Konu aboneliği açılışta bir kez yapılıyor ve sunucu tek mesajı konuya
+     * gönderdiğinde kurulu her uygulamaya ulaşıyor.
+     *
+     * Firebase abonelikleri kendi içinde saklıyor; her açılışta çağırmak
+     * zararsız, ağ yoksa bağlantı gelince kendiliğinden tamamlanıyor.
+     */
+    private void subscribeToBroadcastTopic() {
+        try {
+            com.google.firebase.messaging.FirebaseMessaging.getInstance()
+                    .subscribeToTopic(BROADCAST_TOPIC);
+        } catch (Throwable ignored) {
+            // Firebase yapılandırılmamış (google-services.json yok) — sessizce atla.
+        }
+    }
+
     private void syncFcmToken() {
         try {
             com.google.firebase.messaging.FirebaseMessaging.getInstance()
