@@ -67,6 +67,22 @@ export function getPublicSupabaseEnv(): PublicEnv {
   };
 }
 
+/**
+ * Native kabuğun gönderdiği bildirim token'ını React bağlanmadan önce yakalar.
+ *
+ * Android tarafı token'ı sayfa yüklenir yüklenmez şu biçimde gönderiyor:
+ *
+ *   window.__onFcmToken && window.__onFcmToken('<token>')
+ *
+ * Fonksiyon o an tanımlı değilse `&&` kısa devre yapıyor ve token sessizce
+ * kayboluyor -- tek deneme, tekrar yok. React'in bağlanmasını beklemek bu
+ * yarışı şansa bırakıyordu. Bu betik belgenin başında çalışıp token'ı bir
+ * değişkende tutuyor; FcmTokenBridge bağlandığında oradan alıyor.
+ */
+export function fcmTokenCatcherInlineScript(): string {
+  return "window.__fcmTokenPending=null;window.__onFcmToken=function(t){if(t)window.__fcmTokenPending=t;};";
+}
+
 export function publicEnvInlineScript(): string {
   // JSON.stringify `<` karakterini kaçırmaz; bir değer `</script>` içerseydi
   // satır içi blok erken kapanır ve kalanı HTML olarak yorumlanırdı. Değerler

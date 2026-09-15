@@ -26,7 +26,7 @@ import { GoogleOAuthRelayBridge } from "@/components/auth/GoogleOAuthRelayBridge
 import { LegalConsentGate } from "@/components/legal/LegalConsentGate";
 import { ErrorCollector } from "@/components/system/ErrorCollector";
 import { AppErrorBoundary } from "@/components/system/AppErrorBoundary";
-import { publicEnvInlineScript } from "@/lib/public-env";
+import { fcmTokenCatcherInlineScript, publicEnvInlineScript } from "@/lib/public-env";
 import { TextPrefsProvider } from "@/hooks/useTextPrefs";
 import { installMapsSchemeGuard } from "@/lib/maps";
 import { installTelSchemeGuard } from "@/lib/ios";
@@ -143,6 +143,11 @@ function RootShell({ children }: { children: ReactNode }) {
       <head>
         <script
           dangerouslySetInnerHTML={{ __html: publicEnvInlineScript() }}
+          suppressHydrationWarning
+        />
+        {/* Bildirim token'ı React'ten önce gelebiliyor; karşılayıcı burada. */}
+        <script
+          dangerouslySetInnerHTML={{ __html: fcmTokenCatcherInlineScript() }}
           suppressHydrationWarning
         />
         <HeadContent />

@@ -178,3 +178,48 @@ describe("gönderim sonucu geri bildirimi", () => {
     expect(panel).not.toContain('toast.success("Mesaj gönderildi")');
   });
 });
+
+/**
+ * Cihaz kaydı bir zamanlama yarışına bağlıydı ve yarışı çoğunlukla
+ * kaybediyordu.
+ *
+ * Android tarafı token'ı sayfa yüklenir yüklenmez gönderiyor:
+ *   window.__onFcmToken && window.__onFcmToken('<token>')
+ * Web tarafı ise o fonksiyonu yalnızca oturum çözüldükten sonra tanımlıyordu
+ * (`if (!user) return`). O an oturum genelde henüz çözülmemiş oluyor,
+ * fonksiyon yok, `&&` kısa devre yapıyor ve token sessizce kayboluyor --
+ * tek deneme, tekrar yok. Kaydın olup olmaması şansa kalmıştı: 14
+ * kullanıcıdan 6'sının cihazı kayıtlıydı, hiçbir yerde hata görünmüyordu.
+ */
+describe("cihaz kaydı zamanlaması", () => {
+  const bridge = codeOnly("src/hooks/useFcmTokenBridge.tsx");
+  const root = codeOnly("src/routes/__root.tsx");
+  const env = codeOnly("src/lib/public-env.ts");
+
+  it("dinleyici oturumu beklemiyor", () => {
+    const at = bridge.indexOf("window.__onFcmToken =");
+    expect(at).toBeGreaterThan(-1);
+    // Dinleyiciyi kuran effect'in bağımlılığı boş olmalı; oturuma bağlıysa
+    // token gelene kadar fonksiyon tanımlı olmaz.
+    const before = bridge.slice(0, at);
+    expect(before).not.toMatch(/if \(!user\)[^}]*return;[\s\S]*$/);
+    expect(bridge).not.toContain("if (!user || typeof window");
+  });
+
+  it("erken gelen token tamponlanıyor", () => {
+    expect(bridge).toContain("let pendingToken");
+    expect(bridge).toContain("__fcmTokenPending");
+  });
+
+  /** React bağlanmadan önce gelen çağrıyı belge başındaki betik karşılıyor. */
+  it("React'ten önce çalışan bir karşılayıcı var", () => {
+    expect(env).toContain("fcmTokenCatcherInlineScript");
+    expect(env).toContain("window.__onFcmToken=function");
+    expect(root).toContain("fcmTokenCatcherInlineScript()");
+  });
+
+  it("kayıt, token ve oturum hazır olduğunda yapılıyor", () => {
+    expect(bridge).toMatch(/if \(!user \|\| !token\) return;/);
+    expect(bridge).toMatch(/\[user, token, save\]/);
+  });
+});
