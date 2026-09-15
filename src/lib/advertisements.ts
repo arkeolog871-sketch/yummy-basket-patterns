@@ -279,3 +279,15 @@ export function trackBanner(id: string, type: AdTrackType): void {
     keepalive: true,
   }).catch(() => undefined);
 }
+
+/**
+ * Başlık alanı zorunlu olduğu için altyazı istemeyen reklamlara "." gibi
+ * yer tutucular giriliyordu ve bu işaret görselin üzerine basılıyordu.
+ * Okunur bir harf/rakam içermeyen başlık, başlık sayılmaz.
+ */
+export function readableBannerTitle(raw: string | null | undefined): string {
+  if (typeof raw !== "string") return "";
+  const text = raw.trim();
+  if (!text) return "";
+  return /\p{L}|\p{N}/u.test(text) ? text : "";
+}

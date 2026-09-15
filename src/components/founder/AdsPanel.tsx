@@ -205,6 +205,7 @@ export function AdsPanel() {
 
   const handleUpload = async (e: FormEvent) => {
     e.preventDefault();
+    // Veritabanı kısıtı başlığı zorunlu tutuyor (advertisements_title_len).
     const title = draft.title.trim();
     if (!title) {
       toast.error("Başlık girin");
@@ -526,6 +527,10 @@ function AdForm({
           onChange={(event) => patch({ title: event.target.value })}
           className="mt-1"
         />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Görselin üzerine yazı olarak basılır. Altyazı istemiyorsanız tek bir nokta (.)
+          yazın; anasayfada gösterilmez.
+        </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div>

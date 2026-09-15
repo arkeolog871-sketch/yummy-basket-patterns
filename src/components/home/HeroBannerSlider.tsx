@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import {
   BANNER_AUTOPLAY_MS,
   BANNER_IMPRESSION_MS,
+  readableBannerTitle,
   trackBanner,
   type PublicBanner,
 } from "@/lib/advertisements";
@@ -36,13 +37,14 @@ function activateBanner(banner: PublicBanner, navigate: ReturnType<typeof useNav
 }
 
 function SlideVisual({ banner, priority, active }: { banner: PublicBanner; priority: boolean; active: boolean }) {
+  const caption = readableBannerTitle(banner.title);
   return (
     <>
-      <AdMedia src={banner.image_url} alt={banner.title || "Reklam"} priority={priority} active={active} />
+      <AdMedia src={banner.image_url} alt={caption || "Reklam"} priority={priority} active={active} />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-      {banner.title ? (
+      {caption ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4 sm:p-5">
-          <p className="text-base font-semibold text-white drop-shadow sm:text-lg">{banner.title}</p>
+          <p className="text-base font-semibold text-white drop-shadow sm:text-lg">{caption}</p>
         </div>
       ) : null}
     </>
