@@ -336,11 +336,16 @@ function RestaurantDetail() {
                             </p>
                           ) : null}
                           <p className="mt-2 font-semibold">{formatPrice(Number(item.price))}</p>
+                          {item.in_stock === false ? (
+                            <p className="mt-1 text-xs font-medium text-destructive">
+                              Tükendi — şu an sipariş alınamıyor
+                            </p>
+                          ) : null}
                         </div>
                         <Button
                           size="icon"
                           className="size-10 shrink-0 rounded-full"
-                          disabled={!open}
+                          disabled={!open || item.in_stock === false}
                           aria-label={`${item.name} sepete ekle`}
                           onClick={() => add(item)}
                         >
@@ -403,14 +408,12 @@ function RestaurantDetail() {
             )}
           </aside>
 
-          <div className="hidden lg:block">
+          {/* Tek kopya: iki kez basılırsa iki harita örneği ve iki konum
+              izleyicisi (watchPosition) aynı anda çalışır. */}
+          <div>
             <BusinessMap business={restaurant} />
           </div>
         </div>
-      </div>
-
-      <div className="mx-auto w-full max-w-6xl px-4 pb-10 lg:hidden">
-        <BusinessMap business={restaurant} />
       </div>
 
       <div className="mx-auto w-full max-w-6xl px-4 pb-16">

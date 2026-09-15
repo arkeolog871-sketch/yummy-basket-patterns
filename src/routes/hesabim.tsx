@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { ClipboardList, MapPin, ShieldCheck, User } from "lucide-react";
@@ -67,12 +68,59 @@ function VerifyFirst({ onGoToProfile }: { onGoToProfile: () => void }) {
   );
 }
 
+/**
+ * Profil isteği sürerken doğrulama durumu bilinmiyor. Bu aralıkta
+ * "doğrulayın" uyarısı basmak, doğrulanmış kullanıcıya yanlış bilgi verir.
+ */
+function SectionLoading() {
+  return (
+    <div className="rounded-3xl border border-border/70 bg-card p-10 text-center text-sm text-muted-foreground">
+      Yükleniyor…
+    </div>
+  );
+}
+
+function SectionUnavailable() {
+  return (
+    <div className="rounded-3xl border border-dashed border-border bg-card p-10 text-center">
+      <p className="font-semibold">Hesap bilgileriniz alınamadı</p>
+      <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+        Bağlantınızı kontrol edip sayfayı yenileyin.
+      </p>
+    </div>
+  );
+}
+
+/** Doğrulama durumu bilinene kadar sekme içeriği yerine durum kutusu basar. */
+function VerifiedGate({
+  pending,
+  failed,
+  verified,
+  onGoToProfile,
+  children,
+}: {
+  pending: boolean;
+  failed: boolean;
+  verified: boolean;
+  onGoToProfile: () => void;
+  children: ReactNode;
+}) {
+  if (pending) return <SectionLoading />;
+  if (failed) return <SectionUnavailable />;
+  if (!verified) return <VerifyFirst onGoToProfile={onGoToProfile} />;
+  return <>{children}</>;
+}
+
 function AccountPage() {
   const { sekme } = Route.useSearch();
   const navigate = useNavigate({ from: "/hesabim" });
   const fetchProfile = useServerFn(getMyProfile);
 
-  const { data: profile } = useQuery({
+  const {
+    data: profile,
+    isPending: profilePending,
+    isError: profileError,
+  } = useQuery({
     queryKey: ["my-profile"],
     queryFn: () => fetchProfile(),
   });
@@ -110,11 +158,25 @@ function AccountPage() {
         </TabsContent>
 
         <TabsContent value="siparisler" className="mt-6">
-          {verified ? <OrdersSection /> : <VerifyFirst onGoToProfile={() => setTab("profil")} />}
+          <VerifiedGate
+            pending={profilePending}
+            failed={profileError}
+            verified={verified}
+            onGoToProfile={() => setTab("profil")}
+          >
+            <OrdersSection />
+          </VerifiedGate>
         </TabsContent>
 
         <TabsContent value="adresler" className="mt-6">
-          {verified ? <AddressesSection /> : <VerifyFirst onGoToProfile={() => setTab("profil")} />}
+          <VerifiedGate
+            pending={profilePending}
+            failed={profileError}
+            verified={verified}
+            onGoToProfile={() => setTab("profil")}
+          >
+            <AddressesSection />
+          </VerifiedGate>
         </TabsContent>
 
         <TabsContent value="hesap" className="mt-6 space-y-6">

@@ -91,7 +91,11 @@ function NotificationsPage() {
               variant="outline"
               className="rounded-full"
               disabled={busyId !== null}
-              onClick={() => void remove()}
+              onClick={() => {
+                // Geri alınamayan toplu silme; tek dokunuşla tetiklenmemeli.
+                if (!window.confirm("Tüm bildirimleriniz silinecek. Onaylıyor musunuz?")) return;
+                void remove();
+              }}
             >
               <Trash2 className="size-4" /> Tümünü sil
             </Button>

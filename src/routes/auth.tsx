@@ -6,6 +6,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAccess } from "@/hooks/useAccess";
 import { useServerFn } from "@tanstack/react-start";
 import { registerWithEmailCode } from "@/lib/otp.functions";
+import { reportAppError } from "@/lib/errors.functions";
+import { humanizeAuthError } from "@/lib/auth-error";
 import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { VendorPhoneLogin } from "@/components/auth/VendorPhoneLogin";
 import {
@@ -89,6 +91,25 @@ function AuthPage() {
   const access = useAccess();
   const navigate = useNavigate();
   const register = useServerFn(registerWithEmailCode);
+  const reportError = useServerFn(reportAppError);
+
+  /**
+   * Giriş ekranında ham hata metni gösterilmez: Apple incelemesinde
+   * "AuthorizationError error 1000" gibi bir dize kullanıcıya çıkıyordu.
+   * Teknik ayrıntı sistem hata kaydına gider, kullanıcı sade mesaj görür.
+   */
+  function reportSignInFailure(scope: string, error: unknown, userMessage: string) {
+    const detail = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : undefined;
+    void reportError({
+      data: {
+        message: `${scope}: ${detail}`.slice(0, 1_000),
+        ...(stack ? { stack: stack.slice(0, 8_000) } : {}),
+        path: "/auth",
+      },
+    }).catch(() => undefined);
+    toast.error(userMessage);
+  }
   const [portal, setPortal] = useState<"customer" | "vendor">("customer");
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [method, setMethod] = useState<"password" | "code">("password");
@@ -293,7 +314,12 @@ function AuthPage() {
         toast.success("Hoş geldiniz!");
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Bir şeyler ters gitti.");
+      toast.error(
+        humanizeAuthError(
+          error,
+          mode === "signup" ? "Kayıt tamamlanamadı." : "Giriş yapılamadı.",
+        ),
+      );
     } finally {
       setBusy(false);
     }
@@ -310,7 +336,11 @@ function AuthPage() {
       const result = await startGoogleOAuth();
       if (!result.ok) toast.error(result.error);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Google girişi başlatılamadı.");
+      toast.error(
+        humanizeOAuthError(
+          error instanceof Error ? error.message : "Google girişi başlatılamadı.",
+        ),
+      );
     }
   }
 
@@ -327,7 +357,11 @@ function AuthPage() {
         return;
       } catch (error) {
         // Buraya düşen her şey aksi hâlde sessizce yutulurdu.
-        toast.error(error instanceof Error ? error.message : String(error));
+        reportSignInFailure(
+          "ios-native-google",
+          error,
+          "Google girişi tamamlanamadı. Tekrar deneyin ya da e-posta ile giriş yapın.",
+        );
         return;
       } finally {
         setBusy(false);
@@ -357,7 +391,11 @@ function AuthPage() {
         if (!result.ok) toast.error(result.error);
         return;
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : String(error));
+        reportSignInFailure(
+          "ios-native-apple",
+          error,
+          "Apple girişi tamamlanamadı. Tekrar deneyin ya da e-posta ile giriş yapın.",
+        );
         return;
       } finally {
         setBusy(false);

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { toPublicErrorMessage } from "@/lib/public-error";
 
 const emptyForm = {
   label: "Ev",
@@ -57,7 +58,7 @@ export function AddressesSection() {
       void queryClient.invalidateQueries({ queryKey: ["addresses"] });
     },
     onError: (error) =>
-      toast.error(error instanceof Error ? error.message : "Adres kaydedilemedi."),
+      toast.error(toPublicErrorMessage(error, "Adres kaydedilemedi.")),
   });
 
   const remove = useMutation({
@@ -66,7 +67,7 @@ export function AddressesSection() {
       toast.success("Adres silindi.");
       void queryClient.invalidateQueries({ queryKey: ["addresses"] });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Adres silinemedi."),
+    onError: (error) => toast.error(toPublicErrorMessage(error, "Adres silinemedi.")),
   });
 
   return (
@@ -112,7 +113,10 @@ export function AddressesSection() {
                 variant="ghost"
                 className="size-9 rounded-full text-muted-foreground"
                 aria-label={`${address.label} adresini sil`}
-                onClick={() => remove.mutate(address.id)}
+                onClick={() => {
+                  if (!window.confirm(`"${address.label}" adresi silinsin mi?`)) return;
+                  remove.mutate(address.id);
+                }}
               >
                 <Trash2 className="size-4" />
               </Button>

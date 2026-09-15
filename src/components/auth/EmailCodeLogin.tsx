@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { persistVerifiedSession } from "@/lib/auth-session";
 import { TERMS_ACCEPTANCE_REQUIRED } from "@/lib/legal";
+import { toPublicErrorMessage } from "@/lib/public-error";
 
 type Props = {
   /** Yeni kullanıcı oluşturulmasına izin verilsin mi (kurucu girişinde kapalı). */
@@ -80,7 +81,7 @@ export function EmailCodeLogin({
       setCooldown(result.cooldownSeconds);
       toast.success("6 haneli doğrulama kodu e-postanıza gönderildi.");
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Kod gönderilemedi.";
+      const message = toPublicErrorMessage(caught, "Kod gönderilemedi.");
       onFailed?.(email.trim(), message);
       setError(message);
       toast.error(message);
@@ -116,7 +117,7 @@ export function EmailCodeLogin({
       });
       await onVerified?.(result.userId, email.trim());
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Kod doğrulanamadı.";
+      const message = toPublicErrorMessage(caught, "Kod doğrulanamadı.");
       onFailed?.(email.trim(), message);
       setError(message);
       toast.error(message);

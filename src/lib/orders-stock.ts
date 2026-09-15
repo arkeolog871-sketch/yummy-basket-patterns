@@ -17,3 +17,13 @@ export function planStockDecrement(
   if (stock < quantity) return { ok: false, reason: "insufficient" };
   return { ok: true, unlimited: false, next: stock - quantity };
 }
+
+/**
+ * Vitrinde "sepete eklenebilir" mi? Sipariş RPC'si `stock_quantity < adet`
+ * olan ürünü reddettiği için stoğu 0 olan ürün satılabilir değildir.
+ * `planStockDecrement` ile aynı kural: sayı olmayan değer sınırsız stok sayılır.
+ */
+export function isSellableStock(stock: number | null | undefined): boolean {
+  if (stock == null || !Number.isFinite(Number(stock))) return true;
+  return Number(stock) > 0;
+}

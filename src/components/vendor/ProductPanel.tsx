@@ -293,7 +293,11 @@ export function ProductPanel({
                     ? (categoryNames.get(product.category_id) ?? "Kategori")
                     : "Kategorisiz"}{" "}
                   · Stok: {product.stock_quantity ?? 0} ·{" "}
-                  {product.is_available ? "Stokta var" : "Stokta yok"}
+                  {!product.is_available
+                    ? "Satışa kapalı"
+                    : Number(product.stock_quantity ?? 0) <= 0
+                      ? "Tükendi — sipariş alınamaz"
+                      : "Satışta"}
                 </p>
                 <div className="flex gap-2 pt-1">
                   <Button
@@ -393,6 +397,10 @@ export function ProductPanel({
                   }
                   className="rounded-xl"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Stok 0 iken bu ürün sipariş edilemez. Hizmet satıyorsanız yüksek bir sayı
+                  girin (örn. 999).
+                </p>
               </div>
             </div>
 

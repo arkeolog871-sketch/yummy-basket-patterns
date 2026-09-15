@@ -1,6 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { ilikePattern } from "@/lib/catalog-search";
+import { ilikePattern, matchesSearchTerms } from "@/lib/catalog-search";
+
+const LIST_COLUMNS =
+  "id, slug, name, tagline, category, sector, cuisines, rating, review_count, delivery_fee, delivery_type, delivery_minutes, min_order, cover_image_url, logo_url, address, district, city, latitude, longitude, maps_url, opens_at, closes_at, is_open_manual";
 
 const listSchema = z.object({
   search: z.string().trim().max(80).optional(),
@@ -16,9 +19,7 @@ export const listRestaurants = createServerFn({ method: "GET" })
 
     let query = supabase
       .from("restaurants")
-      .select(
-        "id, slug, name, tagline, category, sector, cuisines, rating, review_count, delivery_fee, delivery_type, delivery_minutes, min_order, cover_image_url, logo_url, address, district, city, latitude, longitude, maps_url, opens_at, closes_at, is_open_manual",
-      )
+      .select(LIST_COLUMNS)
       .eq("is_active", true)
       .order("rating", { ascending: false })
       .limit(100);
@@ -34,7 +35,28 @@ export const listRestaurants = createServerFn({ method: "GET" })
 
     const { data: rows, error } = await query;
     if (error) throw new Error(error.message);
-    return rows ?? [];
+    if (rows && rows.length > 0) return rows;
+    if (!data.search) return rows ?? [];
+
+    // `ilike` aksana duyarlıdır: "kuafor" yazan kullanıcı "Kuaför"ü bulamıyordu.
+    // Metin filtresi olmadan (en çok 100 satır) çekip Türkçe katlamayla eleriz.
+    let fallback = supabase
+      .from("restaurants")
+      .select(LIST_COLUMNS)
+      .eq("is_active", true)
+      .order("rating", { ascending: false })
+      .limit(100);
+    if (data.category) fallback = fallback.eq("category", data.category);
+    if (data.sector) fallback = fallback.eq("sector", data.sector);
+
+    const { data: allRows, error: fallbackError } = await fallback;
+    if (fallbackError) throw new Error(fallbackError.message);
+    return (allRows ?? []).filter((row) =>
+      matchesSearchTerms(
+        [row.name, row.tagline, row.category, row.sector, row.district, row.city],
+        data.search as string,
+      ),
+    );
   });
 
 export const listCategories = createServerFn({ method: "GET" }).handler(async () => {
@@ -131,11 +153,52 @@ export const getRestaurantBySlug = createServerFn({ method: "GET" })
           .limit(50),
       ]);
 
+    const menuItems = items ?? [];
+    const stockFlags = await readStockFlags(
+      restaurant.id,
+      menuItems.map((item) => item.id),
+    );
+
     return {
       restaurant,
       categories: categories ?? [],
-      items: items ?? [],
+      items: menuItems.map((item) => ({
+        ...item,
+        in_stock: stockFlags.get(item.id) ?? true,
+      })),
       gallery: gallery ?? [],
       reviews: reviews ?? [],
     };
   });
+
+/**
+ * `stock_quantity` vitrine kapalıdır (20260904140000_security_audit_grants.sql):
+ * rakip işletme stok seviyesini görmemeli. Ama stoğu biten ürün sipariş
+ * RPC'sinde reddediliyor ve müşteri bunu ancak "Siparişi onayla" adımında
+ * öğreniyordu. Sayı sunucuda okunup boole'ye indirgeniyor; tarayıcıya yalnızca
+ * "satılabilir mi" bilgisi gidiyor.
+ *
+ * Servis anahtarı yoksa harita boş döner ve çağıran taraf ürünü satılabilir
+ * sayar: stok bilgisi eksikken vitrini kapatmak, mevcut davranışı bozar.
+ */
+async function readStockFlags(
+  restaurantId: string,
+  ids: string[],
+): Promise<Map<string, boolean>> {
+  const flags = new Map<string, boolean>();
+  if (ids.length === 0) return flags;
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("menu_items")
+      .select("id, stock_quantity")
+      .eq("restaurant_id", restaurantId)
+      .in("id", ids);
+    if (error || !data) return flags;
+    const { isSellableStock } = await import("./orders-stock");
+    for (const row of data) flags.set(row.id, isSellableStock(row.stock_quantity));
+  } catch {
+    // Servis anahtarı yok; stok bilgisi olmadan ürün gizlenmez.
+  }
+  return flags;
+}
