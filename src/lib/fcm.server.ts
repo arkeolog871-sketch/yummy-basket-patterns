@@ -171,6 +171,15 @@ export type FcmPayload = {
   body: string;
   url?: string;
   collapseKey?: string;
+  /**
+   * iOS'ta Odak modunu ve Zamanlanmış Özet'i delip geçer. Apple bunu
+   * "kullanıcının hemen görmesi gereken" bildirimlere saklıyor: sipariş
+   * geldiğini işletmeye haber vermek buna giriyor, genel duyuru girmiyor.
+   * Ayrıca App ID'de "Time Sensitive Notifications" yetkisi açık ve
+   * uygulamada karşılığı olan entitlement yoksa sistem bu alanı yok sayar --
+   * zarar vermez, sadece etkisiz kalır.
+   */
+  urgent?: boolean;
 };
 
 /** Gönderim sonucu + FCM'in kendi hata kodu (jeton ve metin içermez). */
@@ -245,6 +254,7 @@ async function sendFcm(
                 aps: {
                   alert: { title: payload.title, body: payload.body },
                   sound: "default",
+                  ...(payload.urgent ? { "interruption-level": "time-sensitive" } : {}),
                 },
               },
             },

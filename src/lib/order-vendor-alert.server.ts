@@ -219,6 +219,8 @@ async function deliverPushAlert(input: {
     title: input.title,
     body: input.body,
     url: DASHBOARD_URL,
+    // Sipariş, işletmenin hemen görmesi gereken bilgi: bekleyen müşteri var.
+    urgent: true,
   });
 
   await supabaseAdmin

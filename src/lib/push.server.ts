@@ -8,6 +8,8 @@ export type PushPayload = {
   url?: string;
   /** Aynı duyurunun konu ve token kopyalarını tek bildirime indirger. */
   collapseKey?: string;
+  /** iOS'ta Odak/Zamanlanmış Özet'i deler. Yalnızca sipariş bildirimlerinde. */
+  urgent?: boolean;
 };
 
 /** FCM tarafındaki ömür sınırıyla aynı: bir günü geçen bildirim düşer. */

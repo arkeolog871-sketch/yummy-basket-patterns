@@ -21,6 +21,8 @@ export async function notifyVendorOfCancelledOrder(input: {
       title: "Sipariş iptal edildi",
       body: `${input.recipientName} siparişini iptal etti.`,
       url: "/vendor/dashboard",
+      // Hazırlığa başlamış olabilir; geç öğrenmek maliyetli.
+      urgent: true,
     });
   } catch (error) {
     console.error("[order-cancel-alert] push bildirimi başarısız", {

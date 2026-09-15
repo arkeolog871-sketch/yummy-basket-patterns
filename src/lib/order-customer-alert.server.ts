@@ -36,7 +36,8 @@ export async function notifyCustomerOfOrderStatus(
     ]);
 
     const { sendPushToUserIds } = await import("./push.server");
-    await sendPushToUserIds([order.user_id], { title, body, url });
+    // Siparişinin durumu değişti: müşterinin beklediği bilgi bu.
+    await sendPushToUserIds([order.user_id], { title, body, url, urgent: true });
   } catch (error) {
     console.error("[order-customer-alert] push bildirimi başarısız", {
       orderId: order.id,
