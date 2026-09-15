@@ -301,7 +301,14 @@ function AuthPage() {
         });
         if (!result.ok) throw new Error(result.error);
         setPendingVerification({ email: email.trim(), startAtCode: true });
-        toast.success("Kayıt alındı. E-postanıza gönderilen 6 haneli kodu girin.");
+        // Var olan hesapta yazılan şifre kaydedilmez; bunu söylememek
+        // kullanıcıyı "şifremi belirledim" sanıp giriş deneyen bir döngüye
+        // sokuyordu.
+        toast.success(
+          result.existing
+            ? "Bu e-posta zaten kayıtlı. Giriş için e-postanıza 6 haneli kod gönderdik. Yazdığınız şifre kaydedilmedi."
+            : "Kayıt alındı. E-postanıza gönderilen 6 haneli kodu girin.",
+        );
       } else {
         const { data: signed, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;

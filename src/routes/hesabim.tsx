@@ -181,6 +181,17 @@ function AccountPage() {
 
         <TabsContent value="hesap" className="mt-6 space-y-6">
           <section className="rounded-3xl border border-border/70 bg-card p-5 shadow-card">
+            <p className="font-semibold">Şifre</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Google veya Apple ile giriş yaptıysanız hesabınızda şifre yoktur. Buradan bir şifre
+              belirleyip e-posta ve şifreyle de girebilirsiniz.
+            </p>
+            <Button asChild variant="outline" className="mt-3 rounded-full">
+              <Link to="/sifre-sifirlama">Şifre belirle veya değiştir</Link>
+            </Button>
+          </section>
+
+          <section className="rounded-3xl border border-border/70 bg-card p-5 shadow-card">
             <p className="font-semibold">Bildirimler ve yasal metinler</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button asChild variant="outline" className="rounded-full">

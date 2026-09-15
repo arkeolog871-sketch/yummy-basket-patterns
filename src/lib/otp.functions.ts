@@ -125,7 +125,11 @@ export const registerWithEmailCode = createServerFn({ method: "POST" })
         retryAfterSeconds: sent.retryAfterSeconds,
       };
     }
-    return { ok: true as const, cooldownSeconds: sent.cooldownSeconds };
+    // `existing` çağırana taşınıyor: hesap zaten varsa şifre alanına yazılan
+    // değer hiçbir yere işlenmiyor (createUnverifiedAccount erken dönüyor).
+    // Bunu söylemeyen bir "Kayıt alındı" mesajı, kullanıcıya var olmayan bir
+    // şifreyi kurmuş gibi hissettiriyordu.
+    return { ok: true as const, existing, cooldownSeconds: sent.cooldownSeconds };
   });
 
 export { OTP_INVALID_MESSAGE };
