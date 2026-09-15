@@ -350,3 +350,47 @@ describe("gizlilik bildirimi", () => {
     expect(manifest).toMatch(/<key>NSPrivacyAccessedAPITypes<\/key>\s*<array\/>/);
   });
 });
+
+/**
+ * App Store arşivi dağıtım sertifikasıyla imzalanmalı. Proje her iki
+ * yapılandırmada da "iPhone Developer" (geliştirme kimliğinin eski adı)
+ * diyordu, yani Release arşivi de geliştirme kimliği istiyordu.
+ *
+ * Bunun bedeli gecikmeli çıktı: her CI çalışması boş bir makinede başladığı
+ * için Apple'dan yeni bir GELİŞTİRME sertifikası isteniyordu. Sekiz yayın
+ * build'i sonunda hesabın sertifika kotası doldu ve build 22 "Your account
+ * has reached the maximum number of certificates" ile düştü. Hata imzalama
+ * gibi görünüyordu; sebebi buydu.
+ */
+describe("kod imzalama kimliği", () => {
+  const pbxproj = readFileSync(join(ROOT, "ios/App/App.xcodeproj/project.pbxproj"), "utf8");
+
+  /** Her XCBuildConfiguration bloğunu ayrı ayrı okur; bloklar iç içe değil. */
+  function identityOf(configName: "Debug" | "Release"): string[] {
+    const found: string[] = [];
+    const block = /= \{\s*isa = XCBuildConfiguration;([\s\S]*?)\n\t\t\};/g;
+    let match: RegExpExecArray | null;
+    while ((match = block.exec(pbxproj)) !== null) {
+      const body = match[1] ?? "";
+      if (!new RegExp(`name = ${configName};`).test(body)) continue;
+      const identity = /CODE_SIGN_IDENTITY = "([^"]+)"/.exec(body)?.[1];
+      if (identity) found.push(identity);
+    }
+    return found;
+  }
+
+  it("Release dağıtım kimliği istiyor", () => {
+    const release = identityOf("Release");
+    expect(release.length).toBeGreaterThan(0);
+    for (const identity of release) expect(identity).toBe("Apple Distribution");
+  });
+
+  it("Debug geliştirme kimliği istiyor", () => {
+    for (const identity of identityOf("Debug")) expect(identity).toBe("Apple Development");
+  });
+
+  /** Eski ad geri gelirse arşiv yine geliştirme sertifikası istemeye başlar. */
+  it("eski 'iPhone Developer' kimliği kullanılmıyor", () => {
+    expect(pbxproj).not.toContain("iPhone Developer");
+  });
+});
