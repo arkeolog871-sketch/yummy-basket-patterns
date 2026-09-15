@@ -51,7 +51,11 @@ export function useAppCategories(options?: { includeHidden?: boolean }) {
         const { data, error } = await supabase
           .from("app_categories")
           .select("id, slug, label, icon, color, position, is_active")
-          .order("position");
+          // Eşit `position` değerlerinde Postgres sırayı garanti etmez: aynı
+          // liste her sorguda farklı dizilebiliyordu. İkincil anahtar bunu
+          // kapatıyor.
+          .order("position")
+          .order("label");
         if (error) {
           console.error("[app-categories]", error.message);
           return [];
@@ -85,7 +89,9 @@ export function useServiceAreas(options?: { includeHidden?: boolean }) {
         const { data, error } = await supabase
           .from("service_areas")
           .select("id, city, district, position, is_active")
-          .order("position");
+          .order("position")
+          .order("city")
+          .order("district");
         if (error) {
           console.error("[service-areas]", error.message);
           return [];

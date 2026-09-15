@@ -9,17 +9,73 @@ import {
   Pencil,
   Plus,
   Trash2,
+  // Yeme-içme
   UtensilsCrossed,
   ChefHat,
   Coffee,
-  PartyPopper,
-  ShoppingCart,
-  Shirt,
   Pizza,
+  Sandwich,
+  Cake,
+  Croissant,
   IceCream,
-  Flower2,
-  Dumbbell,
+  Fish,
+  Beef,
+  Wheat,
+  Carrot,
+  Apple,
+  Milk,
+  // Alışveriş
+  ShoppingCart,
+  Store,
+  Shirt,
+  Footprints,
+  Glasses,
+  Watch,
   Gift,
+  Package,
+  Sofa,
+  // Kişisel bakım ve sağlık
+  Scissors,
+  SprayCan,
+  Flower2,
+  Stethoscope,
+  Pill,
+  Dumbbell,
+  // Zanaat ve teknik
+  Wrench,
+  Hammer,
+  Drill,
+  Flame,
+  Paintbrush,
+  Plug,
+  Zap,
+  Droplet,
+  Key,
+  // Ulaşım ve lojistik
+  Truck,
+  Car,
+  Bike,
+  Fuel,
+  Warehouse,
+  // Teknoloji
+  Laptop,
+  Smartphone,
+  Cpu,
+  Camera,
+  // Tarım ve hayvancılık
+  Tractor,
+  PawPrint,
+  Egg,
+  TreePine,
+  Leaf,
+  // Diğer
+  PartyPopper,
+  Music,
+  BookOpen,
+  GraduationCap,
+  Baby,
+  Home,
+  Building2,
   Sparkles,
 } from "lucide-react";
 import { useAppCategories, type AppCategory } from "@/hooks/useTaxonomy";
@@ -30,19 +86,82 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { slugify } from "@/lib/format";
 
-const ICON_OPTIONS = [
-  "UtensilsCrossed",
-  "ChefHat",
-  "Coffee",
-  "PartyPopper",
-  "ShoppingCart",
-  "Shirt",
-  "Pizza",
-  "IceCream",
-  "Flower2",
-  "Dumbbell",
-  "Gift",
-  "Sparkles",
+/**
+ * Liste uygulamanın gerçekten barındırdığı sektörlere göre seçildi. Önceki
+ * on iki ikon yalnızca yeme-içmeyi kapsıyordu; kaynak ustası, nakliyeci,
+ * tesisatçı veya bilişimci ekleyen sayfa yöneticisi kategorisine uyan bir
+ * simge bulamayıp alakasız bir yemek ikonu seçmek zorunda kalıyordu.
+ *
+ * İkonlar tek tek içe aktarılıyor: `import * as Icons` tüm kütüphaneyi bu
+ * panelin paketine gömerdi.
+ */
+const ICON_GROUPS = [
+  {
+    label: "Yeme-içme",
+    icons: [
+      "UtensilsCrossed",
+      "ChefHat",
+      "Coffee",
+      "Pizza",
+      "Sandwich",
+      "Cake",
+      "Croissant",
+      "IceCream",
+      "Fish",
+      "Beef",
+      "Wheat",
+      "Carrot",
+      "Apple",
+      "Milk",
+    ],
+  },
+  {
+    label: "Alışveriş",
+    icons: [
+      "ShoppingCart",
+      "Store",
+      "Shirt",
+      "Footprints",
+      "Glasses",
+      "Watch",
+      "Gift",
+      "Package",
+      "Sofa",
+    ],
+  },
+  {
+    label: "Kişisel bakım ve sağlık",
+    icons: ["Scissors", "SprayCan", "Flower2", "Stethoscope", "Pill", "Dumbbell"],
+  },
+  {
+    label: "Zanaat ve teknik",
+    icons: ["Wrench", "Hammer", "Drill", "Flame", "Paintbrush", "Plug", "Zap", "Droplet", "Key"],
+  },
+  {
+    label: "Ulaşım ve lojistik",
+    icons: ["Truck", "Car", "Bike", "Fuel", "Warehouse"],
+  },
+  {
+    label: "Teknoloji",
+    icons: ["Laptop", "Smartphone", "Cpu", "Camera"],
+  },
+  {
+    label: "Tarım ve hayvancılık",
+    icons: ["Tractor", "PawPrint", "Egg", "TreePine", "Leaf"],
+  },
+  {
+    label: "Diğer",
+    icons: [
+      "PartyPopper",
+      "Music",
+      "BookOpen",
+      "GraduationCap",
+      "Baby",
+      "Home",
+      "Building2",
+      "Sparkles",
+    ],
+  },
 ] as const;
 
 /** Yalnızca kullanılan ikonları içe aktarır — `import * as Icons` tüm ikon
@@ -51,14 +170,62 @@ const ICON_REGISTRY: Record<string, ComponentType<{ className?: string }>> = {
   UtensilsCrossed,
   ChefHat,
   Coffee,
-  PartyPopper,
-  ShoppingCart,
-  Shirt,
   Pizza,
+  Sandwich,
+  Cake,
+  Croissant,
   IceCream,
-  Flower2,
-  Dumbbell,
+  Fish,
+  Beef,
+  Wheat,
+  Carrot,
+  Apple,
+  Milk,
+  ShoppingCart,
+  Store,
+  Shirt,
+  Footprints,
+  Glasses,
+  Watch,
   Gift,
+  Package,
+  Sofa,
+  Scissors,
+  SprayCan,
+  Flower2,
+  Stethoscope,
+  Pill,
+  Dumbbell,
+  Wrench,
+  Hammer,
+  Drill,
+  Flame,
+  Paintbrush,
+  Plug,
+  Zap,
+  Droplet,
+  Key,
+  Truck,
+  Car,
+  Bike,
+  Fuel,
+  Warehouse,
+  Laptop,
+  Smartphone,
+  Cpu,
+  Camera,
+  Tractor,
+  PawPrint,
+  Egg,
+  TreePine,
+  Leaf,
+  PartyPopper,
+  Music,
+  BookOpen,
+  GraduationCap,
+  Baby,
+  Home,
+  Building2,
   Sparkles,
 };
 
@@ -74,6 +241,15 @@ const emptyForm = {
   position: 0,
   is_active: true,
 };
+
+/**
+ * Yeni kategori listenin sonuna gelmeli. Sabit 0 ile açılınca her yeni
+ * kategori aynı konumu alıyor ve eşitlik durumunda sıralama belirsizleşiyordu
+ * -- üretimde yedi kategori birden position=0 taşıyordu.
+ */
+function nextFormFor(count: number) {
+  return { ...emptyForm, position: count };
+}
 
 export function CategoryPanel({ businesses }: { businesses: { sector: string | null }[] }) {
   const { categories } = useAppCategories({ includeHidden: true });
@@ -103,7 +279,7 @@ export function CategoryPanel({ businesses }: { businesses: { sector: string | n
     onSuccess: () => {
       toast.success(editingId ? "Kategori güncellendi" : "Kategori eklendi");
       setEditingId(null);
-      setForm(emptyForm);
+      setForm(nextFormFor(categories.length));
       refresh();
     },
     onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
@@ -180,21 +356,29 @@ export function CategoryPanel({ businesses }: { businesses: { sector: string | n
         </div>
         <div>
           <Label>İkon</Label>
-          <div className="mt-1.5 flex flex-wrap gap-2">
-            {ICON_OPTIONS.map((icon) => (
-              <button
-                key={icon}
-                type="button"
-                aria-label={icon}
-                onClick={() => setForm({ ...form, icon })}
-                className={`flex size-10 items-center justify-center rounded-xl border transition-colors ${
-                  form.icon === icon
-                    ? "border-transparent bg-primary text-primary-foreground"
-                    : "border-border hover:bg-secondary"
-                }`}
-              >
-                <CategoryIcon name={icon} className="size-4" />
-              </button>
+          <div className="mt-1.5 space-y-3">
+            {ICON_GROUPS.map((group) => (
+              <div key={group.label}>
+                <p className="text-xs text-muted-foreground">{group.label}</p>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {group.icons.map((icon) => (
+                    <button
+                      key={icon}
+                      type="button"
+                      aria-label={icon}
+                      title={icon}
+                      onClick={() => setForm({ ...form, icon })}
+                      className={`flex size-10 items-center justify-center rounded-xl border transition-colors ${
+                        form.icon === icon
+                          ? "border-transparent bg-primary text-primary-foreground"
+                          : "border-border hover:bg-secondary"
+                      }`}
+                    >
+                      <CategoryIcon name={icon} className="size-4" />
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -227,7 +411,7 @@ export function CategoryPanel({ businesses }: { businesses: { sector: string | n
               className="rounded-full"
               onClick={() => {
                 setEditingId(null);
-                setForm(emptyForm);
+                setForm(nextFormFor(categories.length));
               }}
             >
               Vazgeç

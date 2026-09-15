@@ -96,30 +96,43 @@ export const moveCategory = createServerFn({ method: "POST" })
     const { logAudit } = await import("./audit.server");
     await assertFounder(context.supabase, context.userId, context.claims as never);
 
+    // Eski yöntem iki satırın `position` DEĞERLERİNİ takas ediyordu. Bu,
+    // değerler benzersiz değilse çalışmaz: üretimde yedi kategori birden
+    // position=0 taşıyordu, takas 0 ile 0'ı yer değiştirip hiçbir şey
+    // değiştirmiyordu. Üstüne eşitlik durumunda Postgres sırayı garanti
+    // etmediği için liste her sorguda başka türlü diziliyor ve kullanıcıya
+    // "dokunmadığım kategoriler de oynuyor" gibi görünüyordu.
+    //
+    // Artık sıra, konum değerlerinden bağımsız olarak yeniden kuruluyor:
+    // liste kararlı bir ölçütle okunuyor, taşınan öğe bir sıra kaydırılıyor
+    // ve herkese 0..n-1 aralığında benzersiz konum yazılıyor. İlk taşımadan
+    // sonra veri kendiliğinden düzeliyor ve bir daha bozulmuyor.
     const { data: rows, error } = await context.supabase
       .from("app_categories")
-      .select("id, position")
-      .order("position");
+      .select("id, position, label")
+      .order("position")
+      .order("label");
     if (error) throw new Error(error.message);
 
     const list = rows ?? [];
     const index = list.findIndex((row) => row.id === data.id);
-    const swapIndex = data.direction === "up" ? index - 1 : index + 1;
-    if (index < 0 || swapIndex < 0 || swapIndex >= list.length) return { ok: true };
+    const targetIndex = data.direction === "up" ? index - 1 : index + 1;
+    if (index < 0 || targetIndex < 0 || targetIndex >= list.length) return { ok: true };
 
-    const current = list[index]!;
-    const target = list[swapIndex]!;
-    const [a, b] = await Promise.all([
-      context.supabase
-        .from("app_categories")
-        .update({ position: target.position })
-        .eq("id", current.id),
-      context.supabase
-        .from("app_categories")
-        .update({ position: current.position })
-        .eq("id", target.id),
-    ]);
-    const failure = a.error ?? b.error;
+    const reordered = [...list];
+    const [moved] = reordered.splice(index, 1);
+    reordered.splice(targetIndex, 0, moved!);
+
+    // Yalnızca konumu gerçekten değişen satırlar yazılıyor.
+    const writes = reordered
+      .map((row, order) => ({ row, order }))
+      .filter(({ row, order }) => row.position !== order);
+    const results = await Promise.all(
+      writes.map(({ row, order }) =>
+        context.supabase.from("app_categories").update({ position: order }).eq("id", row.id),
+      ),
+    );
+    const failure = results.find((result) => result.error)?.error;
     if (failure) throw new Error(failure.message);
 
     await logAudit({
