@@ -105,13 +105,9 @@ describe("herkese duyuru yayını", () => {
 
   it("herkese duyuru konuya gidiyor, cihaz listesine değil", () => {
     expect(alert).toContain('input.targetType === "all"');
-    // Adın geçmesi yetmez, çağrılıyor olmalı: import satırı da adı içeriyor.
-    expect(alert).toMatch(/await broadcastPush\(/);
-    const start = alert.indexOf('input.targetType === "all"');
-    const elseAt = alert.indexOf("} else {", start);
-    expect(elseAt).toBeGreaterThan(start);
-    // "all" dalında token listesine gönderim olmamalı.
-    expect(alert.slice(start, elseAt)).not.toContain("sendPushToUserIds(");
+    // "all" dalı yayına, diğerleri cihaz listesine gitmeli.
+    expect(alert).toMatch(/targetType === "all"\s*\?\s*await broadcastPush\(/);
+    expect(alert).toMatch(/:\s*await sendPushToUserIds\(/);
   });
 
   /** Aynı bildirimi hem konudan hem token'dan göndermek iki kez gösterirdi. */
@@ -144,5 +140,41 @@ describe("herkese duyuru yayını", () => {
     expect(server).toBeTruthy();
     expect(droid).toBe(server);
     expect(apple).toBe(server);
+  });
+});
+
+/**
+ * Panel her durumda "Mesaj gönderildi" yazıyordu -- hedef kitledeki kimsenin
+ * cihazı kayıtlı olmasa bile. İşletmelere gönderilen bir duyuru 6 hesaptan
+ * 5'ine ulaşmıyordu ve gönderenin bunu görmesinin hiçbir yolu yoktu. Sessizce
+ * yanlış çalışan bir özelliğin en kötü hâli bu.
+ */
+describe("gönderim sonucu geri bildirimi", () => {
+  const panel = codeOnly("src/components/founder/NotificationsPanel.tsx");
+  const alert = codeOnly("src/lib/admin-message-alert.server.ts");
+  const founder = codeOnly("src/lib/founder.functions.ts");
+
+  it("sunucu kaç cihaza ulaştığını döndürüyor", () => {
+    expect(alert).toContain("AudienceDelivery");
+    expect(alert).toContain("audience: userIds.length");
+    expect(founder).toContain("return { ok: true, delivery };");
+  });
+
+  it("panel sonucu kullanıcıya gösteriyor", () => {
+    expect(panel).toContain("describeDelivery(result?.delivery)");
+  });
+
+  /** Her iki uç da ayrı ayrı anlatılmalı: hiç ulaşmadı / yayınlandı. */
+  it("hiç ulaşmayan gönderimi açıkça söylüyor", () => {
+    expect(panel).toContain("hiçbir cihaza ulaşmadı");
+  });
+
+  it("yayını ayrı anlatıyor", () => {
+    expect(panel).toContain("delivery.broadcast");
+    expect(panel).toContain("kurulu tüm uygulamalara yayınlandı");
+  });
+
+  it("koşulsuz başarı mesajı kalmadı", () => {
+    expect(panel).not.toContain('toast.success("Mesaj gönderildi")');
   });
 });

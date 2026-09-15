@@ -134,7 +134,19 @@ async function sendFcmPush(userIds: string[], payload: PushPayload): Promise<num
  * Native cihazlara token ile İKİNCİ bir gönderim yapılmıyor: aynı bildirimi
  * iki kez gösterirdi.
  */
-export async function broadcastPush(webPushUserIds: string[], payload: PushPayload): Promise<void> {
+export type PushDelivery = {
+  /** Bildirimin gittiği tarayıcı/PWA aboneliği sayısı. */
+  web: number;
+  /** Hedefli gönderimde ulaşılan cihaz sayısı; yayında -1 (sayı bilinemez). */
+  devices: number;
+  /** Yayın konusuna gönderildi mi? Hedefli gönderimde false. */
+  broadcast: boolean;
+};
+
+export async function broadcastPush(
+  webPushUserIds: string[],
+  payload: PushPayload,
+): Promise<PushDelivery> {
   const { sendFcmTopicMessage } = await import("./fcm.server");
 
   const [web, topic] = await Promise.all([
@@ -153,7 +165,7 @@ export async function broadcastPush(webPushUserIds: string[], payload: PushPaylo
       source: "server",
       message: "[push] FCM servis hesabı tanımlı değil: duyuru hiçbir native cihaza gönderilemiyor",
     });
-    return;
+    return { web, devices: -1, broadcast: false };
   }
   if (topic !== "sent" && web === 0) {
     await recordAppError({
@@ -161,6 +173,7 @@ export async function broadcastPush(webPushUserIds: string[], payload: PushPaylo
       message: `[push] duyuru yayınlanamadı (konu sonucu: ${topic}, web abonesi: ${web})`,
     });
   }
+  return { web, devices: -1, broadcast: topic === "sent" };
 }
 
 /**
@@ -168,9 +181,12 @@ export async function broadcastPush(webPushUserIds: string[], payload: PushPaylo
  * uygulama) aboneliklerine bildirim gönderir. Hiçbir zaman throw etmez — bir
  * çağıranın ana akışını (sipariş, durum güncelleme, duyuru) asla bozmaz.
  */
-export async function sendPushToUserIds(userIds: string[], payload: PushPayload): Promise<void> {
+export async function sendPushToUserIds(
+  userIds: string[],
+  payload: PushPayload,
+): Promise<PushDelivery> {
   const uniqueIds = [...new Set(userIds)].filter(Boolean);
-  if (uniqueIds.length === 0) return;
+  if (uniqueIds.length === 0) return { web: 0, devices: 0, broadcast: false };
 
   const [web, fcm] = await Promise.all([
     sendWebPush(uniqueIds, payload).catch((error) => {
@@ -192,4 +208,5 @@ export async function sendPushToUserIds(userIds: string[], payload: PushPayload)
       message: `[push] bildirim hiçbir cihaza gönderilemedi: ${uniqueIds.length} kullanıcının hiçbirinde kayıtlı cihaz yok`,
     });
   }
+  return { web, devices: fcm, broadcast: false };
 }

@@ -161,14 +161,16 @@ export const sendAdminMessage = createServerFn({ method: "POST" })
           .single();
         if (error) throw new Error(error.message);
         const { notifyAdminMessageAudience } = await import("./admin-message-alert.server");
-        await notifyAdminMessageAudience({
+        // Teslimat özeti panele dönüyor: "gönderildi" yazıp kimseye
+        // ulaşmamış olmak, gönderenin göremediği en kötü durumdu.
+        const delivery = await notifyAdminMessageAudience({
           messageId: inserted?.id ?? null,
           targetType: data.target_type,
           restaurantId,
           title: data.title,
           body: data.body,
         });
-        return { ok: true };
+        return { ok: true, delivery };
       },
     );
   });

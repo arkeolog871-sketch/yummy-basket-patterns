@@ -39,16 +39,26 @@ async function resolveAudience(
  * iletir — sekme/uygulama kapalıyken de ulaşsın diye. Duyuru zaten kaydedildi;
  * push başarısız olsa da duyuru akışını bozmaz.
  */
+export type AudienceDelivery = {
+  /** Hedef kitledeki kullanıcı sayısı. */
+  audience: number;
+  /** Bildirimin ulaştığı cihaz sayısı; yayında -1 (sayı bilinemez). */
+  devices: number;
+  /** Kurulu tüm uygulamalara yayınlandı mı? */
+  broadcast: boolean;
+};
+
 export async function notifyAdminMessageAudience(input: {
   messageId?: string | null;
   targetType: TargetType;
   restaurantId: string | null;
   title: string;
   body: string;
-}): Promise<void> {
+}): Promise<AudienceDelivery> {
+  const empty: AudienceDelivery = { audience: 0, devices: 0, broadcast: false };
   try {
     const userIds = await resolveAudience(input.targetType, input.restaurantId);
-    if (userIds.length === 0) return;
+    if (userIds.length === 0) return empty;
     const url =
       input.targetType === "vendors" || input.targetType === "restaurant"
         ? "/vendor/dashboard"
@@ -67,20 +77,27 @@ export async function notifyAdminMessageAudience(input: {
       })),
     );
 
+    const payload = { title: input.title, body: input.body, url };
+    const { broadcastPush, sendPushToUserIds } = await import("./push.server");
+
     // "Herkese" duyuru, cihaz listesinden bağımsız yayın konusuyla gider:
     // uygulamayı kurmuş her telefona ulaşır, giriş yapılmış olması gerekmez.
-    // Hedefli duyurular (işletmeler, tek işletme) doğal olarak belirli
-    // kullanıcıları hedeflediği için token ile gönderilmeye devam ediyor.
-    if (input.targetType === "all") {
-      const { broadcastPush } = await import("./push.server");
-      await broadcastPush(userIds, { title: input.title, body: input.body, url });
-    } else {
-      const { sendPushToUserIds } = await import("./push.server");
-      await sendPushToUserIds(userIds, { title: input.title, body: input.body, url });
-    }
+    // Hedefli duyurular (işletmeler, tek işletme) belirli kullanıcıları
+    // hedefliyor; onlar o kullanıcıların cihazlarına gönderilir.
+    const delivery =
+      input.targetType === "all"
+        ? await broadcastPush(userIds, payload)
+        : await sendPushToUserIds(userIds, payload);
+
+    return {
+      audience: userIds.length,
+      devices: delivery.devices,
+      broadcast: delivery.broadcast,
+    };
   } catch (error) {
     console.error("[admin-message-alert] push bildirimi başarısız", {
       code: error && typeof error === "object" && "code" in error ? error.code : undefined,
     });
+    return empty;
   }
 }

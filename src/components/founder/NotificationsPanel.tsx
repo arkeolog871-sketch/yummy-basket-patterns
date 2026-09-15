@@ -20,6 +20,28 @@ const TARGET_LABELS: Record<TargetType, string> = {
   restaurant: "Belirli bir işletme",
 };
 
+/**
+ * Gönderimin gerçekten kime ulaştığını söyler.
+ *
+ * Eskiden her durumda "Mesaj gönderildi" yazıyordu: hedef kitledeki kimsenin
+ * cihazı kayıtlı olmasa bile. Gönderen, bildirimin kimseye ulaşmadığını
+ * göremiyordu -- bu, sessizce yanlış çalışan bir özelliğin en kötü hâli.
+ */
+function describeDelivery(delivery?: {
+  audience: number;
+  devices: number;
+  broadcast: boolean;
+}): string {
+  if (!delivery || delivery.audience === 0) return "Mesaj kaydedildi, hedef kitlede kimse yok";
+  if (delivery.broadcast) {
+    return `Duyuru kurulu tüm uygulamalara yayınlandı (${delivery.audience} kayıtlı kullanıcı)`;
+  }
+  if (delivery.devices === 0) {
+    return `Mesaj kaydedildi ama hiçbir cihaza ulaşmadı: ${delivery.audience} kişinin hiçbirinde kayıtlı cihaz yok`;
+  }
+  return `Mesaj gönderildi · ${delivery.audience} kişiden ${delivery.devices} cihaza ulaştı`;
+}
+
 export function NotificationsPanel({ businesses }: { businesses: { id: string; name: string }[] }) {
   const { isFounder } = useSiteSettings();
   const queryClient = useQueryClient();
@@ -47,8 +69,8 @@ export function NotificationsPanel({ businesses }: { businesses: { id: string; n
           body: body.trim(),
         },
       }),
-    onSuccess: () => {
-      toast.success("Mesaj gönderildi");
+    onSuccess: (result) => {
+      toast.success(describeDelivery(result?.delivery), { duration: 8_000 });
       setTitle("");
       setBody("");
       void queryClient.invalidateQueries({ queryKey: ["admin-messages"] });
