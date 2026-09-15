@@ -77,7 +77,13 @@ export async function notifyAdminMessageAudience(input: {
       })),
     );
 
-    const payload = { title: input.title, body: input.body, url };
+    // Aynı duyurunun konu ve token kopyaları tek bildirime indirgensin.
+    const payload = {
+      title: input.title,
+      body: input.body,
+      url,
+      ...(input.messageId ? { collapseKey: input.messageId } : {}),
+    };
     const { broadcastPush, sendPushToUserIds } = await import("./push.server");
 
     // "Herkese" duyuru, cihaz listesinden bağımsız yayın konusuyla gider:

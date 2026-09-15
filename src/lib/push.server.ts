@@ -6,6 +6,8 @@ export type PushPayload = {
   title: string;
   body: string;
   url?: string;
+  /** Aynı duyurunun konu ve token kopyalarını tek bildirime indirger. */
+  collapseKey?: string;
 };
 
 /** FCM tarafındaki ömür sınırıyla aynı: bir günü geçen bildirim düşer. */
@@ -149,7 +151,12 @@ export async function broadcastPush(
 ): Promise<PushDelivery> {
   const { sendFcmTopicMessage } = await import("./fcm.server");
 
-  const [web, topic] = await Promise.all([
+  // Konu yayını yalnızca konuya abone olan sürümlere ulaşır; abonelik
+  // Android 2.15 ve iOS build 26 ile geldi. Kurulu eski sürümler konuya hiç
+  // abone değil, dolayısıyla yalnızca konuya göndermek onları tamamen dışarıda
+  // bırakıyordu -- kayıtlı cihazları olduğu hâlde. Bu yüzden kayıtlı her
+  // token'a da gönderiliyor; `collapseKey` iki kopyayı tek bildirime indirger.
+  const [web, topic, tokens] = await Promise.all([
     sendWebPush([...new Set(webPushUserIds)].filter(Boolean), payload).catch((error) => {
       console.error("[push] web push yayını başarısız", error);
       return 0;
@@ -158,6 +165,10 @@ export async function broadcastPush(
       console.error("[push] konu yayını başarısız", error);
       return "error" as const;
     }),
+    sendFcmToAllTokens(payload).catch((error) => {
+      console.error("[push] kayıtlı cihazlara yayın başarısız", error);
+      return 0;
+    }),
   ]);
 
   if (topic === "unconfigured") {
@@ -165,15 +176,46 @@ export async function broadcastPush(
       source: "server",
       message: "[push] FCM servis hesabı tanımlı değil: duyuru hiçbir native cihaza gönderilemiyor",
     });
-    return { web, devices: -1, broadcast: false };
+    return { web, devices: 0, broadcast: false };
   }
-  if (topic !== "sent" && web === 0) {
+  if (topic !== "sent" && web === 0 && tokens === 0) {
     await recordAppError({
       source: "server",
       message: `[push] duyuru yayınlanamadı (konu sonucu: ${topic}, web abonesi: ${web})`,
     });
   }
-  return { web, devices: -1, broadcast: topic === "sent" };
+  return { web, devices: tokens, broadcast: topic === "sent" };
+}
+
+/**
+ * Kayıtlı bütün cihazlara gönderir (kullanıcı süzgeci yok): duyuru herkese
+ * gidiyor ve token kaydı olan her telefon, hangi sürümü kullanırsa kullansın
+ * duyuruyu almalı.
+ */
+async function sendFcmToAllTokens(payload: PushPayload): Promise<number> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: tokens, error } = await supabaseAdmin.from("fcm_tokens").select("id, token");
+  if (error) {
+    await recordAppError({
+      source: "server",
+      message: `[push] cihaz kayıtları okunamadı: ${error.message}`,
+    });
+    return 0;
+  }
+  if (!tokens || tokens.length === 0) return 0;
+
+  const { sendFcmMessage } = await import("./fcm.server");
+  let delivered = 0;
+  await Promise.all(
+    tokens.map(async (row) => {
+      const result = await sendFcmMessage(row.token, payload);
+      if (result === "sent") delivered += 1;
+      if (result === "invalid_token") {
+        await supabaseAdmin.from("fcm_tokens").delete().eq("id", row.id);
+      }
+    }),
+  );
+  return delivered;
 }
 
 /**

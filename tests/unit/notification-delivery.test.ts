@@ -171,7 +171,13 @@ describe("gönderim sonucu geri bildirimi", () => {
 
   it("yayını ayrı anlatıyor", () => {
     expect(panel).toContain("delivery.broadcast");
-    expect(panel).toContain("kurulu tüm uygulamalara yayınlandı");
+    expect(panel).toContain("Duyuru yayınlandı");
+  });
+
+  /** FCM konuya abone cihaz olmasa da "başarılı" döner; sayı tek gerçek ölçü. */
+  it("yayında da kaç cihaza ulaştığını söylüyor", () => {
+    expect(panel).toContain("delivery.devices > 0");
+    expect(panel).toContain("kayıtlı hiçbir cihaza ulaşmadı");
   });
 
   it("koşulsuz başarı mesajı kalmadı", () => {

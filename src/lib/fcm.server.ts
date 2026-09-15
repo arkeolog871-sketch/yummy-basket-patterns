@@ -137,7 +137,7 @@ export const FCM_BROADCAST_TOPIC = "tum-cihazlar";
  * servis hesabı tanımlı değilse sessizce "unconfigured" döner. */
 export async function sendFcmMessage(
   token: string,
-  payload: { title: string; body: string; url?: string },
+  payload: FcmPayload,
 ): Promise<FcmSendResult> {
   return sendFcm({ token }, payload);
 }
@@ -147,17 +147,27 @@ export async function sendFcmMessage(
  * kaç cihaz olursa olsun -- token listesiyle tek tek göndermenin aksine
  * eşzamanlı ve cihaz sayısından bağımsız.
  */
-export async function sendFcmTopicMessage(payload: {
-  title: string;
-  body: string;
-  url?: string;
-}): Promise<FcmSendResult> {
+export async function sendFcmTopicMessage(payload: FcmPayload): Promise<FcmSendResult> {
   return sendFcm({ topic: FCM_BROADCAST_TOPIC }, payload);
 }
 
+/**
+ * `collapseKey`: aynı duyuru hem yayın konusundan hem de cihazın kendi
+ * token'ından gelebilir. İkisi de aynı anahtarı taşıdığında ikinci bildirim
+ * birincinin yerine geçer; kullanıcı tek kart görür. Android tarafında
+ * `notification.tag`, iOS tarafında `apns-collapse-id` bu işi yapıyor ve
+ * ikisi de sunucu tarafı ayardır — uygulama güncellemesi gerektirmez.
+ */
+export type FcmPayload = {
+  title: string;
+  body: string;
+  url?: string;
+  collapseKey?: string;
+};
+
 async function sendFcm(
   target: { token: string } | { topic: string },
-  payload: { title: string; body: string; url?: string },
+  payload: FcmPayload,
 ): Promise<FcmSendResult> {
   const account = readServiceAccount();
   if (!account) return "unconfigured";
@@ -185,6 +195,9 @@ async function sendFcm(
                 // Android'deki ttl'in iOS karşılığı. Burada süre değil mutlak
                 // zaman damgası isteniyor, o yüzden her gönderimde hesaplanır.
                 "apns-expiration": String(Math.floor(Date.now() / 1000) + TTL_SECONDS),
+                ...(payload.collapseKey
+                  ? { "apns-collapse-id": payload.collapseKey.slice(0, 64) }
+                  : {}),
               },
               payload: {
                 // Başlık ve gövde üstteki `notification` alanından geliyor;
@@ -209,6 +222,7 @@ async function sendFcm(
                 default_vibrate_timings: true,
                 // Kilit ekranında içeriğiyle görünsün.
                 visibility: "PUBLIC",
+                ...(payload.collapseKey ? { tag: payload.collapseKey } : {}),
               },
             },
           },

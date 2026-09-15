@@ -33,8 +33,13 @@ function describeDelivery(delivery?: {
   broadcast: boolean;
 }): string {
   if (!delivery || delivery.audience === 0) return "Mesaj kaydedildi, hedef kitlede kimse yok";
+  // FCM, konuya abone tek bir cihaz olmasa da yayını "başarılı" sayar. Bu
+  // yüzden yalnızca "yayınlandı" demek, hiçbir telefona ulaşmamış bir duyuruyu
+  // başarılı gösteriyordu. Kayıtlı cihaz sayısı ölçülebilen tek gerçek.
   if (delivery.broadcast) {
-    return `Duyuru kurulu tüm uygulamalara yayınlandı (${delivery.audience} kayıtlı kullanıcı)`;
+    return delivery.devices > 0
+      ? `Duyuru yayınlandı · ${delivery.devices} kayıtlı cihaza ulaştı, ayrıca güncel sürümü kuran telefonlara gönderildi`
+      : "Duyuru yayınlandı ama kayıtlı hiçbir cihaza ulaşmadı — yalnızca güncel sürümü kuranlar almış olabilir";
   }
   if (delivery.devices === 0) {
     return `Mesaj kaydedildi ama hiçbir cihaza ulaşmadı: ${delivery.audience} kişinin hiçbirinde kayıtlı cihaz yok`;
