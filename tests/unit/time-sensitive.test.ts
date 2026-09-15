@@ -38,6 +38,19 @@ describe("acil bildirim işareti", () => {
     expect(alert).not.toContain("urgent");
   });
 
+  /**
+   * Alan yalnızca entitlement varken işe yarıyor; ikisi birlikte anlamlı.
+   * Entitlement'ı App ID'de yetki açık olmadan eklemek imzalamayı bozar,
+   * o yüzden ikisinin de aynı anda var olması sabitleniyor.
+   */
+  it("uygulama entitlement'ı taşıyor", () => {
+    const entitlements = readFileSync(join(ROOT, "ios/App/App/App.entitlements"), "utf8");
+    expect(entitlements).toContain("com.apple.developer.usernotifications.time-sensitive");
+    expect(entitlements).toMatch(
+      /com\.apple\.developer\.usernotifications\.time-sensitive<\/key>\s*<true\/>/,
+    );
+  });
+
   it("Android tarafı bundan etkilenmiyor", () => {
     const androidBlock = fcm.slice(fcm.indexOf("android: {"));
     expect(androidBlock).not.toContain("interruption-level");
