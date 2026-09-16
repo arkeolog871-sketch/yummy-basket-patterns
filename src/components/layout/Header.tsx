@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useCanGoBack, useNavigate, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getUnreadNotificationCount } from "@/lib/notifications.functions";
@@ -11,6 +11,7 @@ import {
   MapPin,
   Search,
   ChevronDown,
+  ChevronLeft,
   Crown,
   Store,
   Bell,
@@ -51,6 +52,10 @@ export function Header() {
   const access = useAccess();
   const { areas } = useServiceAreas();
   const navigate = useNavigate();
+  // iOS'ta donanım geri tuşu yok; kabuğun kendi geri hareketi de kapalı.
+  // Yığında gerçekten geri gidilecek bir adım varsa düğme çizilir.
+  const router = useRouter();
+  const canGoBack = useCanGoBack();
   const queryClient = useQueryClient();
   const fetchUnread = useServerFn(getUnreadNotificationCount);
   const { data: unread } = useQuery({
@@ -106,6 +111,29 @@ export function Header() {
       }`}
     >
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
+        {/*
+          Geri düğmesi YALNIZCA iOS kabuğunda çizilir. Tarayıcının kendi geri
+          tuşu, Android'in donanım/hareket geri tuşu var; iOS kabuğunda ise
+          hiçbiri yok, kullanıcı bir alt sayfada sıkışıp kalıyordu.
+
+          Düğme akışın içinde duruyor, sabitlenmiyor: WKWebView'de `fixed` ve
+          `sticky` öğeler kendi derleme katmanına taşınıp ilk boyamada dokunma
+          bölgesini kurmuyor (başlığın yapışkanlığını bu yüzden kaldırdık).
+          Aynı kusuru yeni bir düğmeyle geri getirmenin anlamı yok.
+        */}
+        {iosShell && canGoBack ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Geri"
+            className="-ml-1 shrink-0 rounded-full"
+            onClick={() => router.history.back()}
+          >
+            <ChevronLeft className="size-5" />
+          </Button>
+        ) : null}
+
         <Link to="/" className="flex items-center gap-2">
           {settings.logo_url ? (
             <img
