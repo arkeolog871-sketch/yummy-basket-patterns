@@ -23,6 +23,7 @@ import { useAccess } from "@/hooks/useAccess";
 import { AccessDenied } from "@/components/auth/AccessDenied";
 import { PushNotificationButton } from "@/components/notifications/PushNotificationButton";
 import { readTwoFactorState, clearTwoFactorFlag } from "@/lib/two-factor";
+import { OverviewPanel } from "@/components/founder/OverviewPanel";
 import { SecurityPanel } from "@/components/founder/SecurityPanel";
 import { AppearancePanel } from "@/components/founder/AppearancePanel";
 import { TypographyPanel } from "@/components/founder/TypographyPanel";
@@ -320,6 +321,13 @@ function FounderDashboard({
           Yönetim verileri yüklenemedi. Sayfayı yenileyip tekrar deneyin.
         </p>
       ) : null}
+
+      {/*
+        Özet yalnızca sahibe görünür: toplam kullanıcı ve cihaz sayısı hesap
+        geneli bilgi, bölge yöneticisinin yetkisi kendi bölgesiyle sınırlı.
+        Sunucu tarafı da aynı sınırı ayrıca uyguluyor.
+      */}
+      {isOwner ? <OverviewPanel /> : null}
 
       <Tabs defaultValue={isOwner ? "gorunum" : "isletmeler"} className="mt-8">
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">

@@ -1241,3 +1241,134 @@ export const reviewDeletionRequest = createServerFn({ method: "POST" })
       },
     );
   });
+
+/**
+ * Panelin üstündeki özet kutusu.
+ *
+ * Amacı sayı göstermek değil, harekete geçirmek. Açılış günü şunu gördük:
+ * uygulama mağazada yayında ama beş işletmenin üçünün vitrini boş ve üçünün
+ * hiçbir cihazı bildirime kayıtlı değil — yani oraya düşen sipariş kimseye
+ * ulaşmaz. Bu iki sayı kurucunun her panel açışında gözüne çarpsın diye
+ * burada; geri kalanı bağlam.
+ *
+ * Yalnızca sahip görebilir: toplam kullanıcı ve cihaz sayısı hesap geneli
+ * bilgidir, bölge yöneticisinin yetkisi kendi bölgesiyle sınırlı.
+ */
+export const getFounderOverview = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { assertFounder } = await import("./founder.server");
+    await assertFounder(context.supabase, context.userId, context.claims as never);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const OPEN_STATUSES = ["pending", "confirmed", "preparing", "on_the_way"] as const;
+
+    /** Sayım sorgusu satır çekmez; büyüyen tablolarda tek maliyet count. */
+    async function countOf(
+      build: () => { then: PromiseLike<{ count: number | null; error: unknown }>["then"] },
+    ): Promise<number> {
+      const { count, error } = await (build() as unknown as Promise<{
+        count: number | null;
+        error: { message: string } | null;
+      }>);
+      if (error) throw new Error(error.message);
+      return count ?? 0;
+    }
+
+    const [
+      userTotal,
+      userRecent,
+      orderTotal,
+      orderRecent,
+      orderOpen,
+      pendingApplications,
+      pendingDeletions,
+    ] = await Promise.all([
+      countOf(() => supabaseAdmin.from("profiles").select("id", { count: "exact", head: true })),
+      countOf(() =>
+        supabaseAdmin
+          .from("profiles")
+          .select("id", { count: "exact", head: true })
+          .gte("created_at", since),
+      ),
+      countOf(() => supabaseAdmin.from("orders").select("id", { count: "exact", head: true })),
+      countOf(() =>
+        supabaseAdmin
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .gte("created_at", since),
+      ),
+      countOf(() =>
+        supabaseAdmin
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .in("status", OPEN_STATUSES),
+      ),
+      countOf(() =>
+        supabaseAdmin
+          .from("business_applications")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "pending"),
+      ),
+      countOf(() =>
+        supabaseAdmin
+          .from("account_deletion_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "pending"),
+      ),
+    ]);
+
+    // Aşağıdaki üç tablo küçük ve birbirine bağlı; tek tek sayım yerine
+    // satırları çekip eşleştirmek hem daha az gidiş geliş hem de "hangi
+    // işletme" sorusunu cevaplamayı mümkün kılıyor.
+    const [tokenRows, restaurantRows, itemRows, assignmentRows, lastOrderRow] = await Promise.all([
+      supabaseAdmin.from("fcm_tokens").select("token, device_id, user_id"),
+      supabaseAdmin.from("restaurants").select("id, name").eq("is_active", true),
+      supabaseAdmin.from("menu_items").select("restaurant_id").eq("is_available", true),
+      supabaseAdmin.from("vendor_assignments").select("user_id, restaurant_id"),
+      supabaseAdmin
+        .from("orders")
+        .select("created_at")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+
+    for (const row of [tokenRows, restaurantRows, itemRows, assignmentRows, lastOrderRow]) {
+      if (row.error) throw new Error(row.error.message);
+    }
+
+    // Aynı telefon jetonunu yenileyince yeni satır yazılıyor; cihaz kimliği
+    // olan satırlar onunla, olmayan eski satırlar jetonuyla tekilleşir.
+    const devices = new Set((tokenRows.data ?? []).map((row) => row.device_id ?? row.token));
+
+    const stockedRestaurants = new Set((itemRows.data ?? []).map((row) => row.restaurant_id));
+    const pushUsers = new Set((tokenRows.data ?? []).map((row) => row.user_id));
+    const reachableRestaurants = new Set(
+      (assignmentRows.data ?? [])
+        .filter((row) => pushUsers.has(row.user_id))
+        .map((row) => row.restaurant_id),
+    );
+
+    const active = restaurantRows.data ?? [];
+    const emptyCatalog = active.filter((row) => !stockedRestaurants.has(row.id));
+    const withoutPush = active.filter((row) => !reachableRestaurants.has(row.id));
+
+    return {
+      users: { total: userTotal, recent: userRecent, devices: devices.size },
+      businesses: {
+        active: active.length,
+        emptyCatalog: emptyCatalog.map((row) => row.name),
+        withoutPush: withoutPush.map((row) => row.name),
+      },
+      orders: {
+        total: orderTotal,
+        recent: orderRecent,
+        open: orderOpen,
+        lastAt: lastOrderRow.data?.created_at ?? null,
+      },
+      queue: { applications: pendingApplications, deletions: pendingDeletions },
+    };
+  });
