@@ -1,13 +1,13 @@
 export interface GoogleMap {
   setCenter(center: { lat: number; lng: number }): void;
   fitBounds(bounds: GoogleLatLngBounds): void;
-  addListener(event: string, handler: () => void): void;
+  addListener(event: string, handler: (event?: unknown) => void): void;
 }
 
 export interface GoogleMarker {
   setMap(map: GoogleMap | null): void;
   setPosition(position: { lat: number; lng: number }): void;
-  addListener(event: string, handler: () => void): void;
+  addListener(event: string, handler: (event?: unknown) => void): void;
 }
 
 export interface GoogleInfoWindow {

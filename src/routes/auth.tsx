@@ -39,6 +39,11 @@ import {
   returnToAndroidApp as returnToAndroidAppApple,
   startAppleOAuth,
 } from "@/lib/apple-oauth";
+import {
+  clearPostLoginIntent,
+  readPostLoginIntent,
+  resolvePostLoginTarget,
+} from "@/lib/post-login-intent";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

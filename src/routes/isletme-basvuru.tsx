@@ -19,7 +19,6 @@ import { useNativeGoogleSignIn } from "@/hooks/useNativeGoogleSignIn";
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { slugify, formatDateTime } from "@/lib/format";
 import { toPublicErrorMessage } from "@/lib/public-error";
-import { LATITUDE_FIELD_PLACEHOLDER, LONGITUDE_FIELD_PLACEHOLDER } from "@/lib/location";
 import { parseDecimalInput } from "@/lib/decimal-input";
 import {
   submitBusinessApplication,
@@ -30,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { LocationPicker } from "@/components/business/LocationPicker";
 
 export const Route = createFileRoute("/isletme-basvuru")({
   head: () => ({
@@ -336,6 +336,10 @@ function BusinessApplicationPage() {
             toast.error("Kategori seçin.");
             return;
           }
+          if (!form.latitude.trim() || !form.longitude.trim()) {
+            toast.error("Haritadan işletmenizin konumunu işaretleyin.");
+            return;
+          }
           const numbers = readNumbers();
           if (!numbers) return;
           submitMutation.mutate(numbers);
@@ -482,20 +486,20 @@ function BusinessApplicationPage() {
               required
             />
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <Input
-              placeholder={LATITUDE_FIELD_PLACEHOLDER}
-              value={form.latitude}
-              onChange={(event) => setForm({ ...form, latitude: event.target.value })}
-              required
-            />
-            <Input
-              placeholder={LONGITUDE_FIELD_PLACEHOLDER}
-              value={form.longitude}
-              onChange={(event) => setForm({ ...form, longitude: event.target.value })}
-              required
-            />
-          </div>
+          <LocationPicker
+            value={
+              form.latitude.trim() && form.longitude.trim()
+                ? { lat: Number(form.latitude), lng: Number(form.longitude) }
+                : null
+            }
+            onChange={(point) =>
+              setForm((prev) => ({
+                ...prev,
+                latitude: point.lat.toFixed(6),
+                longitude: point.lng.toFixed(6),
+              }))
+            }
+          />
           <Input
             placeholder="WhatsApp konum veya Google Maps bağlantısı (https://maps…, isteğe bağlı)"
             value={form.maps_url}
