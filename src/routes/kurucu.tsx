@@ -18,6 +18,8 @@ import {
   Search,
   ArrowUp,
   ArrowDown,
+  ImagePlus,
+  X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -1306,10 +1308,43 @@ const emptyItem = {
   stock_quantity: 100,
 };
 
+// Kurucunun işletme adına yüklediği ürün fotoğrafı; sunucu tarafındaki
+// menuItemImageSchema ile aynı türler ve boyut sınırı (~4MB).
+const MENU_IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/avif"];
+const MENU_IMAGE_MAX_BYTES = 4 * 1024 * 1024;
+
+type PickedImage = { fileName: string; contentType: string; base64: string; previewUrl: string };
+
+function readMenuImageFile(file: File): Promise<PickedImage> {
+  return new Promise((resolve, reject) => {
+    if (!MENU_IMAGE_TYPES.includes(file.type)) {
+      reject(new Error("Yalnızca PNG, JPG, WEBP veya AVIF yükleyebilirsiniz."));
+      return;
+    }
+    if (file.size > MENU_IMAGE_MAX_BYTES) {
+      reject(new Error("Görsel 4 MB'tan küçük olmalı."));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result);
+      const base64 = result.includes(",") ? result.slice(result.indexOf(",") + 1) : "";
+      if (!base64) {
+        reject(new Error("Görsel okunamadı, tekrar deneyin."));
+        return;
+      }
+      resolve({ fileName: file.name, contentType: file.type, base64, previewUrl: result });
+    };
+    reader.onerror = () => reject(new Error("Görsel okunamadı, tekrar deneyin."));
+    reader.readAsDataURL(file);
+  });
+}
+
 function MenuItemPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDone: () => void }) {
   const save = useServerFn(saveMenuItem);
   const remove = useServerFn(deleteMenuItem);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [pickedImage, setPickedImage] = useState<PickedImage | null>(null);
   const [form, setForm] = useState(emptyItem);
   const catalog = useBusinessCatalog(form.restaurant_id);
   const categories = catalog.data?.categories ?? [];
@@ -1326,6 +1361,13 @@ function MenuItemPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
           description: form.description || null,
           price: Number(form.price),
           image_url: form.image_url || null,
+          image: pickedImage
+            ? {
+                fileName: pickedImage.fileName,
+                contentType: pickedImage.contentType,
+                base64: pickedImage.base64,
+              }
+            : null,
           is_popular: form.is_popular,
           is_available: form.is_available,
           stock_quantity: Number(form.stock_quantity),
@@ -1335,6 +1377,7 @@ function MenuItemPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
       toast.success(editingId ? "Ürün güncellendi" : "Ürün eklendi");
       setEditingId(null);
       setForm({ ...emptyItem, restaurant_id: form.restaurant_id });
+      setPickedImage(null);
       onDone();
     },
     onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
@@ -1362,7 +1405,10 @@ function MenuItemPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
         <BusinessSelect
           businesses={businesses}
           value={form.restaurant_id}
-          onChange={(restaurant_id) => setForm({ ...form, restaurant_id, category_id: "" })}
+          onChange={(restaurant_id) => {
+            setForm({ ...form, restaurant_id, category_id: "" });
+            setPickedImage(null);
+          }}
           required
         />
         <select
@@ -1396,11 +1442,58 @@ function MenuItemPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
           value={form.price}
           onChange={(event) => setForm({ ...form, price: Number(event.target.value) })}
         />
-        <Input
-          placeholder="Görsel adresi"
-          value={form.image_url}
-          onChange={(event) => setForm({ ...form, image_url: event.target.value })}
-        />
+        {/* Ürün fotoğrafı: esnaf URL üretemediği için kurucu telefondan/galeriden
+            doğrudan yükler. Bir fotoğraf seçilince kaydetmede depoya yüklenir ve
+            image_url onunla değişir. Metin URL alanı gelişmiş seçenek olarak durur. */}
+        <div className="space-y-2 rounded-2xl border border-border p-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-medium">Ürün fotoğrafı</span>
+            {(pickedImage || form.image_url) && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="rounded-full text-destructive"
+                onClick={() => {
+                  setPickedImage(null);
+                  setForm((current) => ({ ...current, image_url: "" }));
+                }}
+              >
+                <X className="size-4" /> Görseli kaldır
+              </Button>
+            )}
+          </div>
+          {(pickedImage?.previewUrl || form.image_url) && (
+            <img
+              src={pickedImage?.previewUrl || form.image_url}
+              alt="Ürün önizleme"
+              className="h-32 w-full rounded-xl border border-border object-cover"
+            />
+          )}
+          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border px-3 py-3 text-sm text-muted-foreground hover:bg-muted/40">
+            <ImagePlus className="size-4" />
+            {pickedImage ? "Farklı fotoğraf seç" : "Telefondan/galeriden fotoğraf yükle"}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/avif"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (!file) return;
+                readMenuImageFile(file)
+                  .then((picked) => setPickedImage(picked))
+                  .catch((error: Error) => toast.error(error.message));
+              }}
+            />
+          </label>
+          <Input
+            placeholder="veya görsel adresi (https://…)"
+            value={form.image_url}
+            onChange={(event) => setForm({ ...form, image_url: event.target.value })}
+            disabled={Boolean(pickedImage)}
+          />
+        </div>
         <Input
           type="number"
           min={0}
@@ -1434,6 +1527,7 @@ function MenuItemPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
               onClick={() => {
                 setEditingId(null);
                 setForm(emptyItem);
+                setPickedImage(null);
               }}
             >
               Vazgeç
@@ -1471,6 +1565,7 @@ function MenuItemPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
                   aria-label="Düzenle"
                   onClick={() => {
                     setEditingId(item.id);
+                    setPickedImage(null);
                     setForm({
                       restaurant_id: item.restaurant_id,
                       category_id: item.category_id ?? "",

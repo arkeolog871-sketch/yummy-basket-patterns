@@ -264,6 +264,17 @@ const menuCategorySchema = z.object({
   position: z.number().int().min(0).max(999).default(0),
 });
 
+// Kurucunun/sayfa yöneticisinin işletme adına yüklediği ürün fotoğrafı.
+// data URL öneki olmadan base64; vendor tarafındaki sınırlarla aynı (~4MB).
+const menuItemImageSchema = z.object({
+  fileName: z.string().trim().min(1).max(160),
+  contentType: z
+    .string()
+    .trim()
+    .regex(/^image\/(png|jpeg|jpg|webp|avif)$/, "Desteklenmeyen görsel türü"),
+  base64: z.string().min(16).max(6_000_000),
+});
+
 const menuItemSchema = z.object({
   id: z.string().uuid().optional(),
   restaurant_id: z.string().uuid(),
@@ -272,6 +283,9 @@ const menuItemSchema = z.object({
   description: z.string().trim().max(300).nullable().default(null),
   price: z.number().min(0).max(100000),
   image_url: z.string().trim().max(500).nullable().default(null),
+  // Telefondan/galeriden yüklenen fotoğraf (opsiyonel). Varsa yüklenip
+  // image_url onunla değiştirilir; yoksa image_url metni kullanılır.
+  image: menuItemImageSchema.nullable().optional(),
   is_popular: z.boolean().default(false),
   is_available: z.boolean().default(true),
   stock_quantity: z.number().int().min(0).max(1_000_000).default(100),
@@ -865,8 +879,20 @@ export const saveMenuItem = createServerFn({ method: "POST" })
       context.userId,
       context.claims as never,
     );
-    const { id, ...values } = data;
+    const { id, image, ...values } = data;
     await assertRestaurantInScope(access, values.restaurant_id);
+    // Fotoğraf yüklendiyse önce depoya koy, sonra image_url'i onunla değiştir.
+    // Yükleme service-role ile yapılır; kurucu/sayfa yöneticisi işletme adına
+    // görsel ekleyebilsin diye vendor'ın kendi kovası (product-images) kullanılır.
+    if (image) {
+      const { uploadRestaurantImage } = await import("./vendor-media.server");
+      const uploaded = await uploadRestaurantImage({
+        bucket: "product-images",
+        restaurantId: values.restaurant_id,
+        ...image,
+      });
+      values.image_url = uploaded.url;
+    }
     return audited(
       {
         actorId: context.userId,
