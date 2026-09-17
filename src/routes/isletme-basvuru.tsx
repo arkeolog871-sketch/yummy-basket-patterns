@@ -369,9 +369,13 @@ function BusinessApplicationPage() {
           <Label>Kısa tanıtım</Label>
           <Textarea
             value={form.tagline}
-            onChange={(event) => setForm({ ...form, tagline: event.target.value })}
+            onChange={(event) => setForm({ ...form, tagline: event.target.value.slice(0, 160) })}
+            maxLength={160}
             required
           />
+          {/* Sunucu 160 karakterle sınırlıyor; sınırı burada da göstererek
+              esnafın uzun tanıtım yazıp gönderimde hata almasını engelliyoruz. */}
+          <p className="text-right text-xs text-muted-foreground">{form.tagline.length}/160</p>
         </div>
 
         <div className="space-y-2">

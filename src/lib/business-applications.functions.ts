@@ -11,17 +11,29 @@ const applicationSchema = z.object({
   slug: z
     .string()
     .trim()
-    .min(2)
-    .max(60)
+    .min(2, "Bağlantı adı en az 2 karakter olmalı")
+    .max(60, "Bağlantı adı en fazla 60 karakter olabilir")
     .regex(/^[a-z0-9-]+$/, "Sadece küçük harf, rakam ve tire"),
-  name: z.string().trim().min(2).max(80),
-  tagline: z.string().trim().min(2, "Kısa tanıtım girin").max(160),
-  category: z.string().trim().min(2, "Alt tür girin").max(40),
+  name: z
+    .string()
+    .trim()
+    .min(2, "İşletme adı en az 2 karakter olmalı")
+    .max(80, "İşletme adı en fazla 80 karakter olabilir"),
+  tagline: z
+    .string()
+    .trim()
+    .min(2, "Kısa tanıtım girin")
+    .max(160, "Kısa tanıtım en fazla 160 karakter olabilir"),
+  category: z
+    .string()
+    .trim()
+    .min(2, "Alt tür girin")
+    .max(40, "Alt tür en fazla 40 karakter olabilir"),
   sector: z
     .string()
     .trim()
-    .min(2)
-    .max(40)
+    .min(2, "Kategori seçin")
+    .max(40, "Kategori değeri en fazla 40 karakter olabilir")
     .regex(/^[a-z0-9-]+$/, "Sadece küçük harf, rakam ve tire"),
   cuisines: z.array(z.string().trim().max(30)).max(8).default([]),
   // Sayı alanlarında tip hatası mesajı açıkça yazılıyor: Zod'un varsayılanı
@@ -51,9 +63,13 @@ const applicationSchema = z.object({
       (value) => !value || /^https?:\/\//i.test(value),
       "Geçerli bir görsel bağlantısı girin",
     ),
-  address: z.string().trim().min(5, "Açık adres girin").max(240),
-  district: z.string().trim().min(2, "İlçe girin").max(80),
-  city: z.string().trim().min(2, "Şehir girin").max(80),
+  address: z
+    .string()
+    .trim()
+    .min(5, "Açık adres girin")
+    .max(240, "Adres en fazla 240 karakter olabilir"),
+  district: z.string().trim().min(2, "İlçe girin").max(80, "İlçe en fazla 80 karakter olabilir"),
+  city: z.string().trim().min(2, "Şehir girin").max(80, "Şehir en fazla 80 karakter olabilir"),
   latitude: z.number({ invalid_type_error: "Enlemi sayı olarak girin" }).min(-90).max(90),
   longitude: z.number({ invalid_type_error: "Boylamı sayı olarak girin" }).min(-180).max(180),
   maps_url: z
@@ -66,15 +82,19 @@ const applicationSchema = z.object({
   contact_email: z
     .string()
     .trim()
-    .max(160)
+    .max(160, "E-posta en fazla 160 karakter olabilir")
     .email("Geçerli bir e-posta girin")
     .transform((value) => value.toLowerCase()),
   contact_phone: z
     .string()
     .trim()
-    .max(30)
+    .max(30, "Telefon numarası en fazla 30 karakter olabilir")
     .regex(/^[0-9+()\s-]{10,30}$/, "Geçerli bir telefon numarası girin"),
-  contact_person: z.string().trim().min(2, "Yetkili ad soyad girin").max(120),
+  contact_person: z
+    .string()
+    .trim()
+    .min(2, "Yetkili ad soyad girin")
+    .max(120, "Yetkili adı en fazla 120 karakter olabilir"),
   opens_at: z
     .string()
     .trim()
