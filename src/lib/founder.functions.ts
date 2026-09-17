@@ -191,6 +191,18 @@ export const listAdminMessages = createServerFn({ method: "GET" })
     }),
   );
 
+// Kurucunun/sayfa yöneticisinin işletme adına yüklediği görsel (ürün fotoğrafı
+// veya işletme kapak görseli). data URL öneki olmadan base64; vendor tarafındaki
+// sınırlarla aynı (~4MB, PNG/JPG/WEBP/AVIF).
+const uploadedImageSchema = z.object({
+  fileName: z.string().trim().min(1).max(160),
+  contentType: z
+    .string()
+    .trim()
+    .regex(/^image\/(png|jpeg|jpg|webp|avif)$/, "Desteklenmeyen görsel türü"),
+  base64: z.string().min(16).max(6_000_000),
+});
+
 const businessSchema = z.object({
   id: z.string().uuid().optional(),
   slug: z
@@ -214,6 +226,9 @@ const businessSchema = z.object({
   delivery_fee: z.number().min(0).max(10000),
   min_order: z.number().min(0).max(100000),
   cover_image_url: z.string().trim().max(500).nullable().default(null),
+  // Telefondan/galeriden yüklenen kapak görseli (opsiyonel). Varsa yüklenip
+  // cover_image_url onunla değiştirilir; yoksa metin alanı kullanılır.
+  coverImage: uploadedImageSchema.nullable().optional(),
   address: z.string().trim().max(240).nullable().default(null),
   district: z.string().trim().max(80).nullable().default(null),
   city: z.string().trim().max(80).nullable().default(null),
@@ -264,17 +279,6 @@ const menuCategorySchema = z.object({
   position: z.number().int().min(0).max(999).default(0),
 });
 
-// Kurucunun/sayfa yöneticisinin işletme adına yüklediği ürün fotoğrafı.
-// data URL öneki olmadan base64; vendor tarafındaki sınırlarla aynı (~4MB).
-const menuItemImageSchema = z.object({
-  fileName: z.string().trim().min(1).max(160),
-  contentType: z
-    .string()
-    .trim()
-    .regex(/^image\/(png|jpeg|jpg|webp|avif)$/, "Desteklenmeyen görsel türü"),
-  base64: z.string().min(16).max(6_000_000),
-});
-
 const menuItemSchema = z.object({
   id: z.string().uuid().optional(),
   restaurant_id: z.string().uuid(),
@@ -285,7 +289,7 @@ const menuItemSchema = z.object({
   image_url: z.string().trim().max(500).nullable().default(null),
   // Telefondan/galeriden yüklenen fotoğraf (opsiyonel). Varsa yüklenip
   // image_url onunla değiştirilir; yoksa image_url metni kullanılır.
-  image: menuItemImageSchema.nullable().optional(),
+  image: uploadedImageSchema.nullable().optional(),
   is_popular: z.boolean().default(false),
   is_available: z.boolean().default(true),
   stock_quantity: z.number().int().min(0).max(1_000_000).default(100),
@@ -571,11 +575,26 @@ export const saveBusiness = createServerFn({ method: "POST" })
         context.userId,
         context.claims as never,
       );
-      const { id, ...values } = data;
+      const { id, coverImage, ...values } = data;
       // Bölge yöneticisi yalnızca kendi bölgesindeki işletmeyi düzenleyebilir ve
       // yeni işletmeyi de yalnızca kendi bölgesine ekleyebilir.
       if (id) await assertRestaurantInScope(access, id);
       assertRegionAllowed(access, values.city, values.district);
+      // Kimlik önceden üretilir ki yüklenen kapak görselinin depo yolu (restoran
+      // klasörü) hem yeni hem mevcut işletmede tutarlı olsun.
+      const businessId = id ?? crypto.randomUUID();
+      // Kapak görseli yüklendiyse önce depoya koy, sonra cover_image_url'i
+      // onunla değiştir. Yükleme service-role ile yapılır; kurucu/sayfa
+      // yöneticisi işletme adına görsel ekleyebilsin diye business-images kovası.
+      if (coverImage) {
+        const { uploadRestaurantImage } = await import("./vendor-media.server");
+        const uploaded = await uploadRestaurantImage({
+          bucket: "business-images",
+          restaurantId: businessId,
+          ...coverImage,
+        });
+        values.cover_image_url = uploaded.url;
+      }
       return audited(
         {
           actorId: context.userId,
@@ -587,7 +606,6 @@ export const saveBusiness = createServerFn({ method: "POST" })
         },
         async () => {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-          const businessId = id ?? crypto.randomUUID();
           const createdBusiness = !id;
           // Yayın durumu (is_active) artık KURUCUNUN seçimidir; vendor
           // e-postasının doğrulanmasına bağlı değil. Vendor, e-postasını işletme

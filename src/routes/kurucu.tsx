@@ -695,6 +695,7 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
   const { categories } = useAppCategories();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyBusiness);
+  const [pickedCover, setPickedCover] = useState<PickedImage | null>(null);
   const [search, setSearch] = useState("");
   const activeSector = form.sector || categories[0]?.slug || "";
   const visibleBusinesses = businesses.filter((business) =>
@@ -728,6 +729,13 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
           delivery_fee: Number(form.delivery_fee),
           min_order: Number(form.min_order),
           cover_image_url: form.cover_image_url || null,
+          coverImage: pickedCover
+            ? {
+                fileName: pickedCover.fileName,
+                contentType: pickedCover.contentType,
+                base64: pickedCover.base64,
+              }
+            : null,
           address: form.address.trim() || null,
           district: form.district.trim() || null,
           city: form.city.trim() || null,
@@ -757,6 +765,7 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
       );
       setEditingId(null);
       setForm(emptyBusiness);
+      setPickedCover(null);
       onDone();
     },
     onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
@@ -874,11 +883,58 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
             onChange={(event) => setForm({ ...form, min_order: Number(event.target.value) })}
           />
         </div>
-        <Input
-          placeholder="Görsel adresi"
-          value={form.cover_image_url}
-          onChange={(event) => setForm({ ...form, cover_image_url: event.target.value })}
-        />
+        {/* İşletme kapak görseli: esnaf URL üretemediği için kurucu telefondan/
+            galeriden doğrudan yükler. Seçilen görsel kaydetmede depoya yüklenir
+            ve cover_image_url onunla değişir. Metin URL alanı gelişmiş seçenek. */}
+        <div className="space-y-2 rounded-2xl border border-border p-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-medium">İşletme kapak görseli</span>
+            {(pickedCover || form.cover_image_url) && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="rounded-full text-destructive"
+                onClick={() => {
+                  setPickedCover(null);
+                  setForm((current) => ({ ...current, cover_image_url: "" }));
+                }}
+              >
+                <X className="size-4" /> Görseli kaldır
+              </Button>
+            )}
+          </div>
+          {(pickedCover?.previewUrl || form.cover_image_url) && (
+            <img
+              src={pickedCover?.previewUrl || form.cover_image_url}
+              alt="İşletme kapak önizleme"
+              className="h-32 w-full rounded-xl border border-border object-cover"
+            />
+          )}
+          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border px-3 py-3 text-sm text-muted-foreground hover:bg-muted/40">
+            <ImagePlus className="size-4" />
+            {pickedCover ? "Farklı görsel seç" : "Telefondan/galeriden kapak görseli yükle"}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/avif"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (!file) return;
+                readUploadImageFile(file)
+                  .then((picked) => setPickedCover(picked))
+                  .catch((error: Error) => toast.error(error.message));
+              }}
+            />
+          </label>
+          <Input
+            placeholder="veya görsel adresi (https://…)"
+            value={form.cover_image_url}
+            onChange={(event) => setForm({ ...form, cover_image_url: event.target.value })}
+            disabled={Boolean(pickedCover)}
+          />
+        </div>
         <div className="space-y-2 rounded-2xl border border-border p-3">
           <p className="text-xs font-medium text-muted-foreground">
             Konum (isteğe bağlı) — WhatsApp konum linki yol tarifinde Google Haritalar ile açılır
@@ -1000,6 +1056,7 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
               onClick={() => {
                 setEditingId(null);
                 setForm(emptyBusiness);
+                setPickedCover(null);
               }}
             >
               Vazgeç
@@ -1074,6 +1131,7 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
                     aria-label="Düzenle"
                     onClick={() => {
                       setEditingId(business.id);
+                      setPickedCover(null);
                       setForm({
                         slug: business.slug,
                         name: business.name,
@@ -1308,20 +1366,20 @@ const emptyItem = {
   stock_quantity: 100,
 };
 
-// Kurucunun işletme adına yüklediği ürün fotoğrafı; sunucu tarafındaki
-// menuItemImageSchema ile aynı türler ve boyut sınırı (~4MB).
-const MENU_IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/avif"];
-const MENU_IMAGE_MAX_BYTES = 4 * 1024 * 1024;
+// Kurucunun işletme adına yüklediği görsel (ürün fotoğrafı veya işletme kapak
+// görseli); sunucudaki uploadedImageSchema ile aynı türler ve boyut sınırı (~4MB).
+const UPLOAD_IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/avif"];
+const UPLOAD_IMAGE_MAX_BYTES = 4 * 1024 * 1024;
 
 type PickedImage = { fileName: string; contentType: string; base64: string; previewUrl: string };
 
-function readMenuImageFile(file: File): Promise<PickedImage> {
+function readUploadImageFile(file: File): Promise<PickedImage> {
   return new Promise((resolve, reject) => {
-    if (!MENU_IMAGE_TYPES.includes(file.type)) {
+    if (!UPLOAD_IMAGE_TYPES.includes(file.type)) {
       reject(new Error("Yalnızca PNG, JPG, WEBP veya AVIF yükleyebilirsiniz."));
       return;
     }
-    if (file.size > MENU_IMAGE_MAX_BYTES) {
+    if (file.size > UPLOAD_IMAGE_MAX_BYTES) {
       reject(new Error("Görsel 4 MB'tan küçük olmalı."));
       return;
     }
@@ -1481,7 +1539,7 @@ function MenuItemPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
                 const file = event.target.files?.[0];
                 event.target.value = "";
                 if (!file) return;
-                readMenuImageFile(file)
+                readUploadImageFile(file)
                   .then((picked) => setPickedImage(picked))
                   .catch((error: Error) => toast.error(error.message));
               }}
