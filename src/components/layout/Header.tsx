@@ -224,7 +224,17 @@ export function Header() {
               ) : null}
             </Link>
           </Button>
-          <Button asChild variant="secondary" className="relative rounded-full">
+          {/*
+            Bildirimler düğmesi bilerek sıcak tonda: marka rengi kurucu
+            panelinden geliyor (`--warm`) ve metin kontrastı warm-contrast
+            ile otomatik seçiliyor, o yüzden koyu bir warm seçilse de yazı
+            okunur kalıyor. Sepet ikincil tonda kalıyor ki ikisi ayrışsın.
+          */}
+          <Button
+            asChild
+            variant="secondary"
+            className="relative rounded-full bg-warm text-warm-foreground hover:bg-warm/85"
+          >
             <Link to="/bildirimler" aria-label="Bildirimler">
               <Bell className="size-4" />
               <span className="hidden sm:inline">Bildirimler</span>
