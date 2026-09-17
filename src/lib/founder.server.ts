@@ -119,16 +119,23 @@ async function rollbackNewVendorUser(userId: string, email: string): Promise<voi
   await clearGuard(email);
 }
 
-async function sendVendorSignupCode(email: string): Promise<void> {
-  const { sendSixDigitOtp, hashEmail, EMAIL_SEND_FAILED_MESSAGE } = await import("./otp.server");
+/**
+ * Vendor doğrulama kodunu gönderir. Gönderim başarısızsa HATA FIRLATMAZ —
+ * hesap yine oluşturulur/atanır ve işletme yayına alınabilir. Vendor,
+ * e-postasını işletme paneline ilk girişte doğrular (bkz. vendor.dashboard
+ * e-posta doğrulama ekranı). Böylece geçici bir e-posta arızası kurucuyu
+ * işletme açmaktan alıkoymaz. Dönen değer: kod gerçekten gönderildi mi.
+ */
+async function sendVendorSignupCode(email: string): Promise<boolean> {
+  const { sendSixDigitOtp, hashEmail } = await import("./otp.server");
   const sent = await sendSixDigitOtp(email, "signup");
-  if (sent.ok) return;
+  if (sent.ok) return true;
   console.error("[vendor-signup] doğrulama e-postası gönderilemedi", {
     emailHash: hashEmail(email),
     message: sent.error,
     retryAfterSeconds: sent.retryAfterSeconds ?? null,
   });
-  throw new Error(EMAIL_SEND_FAILED_MESSAGE);
+  return false;
 }
 
 /**
@@ -169,8 +176,7 @@ export async function ensureBusinessVendorAccount(
       const emailVerified = await isEmailVerified(currentAssignment.user_id);
       let verificationSent = false;
       if (!emailVerified) {
-        await sendVendorSignupCode(email);
-        verificationSent = true;
+        verificationSent = await sendVendorSignupCode(email);
       }
       return {
         userId: currentAssignment.user_id,
@@ -225,13 +231,10 @@ export async function ensureBusinessVendorAccount(
   const emailVerified = await isEmailVerified(matchedUserId);
   let verificationSent = false;
   if (!emailVerified) {
-    try {
-      await sendVendorSignupCode(email);
-      verificationSent = true;
-    } catch (error) {
-      if (created) await rollbackNewVendorUser(matchedUserId, email);
-      throw error;
-    }
+    // Kod gönderilemese bile yeni hesap silinmez: geçerli bir hesaptır, vendor
+    // e-postasını işletme paneline ilk girişte doğrular. Rollback yalnızca
+    // gerçek hatalar için (yukarıdaki atama çakışmaları).
+    verificationSent = await sendVendorSignupCode(email);
   }
 
   if (previousVendorUserId && previousVendorUserId !== matchedUserId) {

@@ -575,13 +575,13 @@ export const saveBusiness = createServerFn({ method: "POST" })
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const businessId = id ?? crypto.randomUUID();
           const createdBusiness = !id;
+          // Yayın durumu (is_active) artık KURUCUNUN seçimidir; vendor
+          // e-postasının doğrulanmasına bağlı değil. Vendor, e-postasını işletme
+          // paneline ilk girişte doğrular (vendor.dashboard doğrulama ekranı).
+          // Böylece geçici bir e-posta arızası işletmeyi yayına almayı engellemez.
           const { error } = id
             ? await supabaseAdmin.from("restaurants").update(values).eq("id", id)
-            : await supabaseAdmin.from("restaurants").insert({
-                ...values,
-                id: businessId,
-                is_active: false,
-              });
+            : await supabaseAdmin.from("restaurants").insert({ ...values, id: businessId });
           if (error) throw new Error(error.message);
           try {
             const vendor = await ensureBusinessVendorAccount({
@@ -591,19 +591,6 @@ export const saveBusiness = createServerFn({ method: "POST" })
               email: values.contact_email,
               phone: values.contact_phone,
             });
-            if (!vendor.emailVerified) {
-              const { error: inactiveError } = await supabaseAdmin
-                .from("restaurants")
-                .update({ is_active: false })
-                .eq("id", businessId);
-              if (inactiveError) throw new Error(inactiveError.message);
-            } else if (createdBusiness) {
-              const { error: activeError } = await supabaseAdmin
-                .from("restaurants")
-                .update({ is_active: values.is_active })
-                .eq("id", businessId);
-              if (activeError) throw new Error(activeError.message);
-            }
             return {
               ok: true,
               vendorLinked: true,
