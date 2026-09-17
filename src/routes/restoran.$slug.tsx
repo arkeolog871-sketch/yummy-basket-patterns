@@ -293,7 +293,14 @@ function RestaurantDetail() {
         </Dialog>
 
         <div className="grid gap-8 py-10 lg:grid-cols-[1fr_320px]">
-          <div className="space-y-10">
+          {/* min-w-0: grid öğelerinin varsayılan min-width'i "auto"dur, yani
+              içeriğin min-content genişliği kadar küçülebilirler. Ürün adı
+              `truncate` (white-space: nowrap) olduğu için tam metin genişliği
+              buraya kadar yayılıyor ve grid kolonunu viewport'un ötesine
+              (ör. 490px) şişiriyordu; satırın sağ ucundaki "sepete ekle"
+              butonu da ekran dışında kalıp erişilemez oluyordu. min-w-0 ile
+              kolon viewport'a sığar ve ürün adı düzgünce üç noktayla kırpılır. */}
+          <div className="min-w-0 space-y-10">
             {menuGroups.length === 0 ? (
               <div className="rounded-3xl border border-dashed border-border bg-card p-10 text-center">
                 <p className="font-semibold">Bu işletmede şu an menü yok</p>
@@ -359,7 +366,7 @@ function RestaurantDetail() {
             )}
           </div>
 
-          <aside className="h-fit rounded-3xl border border-border/70 bg-card p-5 shadow-card lg:sticky lg:top-24">
+          <aside className="h-fit min-w-0 rounded-3xl border border-border/70 bg-card p-5 shadow-card lg:sticky lg:top-24">
             <h2 className="text-lg">Sepetim</h2>
             {cart.lines.length === 0 || cart.restaurant?.id !== restaurant.id ? (
               <p className="mt-3 text-sm text-muted-foreground">
