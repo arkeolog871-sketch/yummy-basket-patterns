@@ -239,7 +239,12 @@ export function Header() {
               <Bell className="size-4" />
               <span className="hidden sm:inline">Bildirimler</span>
               {unreadCount > 0 ? (
-                <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-accent text-[11px] font-semibold text-accent-foreground">
+                // Rozet, düğmenin sıcak tonunun TERSİ: açık zemin + sıcak renkte
+                // sayı. warm ve warm-foreground warm-contrast ile zıt seçildiği
+                // için hangi marka rengi seçilirse seçilsin sayı okunur kalıyor;
+                // düğmenin kendisi tek renk olduğundan ters rozet üstünde belirgin
+                // duruyor. İnce sıcak halka, açık rozeti krem sayfa üstünde de ayırıyor.
+                <span className="absolute -right-1 -top-1 flex min-w-5 items-center justify-center rounded-full bg-warm-foreground px-1 text-[11px] font-bold text-warm ring-2 ring-warm">
                   {unreadCount > 99 ? "99+" : unreadCount}
                 </span>
               ) : null}
