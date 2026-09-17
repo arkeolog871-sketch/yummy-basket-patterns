@@ -43,7 +43,10 @@ export function SplashScreen({ ready }: { ready: boolean }) {
       <img
         src="/logo-mark.png"
         alt=""
-        className="h-[52vw] w-[52vw] max-h-80 max-w-80 rounded-[28%] sm:h-72 sm:w-72"
+        // Sabit ve viewport'a bağlı sınırlar: görselin doğal genişliği (512px)
+        // mobilde ekranı taşırıp yatay kaydırmaya yol açıyordu. w-64 (256px)
+        // her koşulda ekrana sığar; max-w ile küçük ekranlarda da güvence altında.
+        className="h-64 w-64 max-h-[70vw] max-w-[70vw] rounded-[28%] object-contain sm:h-72 sm:w-72"
       />
     </div>
   );

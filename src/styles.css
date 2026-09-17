@@ -115,8 +115,10 @@
   --sidebar-border: oklch(0.906 0.022 76);
   --sidebar-ring: oklch(0.745 0.152 52);
 
-  --elevation-card: 0 1px 2px oklch(0.301 0.012 62 / 0.04), 0 8px 24px -12px oklch(0.301 0.012 62 / 0.14);
-  --elevation-lifted: 0 2px 4px oklch(0.301 0.012 62 / 0.05), 0 20px 44px -20px oklch(0.301 0.012 62 / 0.22);
+  --elevation-card:
+    0 1px 2px oklch(0.301 0.012 62 / 0.04), 0 8px 24px -12px oklch(0.301 0.012 62 / 0.14);
+  --elevation-lifted:
+    0 2px 4px oklch(0.301 0.012 62 / 0.05), 0 20px 44px -20px oklch(0.301 0.012 62 / 0.22);
   --elevation-glow: 0 12px 32px -12px oklch(0.745 0.152 52 / 0.55);
 
   --gradient-hero: linear-gradient(
@@ -126,7 +128,11 @@
     oklch(0.928 0.058 62) 100%
   );
   --gradient-warm: linear-gradient(120deg, oklch(0.762 0.156 54) 0%, oklch(0.648 0.196 30) 100%);
-  --gradient-fade-up: linear-gradient(to top, oklch(0.22 0.03 50 / 0.88) 0%, oklch(0.22 0.03 50 / 0) 72%);
+  --gradient-fade-up: linear-gradient(
+    to top,
+    oklch(0.22 0.03 50 / 0.88) 0%,
+    oklch(0.22 0.03 50 / 0) 72%
+  );
 
   --app-font-size: 100%;
   --app-text-color: var(--foreground);
@@ -204,9 +210,14 @@
     font-size: var(--app-font-size, 100%);
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    /* Mobilde hiçbir koşulda yatay kaydırma olmasın: geniş bir görsel/tablo
+       kaçsa bile sayfa ekrana sığar. clip, position: sticky'yi bozmaz. */
+    overflow-x: clip;
   }
 
   body {
+    max-width: 100%;
+    overflow-x: clip;
     background-color: var(--color-background);
     color: var(--app-text-color, var(--text-primary, var(--color-foreground)));
     font-family: var(--app-font-family, var(--font-main, var(--font-sans)));

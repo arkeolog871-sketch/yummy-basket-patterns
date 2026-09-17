@@ -168,9 +168,16 @@ function AppChrome() {
   }, []);
 
   return (
-    <div className="flex min-h-screen flex-col" data-app-frame={framed ? "true" : undefined}>
+    <div
+      className="flex min-h-screen w-full max-w-full flex-col overflow-x-clip"
+      data-app-frame={framed ? "true" : undefined}
+    >
       <Header />
-      <main className="flex-1">
+      {/* min-w-0: flex öğesinin min-genişliği "auto" olduğundan, içindeki geniş
+          intrinsic görseller (ör. width=1280 kapak) sayfayı viewport'un dışına
+          taşırıyordu. min-w-0 ile ana içerik viewport'a küçülür, yatay kaydırma
+          oluşmaz. */}
+      <main className="w-full min-w-0 flex-1">
         <Outlet />
       </main>
       {framed ? null : <Footer />}

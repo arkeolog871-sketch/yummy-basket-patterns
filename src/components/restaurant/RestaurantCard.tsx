@@ -46,7 +46,7 @@ export function RestaurantCard({
     <Link
       to="/restoran/$slug"
       params={{ slug: restaurant.slug }}
-      className="group overflow-hidden rounded-3xl border border-border/70 bg-card shadow-card transition-all hover:-translate-y-1 hover:shadow-lifted"
+      className="group min-w-0 overflow-hidden rounded-3xl border border-border/70 bg-card shadow-card transition-all hover:-translate-y-1 hover:shadow-lifted"
     >
       <div className="relative aspect-video overflow-hidden">
         {restaurant.cover_image_url ? (
