@@ -10,3 +10,6 @@
 - [x] PageManagerPanel (yetki ver/geri al)
 - [x] typecheck + build
 - [x] iPhone Google girişi: intent:// aktarımı yalnızca Android'de, doğru "bu tarayıcıda başladı" kontrolü + testler
+- [ ] Apple/e-posta girişi sonrası doğrudan işletme başvuru formuna dönüş
+- [ ] Google Cloud harita anahtarı bağlama + Maps JavaScript API/yönlendirici doğrulaması
+- [ ] Başvuru formunda enlem/boylam yerine haritadan konum işaretleme
