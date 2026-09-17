@@ -266,16 +266,10 @@ function BusinessApplicationPage() {
     const metaPhone = typeof meta["phone"] === "string" ? meta["phone"] : "";
     setForm((prev) => ({
       ...prev,
-      contact_email: prev.contact_email || (user.email ?? ""),
       contact_person: prev.contact_person || fullName,
       contact_phone: prev.contact_phone || user.phone || metaPhone,
     }));
   }, [user]);
-
-  const emailChanged =
-    loginEmail.trim() !== "" &&
-    form.contact_email.trim() !== "" &&
-    form.contact_email.trim().toLowerCase() !== loginEmail.trim().toLowerCase();
 
   const mine = useQuery({
     queryKey: ["my-business-applications"],
@@ -325,7 +319,7 @@ function BusinessApplicationPage() {
           latitude: numbers.latitude,
           longitude: numbers.longitude,
           maps_url: form.maps_url.trim(),
-          contact_email: form.contact_email.trim(),
+          contact_email: loginEmail.trim(),
           contact_phone: form.contact_phone.trim(),
           contact_person: form.contact_person.trim(),
           opens_at: form.opens_at,
@@ -367,6 +361,10 @@ function BusinessApplicationPage() {
           }
           if (!form.latitude.trim() || !form.longitude.trim()) {
             toast.error("Haritadan işletmenizin konumunu işaretleyin.");
+            return;
+          }
+          if (!loginEmail.trim()) {
+            toast.error("Giriş e-postanız bulunamadı. Lütfen tekrar giriş yapın.");
             return;
           }
           const numbers = readNumbers();
@@ -538,36 +536,15 @@ function BusinessApplicationPage() {
 
         <div className="space-y-2 rounded-2xl border border-border p-3">
           <p className="text-xs font-medium text-muted-foreground">
-            İletişim — işletmeniz giriş hesabınıza bağlanır; bilgiler hesabınızdan otomatik
+            İletişim — işletmeniz giriş hesabınıza bağlanır; ad ve telefon hesabınızdan otomatik
             dolduruldu, gerekirse düzenleyin
           </p>
-          <div className="space-y-1">
-            <Input
-              type="email"
-              inputMode="email"
-              placeholder="İşletme e-postası"
-              value={form.contact_email}
-              onChange={(event) => setForm({ ...form, contact_email: event.target.value })}
-              required
-              aria-invalid={emailChanged}
-              className={
-                emailChanged ? "border-destructive focus-visible:ring-destructive" : undefined
-              }
-            />
-            {emailChanged ? (
-              // Kullanıcı giriş e-postasını değiştirmeye kalkarsa uyar: işletme
-              // hesabı giriş e-postasına bağlıdır, farklı e-posta ayrı doğrulama
-              // gerektirir. Engellenmez, yalnızca kırmızı uyarı gösterilir.
-              <p className="text-xs font-medium text-destructive">
-                ⚠️ Bu, giriş e-postanızdan ({loginEmail}) farklı. İşletmeniz giriş e-postanıza
-                bağlanır; farklı bir e-posta ayrıca doğrulama gerektirir. Giriş e-postanızı
-                kullanmanız önerilir.
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Giriş e-postanız kullanılır. İşletme bu hesaba bağlanır.
-              </p>
-            )}
+          {/* İşletme e-postası ayrı bir alan değil: her zaman giriş e-postasıdır
+              (e-posta/Google/Apple ile giriş). Kullanıcı düzenleyemez, ek doğrulama
+              istenmez — hesabın kendisi zaten doğrulanmış giriş kimliğidir. */}
+          <div className="rounded-xl border border-border bg-muted/40 px-3 py-2">
+            <p className="text-xs text-muted-foreground">İşletme e-postası (giriş hesabınız)</p>
+            <p className="mt-0.5 break-all text-sm font-medium">{loginEmail || "—"}</p>
           </div>
           <Input
             type="tel"
