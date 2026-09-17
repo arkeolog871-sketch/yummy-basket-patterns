@@ -246,7 +246,36 @@ function BusinessApplicationPage() {
   const fetchMine = useServerFn(listMyBusinessApplications);
   const queryClient = useQueryClient();
   const { categories } = useAppCategories();
+  const { user } = useAuth();
   const [form, setForm] = useState(emptyForm);
+  const loginEmail = user?.email ?? "";
+
+  // Başvuru giriş kimliğine bağlanır: iletişim/kimlik alanları hesaptan otomatik
+  // doldurulur (kullanıcı dilerse değiştirir). E-posta giriş e-postası olarak
+  // gelir; farklı bir e-posta girilirse aşağıda kırmızı uyarı çıkar. Alanlar
+  // yalnızca boşsa doldurulur ki kullanıcının kendi düzenlemesi ezilmesin.
+  useEffect(() => {
+    if (!user) return;
+    const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+    const fullName =
+      typeof meta["full_name"] === "string"
+        ? meta["full_name"]
+        : typeof meta["name"] === "string"
+          ? meta["name"]
+          : "";
+    const metaPhone = typeof meta["phone"] === "string" ? meta["phone"] : "";
+    setForm((prev) => ({
+      ...prev,
+      contact_email: prev.contact_email || (user.email ?? ""),
+      contact_person: prev.contact_person || fullName,
+      contact_phone: prev.contact_phone || user.phone || metaPhone,
+    }));
+  }, [user]);
+
+  const emailChanged =
+    loginEmail.trim() !== "" &&
+    form.contact_email.trim() !== "" &&
+    form.contact_email.trim().toLowerCase() !== loginEmail.trim().toLowerCase();
 
   const mine = useQuery({
     queryKey: ["my-business-applications"],
@@ -322,9 +351,9 @@ function BusinessApplicationPage() {
         </p>
         <h1 className="mt-3 text-3xl font-semibold">İşletmenizi platforma ekleyin</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Görsel adresi, harita bağlantısı ve etiketler dışındaki alanlar zorunludur. Başvurunuz
-          kurucu tarafından incelenip onaylandığında işletme hesabınız oluşturulur ve iletişim
-          e-postanıza doğrulama kodu gönderilir.
+          Görsel adresi, harita bağlantısı ve etiketler dışındaki alanlar zorunludur. İşletmeniz
+          giriş yaptığınız hesaba bağlanır; iletişim bilgileri hesabınızdan otomatik doldurulur.
+          Başvurunuz kurucu tarafından incelenip onaylandığında işletme hesabınız etkinleşir.
         </p>
       </header>
 
@@ -509,16 +538,37 @@ function BusinessApplicationPage() {
 
         <div className="space-y-2 rounded-2xl border border-border p-3">
           <p className="text-xs font-medium text-muted-foreground">
-            İletişim — onaydan sonra bu e-postaya 6 haneli doğrulama kodu gönderilir
+            İletişim — işletmeniz giriş hesabınıza bağlanır; bilgiler hesabınızdan otomatik
+            dolduruldu, gerekirse düzenleyin
           </p>
-          <Input
-            type="email"
-            inputMode="email"
-            placeholder="İşletme e-postası"
-            value={form.contact_email}
-            onChange={(event) => setForm({ ...form, contact_email: event.target.value })}
-            required
-          />
+          <div className="space-y-1">
+            <Input
+              type="email"
+              inputMode="email"
+              placeholder="İşletme e-postası"
+              value={form.contact_email}
+              onChange={(event) => setForm({ ...form, contact_email: event.target.value })}
+              required
+              aria-invalid={emailChanged}
+              className={
+                emailChanged ? "border-destructive focus-visible:ring-destructive" : undefined
+              }
+            />
+            {emailChanged ? (
+              // Kullanıcı giriş e-postasını değiştirmeye kalkarsa uyar: işletme
+              // hesabı giriş e-postasına bağlıdır, farklı e-posta ayrı doğrulama
+              // gerektirir. Engellenmez, yalnızca kırmızı uyarı gösterilir.
+              <p className="text-xs font-medium text-destructive">
+                ⚠️ Bu, giriş e-postanızdan ({loginEmail}) farklı. İşletmeniz giriş e-postanıza
+                bağlanır; farklı bir e-posta ayrıca doğrulama gerektirir. Giriş e-postanızı
+                kullanmanız önerilir.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Giriş e-postanız kullanılır. İşletme bu hesaba bağlanır.
+              </p>
+            )}
+          </div>
           <Input
             type="tel"
             inputMode="tel"
