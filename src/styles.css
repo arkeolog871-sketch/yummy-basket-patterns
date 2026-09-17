@@ -448,3 +448,20 @@ body {
   overflow-x: hidden;
   overflow-x: clip;
 }
+
+/* Görseller için son güvence: bazı <img>'ler (kapak, ürün, splash) taşıyıcı
+ * boyutlarını CSS sınıflarıyla (size-full, object-cover…) alır. Eğer bu
+ * sınıflar herhangi bir sebeple (WebView'de CSS yüklenme sırası/önbellek
+ * tutarsızlığı) devreye girmezse tarayıcı görselin native width/height HTML
+ * özniteliğine (ör. width={1024}) döner ve sayfayı ekran dışına taşırır —
+ * bu tam olarak sağa-sola kaydırma bug'ının kaynağıydı. Bu kural, hangi
+ * Tailwind sınıfı yüklenirse yüklensin görselin KONTEYNERİNİ asla aşmamasını
+ * garanti eder; katmansız olduğundan @layer base'teki hiçbir kural tarafından
+ * ezilemez.
+ */
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
