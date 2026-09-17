@@ -17,7 +17,10 @@ describe("işletme sıralama yetkisi", () => {
   it("moveRestaurant panel erişimi ve bölge doğruluyor", () => {
     const start = founderFns.indexOf("export const moveRestaurant");
     expect(start).toBeGreaterThan(-1);
-    const body = founderFns.slice(start, founderFns.indexOf("export const updateOrderStatus", start));
+    const body = founderFns.slice(
+      start,
+      founderFns.indexOf("export const updateOrderStatus", start),
+    );
     expect(body).toContain("assertPanelAccess");
     expect(body).toContain("accessAllowsRegion");
     // Kapsam dışı işletme reddedilmeli.
@@ -26,7 +29,10 @@ describe("işletme sıralama yetkisi", () => {
 
   it("değer takası değil yeniden numaralandırma yapıyor", () => {
     const start = founderFns.indexOf("export const moveRestaurant");
-    const body = founderFns.slice(start, founderFns.indexOf("export const updateOrderStatus", start));
+    const body = founderFns.slice(
+      start,
+      founderFns.indexOf("export const updateOrderStatus", start),
+    );
     expect(body).toContain("splice");
     expect(body).toContain("display_order: order");
     // Yalnızca sırası değişen satırlar yazılır.
@@ -71,5 +77,20 @@ describe("sıra sütunu göçü", () => {
     expect(
       existsSync(join(ROOT, "supabase/migrations/20260917130000_restaurants_display_order.sql")),
     ).toBe(true);
+  });
+});
+
+/**
+ * Bu tablo sütun bazlı yetki kullanıyor (stock_quantity anon'dan çekili).
+ * display_order eklenince anon'a SELECT verilmezse, halka açık katalog o
+ * sütuna göre sıralarken izin hatası alıp BOŞ liste döndürüyordu. Migration
+ * yetkiyi vermeli.
+ */
+describe("display_order anon'a açık", () => {
+  it("migration display_order için SELECT grant içeriyor", () => {
+    const mig = read("supabase/migrations/20260917130000_restaurants_display_order.sql");
+    expect(mig).toMatch(
+      /grant select \(display_order\) on public\.restaurants to anon, authenticated/i,
+    );
   });
 });
