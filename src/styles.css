@@ -434,3 +434,17 @@
   color: var(--text-accent);
   border: 1px solid var(--border);
 }
+
+/* ---------------------------------------------------------------------------
+ * Mobil yatay taşma — KESİN ENGEL (katmansız; @layer base'i her koşulda yener).
+ * body'ye kesin genişlik (max-width:100%) vermek, width=1280 gibi geniş
+ * intrinsic görsellerin blok zincirini şişirip sayfayı ekran dışına taşırmasını
+ * kökten çözer. overflow-x: önce hidden (tüm WebView'ler), sonra clip (modern;
+ * position: sticky'yi bozmaz) — destekleyen tarayıcı clip'i kullanır.
+ * ------------------------------------------------------------------------- */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
