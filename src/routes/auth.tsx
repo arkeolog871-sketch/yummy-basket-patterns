@@ -262,19 +262,27 @@ function AuthPage() {
       return;
     }
 
-    // OAuth ile /isletme-basvuru sayfasından gelen kullanıcıyı önce oraya geri yönlendir.
+    // Kullanıcı hangi sayfadan girişe başladıysa oraya geri döner (beyaz liste).
+    let target: string | null = null;
     try {
-      const googleReturn = sessionStorage.getItem(GOOGLE_OAUTH_RETURN_PATH_KEY);
-      const appleReturn = sessionStorage.getItem(APPLE_OAUTH_RETURN_PATH_KEY);
-      const oauthReturn = googleReturn || appleReturn;
-      if (oauthReturn && oauthReturn.startsWith("/isletme-basvuru")) {
+      target = resolvePostLoginTarget([
+        readPostLoginIntent(),
+        sessionStorage.getItem(GOOGLE_OAUTH_RETURN_PATH_KEY),
+        sessionStorage.getItem(APPLE_OAUTH_RETURN_PATH_KEY),
+        redirect,
+      ]);
+      if (target) {
+        clearPostLoginIntent();
         sessionStorage.removeItem(GOOGLE_OAUTH_RETURN_PATH_KEY);
         sessionStorage.removeItem(APPLE_OAUTH_RETURN_PATH_KEY);
-        navigate({ to: oauthReturn, replace: true });
-        return;
       }
     } catch {
       /* private mode */
+      target = resolvePostLoginTarget([redirect]);
+    }
+    if (target) {
+      navigate({ to: target, replace: true });
+      return;
     }
 
     // Rolün varsayılan hedefi: sahip ve bölge yöneticisi /kurucu, işletme /vendor/dashboard.
@@ -282,7 +290,8 @@ function AuthPage() {
       navigate({ to: access.homePath, replace: true });
       return;
     }
-    navigate({ to: redirect === "/odeme" ? "/odeme" : "/", replace: true });
+    navigate({ to: "/", replace: true });
+
   }, [user, access.loading, access.homePath, redirect, navigate]);
 
   const vendorPortal = portal === "vendor";
