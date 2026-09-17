@@ -453,7 +453,15 @@ export const listAdminData = createServerFn({ method: "GET" })
       // listBusinessCatalog ile tek işletme seçildiğinde ayrıca çekiliyor.
       const CATALOG_LIMIT = 1000;
       const [businesses, orders] = await Promise.all([
-        supabaseAdmin.from("restaurants").select("*").order("name").limit(CATALOG_LIMIT),
+        // Panel, müşterinin gördüğü etkin sırayla dizilir ki yukarı/aşağı
+        // taşıma sezgisel olsun: elle sıra (NULL en sona), sonra puan, sonra ad.
+        supabaseAdmin
+          .from("restaurants")
+          .select("*")
+          .order("display_order", { ascending: true, nullsFirst: false })
+          .order("rating", { ascending: false })
+          .order("name")
+          .limit(CATALOG_LIMIT),
         supabaseAdmin
           .from("orders")
           .select(
@@ -653,6 +661,93 @@ export const deleteBusiness = createServerFn({ method: "POST" })
       },
     );
   });
+
+/**
+ * İşletmeyi listede bir sıra yukarı/aşağı taşır.
+ *
+ * Yetki: sahip her işletmeyi sıralar; sayfa yöneticisi yalnızca kendi
+ * bölgesindeki işletmeleri. Sıra, kategori sıralamasıyla aynı mantıkta
+ * kuruluyor (bkz. moveCategory): değerleri takas etmek yerine liste kararlı
+ * ölçütle diziliyor, taşınan öğe bir kaydırılıyor ve herkese 0..n-1 arası
+ * benzersiz `display_order` yazılıyor. Böylece "dokunmadığım işletme de oynadı"
+ * durumu oluşmuyor.
+ *
+ * Elle sıra verilmemiş (display_order NULL) işletmeler, sıralananların ARDINDAN
+ * puana göre dizilir; ilk taşımada o kapsamdaki herkese sıra yazıldığı için
+ * liste kalıcı olarak kararlı hale gelir.
+ */
+export const moveRestaurant = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z.object({ id: z.string().uuid(), direction: z.enum(["up", "down"]) }).parse(input),
+  )
+  .handler(async ({ data, context }) =>
+    runServerFn(async () => {
+      const { assertPanelAccess, accessAllowsRegion } = await import("./founder.server");
+      const { logAudit } = await import("./audit.server");
+      const access = await assertPanelAccess(
+        context.supabase,
+        context.userId,
+        context.claims as never,
+      );
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+      const { data: rows, error } = await supabaseAdmin
+        .from("restaurants")
+        .select("id, display_order, rating, name, city, district")
+        .limit(1000);
+      if (error) throw new Error(error.message);
+
+      // Kapsam: sayfa yöneticisi yalnızca kendi bölgesini sıralar.
+      const scoped = (rows ?? []).filter((row) =>
+        accessAllowsRegion(access, row.city, row.district),
+      );
+      // Müşterinin gördüğü etkin sıra: elle sıra (NULL en sona), sonra puan, sonra ad.
+      scoped.sort((a, b) => {
+        const ao = a.display_order;
+        const bo = b.display_order;
+        if (ao != null && bo != null && ao !== bo) return ao - bo;
+        if (ao != null && bo == null) return -1;
+        if (ao == null && bo != null) return 1;
+        const ar = Number(a.rating) || 0;
+        const br = Number(b.rating) || 0;
+        if (ar !== br) return br - ar;
+        return String(a.name).localeCompare(String(b.name), "tr");
+      });
+
+      const index = scoped.findIndex((row) => row.id === data.id);
+      if (index < 0) throw new Error("Forbidden: bu işletmeyi sıralayamazsınız");
+      const targetIndex = data.direction === "up" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= scoped.length) return { ok: true };
+
+      const reordered = [...scoped];
+      const [moved] = reordered.splice(index, 1);
+      reordered.splice(targetIndex, 0, moved!);
+
+      // Yalnızca sırası gerçekten değişen satırlar yazılıyor.
+      const writes = reordered
+        .map((row, order) => ({ row, order }))
+        .filter(({ row, order }) => row.display_order !== order);
+      const results = await Promise.all(
+        writes.map(({ row, order }) =>
+          supabaseAdmin.from("restaurants").update({ display_order: order }).eq("id", row.id),
+        ),
+      );
+      const failure = results.find((result) => result.error)?.error;
+      if (failure) throw new Error(failure.message);
+
+      await logAudit({
+        actorId: context.userId,
+        actorEmail: (context.claims as { email?: string } | null)?.email ?? null,
+        action: "restaurant.reorder",
+        entity: "restaurants",
+        entityId: data.id,
+        status: "success",
+        detail: { direction: data.direction, changed: writes.length },
+      });
+      return { ok: true };
+    }),
+  );
 
 /** Kurucu, gelen siparişin durumunu anlık olarak değiştirir. */
 export const updateOrderStatus = createServerFn({ method: "POST" })

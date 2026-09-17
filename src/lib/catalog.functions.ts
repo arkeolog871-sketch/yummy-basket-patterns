@@ -21,6 +21,8 @@ export const listRestaurants = createServerFn({ method: "GET" })
       .from("restaurants")
       .select(LIST_COLUMNS)
       .eq("is_active", true)
+      // Elle sıralanan işletmeler önce (NULL en sona), sonra puana göre.
+      .order("display_order", { ascending: true, nullsFirst: false })
       .order("rating", { ascending: false })
       .limit(100);
 
@@ -44,6 +46,7 @@ export const listRestaurants = createServerFn({ method: "GET" })
       .from("restaurants")
       .select(LIST_COLUMNS)
       .eq("is_active", true)
+      .order("display_order", { ascending: true, nullsFirst: false })
       .order("rating", { ascending: false })
       .limit(100);
     if (data.category) fallback = fallback.eq("category", data.category);

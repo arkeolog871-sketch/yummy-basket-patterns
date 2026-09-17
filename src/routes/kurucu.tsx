@@ -16,6 +16,8 @@ import {
   ExternalLink,
   UserPlus,
   Search,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -48,6 +50,7 @@ import {
   listUsers,
   saveBusiness,
   deleteBusiness,
+  moveRestaurant,
   saveMenuCategory,
   deleteMenuCategory,
   saveMenuItem,
@@ -686,6 +689,7 @@ function matchesBusinessSearch(
 function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDone: () => void }) {
   const save = useServerFn(saveBusiness);
   const remove = useServerFn(deleteBusiness);
+  const move = useServerFn(moveRestaurant);
   const { categories } = useAppCategories();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyBusiness);
@@ -694,6 +698,15 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
   const visibleBusinesses = businesses.filter((business) =>
     matchesBusinessSearch(business, search),
   );
+  // Sıralama yalnızca arama YOKKEN anlamlı: filtrelenmiş listede "bir üste"
+  // taşımak, ekranda görünmeyen işletmelerin arasına düşerdi. Bu yüzden arama
+  // kutusu doluyken oklar gizlenir; liste, sunucunun döndüğü etkin sırayı yansıtır.
+  const canReorder = search.trim().length === 0;
+  const moveMutation = useMutation({
+    mutationFn: (vars: { id: string; direction: "up" | "down" }) => move({ data: vars }),
+    onSuccess: () => onDone(),
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error, "Sıra değiştirilemedi.")),
+  });
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -1009,21 +1022,47 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
           ) : visibleBusinesses.length === 0 ? (
             <p className="p-6 text-sm text-muted-foreground">"{search}" ile eşleşen işletme yok.</p>
           ) : (
-            visibleBusinesses.map((business) => (
+            visibleBusinesses.map((business, index) => (
               <div
                 key={business.id}
                 className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 p-4 last:border-0"
               >
-                <div className="min-w-0">
-                  <p className="truncate font-medium">
-                    {business.name}
-                    {business.is_active ? null : (
-                      <span className="ml-2 text-xs text-muted-foreground">(gizli)</span>
-                    )}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {business.category} · /{business.slug}
-                  </p>
+                <div className="flex min-w-0 items-center gap-2">
+                  {canReorder ? (
+                    <div className="flex flex-col">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="size-6 rounded-full"
+                        aria-label="Yukarı taşı"
+                        disabled={index === 0 || moveMutation.isPending}
+                        onClick={() => moveMutation.mutate({ id: business.id, direction: "up" })}
+                      >
+                        <ArrowUp className="size-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="size-6 rounded-full"
+                        aria-label="Aşağı taşı"
+                        disabled={index === visibleBusinesses.length - 1 || moveMutation.isPending}
+                        onClick={() => moveMutation.mutate({ id: business.id, direction: "down" })}
+                      >
+                        <ArrowDown className="size-4" />
+                      </Button>
+                    </div>
+                  ) : null}
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">
+                      {business.name}
+                      {business.is_active ? null : (
+                        <span className="ml-2 text-xs text-muted-foreground">(gizli)</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {business.category} · /{business.slug}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex gap-1">
                   <Button
