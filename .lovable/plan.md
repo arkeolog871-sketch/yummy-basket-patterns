@@ -1,24 +1,51 @@
-# iPhone Google OAuth callback düzeltme planı
+# Apple / e-posta girişinden sonra doğrudan başvuru formu
 
-## Doğrulanan kök neden
+## Şu anda ne oluyor
 
-- Google girişinde tarayıcıya kaydedilen değer ham `nonce`, callback URL’sindeki `state` ise sunucuda mühürlenmiş `sc1...` değeridir. Mevcut kontrol bu iki farklı değeri doğrudan karşılaştırdığı için aynı tarayıcıda başlayan akışı bile “yetim callback” sayıyor.
-- `isLikelyMobileDevice()` Android dışındaki dokunmatik cihazları da mobil kabul ediyor. Bu nedenle iPhone Safari/Chrome, Android’e özel `intent://` aktarım dalına giriyor.
-- Sonuç olarak iPhone callback’i kod takasına geçmeden Android uygulamasına aktarılmaya çalışılıyor ve `/auth` bekleme ekranında kalıyor.
-- `dilanakay5@gmail.com` hesabı doğrulanmış durumda; son başarılı giriş 9 Eylül. Son denemelerde auth tarafında yeni token/oturum isteği veya hesap kaynaklı hata yok. Bu, akışın `page_manager_roles`, panel erişimi veya e-posta doğrulamasına ulaşmadan kesildiğini doğruluyor.
+1. Kullanıcı "İşletme başvurusu" sayfasını açıyor, "Apple ile devam et"e basıyor.
+2. Apple girişi bittiğinde kullanıcı **giriş sayfasına** dönüyor.
+3. Giriş sayfası, girişten sonra kullanıcıyı yalnızca ödeme sayfasına geri götürebiliyor;
+   başka her durumda **ana sayfaya** atıyor.
+4. Böylece kullanıcı giriş yapmış oluyor ama başvuru formunu göremiyor; formu bulmak
+   için sayfayı yeniden aramak zorunda kalıyor. "Kahve Diyarı"nda yaşanan tam olarak bu.
 
-## Uygulama
+Yani sorun kaydın başarısız olması değil; girişten sonra kullanıcının nereye
+döneceğinin hatırlanmaması.
 
-1. Android aktarımını yalnızca gerçek Android cihazlarda etkinleştir; iPhone/iPad hiçbir koşulda `intent://` dalına girmesin.
-2. “Bu tarayıcıda başladı” kontrolünü ham nonce ile mühürlü state’i karşılaştırmak yerine, geçerli yerel PKCE kaydının varlığına ve callback’in uygulamaya ait `sc1` state biçimine göre güvenli biçimde belirle. Nihai state/nonce doğrulaması mevcut sunucu kod takasında yapılmaya devam etsin.
-3. Yerel PKCE kaydı bulunan iPhone Safari/Chrome callback’ini doğrudan kod takası ve oturum oluşturma yoluna gönder.
-4. Gerçek Android uygulama→tarayıcı yetim callback aktarımını koru; masaüstü ve mobil web girişlerini etkileme.
-5. `/auth` ekranındaki zaman aşımı ve hata kapanışını koruyup, callback’in `ok: null` gibi olağandışı sonuçlarında kullanıcıya tekrar giriş yapabileceği açık bir hata durumu göster.
-6. Google OAuth birim testlerine iPhone Safari, iPhone Chrome, normal Android web ve Android yetim uygulama callback senaryolarını ekle.
+## Ne yapılacak
 
-## Doğrulama
+1. **Başvuru niyeti hatırlanacak.** Kullanıcı başvuru sayfasından Apple, Google veya
+   e-posta ile girişe başladığında "bu kişi başvuru formuna dönmek istiyor" bilgisi
+   tarayıcıda kısa süreli saklanacak.
+2. **Giriş sonrası doğrudan forma dönüş.** Giriş tamamlandığında kullanıcı ana sayfa
+   yerine doğrudan başvuru formuna götürülecek. Bu geri dönüş yalnızca uygulamanın
+   kendi sayfalarına izin verecek şekilde sınırlı tutulacak (dış bağlantı adresi
+   kabul edilmeyecek).
+3. **Arada ek adım olmayacak.** Apple ya da e-posta ile giriş yapan kişi forma
+   ulaşmak için ikinci bir doğrulama ekranı görmeyecek; giriş biter, form açılır.
+   iPhone uygulamasında giriş zaten uygulama içinde tamamlandığı için sayfa
+   değişmeden form anında açılacak.
+4. **Bilgilendirme yazıları güncellenecek.** "Doğrulandıktan sonra bu sayfaya geri
+   dönüp başvurunuzu gönderebilirsiniz" gibi artık geçerli olmayan ifadeler
+   "Giriş tamamlanınca form otomatik açılır" şeklinde değişecek.
 
-- İlgili OAuth birim testlerini çalıştır.
-- Typecheck ve uygulama derlemesini doğrula.
-- iPhone Safari kullanıcı aracısı ve dokunmatik sinyaliyle callback kararını test ederek Android aktarımının çağrılmadığını doğrula.
-- Android yetim callback senaryosunda uygulamaya dönüş davranışının korunduğunu doğrula.
+## Değişmeyecek olanlar
+
+- Başvuru formunun alanları, zorunlulukları ve kurucu onay akışı aynı kalıyor.
+- Sunucu tarafındaki güvenlik kontrolü (başvuru gönderirken hesabın doğrulanmış
+  olması şartı) aynen korunuyor; sadece gereksiz ekran adımı kalkıyor.
+- Ödeme sayfasından yapılan girişlerdeki mevcut geri dönüş davranışı bozulmayacak.
+
+## Teknik ayrıntı
+
+- `src/routes/auth.tsx`: girişten sonraki yönlendirme, tek istisna (`/odeme`) yerine
+  güvenli iç yol beyaz listesinden (`/odeme`, `/isletme-basvuru`) okunacak; ayrıca
+  `sessionStorage`'daki bekleyen niyet anahtarı da bu listeye göre doğrulanıp
+  kullanılacak, sonra silinecek.
+- Yeni küçük yardımcı (örn. `src/lib/post-login-intent.ts`): niyeti yazma/okuma/silme
+  ve yol doğrulama tek yerde toplanacak; birim testi yazılacak.
+- `src/routes/isletme-basvuru.tsx`: Apple/Google/e-posta akışları başlatılmadan önce
+  niyet kaydedilecek; giriş tamamlandığında (`useAuth` oturumu görünce) mevcut
+  "önce kimliğinizi doğrulayın" ekranı otomatik olarak forma geçecek; yardımcı
+  metinler güncellenecek.
+- Doğrulama: `bunx tsgo --noEmit`, ilgili birim testleri ve build kontrolü.
