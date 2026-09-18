@@ -772,7 +772,9 @@ function VendorDashboard() {
                     className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 p-4 last:border-0"
                   >
                     <div className="min-w-0">
-                      <p className="whitespace-normal font-medium [overflow-wrap:anywhere]">{item.name}</p>
+                      <p className="whitespace-normal font-medium [overflow-wrap:anywhere]">
+                        {item.name}
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         {formatPrice(Number(item.price))}
                       </p>
