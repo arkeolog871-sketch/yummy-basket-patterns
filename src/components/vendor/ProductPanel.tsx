@@ -280,7 +280,7 @@ export function ProductPanel({
               </div>
               <div className="space-y-2 p-4">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="min-w-0 truncate font-medium">{product.name}</p>
+                  <p className="line-clamp-2 min-w-0 break-words font-medium">{product.name}</p>
                   <p className="whitespace-nowrap font-semibold">
                     {formatPrice(Number(product.price))}
                   </p>
