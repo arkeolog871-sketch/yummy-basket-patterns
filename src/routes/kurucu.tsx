@@ -1609,10 +1609,10 @@ function MenuItemPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
           items.map((item) => (
             <div
               key={item.id}
-              className="flex items-center justify-between gap-3 border-b border-border/60 p-4 last:border-0"
+              className="flex items-start justify-between gap-3 border-b border-border/60 p-4 last:border-0"
             >
               <div className="min-w-0">
-                <p className="line-clamp-2 break-words font-medium">{item.name}</p>
+                <p className="whitespace-normal font-medium [overflow-wrap:anywhere]">{item.name}</p>
                 <p className="text-xs text-muted-foreground">{formatPrice(Number(item.price))}</p>
               </div>
               <div className="flex gap-1">

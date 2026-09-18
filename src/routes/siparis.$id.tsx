@@ -164,7 +164,7 @@ function OrderDetailPage() {
         <div className="mt-3 space-y-2 text-sm">
           {(order.order_items ?? []).map((line) => (
             <div key={line.id} className="flex justify-between gap-3 text-muted-foreground">
-              <span className="min-w-0 break-words">
+              <span className="min-w-0 [overflow-wrap:anywhere]">
                 {line.quantity} × {line.name}
               </span>
               <span className="shrink-0">

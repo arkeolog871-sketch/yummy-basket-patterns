@@ -719,7 +719,7 @@ function VendorDashboard() {
                     <ul className="mt-4 space-y-1 text-sm">
                       {(order.order_items ?? []).map((line) => (
                         <li key={line.id} className="flex justify-between gap-3">
-                          <span className="line-clamp-2 min-w-0 break-words">
+                          <span className="min-w-0 [overflow-wrap:anywhere]">
                             {line.quantity}× {line.name}
                           </span>
                           <span className="shrink-0 text-muted-foreground">
@@ -772,7 +772,7 @@ function VendorDashboard() {
                     className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 p-4 last:border-0"
                   >
                     <div className="min-w-0">
-                      <p className="line-clamp-2 break-words font-medium">{item.name}</p>
+                      <p className="whitespace-normal font-medium [overflow-wrap:anywhere]">{item.name}</p>
                       <p className="text-xs text-muted-foreground">
                         {formatPrice(Number(item.price))}
                       </p>

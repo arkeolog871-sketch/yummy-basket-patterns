@@ -331,12 +331,12 @@ function RestaurantDetail() {
                         ) : null}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start gap-2">
-                            {/* line-clamp-2: ad tek satıra sığmazsa ikinci satıra
-                                kayar, üçüncü satırda üç noktayla biter. `truncate`
+                            {/* Ad kırpılmaz: sığmazsa alt satıra sarar, satır
+                                yüksekliği gerektiği kadar uzar. `truncate`
                                 (white-space: nowrap) gibi min-content genişliğini
                                 şişirmediği için satırın sağındaki sepet butonu
                                 ekranda kalmaya devam eder. */}
-                            <h3 className="line-clamp-2 min-w-0 break-words text-sm font-semibold sm:text-base">
+                            <h3 className="min-w-0 text-base font-semibold [overflow-wrap:anywhere]">
                               {item.name}
                             </h3>
                             {item.is_popular ? (
