@@ -329,8 +329,8 @@ function RestaurantDetail() {
                           />
                         ) : null}
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="truncate text-base font-semibold">{item.name}</h3>
+                          <div className="flex items-start gap-2">
+                            <h3 className="min-w-0 text-base font-semibold [overflow-wrap:anywhere]">{item.name}</h3>
                             {item.is_popular ? (
                               <span className="shrink-0 rounded-full bg-warm px-2 py-0.5 text-[11px] font-semibold text-warm-foreground">
                                 Popüler
