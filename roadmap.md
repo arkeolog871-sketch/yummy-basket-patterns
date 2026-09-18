@@ -11,5 +11,5 @@
 - [x] typecheck + build
 - [x] iPhone Google girişi: intent:// aktarımı yalnızca Android'de, doğru "bu tarayıcıda başladı" kontrolü + testler
 - [ ] Apple/e-posta girişi sonrası doğrudan işletme başvuru formuna dönüş
-- [ ] Google Cloud harita anahtarı bağlama + Maps JavaScript API/yönlendirici doğrulaması
+- [x] Google Cloud harita anahtarı bağlama + Maps JavaScript API/yönlendirici doğrulaması (tüm alan adlarında OK)
 - [ ] Başvuru formunda enlem/boylam yerine haritadan konum işaretleme
