@@ -56,9 +56,7 @@ export function RestaurantCard({
             loading="lazy"
             width={1280}
             height={720}
-            className={`size-full object-cover transition-transform duration-500 group-hover:scale-105 ${
-              open ? "" : "grayscale"
-            }`}
+            className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
           <div
