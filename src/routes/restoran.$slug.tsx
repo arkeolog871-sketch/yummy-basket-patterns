@@ -295,11 +295,12 @@ function RestaurantDetail() {
         <div className="grid gap-8 py-10 lg:grid-cols-[1fr_320px]">
           {/* min-w-0: grid öğelerinin varsayılan min-width'i "auto"dur, yani
               içeriğin min-content genişliği kadar küçülebilirler. Ürün adı
-              `truncate` (white-space: nowrap) olduğu için tam metin genişliği
-              buraya kadar yayılıyor ve grid kolonunu viewport'un ötesine
-              (ör. 490px) şişiriyordu; satırın sağ ucundaki "sepete ekle"
-              butonu da ekran dışında kalıp erişilemez oluyordu. min-w-0 ile
-              kolon viewport'a sığar ve ürün adı düzgünce üç noktayla kırpılır. */}
+              bir zamanlar `truncate` (white-space: nowrap) olduğu için tam
+              metin genişliği buraya kadar yayılıyor ve grid kolonunu
+              viewport'un ötesine (ör. 490px) şişiriyordu; satırın sağ
+              ucundaki "sepete ekle" butonu da ekran dışında kalıp erişilemez
+              oluyordu. min-w-0 kolonu viewport'a sabitler; ad artık
+              line-clamp-2 ile iki satıra kadar sarıyor. */}
           <div className="min-w-0 space-y-10">
             {menuGroups.length === 0 ? (
               <div className="rounded-3xl border border-dashed border-border bg-card p-10 text-center">
@@ -316,7 +317,7 @@ function RestaurantDetail() {
                     {group.items.map((item) => (
                       <div
                         key={item.id}
-                        className="flex items-center gap-4 rounded-3xl border border-border/70 bg-card p-4 shadow-card"
+                        className="flex items-center gap-3 rounded-3xl border border-border/70 bg-card p-4 shadow-card sm:gap-4"
                       >
                         {item.image_url ? (
                           <img
@@ -325,12 +326,19 @@ function RestaurantDetail() {
                             loading="lazy"
                             width={80}
                             height={80}
-                            className="size-20 shrink-0 rounded-2xl object-cover"
+                            className="size-16 shrink-0 rounded-2xl object-cover sm:size-20"
                           />
                         ) : null}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start gap-2">
-                            <h3 className="min-w-0 text-base font-semibold [overflow-wrap:anywhere]">{item.name}</h3>
+                            {/* Ad kırpılmaz: sığmazsa alt satıra sarar, satır
+                                yüksekliği gerektiği kadar uzar. `truncate`
+                                (white-space: nowrap) gibi min-content genişliğini
+                                şişirmediği için satırın sağındaki sepet butonu
+                                ekranda kalmaya devam eder. */}
+                            <h3 className="min-w-0 text-base font-semibold [overflow-wrap:anywhere]">
+                              {item.name}
+                            </h3>
                             {item.is_popular ? (
                               <span className="shrink-0 rounded-full bg-warm px-2 py-0.5 text-[11px] font-semibold text-warm-foreground">
                                 Popüler

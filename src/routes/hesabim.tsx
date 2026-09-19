@@ -8,6 +8,7 @@ import { AddressesSection } from "@/components/account/AddressesSection";
 import { DeleteAccountSection } from "@/components/account/DeleteAccountSection";
 import { OrdersSection } from "@/components/account/OrdersSection";
 import { ProfileSection } from "@/components/account/ProfileSection";
+import { VendorPairingSection } from "@/components/account/VendorPairingSection";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getMyProfile } from "@/lib/profile.functions";
@@ -180,6 +181,8 @@ function AccountPage() {
         </TabsContent>
 
         <TabsContent value="hesap" className="mt-6 space-y-6">
+          <VendorPairingSection />
+
           <section className="rounded-3xl border border-border/70 bg-card p-5 shadow-card">
             <p className="font-semibold">Şifre</p>
             <p className="mt-1 text-sm text-muted-foreground">
