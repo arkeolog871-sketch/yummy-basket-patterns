@@ -163,11 +163,13 @@ function OrderDetailPage() {
         <p className="font-semibold">Sipariş içeriği</p>
         <div className="mt-3 space-y-2 text-sm">
           {(order.order_items ?? []).map((line) => (
-            <div key={line.id} className="flex justify-between text-muted-foreground">
-              <span>
+            <div key={line.id} className="flex justify-between gap-3 text-muted-foreground">
+              <span className="min-w-0 [overflow-wrap:anywhere]">
                 {line.quantity} × {line.name}
               </span>
-              <span>{formatPrice(Number(line.unit_price) * line.quantity)}</span>
+              <span className="shrink-0">
+                {formatPrice(Number(line.unit_price) * line.quantity)}
+              </span>
             </div>
           ))}
           <div className="flex justify-between text-muted-foreground">
