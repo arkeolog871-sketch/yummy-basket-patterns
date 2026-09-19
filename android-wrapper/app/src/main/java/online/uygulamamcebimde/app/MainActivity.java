@@ -1482,7 +1482,22 @@ public class MainActivity extends Activity {
                         else if ("mp4".equals(extension)) type = "video/mp4";
                         else if ("mov".equals(extension)) type = "video/quicktime";
                         else if ("webm".equals(extension)) type = "video/webm";
-                        else continue;
+                        // Belge uzantıları: ürün listesi aktarımı bunlarla
+                        // çalışıyor. Eşlenmezlerse liste yalnızca görsel/video
+                        // MIME'larıyla kalıyor ve indirilen .xlsx dosyaları
+                        // (çoğu sağlayıcıda application/octet-stream) seçicide
+                        // soluk görünüp seçilemiyordu.
+                        else if ("xlsx".equals(extension))
+                            type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                        else if ("xls".equals(extension)) type = "application/vnd.ms-excel";
+                        else if ("csv".equals(extension)) type = "text/csv";
+                        else if ("txt".equals(extension)) type = "text/plain";
+                        else if ("pdf".equals(extension)) type = "application/pdf";
+                        // Tanımadığımız uzantıyı sessizce ATMIYORUZ: atmak,
+                        // kullanıcının dosyasını seçilemez yapan sessiz bir
+                        // kısıt üretiyordu. Her türü kabul edip doğru dosya
+                        // kontrolünü web tarafına bırakmak daha güvenli.
+                        else type = "*/*";
                     }
                     if (!types.contains(type)) types.add(type);
                 }

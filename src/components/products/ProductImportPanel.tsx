@@ -265,7 +265,14 @@ export function ProductImportPanel({
             <input
               ref={fileInput}
               type="file"
-              accept=".xlsx,.xls,.csv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain"
+              // accept BİLEREK "*/*": Android kabuğu web'deki accept listesini
+              // dosya seçiciye MIME türü olarak geçiriyor ve indirilen .xlsx
+              // dosyaları çoğu zaman application/octet-stream taşıdığı için
+              // dar bir listede SOLUK görünüp seçilemiyorlardı (.txt seçilip
+              // .xlsx seçilememesinin sebebi buydu). Doğru dosya kontrolünü
+              // zaten kendimiz yapıyoruz: uzantıya göre ayrıştırıcı seçiliyor
+              // ve tanınmayan dosyada ne yapılacağını söyleyen hata çıkıyor.
+              accept="*/*"
               className="hidden"
               onChange={(event) => void onPickFile(event.target.files?.[0])}
             />
@@ -343,6 +350,22 @@ export function ProductImportPanel({
               <span>
                 Aktarım için {missing.map((field) => FIELD_LABELS[field]).join(" ve ")} sütunu
                 gerekli. Yukarıdan seçin.
+              </span>
+            </p>
+          ) : null}
+
+          {/* Hiçbir satır okunamadıysa sebebini söyle. Yalnızca "0 ürün
+              okunacak" yazmak, yanlış dosya seçen kişiye neyin yanlış
+              olduğunu anlatmıyordu — nitekim bir metin dosyası seçildiğinde
+              panel sessizce 0 gösterdi. */}
+          {parsed.rows.length === 0 && missing.length === 0 ? (
+            <p className="mt-4 flex items-start gap-2 rounded-2xl bg-destructive/10 p-3 text-sm text-destructive">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+              <span>
+                Bu dosyadan hiç ürün okunamadı — ürün listesine benzemiyor. Market programınızdan
+                aldığınız <strong>stok listesi</strong> dosyasını (Excel veya CSV) seçtiğinizden
+                emin olun; ilk satırında <strong>Barkod</strong> ve <strong>Fiyat</strong> gibi
+                sütun başlıkları bulunmalı.
               </span>
             </p>
           ) : null}
