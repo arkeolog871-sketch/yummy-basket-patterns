@@ -1089,6 +1089,8 @@ export type Database = {
       }
       restaurants: {
         Row: {
+          pairing_code: string | null
+          pairing_code_expires_at: string | null
           address: string | null
           category: string
           city: string | null
@@ -1122,6 +1124,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          pairing_code?: string | null
+          pairing_code_expires_at?: string | null
           address?: string | null
           category: string
           city?: string | null
@@ -1155,6 +1159,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          pairing_code?: string | null
+          pairing_code_expires_at?: string | null
           address?: string | null
           category?: string
           city?: string | null
@@ -1421,6 +1427,10 @@ export type Database = {
         Returns: undefined
       }
       expire_stale_advertisements: { Args: never; Returns: number }
+      redeem_restaurant_pairing_code: {
+        Args: { p_code: string; p_user_id: string }
+        Returns: { restaurant_id: string; restaurant_name: string }[]
+      }
       import_menu_items: {
         Args: { p_restaurant_id: string; p_rows: Json }
         Returns: { created_count: number; updated_count: number }[]

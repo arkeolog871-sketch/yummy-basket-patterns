@@ -70,6 +70,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProductImportPanel } from "@/components/products/ProductImportPanel";
+import { VendorPairingPanel } from "@/components/founder/VendorPairingPanel";
 import { AuditLogPanel } from "@/components/founder/AuditLogPanel";
 import { DeletionRequestsPanel } from "@/components/founder/DeletionRequestsPanel";
 
@@ -424,7 +425,8 @@ function FounderDashboard({
           </TabsContent>
         ) : null}
 
-        <TabsContent value="isletmeler" className="mt-6">
+        <TabsContent value="isletmeler" className="mt-6 space-y-6">
+          <NotificationLinkPanel businesses={data.data?.businesses ?? []} />
           <BusinessPanel
             businesses={data.data?.businesses ?? []}
             onDone={invalidate}
@@ -1300,6 +1302,28 @@ function BusinessPanel({
  * sonra market listesi yüklenir. İşletme paneli kendi kataloğunu zaten
  * bildiği için orada seçici yok.
  */
+/**
+ * Bildirim bağlantısı: hangi işletme sipariş bildirimi alabiliyor, alamıyorsa
+ * sahibin hesabını bağlayacak kod. "Bildirim alamayan işletme" uyarısının
+ * çözümü burada.
+ */
+function NotificationLinkPanel({ businesses }: { businesses: BusinessRow[] }) {
+  const [restaurantId, setRestaurantId] = useState("");
+  return (
+    <div className="space-y-4 rounded-3xl border border-border bg-card p-5">
+      <div>
+        <p className="font-semibold">Bildirim bağlantısı</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          İşletmenin sipariş bildirimi alıp almadığını görün; almıyorsa sahibin uygulamada
+          kullandığı hesabı bir kodla işletmeye bağlayın.
+        </p>
+      </div>
+      <BusinessSelect businesses={businesses} value={restaurantId} onChange={setRestaurantId} />
+      <VendorPairingPanel restaurantId={restaurantId || null} />
+    </div>
+  );
+}
+
 function BulkProductPanel({ businesses }: { businesses: BusinessRow[] }) {
   const [restaurantId, setRestaurantId] = useState("");
   return (
