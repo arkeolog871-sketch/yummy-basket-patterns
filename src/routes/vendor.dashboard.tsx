@@ -29,7 +29,6 @@ import { AccessDenied } from "@/components/auth/AccessDenied";
 import { PushNotificationButton } from "@/components/notifications/PushNotificationButton";
 import { EmptyState } from "@/components/vendor/EmptyState";
 import { ProductPanel } from "@/components/vendor/ProductPanel";
-import { ProductImportPanel } from "@/components/products/ProductImportPanel";
 import { MediaPanel } from "@/components/vendor/MediaPanel";
 import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { useAccess } from "@/hooks/useAccess";
@@ -720,10 +719,10 @@ function VendorDashboard() {
                     <ul className="mt-4 space-y-1 text-sm">
                       {(order.order_items ?? []).map((line) => (
                         <li key={line.id} className="flex justify-between gap-3">
-                          <span className="min-w-0 [overflow-wrap:anywhere]">
+                          <span className="truncate">
                             {line.quantity}× {line.name}
                           </span>
-                          <span className="shrink-0 text-muted-foreground">
+                          <span className="text-muted-foreground">
                             {formatPrice(Number(line.unit_price) * line.quantity)}
                           </span>
                         </li>
@@ -762,12 +761,6 @@ function VendorDashboard() {
               categories={dashboard.data?.categories ?? []}
               onChanged={invalidate}
             />
-            {/* Market gibi yüzlerce ürünlü işletmeler ürünleri tek tek
-                giremez; kendi programlarından aldıkları listeyi buradan
-                yükleyebilsinler. */}
-            <div className="mt-6">
-              <ProductImportPanel restaurantId={restaurant.id} />
-            </div>
             {items.length > 0 ? (
               <div className="mt-6 overflow-hidden rounded-3xl border border-border bg-card">
                 <p className="border-b border-border/60 p-4 text-sm font-semibold">
@@ -779,9 +772,7 @@ function VendorDashboard() {
                     className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 p-4 last:border-0"
                   >
                     <div className="min-w-0">
-                      <p className="whitespace-normal font-medium [overflow-wrap:anywhere]">
-                        {item.name}
-                      </p>
+                      <p className="whitespace-normal font-medium [overflow-wrap:anywhere]">{item.name}</p>
                       <p className="text-xs text-muted-foreground">
                         {formatPrice(Number(item.price))}
                       </p>

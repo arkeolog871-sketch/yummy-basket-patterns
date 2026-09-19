@@ -248,13 +248,6 @@ function BusinessApplicationPage() {
   const { categories } = useAppCategories();
   const { user } = useAuth();
   const [form, setForm] = useState(emptyForm);
-  // Haritaya verilen değer de ham Number() ile değil parseDecimalInput ile
-  // okunur: virgüllü yazımda ("38,15") Number() NaN döndürüp işaretçiyi
-  // sessizce kaybediyordu.
-  const pickedLat = parseDecimalInput(form.latitude);
-  const pickedLng = parseDecimalInput(form.longitude);
-  const pickedPoint =
-    pickedLat !== null && pickedLng !== null ? { lat: pickedLat, lng: pickedLng } : null;
   const loginEmail = user?.email ?? "";
 
   // Başvuru giriş kimliğine bağlanır: iletişim/kimlik alanları hesaptan otomatik
@@ -521,7 +514,11 @@ function BusinessApplicationPage() {
             />
           </div>
           <LocationPicker
-            value={pickedPoint}
+            value={
+              form.latitude.trim() && form.longitude.trim()
+                ? { lat: Number(form.latitude), lng: Number(form.longitude) }
+                : null
+            }
             onChange={(point) =>
               setForm((prev) => ({
                 ...prev,
