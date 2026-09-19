@@ -1027,32 +1027,6 @@ function BusinessPanel({
             onChange={(event) => setForm({ ...form, address: event.target.value })}
           />
           {isOwner ? (
-          {regionLocked ? (
-            <div className="space-y-1">
-              <Label className="text-xs">Bölge (yetkinizle sınırlı)</Label>
-              <select
-                className="flex h-11 w-full rounded-md border border-input bg-transparent px-3 py-1 text-[16px] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                value={`${form.city}|||${form.district}`}
-                onChange={(event) => {
-                  const [city = "", district = ""] = event.target.value.split("|||");
-                  setForm({ ...form, city, district });
-                }}
-                required
-              >
-                {regionOptions.map((region) => (
-                  <option
-                    key={`${region.city}|||${region.district}`}
-                    value={`${region.city}|||${region.district}`}
-                  >
-                    {region.district}, {region.city}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-muted-foreground">
-                İşletme yalnızca yetkili olduğunuz bölgeye eklenebilir; sunucu da bunu denetler.
-              </p>
-            </div>
-          ) : (
             <div className="grid grid-cols-2 gap-2">
               <Input
                 placeholder="İlçe"
@@ -1065,7 +1039,6 @@ function BusinessPanel({
                 onChange={(event) => setForm({ ...form, city: event.target.value })}
               />
             </div>
-          )}
           ) : (
             <div className="space-y-1">
               <select
