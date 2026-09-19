@@ -34,6 +34,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CategoryAccordion } from "@/components/menu/CategoryAccordion";
+import { groupByCategory } from "@/lib/menu-groups";
 import { EmptyState } from "@/components/vendor/EmptyState";
 import { ImageDropzone, readImageFile, type PickedImage } from "@/components/vendor/ImageDropzone";
 import { formatPrice } from "@/lib/format";
@@ -105,6 +107,10 @@ export function ProductPanel({
     () => new Map(categories.map((category) => [category.id, category.name])),
     [categories],
   );
+
+  // Ürünler kategori başlıkları altında toplanır: market panelinde 5.000 ürün
+  // tek düz ızgarada listelenirse ne taranabiliyor ne de kaydırılabiliyor.
+  const productGroups = useMemo(() => groupByCategory(items, categories), [items, categories]);
 
   function openCreate() {
     setEditing(null);
@@ -258,12 +264,12 @@ export function ProductPanel({
           icon={<Package className="size-5" />}
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((product) => (
-            <div
-              key={product.id}
-              className="overflow-hidden rounded-3xl border border-border bg-card shadow-card"
-            >
+        <CategoryAccordion
+          groups={productGroups}
+          itemKey={(product) => product.id}
+          itemsClassName="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          renderItem={(product) => (
+            <div className="overflow-hidden rounded-3xl border border-border bg-background">
               <div className="aspect-square w-full bg-muted">
                 {product.image_url ? (
                   <img
@@ -319,15 +325,11 @@ export function ProductPanel({
                 </div>
               </div>
             </div>
-          ))}
-        </div>
+          )}
+        />
       )}
 
-      <Dialog
-        modal={false}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-      >
+      <Dialog modal={false} open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent
           className="max-h-[90vh] overflow-y-auto sm:max-w-lg"
           onOpenAutoFocus={(event) => event.preventDefault()}
@@ -398,8 +400,8 @@ export function ProductPanel({
                   className="rounded-xl"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Stok 0 iken bu ürün sipariş edilemez. Hizmet satıyorsanız yüksek bir sayı
-                  girin (örn. 999).
+                  Stok 0 iken bu ürün sipariş edilemez. Hizmet satıyorsanız yüksek bir sayı girin
+                  (örn. 999).
                 </p>
               </div>
             </div>
