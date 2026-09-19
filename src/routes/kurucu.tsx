@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useCallback, useEffect, useState } from "react";
+import { useMemo, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { LATITUDE_FIELD_PLACEHOLDER, LONGITUDE_FIELD_PLACEHOLDER } from "@/lib/location";
@@ -27,6 +27,8 @@ import { useAccess } from "@/hooks/useAccess";
 import { AccessDenied } from "@/components/auth/AccessDenied";
 import { PushNotificationButton } from "@/components/notifications/PushNotificationButton";
 import { readTwoFactorState, clearTwoFactorFlag } from "@/lib/two-factor";
+import { CategoryAccordion } from "@/components/menu/CategoryAccordion";
+import { groupByCategory } from "@/lib/menu-groups";
 import { OverviewPanel } from "@/components/founder/OverviewPanel";
 import { SecurityPanel } from "@/components/founder/SecurityPanel";
 import { AppearancePanel } from "@/components/founder/AppearancePanel";
@@ -1556,6 +1558,12 @@ function MenuItemPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
   const catalog = useBusinessCatalog(form.restaurant_id);
   const categories = catalog.data?.categories ?? [];
   const items = catalog.data?.items ?? [];
+  // Formdaki her tuş vuruşunda yeniden gruplamamak için: 5.000 ürünlü bir
+  // markette bu döngü her karakterde dönerse yazma hissediliyor şekilde takılır.
+  const productGroups = useMemo(
+    () => groupByCategory(catalog.data?.items ?? [], catalog.data?.categories ?? []),
+    [catalog.data],
+  );
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -1755,53 +1763,56 @@ function MenuItemPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
         ) : items.length === 0 ? (
           <p className="p-6 text-sm text-muted-foreground">Bu işletmenin ürünü yok.</p>
         ) : (
-          items.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-start justify-between gap-3 border-b border-border/60 p-4 last:border-0"
-            >
-              <div className="min-w-0">
-                <p className="whitespace-normal font-medium [overflow-wrap:anywhere]">
-                  {item.name}
-                </p>
-                <p className="text-xs text-muted-foreground">{formatPrice(Number(item.price))}</p>
+          <CategoryAccordion
+            className="p-3"
+            groups={productGroups}
+            itemKey={(item) => item.id}
+            itemsClassName="divide-y divide-border/60"
+            renderItem={(item) => (
+              <div className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                <div className="min-w-0">
+                  <p className="whitespace-normal font-medium [overflow-wrap:anywhere]">
+                    {item.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{formatPrice(Number(item.price))}</p>
+                </div>
+                <div className="flex gap-1">
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="rounded-full"
+                    aria-label="Düzenle"
+                    onClick={() => {
+                      setEditingId(item.id);
+                      setPickedImage(null);
+                      setForm({
+                        restaurant_id: item.restaurant_id,
+                        category_id: item.category_id ?? "",
+                        name: item.name,
+                        description: item.description ?? "",
+                        price: Number(item.price),
+                        image_url: item.image_url ?? "",
+                        is_popular: item.is_popular,
+                        is_available: item.is_available,
+                        stock_quantity: item.stock_quantity ?? 0,
+                      });
+                    }}
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="rounded-full"
+                    aria-label="Sil"
+                    onClick={() => deleteMutation.mutate(item.id)}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-1">
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="rounded-full"
-                  aria-label="Düzenle"
-                  onClick={() => {
-                    setEditingId(item.id);
-                    setPickedImage(null);
-                    setForm({
-                      restaurant_id: item.restaurant_id,
-                      category_id: item.category_id ?? "",
-                      name: item.name,
-                      description: item.description ?? "",
-                      price: Number(item.price),
-                      image_url: item.image_url ?? "",
-                      is_popular: item.is_popular,
-                      is_available: item.is_available,
-                      stock_quantity: item.stock_quantity ?? 0,
-                    });
-                  }}
-                >
-                  <Pencil className="size-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="rounded-full"
-                  aria-label="Sil"
-                  onClick={() => deleteMutation.mutate(item.id)}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
-            </div>
-          ))
+            )}
+          />
         )}
       </div>
     </div>

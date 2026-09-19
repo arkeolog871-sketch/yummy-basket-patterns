@@ -19,6 +19,8 @@ import { getMyReview, submitReview, deleteMyReview } from "@/lib/reviews.functio
 import { LocationButton } from "@/components/business/LocationButton";
 import { CallButton } from "@/components/business/CallButton";
 import { BusinessMap } from "@/components/business/BusinessMap";
+import { CategoryAccordion } from "@/components/menu/CategoryAccordion";
+import { groupByCategory } from "@/lib/menu-groups";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { formatPrice, formatDateTime } from "@/lib/format";
@@ -99,15 +101,10 @@ function RestaurantDetail() {
   const open = isBusinessOpen(restaurant);
   const hours = hoursLabel(restaurant);
 
-  const grouped = categories.map((category) => ({
-    ...category,
-    items: items.filter((item) => item.category_id === category.id),
-  }));
-  const uncategorised = items.filter((item) => !item.category_id);
-  const menuGroups = [
-    ...grouped,
-    { id: "other", name: "Diğer", position: 999, items: uncategorised },
-  ].filter((group) => group.items.length > 0);
+  // groupByCategory tek geçişte dağıtır. Eski hali her kategori için tüm
+  // ürünleri tarıyordu (26 kategori × 5.000 ürün = her render'da 130.000
+  // karşılaştırma); market vitrinlerinde bu fark hissediliyor.
+  const menuGroups = groupByCategory(items, categories, "Diğer");
 
   const cartRestaurant = {
     id: restaurant.id,
@@ -301,7 +298,7 @@ function RestaurantDetail() {
               ucundaki "sepete ekle" butonu da ekran dışında kalıp erişilemez
               oluyordu. min-w-0 kolonu viewport'a sabitler; ad artık
               line-clamp-2 ile iki satıra kadar sarıyor. */}
-          <div className="min-w-0 space-y-10">
+          <div className="min-w-0">
             {menuGroups.length === 0 ? (
               <div className="rounded-3xl border border-dashed border-border bg-card p-10 text-center">
                 <p className="font-semibold">Bu işletmede şu an menü yok</p>
@@ -310,67 +307,62 @@ function RestaurantDetail() {
                 </p>
               </div>
             ) : (
-              menuGroups.map((group) => (
-                <section key={group.id}>
-                  <h2 className="text-xl">{group.name}</h2>
-                  <div className="mt-4 space-y-3">
-                    {group.items.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-3 rounded-3xl border border-border/70 bg-card p-4 shadow-card sm:gap-4"
-                      >
-                        {item.image_url ? (
-                          <img
-                            src={item.image_url}
-                            alt={item.name}
-                            loading="lazy"
-                            width={80}
-                            height={80}
-                            className="size-16 shrink-0 rounded-2xl object-cover sm:size-20"
-                          />
-                        ) : null}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start gap-2">
-                            {/* Ad kırpılmaz: sığmazsa alt satıra sarar, satır
+              <CategoryAccordion
+                groups={menuGroups}
+                itemKey={(item) => item.id}
+                itemsClassName="space-y-3"
+                renderItem={(item) => (
+                  <div className="flex items-center gap-3 rounded-3xl border border-border/70 bg-background p-4 sm:gap-4">
+                    {item.image_url ? (
+                      <img
+                        src={item.image_url}
+                        alt={item.name}
+                        loading="lazy"
+                        width={80}
+                        height={80}
+                        className="size-16 shrink-0 rounded-2xl object-cover sm:size-20"
+                      />
+                    ) : null}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start gap-2">
+                        {/* Ad kırpılmaz: sığmazsa alt satıra sarar, satır
                                 yüksekliği gerektiği kadar uzar. `truncate`
                                 (white-space: nowrap) gibi min-content genişliğini
                                 şişirmediği için satırın sağındaki sepet butonu
                                 ekranda kalmaya devam eder. */}
-                            <h3 className="min-w-0 text-base font-semibold [overflow-wrap:anywhere]">
-                              {item.name}
-                            </h3>
-                            {item.is_popular ? (
-                              <span className="shrink-0 rounded-full bg-warm px-2 py-0.5 text-[11px] font-semibold text-warm-foreground">
-                                Popüler
-                              </span>
-                            ) : null}
-                          </div>
-                          {item.description ? (
-                            <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                              {item.description}
-                            </p>
-                          ) : null}
-                          <p className="mt-2 font-semibold">{formatPrice(Number(item.price))}</p>
-                          {item.in_stock === false ? (
-                            <p className="mt-1 text-xs font-medium text-destructive">
-                              Tükendi — şu an sipariş alınamıyor
-                            </p>
-                          ) : null}
-                        </div>
-                        <Button
-                          size="icon"
-                          className="size-10 shrink-0 rounded-full"
-                          disabled={!open || item.in_stock === false}
-                          aria-label={`${item.name} sepete ekle`}
-                          onClick={() => add(item)}
-                        >
-                          <Plus className="size-5" />
-                        </Button>
+                        <h3 className="min-w-0 text-base font-semibold [overflow-wrap:anywhere]">
+                          {item.name}
+                        </h3>
+                        {item.is_popular ? (
+                          <span className="shrink-0 rounded-full bg-warm px-2 py-0.5 text-[11px] font-semibold text-warm-foreground">
+                            Popüler
+                          </span>
+                        ) : null}
                       </div>
-                    ))}
+                      {item.description ? (
+                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                          {item.description}
+                        </p>
+                      ) : null}
+                      <p className="mt-2 font-semibold">{formatPrice(Number(item.price))}</p>
+                      {item.in_stock === false ? (
+                        <p className="mt-1 text-xs font-medium text-destructive">
+                          Tükendi — şu an sipariş alınamıyor
+                        </p>
+                      ) : null}
+                    </div>
+                    <Button
+                      size="icon"
+                      className="size-10 shrink-0 rounded-full"
+                      disabled={!open || item.in_stock === false}
+                      aria-label={`${item.name} sepete ekle`}
+                      onClick={() => add(item)}
+                    >
+                      <Plus className="size-5" />
+                    </Button>
                   </div>
-                </section>
-              ))
+                )}
+              />
             )}
           </div>
 
