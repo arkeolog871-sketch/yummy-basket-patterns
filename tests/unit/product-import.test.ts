@@ -7,6 +7,9 @@ import {
   normalizeUnit,
   parseImportNumber,
   parseProductFile,
+  parseProductRows,
+  sheetCellToText,
+  toGrid,
 } from "@/lib/product-import";
 
 describe("parseImportNumber", () => {
@@ -217,5 +220,85 @@ describe("parseProductFile", () => {
       .concat(Array.from({ length: 50 }, (_, i) => `869000000${String(i).padStart(4, "0")};10,00`))
       .join("\n");
     expect(parseProductFile(many, { maxRows: 10 }).rows).toHaveLength(10);
+  });
+});
+
+describe("sheetCellToText (Excel hücresi)", () => {
+  /**
+   * En kritik durum: market programı barkodu sayı hücresi olarak yazmış.
+   * CSV yolunda Excel bunu "8.69102E+12" yapıp bozuyordu; .xlsx doğrudan
+   * okununca tam değer korunmalı.
+   */
+  it("sayı barkodu bilimsel gösterime çevirmez", () => {
+    expect(sheetCellToText(8690123456789)).toBe("8690123456789");
+    expect(sheetCellToText(86901234567890)).toBe("86901234567890");
+  });
+
+  it("ondalık fiyatı bozmaz", () => {
+    expect(sheetCellToText(45.9)).toBe("45.9");
+    expect(sheetCellToText(1234.56)).toBe("1234.56");
+  });
+
+  it("boş ve tanımsız hücreler boş metin", () => {
+    expect(sheetCellToText(null)).toBe("");
+    expect(sheetCellToText(undefined)).toBe("");
+  });
+
+  it("metni olduğu gibi bırakır", () => {
+    expect(sheetCellToText("Coca Cola 1 Lt")).toBe("Coca Cola 1 Lt");
+  });
+
+  /** Tarih sütunu ürün adına yazılırsa zarardan başka bir şey olmaz. */
+  it("tarihi boş döner", () => {
+    expect(sheetCellToText(new Date("2026-09-19"))).toBe("");
+  });
+});
+
+describe("parseProductRows (Excel yolu)", () => {
+  /** Excel'den gelen ızgara, CSV ile aynı sonucu vermeli. */
+  it("ızgaradan CSV ile aynı sonucu üretir", () => {
+    const grid = [
+      ["Barkod", "Stok Adı", "Satış Fiyatı", "Stok"],
+      ["8690123456789", "Coca Cola 1 Lt", "45,90", "12"],
+    ];
+    const fromGrid = parseProductRows(grid);
+    const fromCsv = parseProductFile(
+      ["Barkod;Stok Adı;Satış Fiyatı;Stok", "8690123456789;Coca Cola 1 Lt;45,90;12"].join("\n"),
+    );
+    expect(fromGrid.rows).toEqual(fromCsv.rows);
+  });
+
+  /**
+   * Excel sayıları nokta ondalıkla gelir ("45.9"), CSV'de virgül olurdu.
+   * İkisi de aynı fiyatı vermeli.
+   */
+  it("Excel'in nokta ondalığını okur", () => {
+    const grid = [
+      ["Barkod", "Fiyat", "Stok"],
+      [sheetCellToText(8690123456789), sheetCellToText(45.9), sheetCellToText(12)],
+    ];
+    const result = parseProductRows(grid);
+    expect(result.rows[0]).toMatchObject({ barcode: "8690123456789", price: 45.9, stock: 12 });
+  });
+
+  /** Excel dosyalarının sonunda boş satırlar sık olur; atlandı sayılmamalı. */
+  it("tamamen boş satırları sessizce atlar", () => {
+    const grid = [["Barkod", "Fiyat"], ["8690123456789", "19,90"], ["", ""], []];
+    const result = parseProductRows(grid);
+    expect(result.rows).toHaveLength(1);
+    expect(result.skipped).toHaveLength(0);
+  });
+
+  it("boş ızgarada çökmez", () => {
+    expect(parseProductRows([])).toEqual({ headers: [], mapping: {}, rows: [], skipped: [] });
+  });
+});
+
+describe("toGrid", () => {
+  it("CSV metnini hücre ızgarasına çevirir", () => {
+    expect(toGrid("a;b;c\n1;2;3")).toEqual([
+      ["a", "b", "c"],
+      ["1", "2", "3"],
+    ]);
   });
 });

@@ -9,7 +9,9 @@ import { formatPrice } from "@/lib/format";
 import {
   IMPORT_MAX_ROWS,
   missingRequiredFields,
-  parseProductFile,
+  parseProductRows,
+  sheetCellToText,
+  toGrid,
   type ImportField,
   type ParsedImport,
 } from "@/lib/product-import";
@@ -41,14 +43,14 @@ const FIELD_ORDER: ImportField[] = [
 ];
 
 /**
- * Dosyayı metne çevirir.
+ * CSV metnini okur.
  *
  * Türkçe Excel CSV'yi çoğunlukla Windows-1254 ile kaydeder; UTF-8 sanıp
  * okursak "Süt" yerine "S�t" çıkar ve ürün adları bozuk kaydedilir. Önce
  * UTF-8 deniyor, değiştirme karakteri (U+FFFD) görürsek 1254 ile yeniden
  * okuyoruz — BOM'lu UTF-8 dosyalar da böylece doğru kalıyor.
  */
-async function readSpreadsheetText(file: File): Promise<string> {
+async function readCsvText(file: File): Promise<string> {
   const buffer = await file.arrayBuffer();
   const utf8 = new TextDecoder("utf-8").decode(buffer);
   if (!utf8.includes("\uFFFD")) return utf8;
@@ -57,6 +59,46 @@ async function readSpreadsheetText(file: File): Promise<string> {
   } catch {
     return utf8;
   }
+}
+
+const isXlsxFile = (file: File) => /\.xlsx$/i.test(file.name);
+/**
+ * Eski Excel biçimi (.xls, BIFF) ayrı ele alınıyor: okuyucu yalnızca .xlsx
+ * destekliyor. Ayırt etmeseydik kullanıcı "dosya okunamadı" görüp ne
+ * yapacağını bilemezdi; oysa çözüm tek tıklık.
+ */
+const isLegacyXlsFile = (file: File) => /\.xls$/i.test(file.name);
+
+/** Kullanıcıya ne yapacağını söyleyen, ayırt edilebilir hata. */
+export class UnsupportedSpreadsheetError extends Error {}
+
+/**
+ * Dosyayı hücre ızgarasına çevirir.
+ *
+ * Excel desteği neden şart: Türk market programlarının çoğu ürün listesini
+ * CSV değil .xlsx verir. Kullanıcı dosyayı Excel'de açıp "CSV olarak kaydet"
+ * yaptığında Excel 13 haneli barkodu "8.69102E+12" yapıp GERİ GETİRİLEMEZ
+ * şekilde bozuyor — aktarımın en olası başarısızlık sebebi buydu. .xlsx
+ * doğrudan okununca barkod hücresi sayı bile olsa tam değerini koruyor,
+ * kodlama sorunu da yaşanmıyor (xlsx zaten Unicode).
+ *
+ * Kütüphane yalnızca Excel dosyası seçildiğinde yükleniyor: paneli açan
+ * herkese yüz kilobaytlarca ayrıştırıcı indirtmenin anlamı yok.
+ */
+async function readSpreadsheetGrid(file: File): Promise<string[][]> {
+  if (isLegacyXlsFile(file)) {
+    throw new UnsupportedSpreadsheetError(
+      "Bu dosya eski Excel biçiminde (.xls). Excel'de açıp \u201cFarklı Kaydet \u2192 Excel Çalışma Kitabı (.xlsx)\u201d ile kaydedip tekrar yükleyin.",
+    );
+  }
+  if (!isXlsxFile(file)) return toGrid(await readCsvText(file));
+  const { default: readXlsxFile } = await import("read-excel-file/browser");
+  // Kütüphane sayfa dizisi döner ({sheet, data}), satır dizisi değil. Boş
+  // olmayan ilk sayfa alınıyor: bazı programlar dosyanın başına kapak/ayar
+  // sayfası koyuyor ve körlemesine ilk sayfayı almak boş liste verirdi.
+  const sheets = await readXlsxFile(file);
+  const data = sheets.find((sheet) => sheet.data.length > 0)?.data ?? [];
+  return data.map((row) => row.map((cell) => sheetCellToText(cell)));
 }
 
 /**
@@ -92,7 +134,7 @@ export function ProductImportPanel({
   const fileInput = useRef<HTMLInputElement>(null);
 
   const [fileName, setFileName] = useState<string | null>(null);
-  const [rawText, setRawText] = useState<string | null>(null);
+  const [grid, setGrid] = useState<string[][] | null>(null);
   const [mapping, setMapping] = useState<Partial<Record<ImportField, number>> | null>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -112,9 +154,9 @@ export function ProductImportPanel({
   // Eşleme kullanıcı tarafından değiştirilebildiği için ayrıştırma her
   // değişiklikte yeniden çalışır; dosya bellekte metin olarak tutuluyor.
   const parsed: ParsedImport | null = useMemo(() => {
-    if (!rawText) return null;
-    return parseProductFile(rawText, mapping ? { mapping } : {});
-  }, [rawText, mapping]);
+    if (!grid) return null;
+    return parseProductRows(grid, mapping ? { mapping } : {});
+  }, [grid, mapping]);
 
   const missing = parsed ? missingRequiredFields(parsed.mapping) : [];
 
@@ -122,16 +164,25 @@ export function ProductImportPanel({
     setResult(null);
     setProgress(0);
     if (!file) return;
-    const text = await readSpreadsheetText(file);
-    const first = parseProductFile(text);
-    setFileName(file.name);
-    setRawText(text);
-    setMapping(first.mapping);
+    try {
+      const cells = await readSpreadsheetGrid(file);
+      setFileName(file.name);
+      setGrid(cells);
+      // Sütun eşlemesi dosyadan yeniden tanınsın; önceki dosyanın eşlemesi
+      // yeni dosyaya yanlış uygulanırsa hatanın sebebi anlaşılmaz olurdu.
+      setMapping(parseProductRows(cells).mapping);
+    } catch (error) {
+      toast.error(
+        error instanceof UnsupportedSpreadsheetError
+          ? error.message
+          : "Dosya okunamadı. Excel (.xlsx) veya CSV dosyası seçin.",
+      );
+    }
   }, []);
 
   function reset() {
     setFileName(null);
-    setRawText(null);
+    setGrid(null);
     setMapping(null);
     setResult(null);
     setProgress(0);
@@ -191,13 +242,18 @@ export function ProductImportPanel({
           <div className="min-w-0">
             <p className="font-semibold">Toplu ürün aktarımı</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Market programınızdan aldığınız ürün listesini (CSV) yükleyin. Dosyada{" "}
-              <strong>barkod</strong> (veya stok kodu) ve <strong>fiyat</strong> sütunu bulunması
-              yeterli; ad, stok, KDV, birim ve kategori varsa onlar da okunur.
+              Market programınızdan aldığınız ürün listesini yükleyin —{" "}
+              <strong>Excel (.xlsx)</strong> veya CSV olabilir. Dosyada <strong>barkod</strong>{" "}
+              (veya stok kodu) ve <strong>fiyat</strong> sütunu bulunması yeterli; ad, stok, KDV,
+              birim ve kategori varsa onlar da okunur.
             </p>
             <p className="mt-2 text-xs text-muted-foreground">
               Fiyat ve stok her aktarımda güncellenir. Elle düzelttiğiniz ürün adı, görsel ve
               açıklama korunur — aktarım bunları bozmaz.
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Programınız Excel veriyorsa <strong>dosyayı olduğu gibi yükleyin</strong>; Excel'de
+              açıp CSV'ye çevirmeyin — Excel uzun barkodları bozuyor.
             </p>
           </div>
         </div>
@@ -209,7 +265,7 @@ export function ProductImportPanel({
             <input
               ref={fileInput}
               type="file"
-              accept=".csv,.txt,text/csv,text/plain"
+              accept=".xlsx,.xls,.csv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain"
               className="hidden"
               onChange={(event) => void onPickFile(event.target.files?.[0])}
             />

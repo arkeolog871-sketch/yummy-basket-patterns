@@ -168,6 +168,31 @@ export function normalizeUnit(value: string): ImportUnit | null {
   return aliases[text] ?? null;
 }
 
+/**
+ * Excel (.xlsx) hücresini metne çevirir.
+ *
+ * Asıl mesele barkod: market programı barkodu SAYI hücresi olarak yazmış
+ * olabilir. 13-14 haneli barkod 2^53'ün altında kaldığı için değer tam
+ * korunur ve burada tam sayı biçiminde yazılır — CSV yolunda Excel'in
+ * "8.69102E+12" yapıp geri getirilemez şekilde bozduğu hata .xlsx'te hiç
+ * oluşmuyor.
+ *
+ * Tarih hücreleri boş dönüyor: ürün listelerinde eşlenen bir alana denk
+ * gelmiyorlar ve "Mon Sep 19 2026..." gibi bir metin ürün adına yazılsa
+ * zarardan başka bir şey olmaz.
+ */
+export function sheetCellToText(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return "";
+    return Number.isInteger(value) ? value.toFixed(0) : String(value);
+  }
+  if (typeof value === "boolean") return value ? "1" : "0";
+  if (value instanceof Date) return "";
+  return String(value);
+}
+
 /** Tek satırlık CSV/TSV ayrıştırma: tırnaklı alanlar ve kaçışlı tırnak dahil. */
 function splitLine(line: string, delimiter: string): string[] {
   const cells: string[] = [];
@@ -226,13 +251,37 @@ export type ParseOptions = {
 
 export const IMPORT_MAX_ROWS = 20000;
 
-export function parseProductFile(text: string, options: ParseOptions = {}): ParsedImport {
+/**
+ * CSV metnini hücre ızgarasına çevirir. Ayrıştırmanın Türkçeye özgü kısmı
+ * (başlık tanıma, fiyat, barkod, birim) `parseProductRows`'ta ortak; burada
+ * yalnızca metni satır/sütuna bölmek var.
+ */
+export function toGrid(text: string): string[][] {
   const clean = text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
   const lines = clean.split("\n").filter((line) => line.trim().length > 0);
-  if (lines.length === 0) return { headers: [], mapping: {}, rows: [], skipped: [] };
-
+  if (lines.length === 0) return [];
   const delimiter = detectDelimiter(lines[0]!);
-  const headers = splitLine(lines[0]!, delimiter).map((header) => header.trim());
+  return lines.map((line) => splitLine(line, delimiter));
+}
+
+export function parseProductFile(text: string, options: ParseOptions = {}): ParsedImport {
+  return parseProductRows(toGrid(text), options);
+}
+
+/**
+ * Asıl ayrıştırıcı: kaynağı ne olursa olsun (CSV ya da Excel) hücre
+ * ızgarasından ürün satırlarını çıkarır.
+ *
+ * Excel yolu bu yüzden var: Türk market programlarının çoğu listeyi CSV
+ * değil .xlsx verir. Kullanıcı dosyayı Excel'de açıp "CSV olarak kaydet"
+ * yaptığında Excel 13 haneli barkodu bilimsel gösterime çevirip geri
+ * getirilemez şekilde bozuyordu. .xlsx doğrudan okununca barkod hücresi
+ * sayı bile olsa tam değerini koruyor — sorun kaynağında bitiyor.
+ */
+export function parseProductRows(grid: string[][], options: ParseOptions = {}): ParsedImport {
+  if (grid.length === 0) return { headers: [], mapping: {}, rows: [], skipped: [] };
+
+  const headers = (grid[0] ?? []).map((header) => header.trim());
   const mapping = options.mapping ?? detectColumns(headers);
   const maxRows = options.maxRows ?? IMPORT_MAX_ROWS;
 
@@ -240,10 +289,12 @@ export function parseProductFile(text: string, options: ParseOptions = {}): Pars
   const skipped: SkippedRow[] = [];
   const seenBarcodes = new Set<string>();
 
-  for (let i = 1; i < lines.length && rows.length + skipped.length < maxRows; i += 1) {
-    const raw = lines[i]!;
+  for (let i = 1; i < grid.length && rows.length + skipped.length < maxRows; i += 1) {
     const line = i + 1;
-    const cells = splitLine(raw, delimiter);
+    const cells = grid[i] ?? [];
+    // Tamamen boş satır (Excel dosyalarında sonda sık olur) sessizce atlanır;
+    // "atlandı" listesini gereksiz yere şişirmesin.
+    if (cells.every((value) => !value || !value.trim())) continue;
     const cell = (field: ImportField): string => {
       const index = mapping[field];
       return index == null ? "" : (cells[index] ?? "");
