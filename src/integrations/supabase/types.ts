@@ -587,11 +587,91 @@ export type Database = {
           },
         ]
       }
+      product_catalog: {
+        Row: {
+          barcode: string
+          brand: string | null
+          created_at: string
+          default_vat_rate: number | null
+          first_seen_restaurant_id: string | null
+          image_url: string | null
+          name: string
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          barcode: string
+          brand?: string | null
+          created_at?: string
+          default_vat_rate?: number | null
+          first_seen_restaurant_id?: string | null
+          image_url?: string | null
+          name: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          barcode?: string
+          brand?: string | null
+          created_at?: string
+          default_vat_rate?: number | null
+          first_seen_restaurant_id?: string | null
+          image_url?: string | null
+          name?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      product_imports: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          created_count: number
+          file_name: string | null
+          id: string
+          restaurant_id: string
+          skipped: Json | null
+          skipped_count: number
+          source: string
+          total_rows: number
+          updated_count: number
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          created_count?: number
+          file_name?: string | null
+          id?: string
+          restaurant_id: string
+          skipped?: Json | null
+          skipped_count?: number
+          source?: string
+          total_rows?: number
+          updated_count?: number
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          created_count?: number
+          file_name?: string | null
+          id?: string
+          restaurant_id?: string
+          skipped?: Json | null
+          skipped_count?: number
+          source?: string
+          total_rows?: number
+          updated_count?: number
+        }
+        Relationships: []
+      }
       menu_items: {
         Row: {
+          barcode: string | null
           category_id: string | null
           created_at: string
           description: string | null
+          external_id: string | null
           id: string
           image_url: string | null
           is_available: boolean
@@ -599,13 +679,19 @@ export type Database = {
           name: string
           price: number
           restaurant_id: string
+          source: string | null
           stock_quantity: number
+          synced_at: string | null
+          unit: string | null
           updated_at: string
+          vat_rate: number | null
         }
         Insert: {
+          barcode?: string | null
           category_id?: string | null
           created_at?: string
           description?: string | null
+          external_id?: string | null
           id?: string
           image_url?: string | null
           is_available?: boolean
@@ -613,13 +699,19 @@ export type Database = {
           name: string
           price: number
           restaurant_id: string
+          source?: string | null
           stock_quantity?: number
+          synced_at?: string | null
+          unit?: string | null
           updated_at?: string
+          vat_rate?: number | null
         }
         Update: {
+          barcode?: string | null
           category_id?: string | null
           created_at?: string
           description?: string | null
+          external_id?: string | null
           id?: string
           image_url?: string | null
           is_available?: boolean
@@ -627,8 +719,12 @@ export type Database = {
           name?: string
           price?: number
           restaurant_id?: string
+          source?: string | null
           stock_quantity?: number
+          synced_at?: string | null
+          unit?: string | null
           updated_at?: string
+          vat_rate?: number | null
         }
         Relationships: [
           {
@@ -1325,6 +1421,10 @@ export type Database = {
         Returns: undefined
       }
       expire_stale_advertisements: { Args: never; Returns: number }
+      import_menu_items: {
+        Args: { p_restaurant_id: string; p_rows: Json }
+        Returns: { created_count: number; updated_count: number }[]
+      }
       get_active_banners: {
         Args: never
         Returns: {

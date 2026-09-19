@@ -69,6 +69,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ProductImportPanel } from "@/components/products/ProductImportPanel";
 import { AuditLogPanel } from "@/components/founder/AuditLogPanel";
 import { DeletionRequestsPanel } from "@/components/founder/DeletionRequestsPanel";
 
@@ -352,6 +353,7 @@ function FounderDashboard({
           <TabsTrigger value="basvurular">Başvurular</TabsTrigger>
           <TabsTrigger value="kategoriler">Menü kategorileri</TabsTrigger>
           <TabsTrigger value="urunler">Ürünler</TabsTrigger>
+          <TabsTrigger value="toplu-urun">Toplu ürün</TabsTrigger>
           {isOwner ? <TabsTrigger value="kullanicilar">Kullanıcılar</TabsTrigger> : null}
           {isOwner ? <TabsTrigger value="yetkiler">Yetkiler</TabsTrigger> : null}
           {isOwner ? <TabsTrigger value="silme-talepleri">Silme talepleri</TabsTrigger> : null}
@@ -441,6 +443,10 @@ function FounderDashboard({
 
         <TabsContent value="urunler" className="mt-6">
           <MenuItemPanel businesses={data.data?.businesses ?? []} onDone={invalidate} />
+        </TabsContent>
+
+        <TabsContent value="toplu-urun" className="mt-6">
+          <BulkProductPanel businesses={data.data?.businesses ?? []} />
         </TabsContent>
 
         {isOwner ? (
@@ -1289,6 +1295,23 @@ function BusinessPanel({
 }
 
 /** İşletme seçici — arama kutusu + select, 300+ işletmede taranabilir kalır. */
+/**
+ * Kurucu/bölge yöneticisi için toplu ürün aktarımı: önce işletme seçilir,
+ * sonra market listesi yüklenir. İşletme paneli kendi kataloğunu zaten
+ * bildiği için orada seçici yok.
+ */
+function BulkProductPanel({ businesses }: { businesses: BusinessRow[] }) {
+  const [restaurantId, setRestaurantId] = useState("");
+  return (
+    <div className="space-y-4">
+      <div className="rounded-3xl border border-border bg-card p-5">
+        <BusinessSelect businesses={businesses} value={restaurantId} onChange={setRestaurantId} />
+      </div>
+      <ProductImportPanel restaurantId={restaurantId || null} />
+    </div>
+  );
+}
+
 function BusinessSelect({
   businesses,
   value,
