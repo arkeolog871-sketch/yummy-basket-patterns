@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { LATITUDE_FIELD_PLACEHOLDER, LONGITUDE_FIELD_PLACEHOLDER } from "@/lib/location";
@@ -69,6 +69,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ProductImportPanel } from "@/components/products/ProductImportPanel";
+import { VendorPairingPanel } from "@/components/founder/VendorPairingPanel";
 import { AuditLogPanel } from "@/components/founder/AuditLogPanel";
 import { DeletionRequestsPanel } from "@/components/founder/DeletionRequestsPanel";
 
@@ -315,7 +317,9 @@ function FounderDashboard({
             {isOwner
               ? "Tema, tipografi, işletme, kategori, ürün, kullanıcı ve sipariş yönetimi"
               : `Yetkili bölgeleriniz: ${
-                  regions.map((region) => `${region.district}, ${region.city}`).join(" · ") || "—"
+                  regions
+                    .map((region) => `${titleCaseTr(region.district)}, ${titleCaseTr(region.city)}`)
+                    .join(" · ") || "—"
                 }`}
           </p>
         </div>
@@ -350,6 +354,7 @@ function FounderDashboard({
           <TabsTrigger value="basvurular">Başvurular</TabsTrigger>
           <TabsTrigger value="kategoriler">Menü kategorileri</TabsTrigger>
           <TabsTrigger value="urunler">Ürünler</TabsTrigger>
+          <TabsTrigger value="toplu-urun">Toplu ürün</TabsTrigger>
           {isOwner ? <TabsTrigger value="kullanicilar">Kullanıcılar</TabsTrigger> : null}
           {isOwner ? <TabsTrigger value="yetkiler">Yetkiler</TabsTrigger> : null}
           {isOwner ? <TabsTrigger value="silme-talepleri">Silme talepleri</TabsTrigger> : null}
@@ -420,8 +425,14 @@ function FounderDashboard({
           </TabsContent>
         ) : null}
 
-        <TabsContent value="isletmeler" className="mt-6">
-          <BusinessPanel businesses={data.data?.businesses ?? []} onDone={invalidate} />
+        <TabsContent value="isletmeler" className="mt-6 space-y-6">
+          <NotificationLinkPanel businesses={data.data?.businesses ?? []} />
+          <BusinessPanel
+            businesses={data.data?.businesses ?? []}
+            onDone={invalidate}
+            isOwner={isOwner}
+            regions={regions}
+          />
         </TabsContent>
 
         <TabsContent value="basvurular" className="mt-6">
@@ -434,6 +445,10 @@ function FounderDashboard({
 
         <TabsContent value="urunler" className="mt-6">
           <MenuItemPanel businesses={data.data?.businesses ?? []} onDone={invalidate} />
+        </TabsContent>
+
+        <TabsContent value="toplu-urun" className="mt-6">
+          <BulkProductPanel businesses={data.data?.businesses ?? []} />
         </TabsContent>
 
         {isOwner ? (
@@ -647,6 +662,43 @@ type BusinessRow = {
   is_open_manual?: boolean | null;
 };
 
+/** Bölge yöneticisinin yetkili olduğu şehir/ilçe çifti (sunucudaki PanelRegion ile aynı). */
+type PanelRegion = { city: string; district: string };
+
+const normalizeRegionPart = (value: string | null | undefined) =>
+  (value ?? "").trim().toLocaleLowerCase("tr");
+
+/**
+ * Bölge adını görünür biçime çevirir: "SİLVAN" -> "Silvan". Yetki kayıtları
+ * büyük harfle tutulabiliyor (page_manager_roles'ta "DİYARBAKIR"/"SİLVAN"),
+ * işletmeler ise başlık biçiminde ("Diyarbakır"/"Silvan"). Seçimi olduğu gibi
+ * yazsaydık yeni işletmeler kartlarda "SİLVAN, DİYARBAKIR" diye görünüp
+ * mevcutlardan ayrışırdı. Türkçe yerel ayarı i/ı ayrımını da doğru yapar.
+ */
+function titleCaseTr(value: string): string {
+  return value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.slice(0, 1).toLocaleUpperCase("tr") + word.slice(1).toLocaleLowerCase("tr"))
+    .join(" ");
+}
+
+/**
+ * Formdaki ilçe/şehir hangi yetkili bölgeye denk geliyor? Sunucu karşılaştırmayı
+ * büyük/küçük harf ve boşluk duyarsız yaptığı için burada da aynısı yapılır;
+ * aksi halde "Silvan" ile "silvan" farklı görünüp seçim boş kalırdı.
+ * Eşleşme yoksa 0 döner: düzenlenebilen her işletme zaten yetki alanındadır.
+ */
+function findRegionIndex(regions: PanelRegion[], district: string, city: string): number {
+  const index = regions.findIndex(
+    (region) =>
+      normalizeRegionPart(region.district) === normalizeRegionPart(district) &&
+      normalizeRegionPart(region.city) === normalizeRegionPart(city),
+  );
+  return index >= 0 ? index : 0;
+}
+
 const emptyBusiness = {
   slug: "",
   name: "",
@@ -688,13 +740,41 @@ function matchesBusinessSearch(
   );
 }
 
-function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDone: () => void }) {
+function BusinessPanel({
+  businesses,
+  onDone,
+  isOwner,
+  regions,
+}: {
+  businesses: BusinessRow[];
+  onDone: () => void;
+  isOwner: boolean;
+  /** Bölge yöneticisinin yetkili olduğu şehir/ilçe çiftleri; sahip için boştur. */
+  regions: PanelRegion[];
+}) {
+  // Sunucu (assertRegionAllowed) işletmeyi yalnızca yetkili bölgeye kaydettirir.
+  // Bölge yöneticisine ilçe/şehir'i serbest metin olarak sormak, alan boş
+  // bırakıldığında ya da başka türlü yazıldığında kaydı sessizce "Forbidden"
+  // ile reddettiriyordu; bu yüzden onlara yetkili bölgelerinden seçim sunulur
+  // ve yeni kayıt ilk bölgeyle önceden doldurulur.
+  const defaultRegion = isOwner ? null : (regions[0] ?? null);
+  const blankBusiness = useCallback(
+    () =>
+      defaultRegion
+        ? {
+            ...emptyBusiness,
+            city: titleCaseTr(defaultRegion.city),
+            district: titleCaseTr(defaultRegion.district),
+          }
+        : emptyBusiness,
+    [defaultRegion],
+  );
   const save = useServerFn(saveBusiness);
   const remove = useServerFn(deleteBusiness);
   const move = useServerFn(moveRestaurant);
   const { categories } = useAppCategories();
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState(emptyBusiness);
+  const [form, setForm] = useState(blankBusiness);
   const [pickedCover, setPickedCover] = useState<PickedImage | null>(null);
   const [search, setSearch] = useState("");
   const activeSector = form.sector || categories[0]?.slug || "";
@@ -764,7 +844,7 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
             : "İşletme ve giriş hesabı oluşturuldu",
       );
       setEditingId(null);
-      setForm(emptyBusiness);
+      setForm(blankBusiness());
       setPickedCover(null);
       onDone();
     },
@@ -937,25 +1017,82 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
         </div>
         <div className="space-y-2 rounded-2xl border border-border p-3">
           <p className="text-xs font-medium text-muted-foreground">
-            Konum (isteğe bağlı) — WhatsApp konum linki yol tarifinde Google Haritalar ile açılır
+            {isOwner
+              ? "Konum (isteğe bağlı) — WhatsApp konum linki yol tarifinde Google Haritalar ile açılır"
+              : "Konum — bölge zorunludur, diğer alanlar isteğe bağlı. WhatsApp konum linki yol tarifinde Google Haritalar ile açılır"}
           </p>
           <Input
             placeholder="Açık adres (Mahalle, sokak, no)"
             value={form.address}
             onChange={(event) => setForm({ ...form, address: event.target.value })}
           />
-          <div className="grid grid-cols-2 gap-2">
-            <Input
-              placeholder="İlçe"
-              value={form.district}
-              onChange={(event) => setForm({ ...form, district: event.target.value })}
-            />
-            <Input
-              placeholder="Şehir"
-              value={form.city}
-              onChange={(event) => setForm({ ...form, city: event.target.value })}
-            />
-          </div>
+          {isOwner ? (
+          {regionLocked ? (
+            <div className="space-y-1">
+              <Label className="text-xs">Bölge (yetkinizle sınırlı)</Label>
+              <select
+                className="flex h-11 w-full rounded-md border border-input bg-transparent px-3 py-1 text-[16px] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                value={`${form.city}|||${form.district}`}
+                onChange={(event) => {
+                  const [city = "", district = ""] = event.target.value.split("|||");
+                  setForm({ ...form, city, district });
+                }}
+                required
+              >
+                {regionOptions.map((region) => (
+                  <option
+                    key={`${region.city}|||${region.district}`}
+                    value={`${region.city}|||${region.district}`}
+                  >
+                    {region.district}, {region.city}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                İşletme yalnızca yetkili olduğunuz bölgeye eklenebilir; sunucu da bunu denetler.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                placeholder="İlçe"
+                value={form.district}
+                onChange={(event) => setForm({ ...form, district: event.target.value })}
+              />
+              <Input
+                placeholder="Şehir"
+                value={form.city}
+                onChange={(event) => setForm({ ...form, city: event.target.value })}
+              />
+            </div>
+          )}
+          ) : (
+            <div className="space-y-1">
+              <select
+                value={String(findRegionIndex(regions, form.district, form.city))}
+                onChange={(event) => {
+                  const region = regions[Number(event.target.value)];
+                  if (!region) return;
+                  setForm({
+                    ...form,
+                    district: titleCaseTr(region.district),
+                    city: titleCaseTr(region.city),
+                  });
+                }}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                aria-label="İşletmenin bölgesi"
+              >
+                {regions.map((region, index) => (
+                  <option key={`${region.district}-${region.city}`} value={String(index)}>
+                    {titleCaseTr(region.district)}, {titleCaseTr(region.city)}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                İşletme yalnızca yetkili olduğunuz bölgeye eklenebilir.
+              </p>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <Input
               placeholder={LATITUDE_FIELD_PLACEHOLDER}
@@ -1055,7 +1192,7 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
               className="rounded-full"
               onClick={() => {
                 setEditingId(null);
-                setForm(emptyBusiness);
+                setForm(blankBusiness());
                 setPickedCover(null);
               }}
             >
@@ -1187,6 +1324,45 @@ function BusinessPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
 }
 
 /** İşletme seçici — arama kutusu + select, 300+ işletmede taranabilir kalır. */
+/**
+ * Kurucu/bölge yöneticisi için toplu ürün aktarımı: önce işletme seçilir,
+ * sonra market listesi yüklenir. İşletme paneli kendi kataloğunu zaten
+ * bildiği için orada seçici yok.
+ */
+/**
+ * Bildirim bağlantısı: hangi işletme sipariş bildirimi alabiliyor, alamıyorsa
+ * sahibin hesabını bağlayacak kod. "Bildirim alamayan işletme" uyarısının
+ * çözümü burada.
+ */
+function NotificationLinkPanel({ businesses }: { businesses: BusinessRow[] }) {
+  const [restaurantId, setRestaurantId] = useState("");
+  return (
+    <div className="space-y-4 rounded-3xl border border-border bg-card p-5">
+      <div>
+        <p className="font-semibold">Bildirim bağlantısı</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          İşletmenin sipariş bildirimi alıp almadığını görün; almıyorsa sahibin uygulamada
+          kullandığı hesabı bir kodla işletmeye bağlayın.
+        </p>
+      </div>
+      <BusinessSelect businesses={businesses} value={restaurantId} onChange={setRestaurantId} />
+      <VendorPairingPanel restaurantId={restaurantId || null} />
+    </div>
+  );
+}
+
+function BulkProductPanel({ businesses }: { businesses: BusinessRow[] }) {
+  const [restaurantId, setRestaurantId] = useState("");
+  return (
+    <div className="space-y-4">
+      <div className="rounded-3xl border border-border bg-card p-5">
+        <BusinessSelect businesses={businesses} value={restaurantId} onChange={setRestaurantId} />
+      </div>
+      <ProductImportPanel restaurantId={restaurantId || null} />
+    </div>
+  );
+}
+
 function BusinessSelect({
   businesses,
   value,
@@ -1612,7 +1788,9 @@ function MenuItemPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
               className="flex items-start justify-between gap-3 border-b border-border/60 p-4 last:border-0"
             >
               <div className="min-w-0">
-                <p className="whitespace-normal font-medium [overflow-wrap:anywhere]">{item.name}</p>
+                <p className="whitespace-normal font-medium [overflow-wrap:anywhere]">
+                  {item.name}
+                </p>
                 <p className="text-xs text-muted-foreground">{formatPrice(Number(item.price))}</p>
               </div>
               <div className="flex gap-1">
