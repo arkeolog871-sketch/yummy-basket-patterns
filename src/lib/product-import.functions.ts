@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { runServerFn } from "./public-error";
-import { IMPORT_UNITS } from "./product-import";
+import { IMPORT_UNITS, importAccessPath } from "./product-import";
 
 /**
  * Market ürün listesinin veritabanına işlenmesi.
@@ -68,14 +68,14 @@ async function assertImportAccess(
 ): Promise<void> {
   const { getVendorRestaurantId } = await import("./vendor.server");
   const ownRestaurantId = await getVendorRestaurantId(context.supabase, context.userId);
-  if (ownRestaurantId) {
-    // İşletme hesabı: yalnızca kendi işletmesi. Başka bir işletmeyi
-    // hedeflediyse panel yetkisine bakmaya gerek yok, zaten yetkisiz.
-    if (ownRestaurantId !== restaurantId) throw new Error("Forbidden");
+  if (importAccessPath(ownRestaurantId, restaurantId) === "own") {
+    // İşletme kendi kataloğunu aktarıyor.
     const { assertVerifiedEmail } = await import("./otp.server");
     await assertVerifiedEmail(context.userId);
     return;
   }
+  // Hedef başka bir işletme: panel yetkisine bak. Vendor kaydının tutmamasına
+  // bakarak burada kısa devre YAPMA (importAccessPath'in açıklamasına bak).
   const { assertPanelAccess, assertRestaurantInScope } = await import("./founder.server");
   const access = await assertPanelAccess(context.supabase, context.userId, context.claims as never);
   await assertRestaurantInScope(access, restaurantId);

@@ -374,3 +374,22 @@ export function missingRequiredFields(
   if (mapping.price == null) missing.push("price");
   return missing;
 }
+
+/**
+ * Aktarım yetkisinin hangi yoldan doğrulanacağı.
+ *
+ * "own"   — hesap, hedef işletmenin kendi işletme hesabı; e-posta doğrulaması yeter.
+ * "panel" — hedef başka bir işletme; kurucu/bölge yöneticisi kontrolü yapılacak.
+ *
+ * Buradaki tek kural şu: vendor_assignments kaydının tutmaması TEK BAŞINA
+ * "yetkisiz" demek DEĞİLDİR. Kurucunun da (arkeolog871@gmail.com örneğinde
+ * "Simpil çiftliği") kendi işletmesi olabiliyor; eşleşmeyince hemen reddedersek
+ * kurucu başka bir markete ürün listesi yükleyemez. Gerçek bir işletme hesabı
+ * "panel" yolunda zaten elenir.
+ */
+export function importAccessPath(
+  ownRestaurantId: string | null | undefined,
+  restaurantId: string,
+): "own" | "panel" {
+  return ownRestaurantId && ownRestaurantId === restaurantId ? "own" : "panel";
+}
