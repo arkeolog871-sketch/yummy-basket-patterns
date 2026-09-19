@@ -346,7 +346,15 @@ export function assertRegionAllowed(
   city: string | null | undefined,
   district: string | null | undefined,
 ): void {
-  if (!accessAllowsRegion(access, city, district)) throw new Error("Forbidden");
+  if (accessAllowsRegion(access, city, district)) return;
+  // "Forbidden:" öneki kullanıcıya okunabilir mesaj olarak yansıtılır
+  // (public-error.ts): bölge dışı işlemde neden reddedildiği görünsün.
+  const allowed = access.regions.map((region) => `${region.district}, ${region.city}`).join(" · ");
+  throw new Error(
+    allowed
+      ? `Forbidden: Bu şehir/ilçe yetki alanınızın dışında (yetkili bölgeleriniz: ${allowed})`
+      : "Forbidden: Bu şehir/ilçe için sayfa yöneticisi yetkiniz yok",
+  );
 }
 
 /** İşletmenin bölgesi erişim kapsamında mı? */
