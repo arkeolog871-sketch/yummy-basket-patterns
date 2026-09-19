@@ -346,7 +346,14 @@ export function assertRegionAllowed(
   city: string | null | undefined,
   district: string | null | undefined,
 ): void {
-  if (!accessAllowsRegion(access, city, district)) throw new Error("Forbidden");
+  if (accessAllowsRegion(access, city, district)) return;
+  // Çıplak "Forbidden" bölge yöneticisine "yetkin yok" gibi görünüyordu; oysa
+  // sorun genelde ilçe/şehir alanının boş ya da yetki alanı dışında olması.
+  // Nedeni söyleyelim ki kişi neyi düzelteceğini bilsin.
+  const allowed = access.regions.map((region) => `${region.district}, ${region.city}`).join(" · ");
+  if (!allowed) throw new Error("Forbidden");
+  const given = `${(district ?? "").trim() || "—"}, ${(city ?? "").trim() || "—"}`;
+  throw new Error(`Forbidden: Yetkili bölgeniz: ${allowed}. Girilen bölge: ${given}.`);
 }
 
 /** İşletmenin bölgesi erişim kapsamında mı? */

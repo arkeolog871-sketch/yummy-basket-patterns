@@ -1449,20 +1449,33 @@ export const getFounderOverview = createServerFn({ method: "GET" })
     // Aşağıdaki üç tablo küçük ve birbirine bağlı; tek tek sayım yerine
     // satırları çekip eşleştirmek hem daha az gidiş geliş hem de "hangi
     // işletme" sorusunu cevaplamayı mümkün kılıyor.
-    const [tokenRows, restaurantRows, itemRows, assignmentRows, lastOrderRow] = await Promise.all([
-      supabaseAdmin.from("fcm_tokens").select("token, device_id, user_id"),
-      supabaseAdmin.from("restaurants").select("id, name").eq("is_active", true),
-      supabaseAdmin.from("menu_items").select("restaurant_id").eq("is_available", true),
-      supabaseAdmin.from("vendor_assignments").select("user_id, restaurant_id"),
-      supabaseAdmin
-        .from("orders")
-        .select("created_at")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-    ]);
+    const [tokenRows, webPushRows, restaurantRows, itemRows, assignmentRows, lastOrderRow] =
+      await Promise.all([
+        supabaseAdmin.from("fcm_tokens").select("token, device_id, user_id"),
+        // Bildirim iki kanaldan gidiyor (bkz. sendPushToUserIds): native cihaz
+        // jetonu ve tarayıcı aboneliği. Yalnızca fcm_tokens'a bakmak, web
+        // push'la ulaşılabilen bir işletmeyi "hiçbir cihazı kayıtlı değil"
+        // diye göstermeye yol açıyordu.
+        supabaseAdmin.from("push_subscriptions").select("user_id"),
+        supabaseAdmin.from("restaurants").select("id, name").eq("is_active", true),
+        supabaseAdmin.from("menu_items").select("restaurant_id").eq("is_available", true),
+        supabaseAdmin.from("vendor_assignments").select("user_id, restaurant_id"),
+        supabaseAdmin
+          .from("orders")
+          .select("created_at")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
 
-    for (const row of [tokenRows, restaurantRows, itemRows, assignmentRows, lastOrderRow]) {
+    for (const row of [
+      tokenRows,
+      webPushRows,
+      restaurantRows,
+      itemRows,
+      assignmentRows,
+      lastOrderRow,
+    ]) {
       if (row.error) throw new Error(row.error.message);
     }
 
@@ -1471,7 +1484,10 @@ export const getFounderOverview = createServerFn({ method: "GET" })
     const devices = new Set((tokenRows.data ?? []).map((row) => row.device_id ?? row.token));
 
     const stockedRestaurants = new Set((itemRows.data ?? []).map((row) => row.restaurant_id));
-    const pushUsers = new Set((tokenRows.data ?? []).map((row) => row.user_id));
+    const pushUsers = new Set([
+      ...(tokenRows.data ?? []).map((row) => row.user_id),
+      ...(webPushRows.data ?? []).map((row) => row.user_id),
+    ]);
     const reachableRestaurants = new Set(
       (assignmentRows.data ?? [])
         .filter((row) => pushUsers.has(row.user_id))

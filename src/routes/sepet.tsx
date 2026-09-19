@@ -58,7 +58,7 @@ function CartPage() {
             className="flex items-center gap-4 rounded-3xl border border-border/70 bg-card p-4 shadow-card"
           >
             <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold">{line.name}</p>
+              <p className="font-semibold [overflow-wrap:anywhere]">{line.name}</p>
               <p className="mt-1 text-sm text-muted-foreground">{formatPrice(line.price)} / adet</p>
             </div>
             <div className="flex items-center gap-2">
