@@ -1,8 +1,15 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Upload, FileSpreadsheet, TriangleAlert, Check, Download } from "lucide-react";
+import {
+  Upload,
+  FileSpreadsheet,
+  TriangleAlert,
+  Check,
+  Download,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { formatPrice } from "@/lib/format";
@@ -15,7 +22,12 @@ import {
   type ImportField,
   type ParsedImport,
 } from "@/lib/product-import";
-import { importProducts, listProductImports } from "@/lib/product-import.functions";
+import {
+  deleteProductsByCategory,
+  importProducts,
+  listImportCategories,
+  listProductImports,
+} from "@/lib/product-import.functions";
 
 /** Sunucu şeması parça başına 500 satır kabul ediyor. */
 const CHUNK_SIZE = 500;
