@@ -325,6 +325,8 @@ export function ProductImportPanel({
         )}
       </div>
 
+      <BulkDeleteSection restaurantId={restaurantId} />
+
       {parsed ? (
         <div className="rounded-3xl border border-border bg-card p-5">
           <p className="font-semibold">Sütun eşleşmesi</p>
