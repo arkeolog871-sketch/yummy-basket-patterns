@@ -32,9 +32,19 @@ describe("aktarım sunucu fonksiyonu", () => {
     expect(source).not.toMatch(/ownRestaurantId !== restaurantId/);
   });
 
-  it("her iki sunucu fonksiyonu da yetkiyi doğrular", () => {
+  it("dört sunucu fonksiyonunun tamamı yetkiyi doğrular", () => {
+    // importProducts, listProductImports, listImportCategories,
+    // deleteProductsByCategory — hepsi assertImportAccess'ten geçmeli.
     const calls = source.match(/await assertImportAccess\(/g) ?? [];
-    expect(calls.length).toBe(2);
+    expect(calls.length).toBe(4);
+    for (const fn of [
+      "importProducts",
+      "listProductImports",
+      "listImportCategories",
+      "deleteProductsByCategory",
+    ]) {
+      expect(source).toContain(`export const ${fn} = createServerFn`);
+    }
   });
 
   it("restaurantId panel yolunda kapsam kontrolünden geçer", () => {
