@@ -1,8 +1,15 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Upload, FileSpreadsheet, TriangleAlert, Check, Download } from "lucide-react";
+import {
+  Upload,
+  FileSpreadsheet,
+  TriangleAlert,
+  Check,
+  Download,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { formatPrice } from "@/lib/format";
@@ -15,7 +22,12 @@ import {
   type ImportField,
   type ParsedImport,
 } from "@/lib/product-import";
-import { importProducts, listProductImports } from "@/lib/product-import.functions";
+import {
+  deleteProductsByCategory,
+  importProducts,
+  listImportCategories,
+  listProductImports,
+} from "@/lib/product-import.functions";
 
 /** Sunucu şeması parça başına 500 satır kabul ediyor. */
 const CHUNK_SIZE = 500;
@@ -119,6 +131,121 @@ function downloadTemplate() {
   link.download = "ornek-urun-listesi.csv";
   link.click();
   URL.revokeObjectURL(url);
+}
+
+/** Select değeri: kategorisiz ürünler için sentinel (boş dize "seçilmedi" demek). */
+const UNCATEGORIZED = "__uncategorized__";
+
+/**
+ * Kategoriye göre toplu ürün silme. Yanlış kategori seçimine karşı iki
+ * aşamalı onay: önce "Sil" düğmesi, sonra kategori adını ve ürün sayısını
+ * tekrar gösteren kırmızı onay düğmesi.
+ */
+function BulkDeleteSection({ restaurantId }: { restaurantId: string | null }) {
+  const queryClient = useQueryClient();
+  const fetchCategories = useServerFn(listImportCategories);
+  const runDelete = useServerFn(deleteProductsByCategory);
+  const [choice, setChoice] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const categories = useQuery({
+    queryKey: ["import-categories", restaurantId],
+    queryFn: () => fetchCategories({ data: { restaurantId: restaurantId! } }),
+    enabled: Boolean(restaurantId),
+  });
+
+  if (!restaurantId) return null;
+  const list = categories.data?.categories ?? [];
+  const withItems = list.filter((category) => category.itemCount > 0);
+  if (categories.data && withItems.length === 0) return null;
+
+  const selected = withItems.find(
+    (category) => (category.id ?? UNCATEGORIZED) === choice,
+  );
+
+  async function remove() {
+    if (!selected || !restaurantId) return;
+    setBusy(true);
+    try {
+      const { deleted } = await runDelete({
+        data: { restaurantId, categoryId: selected.id },
+      });
+      toast.success(`"${selected.name}" kategorisindeki ${deleted} ürün silindi`);
+      setChoice("");
+      setConfirming(false);
+      void categories.refetch();
+      void queryClient.invalidateQueries({ queryKey: ["vendor-dashboard"] });
+      void queryClient.invalidateQueries({ queryKey: ["business-catalog"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-data"] });
+    } catch (error) {
+      toast.error(toPublicErrorMessage(error, "Ürünler silinemedi."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-3xl border border-border bg-card p-5">
+      <div className="flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+          <Trash2 className="size-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="font-semibold">Kategoriye göre toplu silme</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Seçtiğiniz kategorideki <strong>tüm ürünler</strong> silinir; kategori kaydı ve
+            geçmiş siparişler korunur. Bu işlem geri alınamaz.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <select
+          className="h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-sm sm:flex-none sm:min-w-56"
+          value={choice}
+          onChange={(event) => {
+            setChoice(event.target.value);
+            setConfirming(false);
+          }}
+          disabled={busy}
+        >
+          <option value="">Kategori seçin…</option>
+          {withItems.map((category) => (
+            <option key={category.id ?? UNCATEGORIZED} value={category.id ?? UNCATEGORIZED}>
+              {category.name} ({category.itemCount} ürün)
+            </option>
+          ))}
+        </select>
+
+        {selected && !confirming ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-full"
+            onClick={() => setConfirming(true)}
+            disabled={busy}
+          >
+            <Trash2 className="size-4" /> Sil
+          </Button>
+        ) : null}
+
+        {selected && confirming ? (
+          <Button
+            type="button"
+            variant="destructive"
+            className="rounded-full"
+            onClick={() => void remove()}
+            disabled={busy}
+          >
+            {busy
+              ? "Siliniyor…"
+              : `Evet, "${selected.name}" içindeki ${selected.itemCount} ürünü sil`}
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 export function ProductImportPanel({
@@ -312,6 +439,8 @@ export function ProductImportPanel({
           </div>
         )}
       </div>
+
+      <BulkDeleteSection restaurantId={restaurantId} />
 
       {parsed ? (
         <div className="rounded-3xl border border-border bg-card p-5">
