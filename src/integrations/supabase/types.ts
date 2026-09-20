@@ -587,84 +587,6 @@ export type Database = {
           },
         ]
       }
-      product_catalog: {
-        Row: {
-          barcode: string
-          brand: string | null
-          created_at: string
-          default_vat_rate: number | null
-          first_seen_restaurant_id: string | null
-          image_url: string | null
-          name: string
-          unit: string | null
-          updated_at: string
-        }
-        Insert: {
-          barcode: string
-          brand?: string | null
-          created_at?: string
-          default_vat_rate?: number | null
-          first_seen_restaurant_id?: string | null
-          image_url?: string | null
-          name: string
-          unit?: string | null
-          updated_at?: string
-        }
-        Update: {
-          barcode?: string
-          brand?: string | null
-          created_at?: string
-          default_vat_rate?: number | null
-          first_seen_restaurant_id?: string | null
-          image_url?: string | null
-          name?: string
-          unit?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      product_imports: {
-        Row: {
-          actor_id: string | null
-          created_at: string
-          created_count: number
-          file_name: string | null
-          id: string
-          restaurant_id: string
-          skipped: Json | null
-          skipped_count: number
-          source: string
-          total_rows: number
-          updated_count: number
-        }
-        Insert: {
-          actor_id?: string | null
-          created_at?: string
-          created_count?: number
-          file_name?: string | null
-          id?: string
-          restaurant_id: string
-          skipped?: Json | null
-          skipped_count?: number
-          source?: string
-          total_rows?: number
-          updated_count?: number
-        }
-        Update: {
-          actor_id?: string | null
-          created_at?: string
-          created_count?: number
-          file_name?: string | null
-          id?: string
-          restaurant_id?: string
-          skipped?: Json | null
-          skipped_count?: number
-          source?: string
-          total_rows?: number
-          updated_count?: number
-        }
-        Relationships: []
-      }
       menu_items: {
         Row: {
           barcode: string | null
@@ -1003,6 +925,100 @@ export type Database = {
         }
         Relationships: []
       }
+      product_catalog: {
+        Row: {
+          barcode: string
+          brand: string | null
+          created_at: string
+          default_vat_rate: number | null
+          first_seen_restaurant_id: string | null
+          image_url: string | null
+          name: string
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          barcode: string
+          brand?: string | null
+          created_at?: string
+          default_vat_rate?: number | null
+          first_seen_restaurant_id?: string | null
+          image_url?: string | null
+          name: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          barcode?: string
+          brand?: string | null
+          created_at?: string
+          default_vat_rate?: number | null
+          first_seen_restaurant_id?: string | null
+          image_url?: string | null
+          name?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_catalog_first_seen_restaurant_id_fkey"
+            columns: ["first_seen_restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_imports: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          created_count: number
+          file_name: string | null
+          id: string
+          restaurant_id: string
+          skipped: Json | null
+          skipped_count: number
+          source: string
+          total_rows: number
+          updated_count: number
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          created_count?: number
+          file_name?: string | null
+          id?: string
+          restaurant_id: string
+          skipped?: Json | null
+          skipped_count?: number
+          source?: string
+          total_rows?: number
+          updated_count?: number
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          created_count?: number
+          file_name?: string | null
+          id?: string
+          restaurant_id?: string
+          skipped?: Json | null
+          skipped_count?: number
+          source?: string
+          total_rows?: number
+          updated_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_imports_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -1089,8 +1105,6 @@ export type Database = {
       }
       restaurants: {
         Row: {
-          pairing_code: string | null
-          pairing_code_expires_at: string | null
           address: string | null
           category: string
           city: string | null
@@ -1116,6 +1130,8 @@ export type Database = {
           min_order: number
           name: string
           opens_at: string | null
+          pairing_code: string | null
+          pairing_code_expires_at: string | null
           rating: number
           review_count: number
           sector: string
@@ -1124,8 +1140,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          pairing_code?: string | null
-          pairing_code_expires_at?: string | null
           address?: string | null
           category: string
           city?: string | null
@@ -1151,6 +1165,8 @@ export type Database = {
           min_order?: number
           name: string
           opens_at?: string | null
+          pairing_code?: string | null
+          pairing_code_expires_at?: string | null
           rating?: number
           review_count?: number
           sector?: string
@@ -1159,8 +1175,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          pairing_code?: string | null
-          pairing_code_expires_at?: string | null
           address?: string | null
           category?: string
           city?: string | null
@@ -1186,6 +1200,8 @@ export type Database = {
           min_order?: number
           name?: string
           opens_at?: string | null
+          pairing_code?: string | null
+          pairing_code_expires_at?: string | null
           rating?: number
           review_count?: number
           sector?: string
@@ -1427,14 +1443,6 @@ export type Database = {
         Returns: undefined
       }
       expire_stale_advertisements: { Args: never; Returns: number }
-      redeem_restaurant_pairing_code: {
-        Args: { p_code: string; p_user_id: string }
-        Returns: { restaurant_id: string; restaurant_name: string }[]
-      }
-      import_menu_items: {
-        Args: { p_restaurant_id: string; p_rows: Json }
-        Returns: { created_count: number; updated_count: number }[]
-      }
       get_active_banners: {
         Args: never
         Returns: {
@@ -1452,6 +1460,13 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      import_menu_items: {
+        Args: { p_restaurant_id: string; p_rows: Json }
+        Returns: {
+          created_count: number
+          updated_count: number
+        }[]
       }
       increment_menu_item_stock: {
         Args: { p_delta: number; p_id: string }
@@ -1485,6 +1500,13 @@ export type Database = {
           p_user_id: string
         }
         Returns: Json
+      }
+      redeem_restaurant_pairing_code: {
+        Args: { p_code: string; p_user_id: string }
+        Returns: {
+          restaurant_id: string
+          restaurant_name: string
+        }[]
       }
       register_email_otp_failure: {
         Args: { p_email_hash: string; p_now?: string }
