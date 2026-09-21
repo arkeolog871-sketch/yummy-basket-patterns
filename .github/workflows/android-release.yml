@@ -99,20 +99,37 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/android-signing"
-          # Boşlukları at. base64 sohbetten kopyalandığında satır sonu ve
-          # baştaki/sondaki boşluk taşıyor. Satır sonlarını `base64 -d` tolere
-          # ediyor ama TEK bir baştaki boşluk bile "invalid input" verip boş
-          # dosya üretiyor — ölçerek doğrulandı. Hata mesajı da sırrın yanlış
-          # olduğunu düşündürüp saatlerce yanlış yerde aratır.
-          printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d \
-            > "$RUNNER_TEMP/android-signing/release.jks"
-          test -s "$RUNNER_TEMP/android-signing/release.jks" \
-            || { echo "Keystore çözülemedi — sırrın base64 olduğundan emin olun."; exit 1; }
+
+          # base64 alfabesi DIŞINDAKİ her karakteri at. Sadece boşluk temizlemek
+          # yetmiyor: metin telefondan/sohbetten kopyalandığında görünmez BOM,
+          # akıllı tırnak veya yazı yönü işareti taşıyabiliyor ve `base64 -d`
+          # bunlara "invalid input" deyip duruyor. Kırpılmış bir yapıştırmayı
+          # sessizce kabul etme riski yok: aşağıdaki keytool kontrolü bozuk
+          # keystore'u zaten yakalar.
+          CLEAN=$(printf '%s' "$KEYSTORE_BASE64" | tr -dc 'A-Za-z0-9+/=')
+          LEN=${#CLEAN}
+          echo "Temizlenmiş base64 uzunluğu: $LEN karakter"
+          if [ "$LEN" -eq 0 ]; then
+            echo "ANDROID_KEYSTORE_BASE64 boş görünüyor."; exit 1
+          fi
+          if [ $((LEN % 4)) -ne 0 ]; then
+            echo "Uzunluk 4'ün katı değil ($LEN) — yapıştırma EKSİK."
+            echo "Metnin tamamını kopyaladığınızdan emin olun; beklenen uzunluk 3784."
+            exit 1
+          fi
+
+          printf '%s' "$CLEAN" | base64 -d > "$RUNNER_TEMP/android-signing/release.jks" \
+            || { echo "base64 çözülemedi — sır base64 metni değil."; exit 1; }
+          SIZE=$(stat -c%s "$RUNNER_TEMP/android-signing/release.jks")
+          echo "Çözülen keystore: $SIZE bayt"
+          test "$SIZE" -gt 0 \
+            || { echo "Keystore boş çıktı."; exit 1; }
+
           # Parola ve alias doğru mu: 20 dakikalık derlemenin sonunda değil,
-          # burada anlaşılsın.
+          # burada anlaşılsın. Bozuk/kırpılmış keystore de burada yakalanır.
           keytool -list -keystore "$RUNNER_TEMP/android-signing/release.jks" \
             -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" > /dev/null 2>&1 \
-            || { echo "Keystore açılamadı: ANDROID_KEYSTORE_PASSWORD veya ANDROID_KEY_ALIAS hatalı."; exit 1; }
+            || { echo "Keystore açılamadı: ANDROID_KEYSTORE_PASSWORD veya ANDROID_KEY_ALIAS hatalı, ya da dosya bozuk."; exit 1; }
           echo "Keystore çözüldü, parola ve alias doğrulandı."
 
       - name: İmzalı APK ve AAB derle
