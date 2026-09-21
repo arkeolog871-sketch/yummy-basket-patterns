@@ -1,6 +1,6 @@
 # Yapay zekâ desteği — uygulama planı
 
-Seçtiğin beş özelliği, birbirini besleyecek şekilde dört aşamada kuruyorum. Ek anahtar gerekmiyor; yapay zekâ Lovable AI üzerinden çalışır ve kullanım kredilerden düşer. Şimdilik kullanıcı limiti koymuyorum (istediğin an eklenebilir).
+Seçtiğin beş özelliği, birbirini besleyecek şekilde dört aşamada kuruyorum. Yapay zekâ BİRİNCİL olarak kendi OpenAI API hesabınız üzerinden çalışır (`OPENAI_API_KEY`); Lovable geçidi yalnızca `AI_ALLOW_LOVABLE_FALLBACK=true` verilirse yedek olarak devreye girer, varsayılan kapalıdır. Şimdilik kullanıcı limiti koymuyorum (istediğin an eklenebilir).
 
 ## Aşama 1 — Satıcı: menü fotoğrafından ürün çıkarma
 
@@ -32,11 +32,11 @@ Seçtiğin beş özelliği, birbirini besleyecek şekilde dört aşamada kuruyor
 
 ## Teknik özet
 
-- Model: `openai/gpt-6-astra` (metin), varsayılan görsel modeli (görsel üretimi). Tüm çağrılar sunucu tarafında; anahtar tarayıcıya hiç çıkmaz.
+- Sağlayıcı: doğrudan OpenAI API (`https://api.openai.com/v1`). Metin/sohbet modeli `gpt-5.6-luna` (`AI_CHAT_MODEL` ile değiştirilebilir), ses→metin `gpt-4o-transcribe`, metin→ses `gpt-4o-mini-tts`, görsel `gpt-image-1`. Tüm çağrılar sunucu tarafında; anahtar tarayıcıya hiç çıkmaz.
 - Sohbet akışı: `src/routes/api/chat.ts` (streaming) + AI Elements tabanlı arayüz; diğer özellikler `createServerFn` ile (`src/lib/ai-*.functions.ts`).
 - Asistanın yetenekleri araç (tool) olarak tanımlanır: `searchBusinesses`, `getMenu`, `addToCart`, `createOrder` — hepsi mevcut server fonksiyonlarını ve RLS'i kullanır, doğrudan veritabanına yazmaz.
 - Menü fotoğrafı okuma ve görsel üretimi için yeni bir tablo gerekmiyor; sadece geçici yükleme + mevcut `menu_items` yazma yolu.
-- Hata durumları `toPublicErrorMessage` üzerinden Türkçe gösterilir; kredi yetersizliği/yoğunluk durumunda asistan "şu an yanıt veremiyorum" der, sipariş akışı normal ekranlardan devam eder.
+- Hata durumları `toPublicErrorMessage` üzerinden Türkçe gösterilir; OpenAI 401/403/429, kota/bakiye ve yoğunluk durumunda asistan "şu an yanıt veremiyorum" der, sipariş akışı normal ekranlardan devam eder.
 - Testler: araç şemaları ve sipariş onayı için birim testleri, sohbet akışı için uçtan uca bir senaryo.
 
 ## Sıra ve onay
