@@ -13,6 +13,14 @@
 
     <!-- Sesli sohbet: WebView'deki getUserMedia mikrofon isteği → RESOURCE_AUDIO_CAPTURE. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- RECORD_AUDIO TEK BAŞINA YETMİYOR. WebView'in ses yakalama yığını
+         (WebRTC) kaydı açarken ses modunu değiştiriyor; bu izin olmadan
+         işletim sistemi mikrofonu WebView'e VERMİYOR ve sayfa
+         NotReadableError alıyor — kullanıcıya izin sorulmuş ve verilmiş
+         olsa bile. Telefonda ölçüldü: uygulamanın kendi AudioRecord'u
+         açılıyor (java: acildi) ama WebView açamıyor (etiket: yok).
+         Normal seviye izin: kuruluma dâhil, kullanıcıya ek soru sorulmaz. -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
     <!-- Android 13+ yerel bildirim kanalı. WebView açıkken realtime sipariş olayları da çalışır. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
