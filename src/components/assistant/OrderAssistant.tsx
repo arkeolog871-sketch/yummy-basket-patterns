@@ -215,7 +215,26 @@ export function OrderAssistant() {
       toast.error("Bu cihazda mikrofon kaydı desteklenmiyor.");
       return;
     }
+    // İzin daha önce reddedildiyse tarayıcı artık sormaz; kullanıcıyı yönlendir.
     try {
+      const permissionApi = (
+        navigator as Navigator & { permissions?: { query: (d: { name: string }) => Promise<{ state: string }> } }
+      ).permissions;
+      if (permissionApi) {
+        const status = await permissionApi.query({ name: "microphone" });
+        if (status.state === "denied") {
+          toast.error(
+            "Mikrofon izni kapalı. Tarayıcı ayarlarından bu site için mikrofona izin verin.",
+            { duration: 6000 },
+          );
+          return;
+        }
+      }
+    } catch {
+      /* Permissions API yoksa doğrudan izin istemeye geç */
+    }
+    try {
+      // İlk kullanımda tarayıcı tek seferlik izin sorar; izin verilince kayıt başlar.
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mimeType = ["audio/webm", "audio/mp4", "audio/ogg"].find((type) =>
         typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(type),
