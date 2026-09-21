@@ -41,6 +41,9 @@ const PHASE_LABEL: Record<VoicePhase, string> = {
 /** Seviye örnekleme aralığı; 100 ms hem yeterince sık hem ucuz. */
 const SAMPLE_MS = 100;
 
+/** Üst üste bu kadar tur başarısız olursa sohbet kapanır. */
+const MAX_TURN_FAILURES = 3;
+
 export interface VoiceConversationProps {
   /** Ses kaydını metne çevirir. */
   transcribe: (blob: Blob) => Promise<string>;
@@ -72,6 +75,20 @@ export function VoiceConversation({
   // Ekran kapanırken uçuşta olan turun devam etmesini engeller.
   const liveRef = useRef(true);
   const busyRef = useRef(false);
+  /**
+   * Döngü açılışta bir kez kuruluyor ve kendi kendini çağırıyor; bu yüzden
+   * ilk render'daki prop kapanışlarını ömür boyu taşırdı. Sonucu sessiz ama
+   * ağır olurdu: ask, sohbet geçmişini sesli sohbet AÇILDIĞI andaki hâliyle
+   * gönderirdi — asistan ikinci turdan itibaren bir önceki konuşulanı
+   * görmez, her cevabı sıfırdan verirdi. Props ref'te tutuluyor ki her tur
+   * güncel kapanışı çağırsın.
+   */
+  const propsRef = useRef({ transcribe, ask, speak, onClose, onError });
+  propsRef.current = { transcribe, ask, speak, onClose, onError };
+  // Üst üste anlaşılamayan tur sayısı. Tek bir "anlamadım" sohbeti
+  // bitirmemeli; ama sonsuza kadar da denememeli.
+  const failureRef = useRef(0);
+  const [hint, setHint] = useState<string | null>(null);
 
   const stopMetering = useCallback(() => {
     if (timerRef.current !== null) {
@@ -97,6 +114,11 @@ export function VoiceConversation({
   const runTurn = useCallback(async () => {
     if (!liveRef.current || busyRef.current) return;
     busyRef.current = true;
+    // Hata mikrofonu AÇARKEN mi yoksa turun devamında mı oldu? İkisi ayrı
+    // sorun: mikrofon açılamıyorsa sohbet süremez, ama anlaşılamayan tek bir
+    // cümle sohbeti bitirmemeli. Eskiden ikisi de ekranı kapatıyor ve
+    // kullanıcıya yanıltıcı bir mikrofon tanısı gösteriyordu.
+    let stage: "mikrofon" | "tur" = "mikrofon";
     try {
       const session =
         micRef.current ??
@@ -132,6 +154,7 @@ export function VoiceConversation({
       });
 
       stopMetering();
+      stage = "tur";
       if (!liveRef.current) return;
       // Boş kayıt: kullanıcı konuşmadı. Sessizce yeniden dinlemeye dön.
       if (!blob || blob.size < 1200) {
@@ -141,7 +164,7 @@ export function VoiceConversation({
       }
 
       setPhase("yaziya-ceviriyor");
-      const said = await transcribe(blob);
+      const said = await propsRef.current.transcribe(blob);
       if (!liveRef.current) return;
       if (!said.trim()) {
         busyRef.current = false;
@@ -150,31 +173,53 @@ export function VoiceConversation({
       }
 
       setPhase("dusunuyor");
-      const reply = await ask(said);
+      const reply = await propsRef.current.ask(said);
       if (!liveRef.current) return;
 
       if (reply.trim()) {
         setPhase("konusuyor");
         // Mikrofon bu sırada kapalı: asistan kendi sesini duymasın.
-        await speak(reply);
+        await propsRef.current.speak(reply);
       }
       if (!liveRef.current) return;
+      failureRef.current = 0;
+      setHint(null);
       busyRef.current = false;
       void runTurn();
     } catch (error) {
       busyRef.current = false;
+      stopMetering();
       if (!liveRef.current) return;
-      const diagnostics = await collectMicrophoneDiagnostics(error, {
-        userAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
-        secureContext: typeof window !== "undefined" && window.isSecureContext,
-        listDevices: () => navigator.mediaDevices.enumerateDevices(),
-      });
-      onError(microphoneAdvice(diagnostics), formatMicrophoneDiagnostics(diagnostics));
-      onClose();
+
+      if (stage === "mikrofon") {
+        const diagnostics = await collectMicrophoneDiagnostics(error, {
+          userAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
+          secureContext: typeof window !== "undefined" && window.isSecureContext,
+          listDevices: () => navigator.mediaDevices.enumerateDevices(),
+        });
+        propsRef.current.onError(
+          microphoneAdvice(diagnostics),
+          formatMicrophoneDiagnostics(diagnostics),
+        );
+        propsRef.current.onClose();
+        return;
+      }
+
+      // Turun devamında hata: ses anlaşılmamış, model cevap verememiş ya da
+      // seslendirme düşmüş olabilir. Sohbeti bitirme, tekrar dinlemeye dön.
+      failureRef.current += 1;
+      const reason = error instanceof Error ? error.message : "Bir şey ters gitti.";
+      if (failureRef.current >= MAX_TURN_FAILURES) {
+        propsRef.current.onError("Sesli sohbeti sürdüremedim.", reason);
+        propsRef.current.onClose();
+        return;
+      }
+      setHint(reason);
+      void runTurn();
     }
     // beginMetering aynı kapsamda tanımlı; bağımlılığa gerek yok.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ask, onClose, onError, speak, stopMetering, transcribe]);
+  }, [stopMetering]);
 
   /** Akışa çözümleyici bağlar ve konuşma bitince kaydı durdurur. */
   function beginMetering(session: MicrophoneSession, _resolve: (blob: Blob | null) => void) {
@@ -265,6 +310,8 @@ export function VoiceConversation({
         <p aria-live="polite" className="text-lg font-medium">
           {PHASE_LABEL[phase]}
         </p>
+
+        {hint ? <p className="max-w-md text-sm text-destructive">{hint}</p> : null}
 
         {lastUser ? (
           <p className="max-w-md text-sm text-muted-foreground">“{lastUser.content}”</p>
