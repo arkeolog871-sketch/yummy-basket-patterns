@@ -1,25 +1,44 @@
 /**
- * Sipariş asistanı sohbeti — sağ altta duran yardımcı.
+ * Silvan Cebimde yapay zekâ asistanı — sağ altta duran yardımcı.
+ *
+ * Yazılı ve SESLİ sohbet eder: mikrofon kaydı sunucuda metne çevrilir, asistanın
+ * yanıtı istenirse sesli okunur. Kullanıcı ayrıca kalıcı bir talimat yazabilir
+ * (örn. "kısa konuş", "bana sen diye hitap et").
  *
  * Asistan sipariş OLUŞTURMAZ: en fazla sepet önerisi hazırlar, kullanıcı
  * "Sepete ekle"ye basınca ürünler mevcut sepete girer ve sipariş her zaman
  * ödeme sayfasındaki "Siparişi onayla" adımında kullanıcının onayıyla oluşur.
- * Sohbet yalnızca cihazda saklanır.
+ * Sohbet ve talimat yalnızca cihazda saklanır.
  */
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Loader2, MessageCircle, Send, Sparkles, X } from "lucide-react";
+import {
+  Loader2,
+  MessageCircle,
+  Mic,
+  Send,
+  Settings2,
+  Sparkles,
+  Square,
+  Volume2,
+  VolumeX,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useCart } from "@/hooks/useCart";
 import { formatPrice } from "@/lib/format";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { askOrderAssistant } from "@/lib/ai-assistant.functions";
+import { speakAssistantReply, transcribeAssistantAudio } from "@/lib/ai-voice.functions";
 import type { CartProposal } from "@/lib/ai-assistant.types";
 
 const STORAGE_KEY = "silvan.assistant.v1";
+const INSTRUCTION_KEY = "silvan.assistant.instruction.v1";
+const VOICE_KEY = "silvan.assistant.voice.v1";
 const MAX_HISTORY = 18;
 
 type ChatMessage = {
@@ -31,18 +50,42 @@ type ChatMessage = {
 const GREETING: ChatMessage = {
   role: "assistant",
   content:
-    "Merhaba! Ne yemek/içmek istediğinizi yazın, uygun işletmeyi ve ürünleri bulup sepet önerisi hazırlayayım. Siparişi her zaman siz onaylarsınız.",
+    "Merhaba! Yazabilir ya da mikrofona basıp konuşabilirsiniz. Silvan hakkında sohbet edebilir, bilgi alabilir; uygulamadaki işletmelerden sipariş için sepet önerisi hazırlayabilirim. Siparişi her zaman siz onaylarsınız.",
 };
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Ses kaydı okunamadı."));
+    reader.onload = () => {
+      const result = String(reader.result ?? "");
+      resolve(result.includes(",") ? (result.split(",")[1] ?? "") : result);
+    };
+    reader.readAsDataURL(blob);
+  });
+}
 
 export function OrderAssistant() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const [voiceOn, setVoiceOn] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [instruction, setInstruction] = useState("");
+  const [instructionDraft, setInstructionDraft] = useState("");
+
   const ask = useServerFn(askOrderAssistant);
+  const transcribe = useServerFn(transcribeAssistantAudio);
+  const speak = useServerFn(speakAssistantReply);
   const cart = useCart();
   const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     try {
@@ -51,6 +94,10 @@ export function OrderAssistant() {
         const parsed = JSON.parse(raw) as ChatMessage[];
         if (Array.isArray(parsed) && parsed.length > 0) setMessages(parsed);
       }
+      const savedInstruction = window.localStorage.getItem(INSTRUCTION_KEY) ?? "";
+      setInstruction(savedInstruction);
+      setInstructionDraft(savedInstruction);
+      setVoiceOn(window.localStorage.getItem(VOICE_KEY) === "1");
     } catch {
       /* bozuk sohbet kaydı yok sayılır */
     }
@@ -68,42 +115,140 @@ export function OrderAssistant() {
     if (!open) return;
     const element = scrollRef.current;
     if (element) element.scrollTop = element.scrollHeight;
-  }, [messages, open, busy]);
+  }, [messages, open, busy, transcribing]);
 
-  async function send() {
-    const text = draft.trim();
-    if (!text || busy) return;
-    const next: ChatMessage[] = [...messages, { role: "user", content: text }];
-    setMessages(next);
-    setDraft("");
-    setBusy(true);
-    try {
-      const response = await ask({
-        data: {
-          messages: next
-            .slice(-MAX_HISTORY)
-            .map((message) => ({ role: message.role, content: message.content })),
-        },
-      });
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: response.reply,
-          proposal: response.proposal ?? null,
-        },
-      ]);
-    } catch (error) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: `Şu an yanıt veremiyorum. ${toPublicErrorMessage(error)}`,
-        },
-      ]);
-    } finally {
-      setBusy(false);
+  const playReply = useCallback(
+    async (text: string) => {
+      try {
+        const audio = await speak({ data: { text: text.slice(0, 900) } });
+        const element = audioRef.current ?? new Audio();
+        audioRef.current = element;
+        element.src = `data:${audio.contentType};base64,${audio.base64}`;
+        await element.play();
+      } catch {
+        /* sesli okuma başarısız olsa da yazılı yanıt ekranda duruyor */
+      }
+    },
+    [speak],
+  );
+
+  const sendText = useCallback(
+    async (text: string) => {
+      const clean = text.trim();
+      if (!clean || busy) return;
+      const next: ChatMessage[] = [...messages, { role: "user", content: clean }];
+      setMessages(next);
+      setDraft("");
+      setBusy(true);
+      try {
+        const response = await ask({
+          data: {
+            messages: next
+              .slice(-MAX_HISTORY)
+              .map((message) => ({ role: message.role, content: message.content })),
+            instruction: instruction.trim() ? instruction.trim().slice(0, 600) : null,
+          },
+        });
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: response.reply,
+            proposal: response.proposal ?? null,
+          },
+        ]);
+        if (voiceOn && response.reply) void playReply(response.reply);
+      } catch (error) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: `Şu an yanıt veremiyorum. ${toPublicErrorMessage(error)}`,
+          },
+        ]);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [ask, busy, instruction, messages, playReply, voiceOn],
+  );
+
+  async function startRecording() {
+    if (recording || busy || transcribing) return;
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      toast.error("Bu cihazda mikrofon kaydı desteklenmiyor.");
+      return;
     }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = ["audio/webm", "audio/mp4", "audio/ogg"].find((type) =>
+        typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(type),
+      );
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      chunksRef.current = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunksRef.current.push(event.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        chunksRef.current = [];
+        void handleRecorded(blob);
+      };
+      recorderRef.current = recorder;
+      recorder.start();
+      setRecording(true);
+    } catch {
+      toast.error("Mikrofon izni verilmedi.");
+    }
+  }
+
+  function stopRecording() {
+    const recorder = recorderRef.current;
+    recorderRef.current = null;
+    setRecording(false);
+    if (recorder && recorder.state !== "inactive") recorder.stop();
+  }
+
+  async function handleRecorded(blob: Blob) {
+    if (blob.size < 1200) {
+      toast.error("Kayıt çok kısa, tekrar deneyin.");
+      return;
+    }
+    setTranscribing(true);
+    try {
+      const base64 = await blobToBase64(blob);
+      const mimeType = (blob.type || "audio/webm").split(";")[0] ?? "audio/webm";
+      const result = await transcribe({ data: { audio: base64, mimeType } });
+      await sendText(result.text);
+    } catch (error) {
+      toast.error(toPublicErrorMessage(error));
+    } finally {
+      setTranscribing(false);
+    }
+  }
+
+  function toggleVoice() {
+    const next = !voiceOn;
+    setVoiceOn(next);
+    try {
+      window.localStorage.setItem(VOICE_KEY, next ? "1" : "0");
+    } catch {
+      /* depolama kapalıysa yalnızca bu oturumda geçerli */
+    }
+    if (!next && audioRef.current) audioRef.current.pause();
+  }
+
+  function saveInstruction() {
+    const clean = instructionDraft.trim().slice(0, 600);
+    setInstruction(clean);
+    try {
+      window.localStorage.setItem(INSTRUCTION_KEY, clean);
+    } catch {
+      /* depolama kapalıysa yalnızca bu oturumda geçerli */
+    }
+    setShowSettings(false);
+    toast.success(clean ? "Talimatınız kaydedildi" : "Talimat kaldırıldı");
   }
 
   function addProposalToCart(proposal: CartProposal) {
@@ -130,7 +275,7 @@ export function OrderAssistant() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label="Sipariş asistanını aç"
+          aria-label="Yapay zekâ asistanını aç"
           className="fixed bottom-20 right-4 z-40 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 sm:bottom-6"
         >
           <MessageCircle className="size-6" />
@@ -142,9 +287,30 @@ export function OrderAssistant() {
           <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
             <div className="flex min-w-0 items-center gap-2">
               <Sparkles className="size-4 shrink-0 text-primary" />
-              <p className="min-w-0 truncate font-semibold">Sipariş asistanı</p>
+              <p className="min-w-0 truncate font-semibold">Silvan asistanı</p>
             </div>
             <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={toggleVoice}
+                aria-label={voiceOn ? "Sesli yanıtı kapat" : "Sesli yanıtı aç"}
+                title={voiceOn ? "Sesli yanıt açık" : "Sesli yanıt kapalı"}
+                className="rounded-full p-2 hover:bg-muted"
+              >
+                {voiceOn ? (
+                  <Volume2 className="size-4 text-primary" />
+                ) : (
+                  <VolumeX className="size-4" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowSettings((prev) => !prev)}
+                aria-label="Asistan talimatı"
+                className="rounded-full p-2 hover:bg-muted"
+              >
+                <Settings2 className={showSettings ? "size-4 text-primary" : "size-4"} />
+              </button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -164,6 +330,41 @@ export function OrderAssistant() {
             </div>
           </div>
 
+          {showSettings ? (
+            <div className="space-y-2 border-b border-border bg-muted/40 px-4 py-3">
+              <p className="text-xs text-muted-foreground">
+                Asistana kalıcı talimat verin. Örn. “Bana kısa ve samimi cevap ver, fiyatları her
+                zaman belirt.”
+              </p>
+              <Textarea
+                value={instructionDraft}
+                onChange={(event) => setInstructionDraft(event.target.value)}
+                maxLength={600}
+                rows={3}
+                placeholder="Asistan nasıl davransın?"
+                aria-label="Asistan talimatı"
+              />
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] text-muted-foreground">
+                  {instructionDraft.trim().length}/600
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="rounded-full"
+                    onClick={() => setInstructionDraft("")}
+                  >
+                    Temizle
+                  </Button>
+                  <Button size="sm" className="rounded-full" onClick={saveInstruction}>
+                    Kaydet
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
             {messages.map((message, index) => (
               <div key={index} className="space-y-2">
@@ -176,6 +377,15 @@ export function OrderAssistant() {
                 >
                   {message.content}
                 </div>
+                {message.role === "assistant" && message.content ? (
+                  <button
+                    type="button"
+                    onClick={() => void playReply(message.content)}
+                    className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+                  >
+                    <Volume2 className="size-3" /> Sesli dinle
+                  </button>
+                ) : null}
                 {message.proposal ? (
                   <ProposalCard
                     proposal={message.proposal}
@@ -184,6 +394,11 @@ export function OrderAssistant() {
                 ) : null}
               </div>
             ))}
+            {transcribing ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" /> Ses yazıya çevriliyor…
+              </div>
+            ) : null}
             {busy ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" /> Yazıyor…
@@ -195,22 +410,33 @@ export function OrderAssistant() {
             className="flex items-center gap-2 border-t border-border px-3 py-3"
             onSubmit={(event) => {
               event.preventDefault();
-              void send();
+              void sendText(draft);
             }}
           >
+            <Button
+              type="button"
+              size="icon"
+              variant={recording ? "destructive" : "outline"}
+              className="shrink-0 rounded-full"
+              onClick={() => (recording ? stopRecording() : void startRecording())}
+              disabled={busy || transcribing}
+              aria-label={recording ? "Kaydı bitir ve gönder" : "Sesli konuş"}
+            >
+              {recording ? <Square className="size-4" /> : <Mic className="size-4" />}
+            </Button>
             <Input
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
-              placeholder="Örn. akşama 2 kişilik pizza istiyorum"
+              placeholder={recording ? "Dinliyorum… bitirmek için karedeki tuşa basın" : "Yazın ya da mikrofona basın"}
               aria-label="Asistana mesaj yazın"
               className="rounded-full"
-              disabled={busy}
+              disabled={busy || recording || transcribing}
             />
             <Button
               type="submit"
               size="icon"
               className="shrink-0 rounded-full"
-              disabled={busy || draft.trim().length === 0}
+              disabled={busy || recording || transcribing || draft.trim().length === 0}
               aria-label="Gönder"
             >
               <Send className="size-4" />

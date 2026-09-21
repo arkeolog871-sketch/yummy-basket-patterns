@@ -25,3 +25,10 @@
 - [x] Güvenlik: eşleştirme kodu sütunlarında açık REVOKE (vitrin yetkileri korundu)
 
 
+
+## Yapay zekâ asistanı (genel amaçlı)
+
+- [x] Sesli sohbet: mikrofon kaydı → metin (google/gemini-3.5-transcribe), yanıt → ses (openai/gpt-4o-mini-tts)
+- [x] Kullanıcı talimatı (kalıcı, cihazda saklanır, sistem kuralını geçersiz kılamaz)
+- [x] İnternet araştırması (searchWeb + readWebPage; rehber/pazaryeri siteleri filtreli)
+- [x] İşletme bilgisi YALNIZCA veritabanından (prompt + mekanik filtre)

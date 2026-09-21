@@ -20,6 +20,7 @@ const schema = z.object({
     )
     .min(1)
     .max(20),
+  instruction: z.string().trim().max(600).nullish(),
 });
 
 export const askOrderAssistant = createServerFn({ method: "POST" })
@@ -29,6 +30,6 @@ export const askOrderAssistant = createServerFn({ method: "POST" })
       const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
       await enforceSensitiveRateLimit("ai-order-assistant", 20, 60_000);
       const { runAssistant } = await import("./ai-assistant.server");
-      return runAssistant(data.messages);
+      return runAssistant(data.messages, data.instruction ?? null);
     }),
   );
