@@ -1,0 +1,126 @@
+# İmzasız Android derleme kontrolü. Keystore veya başka bir sır gerektirmez,
+# bu yüzden her PR'da çalışabilir.
+#
+# Neden var: android-wrapper/ uzun süre hiçbir otomatik kontrolü olmayan tek
+# alandı. Java tarafındaki bir bozulma ancak biri elle APK derlemeye
+# kalkıştığında ortaya çıkıyordu.
+name: Android derleme
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "android-wrapper/**"
+      - ".github/workflows/android-build.yml"
+  push:
+    branches: [main]
+    paths:
+      - "android-wrapper/**"
+      - ".github/workflows/android-build.yml"
+
+concurrency:
+  group: android-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  debug-apk:
+    name: İmzasız debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # AGP 9 ve compileSdk 36 için JDK 17+ gerekiyor; 21 kullanıyoruz.
+      - name: JDK 21 kur
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Android SDK kur
+        uses: android-actions/setup-android@v3
+
+      # compileSdk 36 runner imajında her zaman kurulu değil; açıkça
+      # indiriyoruz ki imaj değişince derleme sessizce bozulmasın.
+      - name: android-36 platformunu indir
+        run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Gradle kur (önbellekli)
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          build-scan-publish: false
+
+      - name: Debug APK derle
+        working-directory: android-wrapper
+        run: ./gradlew --no-daemon :app:assembleDebug
+
+      - name: Android Lint
+        working-directory: android-wrapper
+        # Lint bulgusu derlemeyi düşürmesin ama rapor artifact olarak kalsın:
+        # mevcut kodda uyarılar var, bunları temizlemek ayrı bir iş.
+        continue-on-error: true
+        run: ./gradlew --no-daemon :app:lintDebug
+
+      # Asıl değer burada: manifest birleştirmesi bir izni sessizce düşürürse
+      # kaynak dosyaya bakarak anlayamazsınız — DERLENMİŞ APK'ya bakmak gerekir.
+      # Mikrofon izni tam da böyle bir şeydi: sesli asistan izin alamıyordu.
+      - name: APK'nın izinlerini ve sürümünü doğrula
+        working-directory: android-wrapper
+        run: |
+          set -euo pipefail
+          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt2"
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          test -f "$APK" || { echo "APK üretilmedi: $APK"; exit 1; }
+          "$AAPT" dump badging "$APK" > /tmp/badging.txt
+          echo "--- paket bilgisi"
+          grep '^package:' /tmp/badging.txt
+          echo "--- izinler"
+          grep '^uses-permission' /tmp/badging.txt
+          for perm in \
+            android.permission.INTERNET \
+            android.permission.CAMERA \
+            android.permission.RECORD_AUDIO \
+            android.permission.ACCESS_FINE_LOCATION \
+            android.permission.POST_NOTIFICATIONS
+          do
+            grep -q "name='$perm'" /tmp/badging.txt \
+              || { echo "EKSİK İZİN: $perm"; exit 1; }
+          done
+          grep -q "name='online.uygulamamcebimde.app'" /tmp/badging.txt \
+            || { echo "Paket adı beklenenden farklı"; exit 1; }
+
+      # Mikrofon üç halkalı bir zincir: manifest izni, WebView'in ses isteğini
+      # kabul etmesi, ve sunucunun Permissions-Policy başlığı. Manifest'i
+      # yukarıda APK'dan doğruladık; WebView halkasını burada doğruluyoruz.
+      # (Başlık halkası tests/unit/microphone-policy.test.ts'te.)
+      - name: WebView mikrofon zincirini doğrula
+        working-directory: android-wrapper
+        run: |
+          set -euo pipefail
+          ACT=app/src/main/java/online/uygulamamcebimde/app/MainActivity.java
+          grep -q "RESOURCE_AUDIO_CAPTURE" "$ACT" \
+            || { echo "WebView ses isteğini işlemiyor (RESOURCE_AUDIO_CAPTURE yok)"; exit 1; }
+          grep -q "Manifest.permission.RECORD_AUDIO" "$ACT" \
+            || { echo "WebView çalışma zamanı mikrofon izni istemiyor"; exit 1; }
+          echo "WebView mikrofon zinciri tamam"
+
+      - name: Debug APK'yı yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: android-wrapper/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Lint raporunu yükle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-lint-report
+          path: android-wrapper/app/build/reports/lint-results-debug.html
+          if-no-files-found: ignore
+          retention-days: 14
