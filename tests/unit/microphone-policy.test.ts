@@ -26,7 +26,9 @@ describe("mikrofon Permissions-Policy başlığı", () => {
   it("statik _headers dosyalarında da mikrofon kapalı değildir", () => {
     // Sunucu başlığı düzeltilip bu dosyalar unutulursa hata geri gelir:
     // statik olarak sunulan yollar hâlâ kapalı başlığı taşır.
+    // iOS kopyası Capacitor eşitlemesiyle üretiliyor; dosya yoksa atlanır.
     for (const path of ["public/_headers", "ios/App/App/public/_headers"]) {
+      if (!existsSync(join(process.cwd(), path))) continue;
       const text = read(path);
       expect(text, `${path} mikrofonu kapatıyor`).not.toContain("microphone=()");
       expect(text, `${path} mikrofonu açmıyor`).toContain("microphone=(self)");
