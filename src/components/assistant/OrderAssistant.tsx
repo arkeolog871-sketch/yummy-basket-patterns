@@ -27,8 +27,12 @@ import {
   X,
 } from "lucide-react";
 import {
+  collectMicrophoneDiagnostics,
+  formatMicrophoneDiagnostics,
+  microphoneAdvice,
+} from "@/lib/microphone-diagnostics";
+import {
   MicrophoneSession,
-  classifyMicrophoneError,
   type AudioStreamLike,
   type RecorderLike,
 } from "@/lib/microphone-session";
@@ -339,28 +343,24 @@ export function OrderAssistant() {
       );
       setRecording(true);
     } catch (error) {
-      // İzin reddi, mikrofonun hiç olmaması ve donanımın meşgul olması farklı
-      // sorunlar: mobilde yanlış uyarı kullanıcıyı boşuna ayarlara gönderiyordu.
+      // Mesajı tahminle değil ÖLÇÜMLE seç. "Mikrofona ulaşılamadı" aynı anda
+      // dört ayrı durumu anlatıyordu ve çözümleri farklı; tanı satırı
+      // ekran görüntüsünden teşhis edilebilsin diye mesajın altına yazılıyor.
       setRecording(false);
-      switch (classifyMicrophoneError(error)) {
-        case "denied":
-          toast.error(
-            "Mikrofon izni verilmedi. Uygulama ayarlarından mikrofon iznini açabilir ya da mesajınızı yazabilirsiniz.",
-            { duration: 6000 },
-          );
-          break;
-        case "missing":
-          toast.error("Bu cihazda mikrofon bulunamadı. Mesajınızı yazabilirsiniz.");
-          break;
-        case "busy":
-          toast.error(
-            "Mikrofon şu anda başka bir uygulamada açık. Arama, ses kaydı veya asistan uygulamasını kapatıp tekrar deneyin.",
-            { duration: 6000 },
-          );
-          break;
-        default:
-          toast.error("Ses kaydı başlatılamadı. Mesajınızı yazarak da gönderebilirsiniz.");
-      }
+      const diagnostics = await collectMicrophoneDiagnostics(error, {
+        userAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
+        secureContext: typeof window !== "undefined" && window.isSecureContext,
+        listDevices: () => navigator.mediaDevices.enumerateDevices(),
+        // permissions.query BİLEREK kullanılmıyor: Android WebView mikrofon
+        // iznini daha hiç sorulmamışken "denied" bildiriyor ve ön kontrol
+        // izin penceresini hiç açtırmıyordu. Bu dosyada o çağrının
+        // bulunmaması assistant-voice-mobile testiyle korunuyor; izin
+        // durumu zaten hatanın adından okunuyor.
+      });
+      toast.error(microphoneAdvice(diagnostics), {
+        description: formatMicrophoneDiagnostics(diagnostics),
+        duration: 9000,
+      });
     }
   }
 
