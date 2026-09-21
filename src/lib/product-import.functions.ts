@@ -126,7 +126,7 @@ type CatalogEntry = {
 };
 
 /** Barkodları ortak katalogda arar: ad ve görsel buradan gelir. */
-async function lookupCatalog(barcodes: string[]): Promise<Map<string, CatalogEntry>> {
+export async function lookupCatalog(barcodes: string[]): Promise<Map<string, CatalogEntry>> {
   const found = new Map<string, CatalogEntry>();
   if (barcodes.length === 0) return found;
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -151,7 +151,7 @@ async function lookupCatalog(barcodes: string[]): Promise<Map<string, CatalogEnt
  * katalog elle düzeltilmiş olabilir, marketin "COCA COLA 1LT PET" yazımı onu
  * bozmamalı. Katalog böylece her yeni marketle kendiliğinden zenginleşir.
  */
-async function contributeToCatalog(
+export async function contributeToCatalog(
   restaurantId: string,
   rows: {
     barcode: string | null;

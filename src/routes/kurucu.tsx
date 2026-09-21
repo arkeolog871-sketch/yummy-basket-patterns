@@ -72,6 +72,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProductImportPanel } from "@/components/products/ProductImportPanel";
+import { SyncTokenPanel } from "@/components/products/SyncTokenPanel";
 import { VendorPairingPanel } from "@/components/founder/VendorPairingPanel";
 import { AuditLogPanel } from "@/components/founder/AuditLogPanel";
 import { DeletionRequestsPanel } from "@/components/founder/DeletionRequestsPanel";
@@ -1334,6 +1335,7 @@ function BulkProductPanel({ businesses }: { businesses: BusinessRow[] }) {
         <BusinessSelect businesses={businesses} value={restaurantId} onChange={setRestaurantId} />
       </div>
       <ProductImportPanel restaurantId={restaurantId || null} />
+      <SyncTokenPanel restaurantId={restaurantId || null} />
     </div>
   );
 }
