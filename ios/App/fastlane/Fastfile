@@ -17,6 +17,21 @@ platform :ios do
       build_number: ENV.fetch("GITHUB_RUN_NUMBER"),
     )
 
+    # Pazarlama surumu (CFBundleShortVersionString) build numarasindan AYRI.
+    # App Store bir surumu onayladiktan sonra o "tren" kapaniyor ve ayni
+    # numarayla yeni build kabul edilmiyor:
+    #   "The train version '1.0' is closed for new build submissions"
+    # Build numarasi her kosuda artiyordu ama pazarlama surumu proje
+    # dosyasinda sabitti, bu yuzden yukleme reddedildi. Artik is akisindan
+    # verilebiliyor; bos birakilirsa projedeki deger kullaniliyor.
+    marketing_version = ENV["IOS_MARKETING_VERSION"].to_s.strip
+    unless marketing_version.empty?
+      increment_version_number(
+        xcodeproj: "App.xcodeproj",
+        version_number: marketing_version,
+      )
+    end
+
     # build_app doesn't forward the API key from app_store_connect_api_key's
     # lane context into the raw xcodebuild invocations on its own — without
     # this, xcodebuild falls back to looking for an Xcode-signed-in Apple ID

@@ -6,6 +6,11 @@ name: iOS TestFlight release
 
 on:
   workflow_dispatch:
+    inputs:
+      marketingVersion:
+        description: "Sürüm numarası (örn. 1.1). App Store onayladığı sürümle aynı olamaz; boşsa projedeki değer kullanılır."
+        required: false
+        type: string
 
 concurrency:
   group: ios-release-${{ github.workflow }}-${{ github.ref }}
@@ -98,5 +103,6 @@ jobs:
           # timeout for `xcodebuild -showBuildSettings` isn't enough on a
           # cold checkout even after package resolution succeeds.
           FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: "180"
+          IOS_MARKETING_VERSION: ${{ inputs.marketingVersion }}
           FASTLANE_XCODEBUILD_SETTINGS_RETRIES: "3"
         run: fastlane beta
