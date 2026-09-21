@@ -118,7 +118,6 @@ export function PhotoMenuImport({
       void queryClient.invalidateQueries({ queryKey: ["vendor-dashboard"] });
       void queryClient.invalidateQueries({ queryKey: ["business-catalog"] });
       void queryClient.invalidateQueries({ queryKey: ["admin-data"] });
-etiket: ;
     } catch (error) {
       toast.error(toPublicErrorMessage(error, "Ürünler kaydedilemedi."));
     } finally {
