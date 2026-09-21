@@ -522,14 +522,31 @@ public class MainActivity extends Activity {
             return;
         }
         boolean wantsCamera = false;
+        boolean wantsMic = false;
         for (String resource : request.getResources()) {
             if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(resource)) {
                 wantsCamera = true;
-                break;
+            } else if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource)) {
+                // Sesli sohbet: mikrofon isteği de karşılanır.
+                wantsMic = true;
             }
         }
-        if (!wantsCamera) {
+        if (!wantsCamera && !wantsMic) {
             request.deny();
+            return;
+        }
+        if (wantsMic) {
+            boolean cameraOk = !wantsCamera || hasCameraPermission();
+            if (hasRecordPermission() && cameraOk) {
+                grantWebCaptureResources(request, wantsCamera, wantsMic);
+                return;
+            }
+            webPermissionRequest = request;
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[] { Manifest.permission.RECORD_AUDIO },
+                    WEB_MIC_PERMISSION_REQUEST
+            );
             return;
         }
         if (hasCameraPermission()) {
@@ -542,6 +559,44 @@ public class MainActivity extends Activity {
                 new String[] { Manifest.permission.CAMERA },
                 WEB_CAMERA_PERMISSION_REQUEST
         );
+    }
+
+    /** Kamera/mikrofon haklarından yalnızca verilmiş olanları WebView'e devreder. */
+    private void grantWebCaptureResources(PermissionRequest request, boolean camera, boolean mic) {
+        java.util.ArrayList<String> grants = new java.util.ArrayList<>();
+        if (camera && hasCameraPermission()) grants.add(PermissionRequest.RESOURCE_VIDEO_CAPTURE);
+        if (mic && hasRecordPermission()) grants.add(PermissionRequest.RESOURCE_AUDIO_CAPTURE);
+        if (grants.isEmpty()) {
+            request.deny();
+            return;
+        }
+        request.grant(grants.toArray(new String[0]));
+    }
+
+    private boolean hasRecordPermission() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void showMicDeniedMessage() {
+        boolean canAskAgain = ActivityCompat.shouldShowRequestPermissionRationale(
+                this,
+                Manifest.permission.RECORD_AUDIO
+        );
+        AlertDialog.Builder dialog = new AlertDialog.Builder(this)
+                .setTitle("Mikrofon izni gerekli")
+                .setMessage(
+                        "Sesli konuşma özelliği için mikrofon iznini verin. İzin yoksa mesajınızı yazarak da gönderebilirsiniz."
+                )
+                .setNegativeButton("Tamam", null);
+        if (!canAskAgain) {
+            dialog.setPositiveButton("Ayarlar", (d, w) -> {
+                Intent settings = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                settings.setData(Uri.fromParts("package", getPackageName(), null));
+                startActivity(settings);
+            });
+        }
+        dialog.show();
     }
 
     private void cancelFileChooser() {
