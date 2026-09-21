@@ -44,3 +44,7 @@ Seçtiğin beş özelliği, birbirini besleyecek şekilde dört aşamada kuruyor
 Önerim: Aşama 1 → 2 → 3 → 4. En hızlı fayda 1 ve 2'de, en çok iş 3'te (sipariş verme yetkisi olduğu için dikkatli test gerekir).
 
 Onaylarsan Aşama 1 ile başlıyorum.
+
+## ChatGPT desteği
+
+Tüm yapay zekâ özellikleri OpenAI GPT modelleriyle çalışır (`openai/gpt-6-astra`) — yani "ChatGPT" teknolojisi zaten planın içinde, ek bir şey kurmaya gerek yok. Kendi OpenAI API anahtarını bağlamak istersen ayrıca eklenebilir; bu durumda kullanım anahtarın üzerinden ayrıca faturalanır.
