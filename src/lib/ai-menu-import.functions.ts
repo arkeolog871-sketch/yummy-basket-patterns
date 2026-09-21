@@ -17,7 +17,6 @@ import {
 import {
   MAX_PHOTOS,
   extractProductsFromImages,
-  type ExtractedProduct,
 } from "./ai-menu-import.server";
 
 const photoSchema = z.object({
@@ -40,7 +39,7 @@ export const extractMenuItemsFromPhoto = createServerFn({ method: "POST" })
         data.restaurantId,
       );
       const products = await extractProductsFromImages(data.images);
-      return { products: products satisfies ExtractedProduct[] };
+      return { products };
     }),
   );
 

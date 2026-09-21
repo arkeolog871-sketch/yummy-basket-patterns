@@ -23,7 +23,10 @@ export const ExtractedProductSchema = z.object({
   description: z.string().nullable(),
 });
 
-export type ExtractedProduct = z.infer<typeof ExtractedProductSchema>;
+export type ExtractedProductModel = z.infer<typeof ExtractedProductSchema>;
+
+/** İstemciye giden ürün: model çıktısı + listede kullanılacak sabit anahtar. */
+export type ExtractedProduct = ExtractedProductModel & { key: string };
 
 const ExtractionOutputSchema = z.object({
   products: z.array(ExtractedProductSchema),
@@ -46,7 +49,7 @@ const SYSTEM_PROMPT = [
   "- En fazla 120 ürün çıkar. Sadece JSON döndür.",
 ].join(" ");
 
-function clampProduct(raw: ExtractedProduct, index: number): ExtractedProduct | null {
+function clampProduct(raw: ExtractedProductModel, index: number): ExtractedProduct | null {
   const name = raw.name.trim().slice(0, 80);
   if (!name) return null;
   const price =
@@ -54,14 +57,13 @@ function clampProduct(raw: ExtractedProduct, index: number): ExtractedProduct | 
       ? Math.round(Math.min(100_000, Math.max(0, raw.price)) * 100) / 100
       : null;
   return {
+    key: `p${index}`,
     name,
-    // Fiyatsız ürün de kaydedilebilsin: satıcı listede 0 olarak görüp düzeltir.
-    price: price ?? 0,
-    priceWasMissing: false,
+    // Fiyatsız ürün de listelenir; satıcı listede fiyatı girip öyle kaydeder.
+    price,
     categoryName: raw.categoryName?.trim().slice(0, 60) || null,
     description: raw.description?.trim().slice(0, 300) || null,
-    key: `${index}`,
-  } as ExtractedProduct;
+  };
 }
 
 /**
