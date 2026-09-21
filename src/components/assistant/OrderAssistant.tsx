@@ -26,6 +26,12 @@ import {
   VolumeX,
   X,
 } from "lucide-react";
+import {
+  MicrophoneSession,
+  classifyMicrophoneError,
+  type AudioStreamLike,
+  type RecorderLike,
+} from "@/lib/microphone-session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -97,8 +103,9 @@ export function OrderAssistant() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const recorderRef = useRef<MediaRecorder | null>(null);
+  const micRef = useRef<MicrophoneSession | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const recordedTypeRef = useRef<string>("audio/webm");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const spokenGreetingRef = useRef<string | null>(null);
@@ -111,6 +118,18 @@ export function OrderAssistant() {
     const first = raw.trim().split(/\s+/)[0];
     return first ? first.slice(0, 30) : null;
   }, [user]);
+
+  // Bileşen sökülürken mikrofon MUTLAKA bırakılır. Kayıt sürerken kullanıcı
+  // başka sayfaya geçerse recorder.onstop hiç çalışmaz; akış açık kalır ve
+  // mikrofonu sayfanın kendisi tutmaya devam eder. Bir sonraki denemede
+  // tarayıcı NotReadableError atar, kullanıcı da "başka bir uygulama
+  // kullanıyor olabilir" mesajını görür — oysa tutan biziz.
+  useEffect(() => {
+    return () => {
+      micRef.current?.release();
+      micRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -288,46 +307,66 @@ export function OrderAssistant() {
     // ekranını sistem gösterir, sonuç olumsuzsa aşağıdaki mesajlar devreye girer.
     try {
       // İlk kullanımda tarayıcı tek seferlik izin sorar; izin verilince kayıt başlar.
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mimeType = ["audio/webm", "audio/mp4", "audio/ogg"].find((type) =>
-        typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(type),
-      );
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      const session =
+        micRef.current ??
+        new MicrophoneSession({
+          openStream: () =>
+            navigator.mediaDevices.getUserMedia({ audio: true }) as Promise<AudioStreamLike>,
+          createRecorder: (stream) => {
+            const mimeType = ["audio/webm", "audio/mp4", "audio/ogg"].find((type) =>
+              MediaRecorder.isTypeSupported(type),
+            );
+            const recorder = new MediaRecorder(
+              stream as unknown as MediaStream,
+              mimeType ? { mimeType } : undefined,
+            );
+            recordedTypeRef.current = recorder.mimeType || mimeType || "audio/webm";
+            return recorder as unknown as RecorderLike;
+          },
+        });
+      micRef.current = session;
       chunksRef.current = [];
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) chunksRef.current.push(event.data);
-      };
-      recorder.onstop = () => {
-        stream.getTracks().forEach((track) => track.stop());
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        chunksRef.current = [];
-        void handleRecorded(blob);
-      };
-      recorderRef.current = recorder;
-      recorder.start();
+      await session.start(
+        (chunk) => chunksRef.current.push(chunk as Blob),
+        () => {
+          const blob = new Blob(chunksRef.current, {
+            type: recordedTypeRef.current || "audio/webm",
+          });
+          chunksRef.current = [];
+          setRecording(false);
+          void handleRecorded(blob);
+        },
+      );
       setRecording(true);
     } catch (error) {
-      // İzin reddi ile "kayıt hiç başlatılamadı" farklı sorunlar: mobilde
-      // yanlış uyarı kullanıcıyı boşuna ayarlara gönderiyordu.
-      const name = (error as { name?: string } | null)?.name ?? "";
-      if (name === "NotAllowedError" || name === "SecurityError") {
-        toast.error(
-          "Mikrofon izni verilmedi. Uygulama ayarlarından mikrofon iznini açabilir ya da mesajınızı yazabilirsiniz.",
-          { duration: 6000 },
-        );
-      } else if (name === "NotFoundError" || name === "NotReadableError") {
-        toast.error("Mikrofona ulaşılamadı. Başka bir uygulama kullanıyor olabilir.");
-      } else {
-        toast.error("Ses kaydı başlatılamadı. Mesajınızı yazarak da gönderebilirsiniz.");
+      // İzin reddi, mikrofonun hiç olmaması ve donanımın meşgul olması farklı
+      // sorunlar: mobilde yanlış uyarı kullanıcıyı boşuna ayarlara gönderiyordu.
+      setRecording(false);
+      switch (classifyMicrophoneError(error)) {
+        case "denied":
+          toast.error(
+            "Mikrofon izni verilmedi. Uygulama ayarlarından mikrofon iznini açabilir ya da mesajınızı yazabilirsiniz.",
+            { duration: 6000 },
+          );
+          break;
+        case "missing":
+          toast.error("Bu cihazda mikrofon bulunamadı. Mesajınızı yazabilirsiniz.");
+          break;
+        case "busy":
+          toast.error(
+            "Mikrofon şu anda başka bir uygulamada açık. Arama, ses kaydı veya asistan uygulamasını kapatıp tekrar deneyin.",
+            { duration: 6000 },
+          );
+          break;
+        default:
+          toast.error("Ses kaydı başlatılamadı. Mesajınızı yazarak da gönderebilirsiniz.");
       }
     }
   }
 
   function stopRecording() {
-    const recorder = recorderRef.current;
-    recorderRef.current = null;
     setRecording(false);
-    if (recorder && recorder.state !== "inactive") recorder.stop();
+    micRef.current?.stop();
   }
 
   async function handleRecorded(blob: Blob) {
