@@ -47,4 +47,4 @@ Onaylarsan Aşama 1 ile başlıyorum.
 
 ## ChatGPT desteği
 
-Tüm yapay zekâ özellikleri OpenAI GPT modelleriyle çalışır (`openai/gpt-6-astra`) — yani "ChatGPT" teknolojisi zaten planın içinde, ek bir şey kurmaya gerek yok. Kendi OpenAI API anahtarını bağlamak istersen ayrıca eklenebilir; bu durumda kullanım anahtarın üzerinden ayrıca faturalanır.
+Tüm yapay zekâ özellikleri doğrudan kendi OpenAI hesabınızdaki GPT modelleriyle çalışır (varsayılan `gpt-5.6-luna`) — yani "ChatGPT" teknolojisi birincil sağlayıcıdır ve kullanım sizin OpenAI hesabınızdan faturalanır. Anahtar yalnızca sunucuda okunur, tarayıcıya hiç çıkmaz.
