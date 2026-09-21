@@ -172,7 +172,12 @@ public class MainActivity extends Activity {
         settings.setSupportZoom(false);
         settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
-        settings.setMediaPlaybackRequiresUserGesture(true);
+        // Asistanın sesli yanıtı sunucudan geldikten SONRA çalıyor; o an
+        // WebView'in gözünde kullanıcı dokunuşu bitmiş sayılıyor. Bu ayar açık
+        // kalırsa ses sessizce hiç çalmıyor (sesli sohbet Android'de duyulmaz).
+        // Otomatik oynatan bir reklam/video yok: ses yalnızca kendi kodumuzdan
+        // başlatılıyor, bu yüzden kapatmanın yan etkisi yok.
+        settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         String ua = settings.getUserAgentString();
         if (ua == null) ua = "";
@@ -561,11 +566,12 @@ public class MainActivity extends Activity {
                 return;
             }
             webPermissionRequest = request;
-            ActivityCompat.requestPermissions(
-                    this,
-                    new String[] { Manifest.permission.RECORD_AUDIO },
-                    WEB_MIC_PERMISSION_REQUEST
-            );
+            // Kamera da isteniyorsa ikisini birlikte iste: yalnız mikrofon
+            // istenirse kamerasız bir izin çıkar ve getUserMedia başarısız olur.
+            String[] asked = (wantsCamera && !hasCameraPermission())
+                    ? new String[] { Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA }
+                    : new String[] { Manifest.permission.RECORD_AUDIO };
+            ActivityCompat.requestPermissions(this, asked, WEB_MIC_PERMISSION_REQUEST);
             return;
         }
         if (hasCameraPermission()) {

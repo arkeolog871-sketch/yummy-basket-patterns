@@ -14,6 +14,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { stepCountIs, streamText, tool } from "ai";
 import { z } from "zod";
 import { createLovableAiGatewayRunIdFetch } from "./ai-gateway.server";
+import { stripMarkdownForPlainText } from "./assistant-text";
 import { ilikePattern, matchesSearchTerms } from "./catalog-search";
 import { isBusinessOpen } from "./hours";
 import type { AssistantMessage, CartProposal, ProposalLine } from "./ai-assistant.types";
@@ -38,6 +39,8 @@ const SYSTEM_PROMPT = [
   "Kapalı bir işletme için ürün önerirsen kapalı olduğunu belirt.",
   "Yanıtlar kısa olsun: sohbet 2-4 cümle, bilgi sorularında en fazla 6-7 cümle veya kısa maddeler.",
   "Yanıtın sesli de okunabilir; bu yüzden tablo, uzun bağlantı listesi ve karmaşık biçimlendirme kullanma.",
+  "Düz metin yaz: yıldız (**kalın**), alt çizgi, başlık işareti gibi markdown biçimlendirme KULLANMA;",
+  "mobil uygulamada bu işaretler olduğu gibi görünüyor. Liste gerekiyorsa satır başına kısa bir tire yeter.",
 ].join(" ");
 
 const LIST_COLUMNS =
@@ -373,7 +376,7 @@ export async function runAssistant(
     },
   });
 
-  const reply = (await result.text).trim();
+  const reply = stripMarkdownForPlainText(await result.text);
   return {
     reply:
       reply ||
