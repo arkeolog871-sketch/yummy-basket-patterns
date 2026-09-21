@@ -19,7 +19,9 @@
 ## Yapay zekâ özellikleri (plan onaylandı)
 
 - [x] Aşama 1 — Fotoğraftan ürün çıkarma (satıcı paneli): sunucu fonksiyonları, isimle eşleşen aktarım RPC'si, onay listesi arayüzü, testler; uçtan uca doğrulandı
-- [ ] Aşama 2 — Akıllı arama: ana sayfa araması serbest cümleleri anlar; AI yanıt vermezse normal aramaya döner
-- [ ] Aşama 3 — Sipariş asistanı sohbeti: arama/menü/sepet araçları; sipariş yalnızca kullanıcı onayıyla
-- [ ] Aşama 4 — Ürün açıklaması ve görseli üretme (satıcı/kurucu paneli, toplu mod)
+- [x] Aşama 2 — Akıllı arama: ana sayfa araması serbest cümleleri anlar; AI yanıt vermezse normal aramaya döner
+- [x] Aşama 3 — Sipariş asistanı sohbeti: arama/menü/sepet araçları; sipariş yalnızca kullanıcı onayıyla
+- [x] Aşama 4 — Ürün açıklaması ve görseli üretme (satıcı ürün formunda "Açıklama üret" / "Görsel üret")
+- [x] Güvenlik: eşleştirme kodu sütunlarında açık REVOKE (vitrin yetkileri korundu)
+
 
