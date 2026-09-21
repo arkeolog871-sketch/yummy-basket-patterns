@@ -156,12 +156,15 @@ export function aiProvider(): AiProviderConfig {
  * tekrar deneyin" aynı şey değil.
  */
 export function aiFailureMessage(status: number, body: string): string | null {
+  const quota = /insufficient_quota|exceeded your current quota|billing/i.test(body);
   if (status === 402) return "Yapay zekâ kredisi tükendi.";
   if (status === 429) {
-    return /insufficient_quota|exceeded your current quota|billing/i.test(body)
+    return quota
       ? "Yapay zekâ bakiyesi tükendi."
       : "Yapay zekâ şu an yoğun, birkaç saniye sonra tekrar deneyin.";
   }
+  if (status === 403 && quota) return "Yapay zekâ bakiyesi tükendi.";
   if (status === 401 || status === 403) return "Yapay zekâ anahtarı geçersiz.";
+
   return null;
 }
