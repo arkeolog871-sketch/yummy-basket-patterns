@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { toPublicErrorMessage } from "@/lib/public-error";
-import { Loader2, Pencil, Plus, Trash2, Package } from "lucide-react";
+import { Loader2, Pencil, Plus, Sparkles, Trash2, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,6 +39,10 @@ import { groupByCategory } from "@/lib/menu-groups";
 import { EmptyState } from "@/components/vendor/EmptyState";
 import { ImageDropzone, readImageFile, type PickedImage } from "@/components/vendor/ImageDropzone";
 import { formatPrice } from "@/lib/format";
+import {
+  generateProductDescriptionFn,
+  generateProductImageFn,
+} from "@/lib/ai-content.functions";
 import {
   createVendorCategory,
   createVendorProduct,
@@ -86,10 +90,13 @@ export function ProductPanel({
   items,
   categories,
   onChanged,
+  restaurantId,
 }: {
   items: VendorProduct[];
   categories: VendorCategory[];
   onChanged: () => void;
+  /** Yapay zekâ içerik üretimi için gerekli; verilmezse butonlar gizlenir. */
+  restaurantId?: string;
 }) {
   const createProduct = useServerFn(createVendorProduct);
   const updateProduct = useServerFn(updateVendorProduct);
@@ -210,6 +217,58 @@ export function ProductPanel({
   }
 
   const previewSrc = picked?.previewUrl ?? (form.imageUrl.trim() || null);
+
+  // Yapay zekâ ile içerik üretimi: üretilen metin/görsel yalnızca forma
+  // yazılır, satıcı kaydet demeden hiçbir şey kataloğa işlenmez.
+  const makeDescription = useServerFn(generateProductDescriptionFn);
+  const makeImage = useServerFn(generateProductImageFn);
+
+  const descriptionMutation = useMutation({
+    mutationFn: async () => {
+      if (!restaurantId) throw new Error("İşletme bilgisi bulunamadı.");
+      const name = form.name.trim();
+      if (!name) throw new Error("Önce ürün adını yazın.");
+      return makeDescription({
+        data: {
+          restaurantId,
+          name,
+          categoryName:
+            form.categoryId === "none" ? null : (categoryNames.get(form.categoryId) ?? null),
+        },
+      });
+    },
+    onSuccess: (result) => {
+      setForm((prev) => ({ ...prev, description: result.description }));
+      toast.success("Açıklama üretildi, dilediğiniz gibi düzenleyebilirsiniz");
+    },
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
+  });
+
+  const imageMutation = useMutation({
+    mutationFn: async () => {
+      if (!restaurantId) throw new Error("İşletme bilgisi bulunamadı.");
+      const name = form.name.trim();
+      if (!name) throw new Error("Önce ürün adını yazın.");
+      return makeImage({
+        data: {
+          restaurantId,
+          name,
+          categoryName:
+            form.categoryId === "none" ? null : (categoryNames.get(form.categoryId) ?? null),
+        },
+      });
+    },
+    onSuccess: (result) => {
+      setPicked({
+        fileName: "ai-gorsel.png",
+        contentType: result.contentType,
+        base64: result.base64,
+        previewUrl: `data:${result.contentType};base64,${result.base64}`,
+      });
+      toast.success("Görsel üretildi, beğenmezseniz yeniden üretebilirsiniz");
+    },
+    onError: (error: Error) => toast.error(toPublicErrorMessage(error)),
+  });
 
   return (
     <div className="space-y-6">
@@ -362,7 +421,26 @@ export function ProductPanel({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="product-description">Açıklama</Label>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Label htmlFor="product-description">Açıklama</Label>
+                {restaurantId ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    disabled={descriptionMutation.isPending}
+                    onClick={() => descriptionMutation.mutate()}
+                  >
+                    {descriptionMutation.isPending ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="size-4" />
+                    )}
+                    Açıklama üret
+                  </Button>
+                ) : null}
+              </div>
               <Textarea
                 id="product-description"
                 rows={3}
@@ -427,7 +505,26 @@ export function ProductPanel({
             </div>
 
             <div className="space-y-3">
-              <Label>Ürün görseli</Label>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Label>Ürün görseli</Label>
+                {restaurantId ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    disabled={imageMutation.isPending}
+                    onClick={() => imageMutation.mutate()}
+                  >
+                    {imageMutation.isPending ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="size-4" />
+                    )}
+                    Görsel üret
+                  </Button>
+                ) : null}
+              </div>
               <ImageDropzone onFiles={(files) => void handlePick(files)} />
               {previewSrc ? (
                 <img
