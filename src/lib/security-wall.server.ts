@@ -13,8 +13,14 @@ export const SECURITY_HEADERS: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "X-Permitted-Cross-Domain-Policies": "none",
+  // microphone=(self): sesli asistanın mikrofonu AÇIK olarak listelenmeli.
+  // Boş liste — microphone=() — "hiçbir origin, kendimiz dâhil" demek ve
+  // getUserMedia'yı işletim sistemi izni ZATEN VERİLMİŞ olsa bile
+  // NotAllowedError ile reddettirir; kullanıcıya izin sorusu hiç sorulmaz.
+  // Belirti tam olarak buydu: Android ayarlarında mikrofon izni verili
+  // görünüyor ama asistan "Mikrofon izni verilmedi" diyordu.
   "Permissions-Policy":
-    "geolocation=(self), camera=(self), microphone=(), payment=(), usb=(), interest-cohort=()",
+    "geolocation=(self), camera=(self), microphone=(self), payment=(), usb=(), interest-cohort=()",
   "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
   "X-DNS-Prefetch-Control": "off",
   "X-Frame-Options": "SAMEORIGIN",
