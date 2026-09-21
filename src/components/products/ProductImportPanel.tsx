@@ -11,6 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PhotoMenuImport } from "@/components/products/PhotoMenuImport";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { formatPrice } from "@/lib/format";
 import {
@@ -439,6 +440,8 @@ export function ProductImportPanel({
           </div>
         )}
       </div>
+
+      <PhotoMenuImport restaurantId={restaurantId} blocked={blocked} />
 
       <BulkDeleteSection restaurantId={restaurantId} />
 
