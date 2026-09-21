@@ -15,3 +15,11 @@
 - [ ] Başvuru formunda enlem/boylam yerine haritadan konum işaretleme
 
 - [ ] Soru: ChatGPT desteği — Lovable AI zaten OpenAI modellerini kullanıyor; kendi OpenAI anahtarı istenirse ayrı bağlantı açılacak (kullanıcı onayı bekliyor).
+
+## Yapay zekâ özellikleri (plan onaylandı)
+
+- [x] Aşama 1 — Fotoğraftan ürün çıkarma (satıcı paneli): sunucu fonksiyonları, isimle eşleşen aktarım RPC'si, onay listesi arayüzü, testler; uçtan uca doğrulandı
+- [ ] Aşama 2 — Akıllı arama: ana sayfa araması serbest cümleleri anlar; AI yanıt vermezse normal aramaya döner
+- [ ] Aşama 3 — Sipariş asistanı sohbeti: arama/menü/sepet araçları; sipariş yalnızca kullanıcı onayıyla
+- [ ] Aşama 4 — Ürün açıklaması ve görseli üretme (satıcı/kurucu paneli, toplu mod)
+
