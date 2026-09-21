@@ -351,7 +351,10 @@ export function OrderAssistant() {
                 variant="ghost"
                 size="sm"
                 className="rounded-full text-xs"
-                onClick={() => setMessages([GREETING])}
+                onClick={() => {
+                  spokenGreetingRef.current = null;
+                  setMessages([buildGreeting(firstName)]);
+                }}
               >
                 Yeni sohbet
               </Button>
