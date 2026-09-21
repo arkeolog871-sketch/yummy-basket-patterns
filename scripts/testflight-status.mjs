@@ -53,6 +53,29 @@ export function makeToken({ keyId, issuerId, privateKey, now = Date.now(), ttlSe
   return `${signingInput}.${base64url(signature)}`;
 }
 
+/**
+ * Build listesi isteğinin adresi.
+ *
+ * DİKKAT: /v1/apps/{id}/builds ilişki uçudur ve `include` kabul etmiyor —
+ * gerçek koşuda şu hatayla düştü:
+ *   PARAMETER_ERROR.ILLEGAL "The parameter 'include' can not be used with
+ *   this request"
+ * Sürüm numarası build kaydında değil ilişkili preReleaseVersion'da durduğu
+ * için include gerekiyor; bu yüzden üst düzey /v1/builds ucu filtreyle
+ * kullanılıyor. O uç include'u kabul ediyor.
+ */
+export function buildsRequestUrl(appId, limit) {
+  const params = new URLSearchParams({
+    "filter[app]": appId,
+    limit: String(limit),
+    sort: "-uploadedDate",
+    include: "preReleaseVersion",
+    "fields[builds]": "version,processingState,uploadedDate,expirationDate,expired",
+    "fields[preReleaseVersions]": "version",
+  });
+  return `${API}/v1/builds?${params.toString()}`;
+}
+
 /** API yanıtını insanın okuyabileceği satırlara çevirir. */
 export function formatBuilds(body) {
   const versions = new Map();
@@ -94,11 +117,7 @@ async function main() {
   }
 
   const token = makeToken({ keyId, issuerId, privateKey });
-  const url =
-    `${API}/v1/apps/${appId}/builds` +
-    `?limit=${encodeURIComponent(limit)}` +
-    "&include=preReleaseVersion" +
-    "&fields[builds]=version,processingState,uploadedDate,expirationDate,expired";
+  const url = buildsRequestUrl(appId, limit);
 
   const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
   const text = await response.text();
