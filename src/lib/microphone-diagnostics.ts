@@ -103,7 +103,14 @@ export function microphoneAdvice(diagnostics: MicrophoneDiagnostics): string {
     return "İzin kalıcı olarak reddedilmiş. Ayarlar > Uygulamalar > Silvan Cebimde > İzinler'den mikrofonu açın.";
   }
   if (diagnostics.kind === "busy") {
-    return "Mikrofon başka bir uygulamada açık. Arama, ses kaydı veya asistan uygulamasını kapatıp tekrar deneyin.";
+    // ÖLÇÜLEN durum: izin kapısı geçildi, cihaz listede görünüyor, ama
+    // donanım açılmadı. Bunu üç şey yapar ve kullanıcı üçünü de kendi
+    // kontrol edebilir; en sık görülenden başlayarak sıralı veriliyor.
+    // "Başka uygulama" tek sebep sanılırsa cihaz anahtarı kapalı olan
+    // kullanıcı boşuna uygulama kapatır.
+    return diagnostics.inApp
+      ? "Telefon mikrofonu uygulamaya vermedi. Sırayla deneyin: (1) arama/ses kaydı yapan uygulamayı kapatın, (2) Hızlı Ayarlar'da 'Mikrofon erişimi' açık olsun, (3) Ayarlar > Uygulamalar > Silvan Cebimde > İzinler'de mikrofon izinli olsun."
+      : "Telefon mikrofonu tarayıcıya vermedi. Mikrofonu kullanan başka bir uygulama varsa kapatın; cihazın mikrofon erişimi de açık olmalı.";
   }
   if (diagnostics.kind === "denied") {
     return "Mikrofon izni verilmedi. İzin penceresi çıkmadıysa uygulamayı kapatıp yeniden açın.";

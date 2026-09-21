@@ -327,6 +327,10 @@ export function OrderAssistant() {
             recordedTypeRef.current = recorder.mimeType || mimeType || "audio/webm";
             return recorder as unknown as RecorderLike;
           },
+          // "Meşgul" hatası bazen gerçekten geçici oluyor (az önce kapanan
+          // bir ses oynatması, bırakılmakta olan başka bir uygulama). Tek
+          // yeniden deneme; kalıcı engelde maliyeti yarım saniye.
+          sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
         });
       micRef.current = session;
       chunksRef.current = [];
