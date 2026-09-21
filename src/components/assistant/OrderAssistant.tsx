@@ -26,6 +26,7 @@ import {
   VolumeX,
   X,
 } from "lucide-react";
+import { shouldSpeakReply } from "@/lib/assistant-speech";
 import {
   collectMicrophoneDiagnostics,
   formatMicrophoneDiagnostics,
@@ -246,15 +247,23 @@ export function OrderAssistant() {
         if (previous) URL.revokeObjectURL(previous);
         element.src = url;
         await element.play();
-      } catch {
-        /* sesli okuma başarısız olsa da yazılı yanıt ekranda duruyor */
+        return { ok: true as const };
+      } catch (error) {
+        // Sessizce yutma. Sesli sohbette konuşmama, kullanıcı için özelliğin
+        // hiç çalışmaması demek; sebebi görünmezse aramak da imkânsız.
+        // Yazılı yanıt ekranda kalmaya devam ediyor.
+        const name = (error as { name?: string } | null)?.name ?? "";
+        return { ok: false as const, reason: toPublicErrorMessage(error) || name || "bilinmiyor" };
       }
     },
     [speak],
   );
 
   const sendText = useCallback(
-    async (text: string) => {
+    async (text: string, options?: { spoken?: boolean }) => {
+      // spoken: bu tur mikrofonla başladı. Sesle konuşulduysa sesle cevap
+      // verilir; "Sesli yanıt" anahtarı yalnızca yazarak konuşanlar için.
+      const spoken = options?.spoken === true;
       const clean = text.trim();
       if (!clean || busy) return;
       const next: ChatMessage[] = [...messages, { role: "user", content: clean }];
@@ -277,7 +286,16 @@ export function OrderAssistant() {
         };
         setMessages((prev) => [...prev, answer]);
         void persist([{ role: "user", content: clean }, answer]);
-        if (voiceOn && response.reply) void playReply(response.reply);
+        if (shouldSpeakReply({ voiceOn, spoken, reply: response.reply })) {
+          void playReply(response.reply).then((outcome) => {
+            if (!outcome.ok) {
+              toast.error("Sesli yanıt oynatılamadı, cevabı yazılı olarak gönderdim.", {
+                description: outcome.reason,
+                duration: 8000,
+              });
+            }
+          });
+        }
       } catch (error) {
         setMessages((prev) => [
           ...prev,
@@ -383,11 +401,24 @@ export function OrderAssistant() {
       const base64 = await blobToBase64(blob);
       const mimeType = (blob.type || "audio/webm").split(";")[0] ?? "audio/webm";
       const result = await transcribe({ data: { audio: base64, mimeType } });
-      await sendText(result.text);
+      // Sesle başlayan sohbet sesle sürsün: tercih de açılıyor ki sonraki
+      // turlarda kullanıcı anahtarı aramak zorunda kalmasın.
+      enableVoiceReplies();
+      await sendText(result.text, { spoken: true });
     } catch (error) {
       toast.error(toPublicErrorMessage(error));
     } finally {
       setTranscribing(false);
+    }
+  }
+
+  function enableVoiceReplies() {
+    if (voiceOn) return;
+    setVoiceOn(true);
+    try {
+      window.localStorage.setItem(VOICE_KEY, "1");
+    } catch {
+      /* depolama kapalıysa yalnızca bu oturumda geçerli */
     }
   }
 
