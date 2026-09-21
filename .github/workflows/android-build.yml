@@ -43,11 +43,21 @@ jobs:
 
       - name: Android SDK kur
         uses: android-actions/setup-android@v3
+        with:
+          # packages: '' ŞART. Eylemin varsayılanı artık Android deposundan
+          # kaldırılmış olan 'tools' paketini kurmaya çalışıyor ve
+          # "Failed to find package 'tools'" ile anında düşüyor. Boş bırakınca
+          # eylem yalnızca ANDROID_HOME/PATH'i ayarlıyor; ihtiyacımız olan
+          # paketleri bir sonraki adımda açıkça kuruyoruz.
+          packages: ''
 
       # compileSdk 36 runner imajında her zaman kurulu değil; açıkça
       # indiriyoruz ki imaj değişince derleme sessizce bozulmasın.
       - name: android-36 platformunu indir
-        run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          sdkmanager --install "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Gradle kur (önbellekli)
         uses: gradle/actions/setup-gradle@v4
