@@ -1,0 +1,62 @@
+# TestFlight'taki build'leri App Store Connect API'sinden listeler.
+#
+# App Store Connect'in web arayüzü (özellikle telefon tarayıcısında) sık sık
+# "İsteğinizi işleme alamıyoruz." hatası veriyor; o hata build'in durumu
+# hakkinda hiçbir şey söylemiyor. Bu iş akışı aynı bilgiyi arayüzden bağımsız
+# okur.
+#
+# SALT OKUNUR: yalnızca GET yapar, hiçbir şey yüklemez veya dağıtmaz.
+# ios-release.yml ile aynı sırları kullanır, ek sır gerekmez.
+name: TestFlight durumu
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Kaç build listelensin (varsayılan 10)"
+        required: false
+        type: string
+
+concurrency:
+  group: ios-testflight-status-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  status:
+    name: TestFlight build listesi
+    # Yalnızca API sorgusu; macOS çalıştırıcı gerekmiyor.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build listesini oku
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          ASC_BUILD_LIMIT: ${{ inputs.limit }}
+        # tee olmasa günlükte kalırdı ama özete yazamazdık; pipefail olmadan
+        # betiğin hata kodu tee tarafından yutulur ve kırmızı adım yeşil görünür.
+        run: |
+          set -o pipefail
+          node scripts/testflight-status.mjs | tee "$RUNNER_TEMP/builds.txt"
+
+      - name: Özeti iş akışı sayfasına yaz
+        if: always()
+        run: |
+          {
+            echo '## TestFlight build listesi'
+            echo '```'
+            cat "$RUNNER_TEMP/builds.txt" 2>/dev/null || echo "Liste alınamadı — adım günlüğüne bak."
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
