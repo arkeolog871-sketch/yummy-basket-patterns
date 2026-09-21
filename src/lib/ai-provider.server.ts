@@ -6,14 +6,17 @@
  * dokunmak, birini unutmak ise faturanın bir kısmının eski yerden çıkmaya
  * devam etmesi demekti. Karar buraya toplandı.
  *
- * SEÇİM KURALI: OPENAI_API_KEY varsa doğrudan OpenAI, yoksa Lovable geçidi.
- * Anahtar eklenince geçiş kendiliğinden oluyor; anahtar yanlışsa veya
- * silinirse eski yola düşüyor, yani uygulama yapay zekâsız kalmıyor.
+ * SEÇİM KURALI (üretim): BİRİNCİL sağlayıcı doğrudan OpenAI'dir
+ * (`OPENAI_API_KEY`). Lovable geçidi yalnızca
+ * `AI_ALLOW_LOVABLE_FALLBACK=true` verildiğinde yedek olarak devreye girer;
+ * varsayılan olarak KAPALIDIR. Böylece anahtar yanlış yazıldığında harcama
+ * sessizce Lovable kredilerine kaymaz, açık bir yapılandırma hatası alınır.
  *
  * DİKKAT: LOVABLE_API_KEY yalnızca yapay zekâ için değil, e-POSTA gönderimi
  * için de kullanılıyor (otp-mail.server.ts, order-vendor-alert.server.ts).
  * OpenAI'ye geçmek o bağımlılığı kaldırmaz.
  */
+
 
 /** Model adları sağlayıcıya göre değişiyor; geçitte "openai/" öneki var. */
 export interface AiModels {
