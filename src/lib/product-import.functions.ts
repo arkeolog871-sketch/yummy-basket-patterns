@@ -57,8 +57,11 @@ export type ImportChunkResult = {
  * Aktarımı kimin yapabileceği: işletme kendi kataloğunu, kurucu/bölge
  * yöneticisi ise yetki alanındaki işletmenin kataloğunu aktarabilir.
  * İstemciden gelen restaurantId asla doğrudan kullanılmaz.
+ *
+ * Fotoğraftan ürün çıkarma (ai-menu-import.functions.ts) da aynı yetki
+ * yolunu kullanır; bu yüzden dışa açıktır.
  */
-async function assertImportAccess(
+export async function assertImportAccess(
   context: {
     supabase: Parameters<typeof import("./vendor.server").assertVendor>[0];
     userId: string;
@@ -82,9 +85,10 @@ async function assertImportAccess(
 }
 
 const normalizeName = (value: string) => value.trim().toLocaleLowerCase("tr");
+export { normalizeName };
 
 /** Dosyadaki kategori adlarını işletmenin kategorilerine bağlar, eksikleri açar. */
-async function resolveCategories(
+export async function resolveCategories(
   restaurantId: string,
   names: string[],
 ): Promise<Map<string, string>> {
@@ -307,6 +311,110 @@ export const listProductImports = createServerFn({ method: "GET" })
         .limit(10);
       if (error) throw new Error(error.message);
       return { imports: rows ?? [] };
+    }),
+  );
+
+export type ImportCategory = {
+  id: string | null;
+  name: string;
+  itemCount: number;
+};
+
+/**
+ * Toplu silme için işletmenin kategorileri + her birindeki ürün sayısı.
+ * Kategorisiz ürünler `id: null` satırıyla gelir; onlar da silinebilsin
+ * diye (aktarımda kategori sütunu boş bırakılan ürünler burada toplanır).
+ */
+export const listImportCategories = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({ restaurantId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) =>
+    runServerFn(async () => {
+      await assertImportAccess(
+        { supabase: context.supabase, userId: context.userId, claims: context.claims },
+        data.restaurantId,
+      );
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+      const [categories, items] = await Promise.all([
+        supabaseAdmin
+          .from("menu_categories")
+          .select("id, name, position")
+          .eq("restaurant_id", data.restaurantId)
+          .order("position")
+          .limit(1000),
+        supabaseAdmin
+          .from("menu_items")
+          .select("category_id")
+          .eq("restaurant_id", data.restaurantId)
+          .limit(10_000),
+      ]);
+      const firstError = categories.error ?? items.error ?? null;
+      if (firstError) throw new Error(firstError.message);
+
+      const countByCategory = new Map<string | null, number>();
+      for (const item of items.data ?? []) {
+        const key = item.category_id ?? null;
+        countByCategory.set(key, (countByCategory.get(key) ?? 0) + 1);
+      }
+
+      const result: ImportCategory[] = (categories.data ?? []).map((category) => ({
+        id: category.id,
+        name: category.name,
+        itemCount: countByCategory.get(category.id) ?? 0,
+      }));
+      const uncategorized = countByCategory.get(null) ?? 0;
+      if (uncategorized > 0) {
+        result.push({ id: null, name: "Kategorisiz ürünler", itemCount: uncategorized });
+      }
+      return { categories: result };
+    }),
+  );
+
+const deleteSchema = z.object({
+  restaurantId: z.string().uuid(),
+  /** null = kategorisiz ürünler. */
+  categoryId: z.string().uuid().nullable(),
+});
+
+/**
+ * Bir kategorideki TÜM ürünleri siler. Kategori kaydı kalır; boş kategori
+ * Ürünler panelinden kaldırılabilir. Sipariş geçmişi etkilenmez:
+ * order_items.menu_item_id ON DELETE SET NULL.
+ */
+export const deleteProductsByCategory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => deleteSchema.parse(input))
+  .handler(async ({ data, context }) =>
+    runServerFn(async () => {
+      await assertImportAccess(
+        { supabase: context.supabase, userId: context.userId, claims: context.claims },
+        data.restaurantId,
+      );
+      const { audited } = await import("./audit.server");
+      return audited(
+        {
+          actorId: context.userId,
+          actorEmail: (context.claims as { email?: string } | null)?.email ?? null,
+          action: "menu_items.bulk_delete_by_category",
+          entity: "menu_items",
+          entityId: data.categoryId,
+          detail: { restaurantId: data.restaurantId },
+        },
+        async () => {
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          let query = supabaseAdmin
+            .from("menu_items")
+            .delete({ count: "exact" })
+            .eq("restaurant_id", data.restaurantId);
+          query = data.categoryId
+            ? query.eq("category_id", data.categoryId)
+            : query.is("category_id", null);
+          const { error, count } = await query;
+          if (error) throw new Error(error.message);
+          return { deleted: count ?? 0 };
+        },
+      );
     }),
   );
 

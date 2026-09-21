@@ -32,13 +32,19 @@ describe("aktarım sunucu fonksiyonu", () => {
     expect(source).not.toMatch(/ownRestaurantId !== restaurantId/);
   });
 
-  it("dosyadaki HER sunucu fonksiyonu yetkiyi doğrular", () => {
-    // Sabit bir sayı yazmıyoruz: yeni bir sunucu fonksiyonu eklenince test
-    // "2 bekleniyordu" diye kırılmasın, yetki kontrolü unutulunca kırılsın.
-    const serverFns = source.match(/createServerFn\(/g) ?? [];
-    const guards = source.match(/await assertImportAccess\(/g) ?? [];
-    expect(serverFns.length).toBeGreaterThan(0);
-    expect(guards.length).toBe(serverFns.length);
+  it("dört sunucu fonksiyonunun tamamı yetkiyi doğrular", () => {
+    // importProducts, listProductImports, listImportCategories,
+    // deleteProductsByCategory — hepsi assertImportAccess'ten geçmeli.
+    const calls = source.match(/await assertImportAccess\(/g) ?? [];
+    expect(calls.length).toBe(4);
+    for (const fn of [
+      "importProducts",
+      "listProductImports",
+      "listImportCategories",
+      "deleteProductsByCategory",
+    ]) {
+      expect(source).toContain(`export const ${fn} = createServerFn`);
+    }
   });
 
   it("restaurantId panel yolunda kapsam kontrolünden geçer", () => {

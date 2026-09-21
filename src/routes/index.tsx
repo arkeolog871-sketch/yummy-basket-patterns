@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate, ClientOnly } from "@tanstack/react-router";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState, Suspense, lazy } from "react";
-import { Search } from "lucide-react";
+import { Search, Sparkles } from "lucide-react";
 import { RestaurantCard } from "@/components/restaurant/RestaurantCard";
 import { homeQuery, type HomeSearch } from "@/lib/catalog.queries";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -9,8 +10,10 @@ import { fetchPublicBanners } from "@/lib/advertisements";
 import { HeroBannerSlider, legacySlidesToBanners } from "@/components/home/HeroBannerSlider";
 import { FounderContact } from "@/components/home/FounderContact";
 import { useAppCategories } from "@/hooks/useTaxonomy";
+import { interpretSmartSearch } from "@/lib/ai-search.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
 
 const AllBusinessesMap = lazy(() => import("@/components/business/AllBusinessesMap"));
 
@@ -27,8 +30,9 @@ export const Route = createFileRoute("/")({
     try {
       await context.queryClient.ensureQueryData(homeQuery(deps));
     } catch {
+      // Hatada boş liste yazma: istemci "boş ama taze" sanıp yeniden denemez.
+      // Önbelleği boş bırak, bileşen hata kartını gösterip yeniden dener.
       console.error("[catalog] ana sayfa yüklenemedi");
-      context.queryClient.setQueryData(homeQuery(deps).queryKey, []);
     }
   },
   errorComponent: () => (
@@ -67,7 +71,17 @@ function Index() {
   const navigate = useNavigate();
   const { settings } = useSiteSettings();
   const { categories } = useAppCategories();
-  const { data: results } = useSuspenseQuery(homeQuery(search));
+  const homeQueryResult = useQuery({
+    ...homeQuery(search),
+    // Yükleme başarısızsa sessizce boş liste gösterme: birkaç kez otomatik dene,
+    // olmazsa kullanıcıya hata kartı + "Tekrar dene" göster.
+    retry: 2,
+    refetchOnWindowFocus: true,
+    staleTime: 30_000,
+  });
+  const results = homeQueryResult.data ?? [];
+  const loadingFirst = homeQueryResult.isPending;
+  const loadFailed = homeQueryResult.isError && results.length === 0;
   const bannersQuery = useQuery({
     queryKey: ["public-banners"],
     queryFn: fetchPublicBanners,
@@ -76,6 +90,9 @@ function Index() {
     refetchOnWindowFocus: true,
   });
   const [term, setTerm] = useState(search.q ?? "");
+  const [thinking, setThinking] = useState(false);
+  const [aiNote, setAiNote] = useState<string | null>(null);
+  const interpret = useServerFn(interpretSmartSearch);
   const activeSector = search.kategori;
   const liveBanners = bannersQuery.data && bannersQuery.data.length > 0 ? bannersQuery.data : [];
   const bannerSlides = liveBanners.length
@@ -99,6 +116,50 @@ function Index() {
     navigate({ to: "/", search: next });
   }
 
+  /**
+   * Akıllı arama: "ucuz kahvaltı" gibi serbest cümleler yapay zekâ ile
+   * kategori + anahtar kelimeye çevrilir. Tek kelimelik aramalar (marka/ürün
+   * adı) doğrudan normal aramaya gider; yapay zekâ yanıt vermezse de normal
+   * arama çalışır — arama hiçbir koşulda yapay zekâya bağımlı değildir.
+   */
+  async function runSearch() {
+    const raw = term.trim();
+    setAiNote(null);
+    if (!raw) {
+      apply({ kategori: activeSector });
+      return;
+    }
+    const looksLikeSentence = raw.split(/\s+/).length >= 2;
+    if (!looksLikeSentence) {
+      apply({ kategori: activeSector, q: raw });
+      return;
+    }
+
+    setThinking(true);
+    try {
+      const { intent } = await interpret({
+        data: {
+          query: raw,
+          sectors: categories.map((sector) => ({ slug: sector.slug, label: sector.label })),
+        },
+      });
+      if (intent && (intent.sector || intent.keywords)) {
+        setAiNote(intent.note ?? null);
+        apply({
+          kategori: intent.sector ?? activeSector,
+          q: intent.keywords ?? raw,
+        });
+        return;
+      }
+    } catch {
+      // Yapay zekâ yanıt vermedi; normal aramaya düşülür.
+    } finally {
+      setThinking(false);
+    }
+    apply({ kategori: activeSector, q: raw });
+  }
+
+
   return (
     <div>
       <section className="bg-gradient-hero">
@@ -112,28 +173,42 @@ function Index() {
           >
             <div className={bannerSlides.length > 0 ? "order-2 lg:order-1" : undefined}>
               <form
-                className="flex max-w-md gap-2"
+                className="max-w-md"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  apply({ kategori: activeSector, q: term.trim() || undefined });
+                  void runSearch();
                 }}
               >
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={term}
-                    name="q"
-                    onChange={(event) => setTerm(event.target.value)}
-                    placeholder="İşletme, mutfak veya ürün ara"
-                    aria-label="İşletme ara"
-                    className="h-12 rounded-full bg-card pl-9"
-                  />
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={term}
+                      name="q"
+                      onChange={(event) => setTerm(event.target.value)}
+                      placeholder="Ne arıyorsunuz? Örn. ucuz kahvaltı yapan kafe"
+                      aria-label="İşletme ara"
+                      className="h-12 rounded-full bg-card pl-9"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="h-12 rounded-full px-6"
+                    disabled={thinking}
+                  >
+                    {thinking ? "Anlıyor…" : "Ara"}
+                  </Button>
                 </div>
-                <Button type="submit" size="lg" className="h-12 rounded-full px-6">
-                  Ara
-                </Button>
+                {aiNote ? (
+                  <p className="mt-2 flex items-start gap-2 text-sm text-muted-foreground">
+                    <Sparkles className="mt-0.5 size-4 shrink-0" />
+                    <span>{aiNote}</span>
+                  </p>
+                ) : null}
               </form>
             </div>
+
             {bannerSlides.length > 0 ? (
               <div className="order-1 lg:order-2">
                 <HeroBannerSlider banners={bannerSlides} />
@@ -151,10 +226,12 @@ function Index() {
                 ? (categories.find((sector) => sector.slug === activeSector)?.label ?? activeSector)
                 : "Tüm işletmeler"}
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {results.length} işletme listeleniyor
-              {search.q ? ` · “${search.q}” için` : ""}
-            </p>
+            {!loadFailed && !loadingFirst ? (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {results.length} işletme listeleniyor
+                {search.q ? ` · “${search.q}” için` : ""}
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -199,7 +276,28 @@ function Index() {
           })}
         </div>
 
-        {results.length === 0 ? (
+        {loadingFirst ? (
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-56 animate-pulse rounded-3xl bg-muted" />
+            ))}
+          </div>
+        ) : loadFailed ? (
+          <div className="mt-10 rounded-3xl border border-destructive/30 bg-card p-10 text-center">
+            <p className="font-semibold">İşletmeler yüklenemedi</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Bağlantı sorunu nedeniyle işletme listesi alınamadı. Birkaç kez otomatik olarak
+              yeniden denedik; isterseniz şimdi tekrar deneyin.
+            </p>
+            <Button
+              className="mt-5 rounded-full"
+              onClick={() => void homeQueryResult.refetch()}
+              disabled={homeQueryResult.isFetching}
+            >
+              {homeQueryResult.isFetching ? "Yeniden deneniyor…" : "Tekrar dene"}
+            </Button>
+          </div>
+        ) : results.length === 0 ? (
           <div className="mt-10 rounded-3xl border border-dashed border-border bg-card p-10 text-center">
             <p className="font-semibold">Aramanıza uygun işletme bulamadık</p>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -216,25 +314,45 @@ function Index() {
             </Button>
           </div>
         ) : (
-          <div className={gridClass}>
-            {results.map((business) => (
-              <RestaurantCard
-                key={business.id}
-                restaurant={business}
-                categoryColor={categories.find((sector) => sector.slug === business.sector)?.color}
-              />
-            ))}
-          </div>
+          <>
+            {homeQueryResult.isError ? (
+              <div className="mt-5 flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-card px-4 py-3 text-sm">
+                <span className="text-muted-foreground">
+                  Liste güncellenemedi, eski liste gösteriliyor.
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => void homeQueryResult.refetch()}
+                  disabled={homeQueryResult.isFetching}
+                >
+                  {homeQueryResult.isFetching ? "Deneniyor…" : "Tekrar dene"}
+                </Button>
+              </div>
+            ) : null}
+            <div className={gridClass}>
+              {results.map((business) => (
+                <RestaurantCard
+                  key={business.id}
+                  restaurant={business}
+                  categoryColor={categories.find((sector) => sector.slug === business.sector)?.color}
+                />
+              ))}
+            </div>
+          </>
         )}
       </section>
 
-      <section className="mx-auto w-full max-w-6xl px-4 pb-16">
-        <ClientOnly fallback={<MapSkeleton />}>
-          <Suspense fallback={<MapSkeleton />}>
-            <AllBusinessesMap businesses={results} />
-          </Suspense>
-        </ClientOnly>
-      </section>
+      {results.length > 0 ? (
+        <section className="mx-auto w-full max-w-6xl px-4 pb-16">
+          <ClientOnly fallback={<MapSkeleton />}>
+            <Suspense fallback={<MapSkeleton />}>
+              <AllBusinessesMap businesses={results} />
+            </Suspense>
+          </ClientOnly>
+        </section>
+      ) : null}
 
       <FounderContact />
     </div>

@@ -74,7 +74,7 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>İşletme ve ürün görseli yüklemek için fotoğraflarınıza erişim gerekir.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Video kaydı için mikrofon erişimi gerekir.</string>
+	<string>Sesli sohbet ve sesli asistan için mikrofon erişimi gerekir.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

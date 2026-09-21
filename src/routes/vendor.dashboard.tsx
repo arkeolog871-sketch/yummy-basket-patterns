@@ -762,6 +762,7 @@ function VendorDashboard() {
               items={items as never}
               categories={dashboard.data?.categories ?? []}
               onChanged={invalidate}
+              restaurantId={restaurant.id}
             />
             {/* Market gibi yüzlerce ürünlü işletmeler ürünleri tek tek
                 giremez; kendi programlarından aldıkları listeyi buradan

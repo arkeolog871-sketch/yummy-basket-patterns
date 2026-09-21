@@ -11,6 +11,9 @@
     <!-- Reklam/esnaf dosya seçicisinde "fotoğraf/video çek". Galeri Photo Picker/SAF ile izinsiz açılır. -->
     <uses-permission android:name="android.permission.CAMERA" />
 
+    <!-- Sesli sohbet: WebView'deki getUserMedia mikrofon isteği → RESOURCE_AUDIO_CAPTURE. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <!-- Android 13+ yerel bildirim kanalı. WebView açıkken realtime sipariş olayları da çalışır. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />

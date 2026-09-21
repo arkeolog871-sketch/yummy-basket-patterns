@@ -1,4 +1,5 @@
 import UIKit
+import AVFoundation
 import Capacitor
 import FirebaseCore
 import FirebaseMessaging
@@ -21,6 +22,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
             Messaging.messaging().delegate = self
         }
 
+        configureVoiceAudioSession()
+
         UNUserNotificationCenter.current().delegate = self
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in
             DispatchQueue.main.async {
@@ -29,6 +32,28 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         }
 
         return true
+    }
+
+    /**
+     * Sesli asistan: mikrofon kaydı iOS'ta ses oturumunu `record` moduna
+     * alıyor ve ardından çalan yanıt ya hiç duyulmuyor ya da kulaklık
+     * hoparlöründen çok kısık geliyordu. `playAndRecord` + `defaultToSpeaker`
+     * kaydı bozmadan yanıtı telefonun normal hoparlörüne veriyor; Bluetooth
+     * kulaklık takılıysa oraya gidiyor. Hata olursa uygulama normal devam
+     * eder, yalnız ses yönlendirmesi sistemin varsayılanında kalır.
+     */
+    private func configureVoiceAudioSession() {
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(
+                .playAndRecord,
+                mode: .spokenAudio,
+                options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
+            )
+            try session.setActive(true, options: [])
+        } catch {
+            print("[SilvanVoice] ses oturumu ayarlanamadı: \(error.localizedDescription)")
+        }
     }
 
     func applicationWillResignActive(_ application: UIApplication) {}
