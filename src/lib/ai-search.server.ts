@@ -48,7 +48,7 @@ export async function interpretSearchIntent(
   sectors: SectorOption[],
 ): Promise<SearchIntent | null> {
   // Yapılandırma yoksa akıllı arama sessizce kapanır; düz arama çalışır.
-  let provider;
+  let provider: ReturnType<typeof aiProvider>;
   try {
     provider = aiProvider();
   } catch {
