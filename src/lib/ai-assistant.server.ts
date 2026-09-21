@@ -15,7 +15,7 @@ import { stepCountIs, streamText, tool } from "ai";
 import { z } from "zod";
 import { createLovableAiGatewayRunIdFetch } from "./ai-gateway.server";
 import { ilikePattern, matchesSearchTerms } from "./catalog-search";
-import { isOpenNow } from "./hours";
+import { isBusinessOpen } from "./hours";
 
 export type AssistantMessage = { role: "user" | "assistant"; content: string };
 
@@ -77,7 +77,7 @@ type RestaurantRow = {
 
 function openState(row: RestaurantRow): string {
   try {
-    return isOpenNow({
+    return isBusinessOpen({
       opens_at: row.opens_at,
       closes_at: row.closes_at,
       is_open_manual: row.is_open_manual,
