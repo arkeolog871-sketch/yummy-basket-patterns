@@ -208,7 +208,22 @@ function Index() {
           })}
         </div>
 
-        {results.length === 0 ? (
+        {loadFailed ? (
+          <div className="mt-10 rounded-3xl border border-destructive/30 bg-card p-10 text-center">
+            <p className="font-semibold">İşletmeler yüklenemedi</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Bağlantı sorunu nedeniyle işletme listesi alınamadı. Birkaç kez otomatik olarak
+              yeniden denedik; isterseniz şimdi tekrar deneyin.
+            </p>
+            <Button
+              className="mt-5 rounded-full"
+              onClick={() => void homeQueryResult.refetch()}
+              disabled={homeQueryResult.isFetching}
+            >
+              {homeQueryResult.isFetching ? "Yeniden deneniyor…" : "Tekrar dene"}
+            </Button>
+          </div>
+        ) : results.length === 0 ? (
           <div className="mt-10 rounded-3xl border border-dashed border-border bg-card p-10 text-center">
             <p className="font-semibold">Aramanıza uygun işletme bulamadık</p>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -225,15 +240,33 @@ function Index() {
             </Button>
           </div>
         ) : (
-          <div className={gridClass}>
-            {results.map((business) => (
-              <RestaurantCard
-                key={business.id}
-                restaurant={business}
-                categoryColor={categories.find((sector) => sector.slug === business.sector)?.color}
-              />
-            ))}
-          </div>
+          <>
+            {homeQueryResult.isError ? (
+              <div className="mt-5 flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-card px-4 py-3 text-sm">
+                <span className="text-muted-foreground">
+                  Liste güncellenemedi, eski liste gösteriliyor.
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => void homeQueryResult.refetch()}
+                  disabled={homeQueryResult.isFetching}
+                >
+                  {homeQueryResult.isFetching ? "Deneniyor…" : "Tekrar dene"}
+                </Button>
+              </div>
+            ) : null}
+            <div className={gridClass}>
+              {results.map((business) => (
+                <RestaurantCard
+                  key={business.id}
+                  restaurant={business}
+                  categoryColor={categories.find((sector) => sector.slug === business.sector)?.color}
+                />
+              ))}
+            </div>
+          </>
         )}
       </section>
 
