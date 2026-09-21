@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { Camera, ImagePlus, Loader2, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { parseImportNumber } from "@/lib/product-import";
 import { blobToBase64, shrinkImage } from "@/lib/image-resize";
@@ -238,10 +237,12 @@ export function PhotoMenuImport({
                     key={item.key}
                     className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-background p-2"
                   >
-                    <Checkbox
+                    <input
+                      type="checkbox"
                       checked={item.selected}
-                      onCheckedChange={(checked) => updateItem(item.key, { selected: checked === true })}
+                      onChange={(event) => updateItem(item.key, { selected: event.target.checked })}
                       aria-label={`${item.name} seçili`}
+                      className="size-4 shrink-0 accent-primary"
                     />
                     <Input
                       className="h-9 min-w-0 flex-1 basis-48"
