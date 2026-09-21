@@ -31,7 +31,10 @@ describe("yapay zekâ sağlayıcısı seçimi", () => {
   it("Google ses modeli OpenAI karşılığıyla değişir", () => {
     // google/gemini-3.5-transcribe OpenAI'de yok; istek 404 dönerdi.
     const openai = resolveAiProvider({ OPENAI_API_KEY: "sk-test" });
-    const lovable = resolveAiProvider({ LOVABLE_API_KEY: "lov" });
+    const lovable = resolveAiProvider({
+      LOVABLE_API_KEY: "lov",
+      AI_ALLOW_LOVABLE_FALLBACK: "true",
+    });
     expect(lovable.models.transcribe).toBe("google/gemini-3.5-transcribe");
     expect(openai.models.transcribe).toBe("gpt-4o-transcribe");
   });
