@@ -35,6 +35,11 @@ import { formatPrice } from "@/lib/format";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { askOrderAssistant } from "@/lib/ai-assistant.functions";
 import { speakAssistantReply, transcribeAssistantAudio } from "@/lib/ai-voice.functions";
+import {
+  appendAssistantHistory,
+  clearAssistantHistory,
+  listAssistantHistory,
+} from "@/lib/assistant-history.functions";
 import type { CartProposal } from "@/lib/ai-assistant.types";
 
 const STORAGE_KEY = "silvan.assistant.v1";
@@ -83,6 +88,9 @@ export function OrderAssistant() {
   const [instructionDraft, setInstructionDraft] = useState("");
 
   const ask = useServerFn(askOrderAssistant);
+  const loadHistory = useServerFn(listAssistantHistory);
+  const saveHistory = useServerFn(appendAssistantHistory);
+  const wipeHistory = useServerFn(clearAssistantHistory);
   const transcribe = useServerFn(transcribeAssistantAudio);
   const speak = useServerFn(speakAssistantReply);
   const cart = useCart();
@@ -93,6 +101,7 @@ export function OrderAssistant() {
   const chunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const spokenGreetingRef = useRef<string | null>(null);
+  const historyLoadedRef = useRef(false);
 
   const firstName = useMemo(() => {
     const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
@@ -153,6 +162,47 @@ export function OrderAssistant() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, voiceOn, messages]);
 
+  // Giriş yapmış kullanıcının sohbeti veritabanından yüklenir (sayfa yenilenince kaybolmaz).
+  useEffect(() => {
+    if (!user?.id || historyLoadedRef.current) return;
+    historyLoadedRef.current = true;
+    void (async () => {
+      try {
+        const rows = await loadHistory();
+        if (!Array.isArray(rows) || rows.length === 0) return;
+        setMessages(
+          rows.map((row) => ({
+            role: row.role === "user" ? "user" : "assistant",
+            content: row.content,
+            proposal: (row.proposal ?? null) as CartProposal | null,
+          })),
+        );
+      } catch {
+        /* geçmiş alınamazsa cihazdaki sohbet gösterilmeye devam eder */
+      }
+    })();
+  }, [loadHistory, user?.id]);
+
+  const persist = useCallback(
+    async (rows: ChatMessage[]) => {
+      if (!user?.id || rows.length === 0) return;
+      try {
+        await saveHistory({
+          data: {
+            messages: rows.slice(0, 4).map((row) => ({
+              role: row.role,
+              content: row.content.slice(0, 4000),
+              proposal: row.proposal ?? null,
+            })),
+          },
+        });
+      } catch {
+        /* kaydedilemezse sohbet ekranda ve cihazda kalır */
+      }
+    },
+    [saveHistory, user?.id],
+  );
+
   const playReply = useCallback(
     async (text: string) => {
       try {
@@ -185,14 +235,13 @@ export function OrderAssistant() {
             instruction: instruction.trim() ? instruction.trim().slice(0, 600) : null,
           },
         });
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content: response.reply,
-            proposal: response.proposal ?? null,
-          },
-        ]);
+        const answer: ChatMessage = {
+          role: "assistant",
+          content: response.reply,
+          proposal: response.proposal ?? null,
+        };
+        setMessages((prev) => [...prev, answer]);
+        void persist([{ role: "user", content: clean }, answer]);
         if (voiceOn && response.reply) void playReply(response.reply);
       } catch (error) {
         setMessages((prev) => [
@@ -206,7 +255,7 @@ export function OrderAssistant() {
         setBusy(false);
       }
     },
-    [ask, busy, instruction, messages, playReply, voiceOn],
+    [ask, busy, instruction, messages, persist, playReply, voiceOn],
   );
 
   async function startRecording() {
@@ -394,6 +443,7 @@ export function OrderAssistant() {
                 onClick={() => {
                   spokenGreetingRef.current = null;
                   setMessages([buildGreeting(firstName)]);
+                  if (user?.id) void wipeHistory();
                 }}
               >
                 Yeni sohbet
