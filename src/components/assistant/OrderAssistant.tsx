@@ -26,7 +26,14 @@ import {
   VolumeX,
   X,
 } from "lucide-react";
+import { listAddresses } from "@/lib/addresses.functions";
+import { createOrder } from "@/lib/orders.functions";
 import { shouldSpeakReply } from "@/lib/assistant-speech";
+import {
+  buildOrderConfirmationSpeech,
+  parseVoiceConfirmation,
+} from "@/lib/voice-order-confirmation";
+import { VoiceConversation } from "./VoiceConversation";
 import {
   collectMicrophoneDiagnostics,
   formatMicrophoneDiagnostics,
@@ -94,6 +101,7 @@ export function OrderAssistant() {
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [voiceOn, setVoiceOn] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [instruction, setInstruction] = useState("");
   const [instructionDraft, setInstructionDraft] = useState("");
@@ -103,12 +111,16 @@ export function OrderAssistant() {
   const saveHistory = useServerFn(appendAssistantHistory);
   const wipeHistory = useServerFn(clearAssistantHistory);
   const transcribe = useServerFn(transcribeAssistantAudio);
+  const fetchAddresses = useServerFn(listAddresses);
+  const submitOrder = useServerFn(createOrder);
   const speak = useServerFn(speakAssistantReply);
   const cart = useCart();
   const navigate = useNavigate();
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const micRef = useRef<MicrophoneSession | null>(null);
+  // Sesli onay bekleyen sepet önerisi. Doluysa bir sonraki söz onay sayılır.
+  const pendingOrderRef = useRef<CartProposal | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const recordedTypeRef = useRef<string>("audio/webm");
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -246,7 +258,20 @@ export function OrderAssistant() {
         objectUrlRef.current = url;
         if (previous) URL.revokeObjectURL(previous);
         element.src = url;
+        // Sesli sohbette bu bekleme şart: play() sesin BAŞLADIĞINDA çözülüyor.
+        // Bitişi beklemezsek mikrofon asistan hâlâ konuşurken açılır ve
+        // asistan kendi sesini duyup kendine cevap verir.
+        const finished = new Promise<void>((resolve) => {
+          const done = () => {
+            element.removeEventListener("ended", done);
+            element.removeEventListener("error", done);
+            resolve();
+          };
+          element.addEventListener("ended", done);
+          element.addEventListener("error", done);
+        });
         await element.play();
+        await finished;
         return { ok: true as const };
       } catch (error) {
         // Sessizce yutma. Sesli sohbette konuşmama, kullanıcı için özelliğin
@@ -260,12 +285,12 @@ export function OrderAssistant() {
   );
 
   const sendText = useCallback(
-    async (text: string, options?: { spoken?: boolean }) => {
+    async (text: string, options?: { spoken?: boolean; deferSpeech?: boolean }) => {
       // spoken: bu tur mikrofonla başladı. Sesle konuşulduysa sesle cevap
       // verilir; "Sesli yanıt" anahtarı yalnızca yazarak konuşanlar için.
       const spoken = options?.spoken === true;
       const clean = text.trim();
-      if (!clean || busy) return;
+      if (!clean || busy) return null;
       const next: ChatMessage[] = [...messages, { role: "user", content: clean }];
       setMessages(next);
       setDraft("");
@@ -286,6 +311,9 @@ export function OrderAssistant() {
         };
         setMessages((prev) => [...prev, answer]);
         void persist([{ role: "user", content: clean }, answer]);
+        // Sesli sohbet ekranı seslendirmeyi kendi yönetiyor: sırayla
+        // konuşup bitmesini bekliyor, sonra mikrofonu açıyor.
+        if (options?.deferSpeech) return { reply: response.reply, proposal: answer.proposal };
         if (shouldSpeakReply({ voiceOn, spoken, reply: response.reply })) {
           void playReply(response.reply).then((outcome) => {
             if (!outcome.ok) {
@@ -296,6 +324,7 @@ export function OrderAssistant() {
             }
           });
         }
+        return { reply: response.reply, proposal: answer.proposal };
       } catch (error) {
         setMessages((prev) => [
           ...prev,
@@ -304,6 +333,7 @@ export function OrderAssistant() {
             content: `Şu an yanıt veremiyorum. ${toPublicErrorMessage(error)}`,
           },
         ]);
+        return null;
       } finally {
         setBusy(false);
       }
@@ -412,6 +442,93 @@ export function OrderAssistant() {
     }
   }
 
+  /**
+   * Sesli sohbetin bir turu. Bekleyen bir sipariş onayı varsa önce ona bakar:
+   * sipariş oluşturma kararı yapay zekânın niyet tahminine değil, okunabilir
+   * bir kurala (parseVoiceConfirmation) bağlı.
+   */
+  async function voiceAsk(said: string): Promise<string> {
+    const pending = pendingOrderRef.current;
+    if (pending) {
+      const verdict = parseVoiceConfirmation(said);
+      if (verdict === "evet") {
+        pendingOrderRef.current = null;
+        return placeVoiceOrder(pending);
+      }
+      // "hayır" da "belirsiz" de siparişi oluşturmaz; şüphe varsa sohbet sürer.
+      pendingOrderRef.current = null;
+      if (verdict === "hayir") {
+        const message = "Tamam, siparişi oluşturmadım. Başka nasıl yardımcı olabilirim?";
+        setMessages((prev) => [...prev, { role: "assistant", content: message }]);
+        return message;
+      }
+    }
+
+    const result = await sendText(said, { spoken: true, deferSpeech: true });
+    if (!result) return "";
+    if (!result.proposal) return result.reply;
+
+    // Öneri geldi: onay cümlesini kurabilmek için adres gerekiyor.
+    if (!user) {
+      return `${result.reply} Siparişi sesle tamamlayabilmem için önce giriş yapmanız gerekiyor.`;
+    }
+    try {
+      const addresses = await fetchAddresses();
+      const address = addresses[0];
+      if (!address) {
+        return `${result.reply} Kayıtlı teslimat adresiniz yok; hesabım sayfasından bir adres ekleyin, sonra siparişi sesle tamamlayabiliriz.`;
+      }
+      pendingOrderRef.current = result.proposal;
+      const confirmation = buildOrderConfirmationSpeech(result.proposal, {
+        recipient_name: address.recipient_name,
+        district: address.district,
+        city: address.city,
+      });
+      setMessages((prev) => [...prev, { role: "assistant", content: confirmation }]);
+      return `${result.reply} ${confirmation}`;
+    } catch (error) {
+      return `${result.reply} Adres bilgisine ulaşamadım. ${toPublicErrorMessage(error)}`;
+    }
+  }
+
+  /** Onaylanan öneriyi gerçek siparişe çevirir. */
+  async function placeVoiceOrder(proposal: CartProposal): Promise<string> {
+    let message: string;
+    try {
+      const addresses = await fetchAddresses();
+      const address = addresses[0];
+      if (!address) {
+        message = "Teslimat adresi bulamadım, siparişi oluşturamadım.";
+      } else {
+        const result = await submitOrder({
+          data: {
+            restaurant_id: proposal.restaurant.id,
+            items: proposal.lines.map((line) => ({
+              menu_item_id: line.menuItemId,
+              quantity: line.quantity,
+            })),
+            recipient_name: address.recipient_name,
+            phone: address.phone,
+            city: address.city,
+            district: address.district,
+            street: address.street,
+            idempotency_key:
+              typeof crypto !== "undefined" && "randomUUID" in crypto
+                ? crypto.randomUUID()
+                : undefined,
+          },
+        });
+        message = result.ok
+          ? `Siparişiniz alındı. ${proposal.restaurant.name} hazırlamaya başlıyor, kapıda ödeyeceksiniz. Siparişlerim sayfasından takip edebilirsiniz.`
+          : `Siparişi oluşturamadım. ${result.error}`;
+      }
+    } catch (error) {
+      message = `Siparişi oluşturamadım. ${toPublicErrorMessage(error)}`;
+    }
+    setMessages((prev) => [...prev, { role: "assistant", content: message }]);
+    return message;
+  }
+
   function enableVoiceReplies() {
     if (voiceOn) return;
     setVoiceOn(true);
@@ -463,15 +580,45 @@ export function OrderAssistant() {
     void navigate({ to: "/sepet" });
   }
 
+  if (voiceMode) {
+    return (
+      <VoiceConversation
+        transcript={messages}
+        onClose={() => setVoiceMode(false)}
+        onError={(message, detail) =>
+          toast.error(message, detail ? { description: detail, duration: 9000 } : undefined)
+        }
+        transcribe={async (blob) => {
+          const base64 = await blobToBase64(blob);
+          const mimeType = (blob.type || "audio/webm").split(";")[0] ?? "audio/webm";
+          const result = await transcribe({ data: { audio: base64, mimeType } });
+          return result.text;
+        }}
+        ask={voiceAsk}
+        speak={async (reply) => {
+          const outcome = await playReply(reply);
+          if (!outcome.ok) {
+            toast.error("Sesli yanıt oynatılamadı, cevabı yazılı olarak gönderdim.", {
+              description: outcome.reason,
+              duration: 8000,
+            });
+          }
+        }}
+      />
+    );
+  }
+
   return (
     <>
       {open ? null : (
         <>
           <button
             type="button"
-            onClick={() => (recording ? stopRecording() : void startRecording())}
-            disabled={busy || transcribing}
-            aria-label={recording ? "Kaydı bitir ve gönder" : "Sesli konuş"}
+            onClick={() => {
+              enableVoiceReplies();
+              setVoiceMode(true);
+            }}
+            aria-label="Sesli sohbeti başlat"
             className={`fixed bottom-36 right-5 z-40 flex size-12 items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105 sm:bottom-24 ${
               recording
                 ? "bg-destructive text-destructive-foreground"
