@@ -11,7 +11,7 @@ describe("fotoğraftan ürün çıkarma — güvenlik sözleşmesi", () => {
     const source = readFileSync(FUNCTIONS, "utf8");
     for (const fn of ["extractMenuItemsFromPhoto", "importExtractedMenuItems"]) {
       expect(source).toContain(`export const ${fn} = createServerFn`);
- expect(source).toContain(".middleware([requireSupabaseAuth])");
+    expect(source).toContain(".middleware([requireSupabaseAuth])");
     }
     // Her handler assertImportAccess'i çağırır: işletme kendi kataloğunu,
     // kurucu/bölge yöneticisi yalnızca yetki alanındaki işletmeyi işleyebilir.
