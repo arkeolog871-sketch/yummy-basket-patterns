@@ -67,7 +67,16 @@ function Index() {
   const navigate = useNavigate();
   const { settings } = useSiteSettings();
   const { categories } = useAppCategories();
-  const { data: results } = useSuspenseQuery(homeQuery(search));
+  const homeQueryResult = useQuery({
+    ...homeQuery(search),
+    // Yükleme başarısızsa sessizce boş liste gösterme: birkaç kez otomatik dene,
+    // olmazsa kullanıcıya hata kartı + "Tekrar dene" göster.
+    retry: 2,
+    refetchOnWindowFocus: true,
+    staleTime: 30_000,
+  });
+  const results = homeQueryResult.data ?? [];
+  const loadFailed = homeQueryResult.isError && results.length === 0;
   const bannersQuery = useQuery({
     queryKey: ["public-banners"],
     queryFn: fetchPublicBanners,
