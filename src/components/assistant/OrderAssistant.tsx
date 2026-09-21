@@ -132,6 +132,27 @@ export function OrderAssistant() {
     if (element) element.scrollTop = element.scrollHeight;
   }, [messages, open, busy, transcribing]);
 
+  // Kullanıcı adı gelince henüz konuşulmamış karşılamayı kişiselleştir.
+  useEffect(() => {
+    if (!firstName) return;
+    setMessages((prev) =>
+      prev.length === 1 && prev[0]?.content === GREETING.content
+        ? [buildGreeting(firstName)]
+        : prev,
+    );
+  }, [firstName]);
+
+  // Sohbet açılınca karşılama sesli okunur (açma dokunuşu kullanıcı hareketi sayılır).
+  useEffect(() => {
+    if (!open || !voiceOn) return;
+    const first = messages[0];
+    if (!first || first.role !== "assistant" || messages.length !== 1) return;
+    if (spokenGreetingRef.current === first.content) return;
+    spokenGreetingRef.current = first.content;
+    void playReply(first.content);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, voiceOn, messages]);
+
   const playReply = useCallback(
     async (text: string) => {
       try {
