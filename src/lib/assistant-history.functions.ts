@@ -41,11 +41,14 @@ export const appendAssistantHistory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => appendSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const rows = data.messages.map((message) => ({
+    // Aynı istekte gelen mesajlar sırayı korusun: created_at milisaniye kaydırılır.
+    const base = Date.now();
+    const rows = data.messages.map((message, index) => ({
       user_id: context.userId,
       role: message.role,
       content: message.content,
       proposal: (message.proposal ?? null) as never,
+      created_at: new Date(base + index).toISOString(),
     }));
     const { error } = await context.supabase.from("assistant_messages").insert(rows);
     if (error) throw new Error(error.message);
