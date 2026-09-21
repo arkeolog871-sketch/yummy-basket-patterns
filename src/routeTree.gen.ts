@@ -39,6 +39,7 @@ import { Route as AdminSplatRouteImport } from './routes/admin.$'
 import { Route as RestoranSlugRouteImport } from './routes/restoran.$slug'
 import { Route as SiparisIdRouteImport } from './routes/siparis.$id'
 import { Route as VendorDashboardRouteImport } from './routes/vendor.dashboard'
+import { Route as ApiSyncProductsRouteImport } from './routes/api/sync/products'
 import { Route as ApiV1BannersRouteImport } from './routes/api/v1/banners'
 import { Route as ApiPublicBrandSplatRouteImport } from './routes/api/public/brand.$'
 import { Route as ApiPublicMediaSplatRouteImport } from './routes/api/public/media.$'
@@ -198,6 +199,11 @@ const VendorDashboardRoute = VendorDashboardRouteImport.update({
   path: '/vendor/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSyncProductsRoute = ApiSyncProductsRouteImport.update({
+  id: '/api/sync/products',
+  path: '/api/sync/products',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV1BannersRoute = ApiV1BannersRouteImport.update({
   id: '/api/v1/banners',
   path: '/api/v1/banners',
@@ -260,6 +266,7 @@ export interface FileRoutesByFullPath {
   '/siparis/$id': typeof SiparisIdRoute
   '/vendor/dashboard': typeof VendorDashboardRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/sync/products': typeof ApiSyncProductsRoute
   '/api/v1/banners': typeof ApiV1BannersRouteWithChildren
   '/api/public/brand/$': typeof ApiPublicBrandSplatRoute
   '/api/public/media/$': typeof ApiPublicMediaSplatRoute
@@ -298,6 +305,7 @@ export interface FileRoutesByTo {
   '/siparis/$id': typeof SiparisIdRoute
   '/vendor/dashboard': typeof VendorDashboardRoute
   '/admin': typeof AdminIndexRoute
+  '/api/sync/products': typeof ApiSyncProductsRoute
   '/api/v1/banners': typeof ApiV1BannersRouteWithChildren
   '/api/public/brand/$': typeof ApiPublicBrandSplatRoute
   '/api/public/media/$': typeof ApiPublicMediaSplatRoute
@@ -337,6 +345,7 @@ export interface FileRoutesById {
   '/siparis/$id': typeof SiparisIdRoute
   '/vendor/dashboard': typeof VendorDashboardRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/sync/products': typeof ApiSyncProductsRoute
   '/api/v1/banners': typeof ApiV1BannersRouteWithChildren
   '/api/public/brand/$': typeof ApiPublicBrandSplatRoute
   '/api/public/media/$': typeof ApiPublicMediaSplatRoute
@@ -377,6 +386,7 @@ export interface FileRouteTypes {
     | '/siparis/$id'
     | '/vendor/dashboard'
     | '/admin/'
+    | '/api/sync/products'
     | '/api/v1/banners'
     | '/api/public/brand/$'
     | '/api/public/media/$'
@@ -415,6 +425,7 @@ export interface FileRouteTypes {
     | '/siparis/$id'
     | '/vendor/dashboard'
     | '/admin'
+    | '/api/sync/products'
     | '/api/v1/banners'
     | '/api/public/brand/$'
     | '/api/public/media/$'
@@ -453,6 +464,7 @@ export interface FileRouteTypes {
     | '/siparis/$id'
     | '/vendor/dashboard'
     | '/admin/'
+    | '/api/sync/products'
     | '/api/v1/banners'
     | '/api/public/brand/$'
     | '/api/public/media/$'
@@ -492,6 +504,7 @@ export interface RootRouteChildren {
   SiparisIdRoute: typeof SiparisIdRoute
   VendorDashboardRoute: typeof VendorDashboardRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  ApiSyncProductsRoute: typeof ApiSyncProductsRoute
   ApiV1BannersRoute: typeof ApiV1BannersRouteWithChildren
   ApiPublicBrandSplatRoute: typeof ApiPublicBrandSplatRoute
   ApiPublicMediaSplatRoute: typeof ApiPublicMediaSplatRoute
@@ -711,6 +724,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VendorDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/sync/products': {
+      id: '/api/sync/products'
+      path: '/api/sync/products'
+      fullPath: '/api/sync/products'
+      preLoaderRoute: typeof ApiSyncProductsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/banners': {
       id: '/api/v1/banners'
       path: '/api/v1/banners'
@@ -799,6 +819,7 @@ const rootRouteChildren: RootRouteChildren = {
   SiparisIdRoute: SiparisIdRoute,
   VendorDashboardRoute: VendorDashboardRoute,
   AdminIndexRoute: AdminIndexRoute,
+  ApiSyncProductsRoute: ApiSyncProductsRoute,
   ApiV1BannersRoute: ApiV1BannersRouteWithChildren,
   ApiPublicBrandSplatRoute: ApiPublicBrandSplatRoute,
   ApiPublicMediaSplatRoute: ApiPublicMediaSplatRoute,

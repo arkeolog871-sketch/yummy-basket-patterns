@@ -30,6 +30,7 @@ import { PushNotificationButton } from "@/components/notifications/PushNotificat
 import { EmptyState } from "@/components/vendor/EmptyState";
 import { ProductPanel } from "@/components/vendor/ProductPanel";
 import { ProductImportPanel } from "@/components/products/ProductImportPanel";
+import { SyncTokenPanel } from "@/components/products/SyncTokenPanel";
 import { MediaPanel } from "@/components/vendor/MediaPanel";
 import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { useAccess } from "@/hooks/useAccess";
@@ -766,8 +767,9 @@ function VendorDashboard() {
             {/* Market gibi yüzlerce ürünlü işletmeler ürünleri tek tek
                 giremez; kendi programlarından aldıkları listeyi buradan
                 yükleyebilsinler. */}
-            <div className="mt-6">
+            <div className="mt-6 space-y-4">
               <ProductImportPanel restaurantId={restaurant.id} />
+              <SyncTokenPanel restaurantId={restaurant.id} />
             </div>
             {items.length > 0 ? (
               <div className="mt-6 overflow-hidden rounded-3xl border border-border bg-card">
