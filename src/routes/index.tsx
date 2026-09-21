@@ -77,6 +77,7 @@ function Index() {
     staleTime: 30_000,
   });
   const results = homeQueryResult.data ?? [];
+  const loadingFirst = homeQueryResult.isPending;
   const loadFailed = homeQueryResult.isError && results.length === 0;
   const bannersQuery = useQuery({
     queryKey: ["public-banners"],
@@ -161,7 +162,7 @@ function Index() {
                 ? (categories.find((sector) => sector.slug === activeSector)?.label ?? activeSector)
                 : "Tüm işletmeler"}
             </h2>
-            {!loadFailed ? (
+            {!loadFailed && !loadingFirst ? (
               <p className="mt-1 text-sm text-muted-foreground">
                 {results.length} işletme listeleniyor
                 {search.q ? ` · “${search.q}” için` : ""}
