@@ -272,13 +272,15 @@ function Index() {
         )}
       </section>
 
-      <section className="mx-auto w-full max-w-6xl px-4 pb-16">
-        <ClientOnly fallback={<MapSkeleton />}>
-          <Suspense fallback={<MapSkeleton />}>
-            <AllBusinessesMap businesses={results} />
-          </Suspense>
-        </ClientOnly>
-      </section>
+      {!loadFailed ? (
+        <section className="mx-auto w-full max-w-6xl px-4 pb-16">
+          <ClientOnly fallback={<MapSkeleton />}>
+            <Suspense fallback={<MapSkeleton />}>
+              <AllBusinessesMap businesses={results} />
+            </Suspense>
+          </ClientOnly>
+        </section>
+      ) : null}
 
       <FounderContact />
     </div>
