@@ -68,7 +68,7 @@ describe("mikrofon Permissions-Policy başlığı", () => {
   });
 
   it("Android mikrofon zincirinin diğer halkaları yerinde", () => {
-    // Başlık tek başına yetmiyor; üçü birden gerekiyor.
+    // Başlık tek başına yetmiyor; hepsi birden gerekiyor.
     const manifest = read("android-wrapper/app/src/main/AndroidManifest.xml");
     const activity = read(
       "android-wrapper/app/src/main/java/online/uygulamamcebimde/app/MainActivity.java",
@@ -76,5 +76,19 @@ describe("mikrofon Permissions-Policy başlığı", () => {
     expect(manifest).toContain("android.permission.RECORD_AUDIO");
     expect(activity).toContain("RESOURCE_AUDIO_CAPTURE");
     expect(activity).toContain("Manifest.permission.RECORD_AUDIO");
+  });
+
+  it("WebView ses yakalaması için MODIFY_AUDIO_SETTINGS de bildirilir", () => {
+    // RECORD_AUDIO TEK BAŞINA YETMİYOR. WebView'in ses yığını (WebRTC) kaydı
+    // açarken ses modunu değiştiriyor; bu izin olmadan işletim sistemi
+    // mikrofonu WebView'e vermiyor ve sayfa NotReadableError alıyor — izin
+    // verilmiş olsa bile.
+    //
+    // Telefonda ölçülerek bulundu: uygulamanın kendi AudioRecord'u açılıyor
+    // (java: acildi), WebView açamıyor (etiket: yok), WebView sürümü güncel
+    // (151). Aynı telefonda Chrome ve WhatsApp çalışıyordu; ikisi de bu izni
+    // bildiriyor.
+    const manifest = read("android-wrapper/app/src/main/AndroidManifest.xml");
+    expect(manifest).toContain("android.permission.MODIFY_AUDIO_SETTINGS");
   });
 });
