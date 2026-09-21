@@ -27,6 +27,7 @@ import {
   X,
 } from "lucide-react";
 import { shouldSpeakReply } from "@/lib/assistant-speech";
+import { VoiceConversation } from "./VoiceConversation";
 import {
   collectMicrophoneDiagnostics,
   formatMicrophoneDiagnostics,
@@ -94,6 +95,7 @@ export function OrderAssistant() {
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [voiceOn, setVoiceOn] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [instruction, setInstruction] = useState("");
   const [instructionDraft, setInstructionDraft] = useState("");
@@ -246,7 +248,20 @@ export function OrderAssistant() {
         objectUrlRef.current = url;
         if (previous) URL.revokeObjectURL(previous);
         element.src = url;
+        // Sesli sohbette bu bekleme şart: play() sesin BAŞLADIĞINDA çözülüyor.
+        // Bitişi beklemezsek mikrofon asistan hâlâ konuşurken açılır ve
+        // asistan kendi sesini duyup kendine cevap verir.
+        const finished = new Promise<void>((resolve) => {
+          const done = () => {
+            element.removeEventListener("ended", done);
+            element.removeEventListener("error", done);
+            resolve();
+          };
+          element.addEventListener("ended", done);
+          element.addEventListener("error", done);
+        });
         await element.play();
+        await finished;
         return { ok: true as const };
       } catch (error) {
         // Sessizce yutma. Sesli sohbette konuşmama, kullanıcı için özelliğin
@@ -260,12 +275,12 @@ export function OrderAssistant() {
   );
 
   const sendText = useCallback(
-    async (text: string, options?: { spoken?: boolean }) => {
+    async (text: string, options?: { spoken?: boolean; deferSpeech?: boolean }) => {
       // spoken: bu tur mikrofonla başladı. Sesle konuşulduysa sesle cevap
       // verilir; "Sesli yanıt" anahtarı yalnızca yazarak konuşanlar için.
       const spoken = options?.spoken === true;
       const clean = text.trim();
-      if (!clean || busy) return;
+      if (!clean || busy) return null;
       const next: ChatMessage[] = [...messages, { role: "user", content: clean }];
       setMessages(next);
       setDraft("");
@@ -286,6 +301,9 @@ export function OrderAssistant() {
         };
         setMessages((prev) => [...prev, answer]);
         void persist([{ role: "user", content: clean }, answer]);
+        // Sesli sohbet ekranı seslendirmeyi kendi yönetiyor: sırayla
+        // konuşup bitmesini bekliyor, sonra mikrofonu açıyor.
+        if (options?.deferSpeech) return response.reply;
         if (shouldSpeakReply({ voiceOn, spoken, reply: response.reply })) {
           void playReply(response.reply).then((outcome) => {
             if (!outcome.ok) {
@@ -296,6 +314,7 @@ export function OrderAssistant() {
             }
           });
         }
+        return response.reply;
       } catch (error) {
         setMessages((prev) => [
           ...prev,
@@ -304,6 +323,7 @@ export function OrderAssistant() {
             content: `Şu an yanıt veremiyorum. ${toPublicErrorMessage(error)}`,
           },
         ]);
+        return null;
       } finally {
         setBusy(false);
       }
@@ -463,15 +483,45 @@ export function OrderAssistant() {
     void navigate({ to: "/sepet" });
   }
 
+  if (voiceMode) {
+    return (
+      <VoiceConversation
+        transcript={messages}
+        onClose={() => setVoiceMode(false)}
+        onError={(message, detail) =>
+          toast.error(message, detail ? { description: detail, duration: 9000 } : undefined)
+        }
+        transcribe={async (blob) => {
+          const base64 = await blobToBase64(blob);
+          const mimeType = (blob.type || "audio/webm").split(";")[0] ?? "audio/webm";
+          const result = await transcribe({ data: { audio: base64, mimeType } });
+          return result.text;
+        }}
+        ask={async (said) => (await sendText(said, { spoken: true, deferSpeech: true })) ?? ""}
+        speak={async (reply) => {
+          const outcome = await playReply(reply);
+          if (!outcome.ok) {
+            toast.error("Sesli yanıt oynatılamadı, cevabı yazılı olarak gönderdim.", {
+              description: outcome.reason,
+              duration: 8000,
+            });
+          }
+        }}
+      />
+    );
+  }
+
   return (
     <>
       {open ? null : (
         <>
           <button
             type="button"
-            onClick={() => (recording ? stopRecording() : void startRecording())}
-            disabled={busy || transcribing}
-            aria-label={recording ? "Kaydı bitir ve gönder" : "Sesli konuş"}
+            onClick={() => {
+              enableVoiceReplies();
+              setVoiceMode(true);
+            }}
+            aria-label="Sesli sohbeti başlat"
             className={`fixed bottom-36 right-5 z-40 flex size-12 items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105 sm:bottom-24 ${
               recording
                 ? "bg-destructive text-destructive-foreground"

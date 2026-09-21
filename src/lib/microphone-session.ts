@@ -71,6 +71,15 @@ export class MicrophoneSession {
   }
 
   /**
+   * Açık ses akışı. Sesli sohbette seviye ölçmek için gerekiyor: konuşmanın
+   * bittiğini anlamak akışa bir çözümleyici bağlamaktan geçiyor. Akışın
+   * ömrü yine bu sınıfın; dışarıdan durdurulmamalı.
+   */
+  get currentStream(): AudioStreamLike | null {
+    return this.stream;
+  }
+
+  /**
    * Kaydı başlatır. Önce elde kalmış bir akış varsa bırakır: aksi hâlde ikinci
    * deneme kendi tuttuğumuz mikrofon yüzünden "meşgul" hatası alır.
    *
