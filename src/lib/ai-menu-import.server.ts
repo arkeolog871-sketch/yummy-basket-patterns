@@ -94,7 +94,12 @@ export async function extractProductsFromImages(images: string[]): Promise<Extra
             type: "text" as const,
             text: "Bu fotoğraflardaki menü/fiyat listesindeki ürünleri çıkar.",
           },
-          ...images.map((dataUrl) => ({ type: "image" as const, image: dataUrl })),
+          // AI SDK v7'de görsel parçası "file" olarak gönderilir ("image" deprecated).
+          ...images.map((dataUrl) => ({
+            type: "file" as const,
+            data: dataUrl,
+            mediaType: dataUrl.slice(5, dataUrl.indexOf(";")) || "image/png",
+          })),
         ],
       },
     ],
