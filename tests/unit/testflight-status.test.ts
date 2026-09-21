@@ -1,7 +1,7 @@
 import { createVerify, generateKeyPairSync } from "node:crypto";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error -- betik JS; tip bildirimi yok, davranışı burada ölçülüyor.
-import { formatBuilds, makeToken } from "../../scripts/testflight-status.mjs";
+import { buildsRequestUrl, formatBuilds, makeToken } from "../../scripts/testflight-status.mjs";
 
 /**
  * App Store Connect API'sine giden jeton yanlışsa Apple 401 döndürür ve
@@ -118,5 +118,36 @@ describe("build listesi biçimlendirme", () => {
   it("boş ve eksik alanlı yanıtta çökmez", () => {
     expect(formatBuilds({})).toEqual([]);
     expect(formatBuilds({ data: [{ attributes: {} }] })[0].surum).toBe("?");
+  });
+});
+
+describe("build listesi isteğinin adresi", () => {
+  const url = new URL(buildsRequestUrl("6809810925", 10));
+
+  it("include kabul etmeyen ilişki ucunu KULLANMAZ", () => {
+    // Gerçek koşuda /v1/apps/{id}/builds şu hatayla düştü:
+    //   PARAMETER_ERROR.ILLEGAL "The parameter 'include' can not be used
+    //   with this request"
+    // Sürüm numarası ilişkili kayıtta durduğu için include şart; bu yüzden
+    // üst düzey uç filtreyle kullanılıyor.
+    expect(url.pathname).toBe("/v1/builds");
+    expect(url.pathname).not.toContain("/apps/");
+    expect(url.searchParams.get("filter[app]")).toBe("6809810925");
+  });
+
+  it("sürüm adını getirmek için ilişkiyi ister", () => {
+    expect(url.searchParams.get("include")).toBe("preReleaseVersion");
+    expect(url.searchParams.get("fields[preReleaseVersions]")).toBe("version");
+  });
+
+  it("en yeni build üstte ve sınır uygulanır", () => {
+    expect(url.searchParams.get("sort")).toBe("-uploadedDate");
+    expect(url.searchParams.get("limit")).toBe("10");
+  });
+
+  it("uygulama kimliği adrese kaçışlanarak girer", () => {
+    const tricky = new URL(buildsRequestUrl("12 34&x=1", 5));
+    expect(tricky.searchParams.get("filter[app]")).toBe("12 34&x=1");
+    expect(tricky.searchParams.get("x")).toBeNull();
   });
 });
