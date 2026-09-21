@@ -27,8 +27,9 @@ export const Route = createFileRoute("/")({
     try {
       await context.queryClient.ensureQueryData(homeQuery(deps));
     } catch {
+      // Hatada boş liste yazma: istemci "boş ama taze" sanıp yeniden denemez.
+      // Önbelleği boş bırak, bileşen hata kartını gösterip yeniden dener.
       console.error("[catalog] ana sayfa yüklenemedi");
-      context.queryClient.setQueryData(homeQuery(deps).queryKey, []);
     }
   },
   errorComponent: () => (
