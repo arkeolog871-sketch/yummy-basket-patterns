@@ -13,3 +13,5 @@
 - [ ] Apple/e-posta girişi sonrası doğrudan işletme başvuru formuna dönüş
 - [x] Google Cloud harita anahtarı bağlama + Maps JavaScript API/yönlendirici doğrulaması (tüm alan adlarında OK)
 - [ ] Başvuru formunda enlem/boylam yerine haritadan konum işaretleme
+
+- [ ] Soru: ChatGPT desteği — Lovable AI zaten OpenAI modellerini kullanıyor; kendi OpenAI anahtarı istenirse ayrı bağlantı açılacak (kullanıcı onayı bekliyor).
