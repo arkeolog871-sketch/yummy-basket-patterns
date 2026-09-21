@@ -17,7 +17,7 @@ import { useCart } from "@/hooks/useCart";
 import { formatPrice } from "@/lib/format";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { askOrderAssistant } from "@/lib/ai-assistant.functions";
-import type { CartProposal } from "@/lib/ai-assistant.server";
+import type { CartProposal } from "@/lib/ai-assistant.types";
 
 const STORAGE_KEY = "silvan.assistant.v1";
 const MAX_HISTORY = 18;

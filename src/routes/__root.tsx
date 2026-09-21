@@ -23,6 +23,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AppRealtimeBridge } from "@/hooks/useAppRealtime";
 import { FcmTokenBridge } from "@/hooks/useFcmTokenBridge";
 import { GoogleOAuthRelayBridge } from "@/components/auth/GoogleOAuthRelayBridge";
+import { OrderAssistant } from "@/components/assistant/OrderAssistant";
 import { LegalConsentGate } from "@/components/legal/LegalConsentGate";
 import { ErrorCollector } from "@/components/system/ErrorCollector";
 import { AppErrorBoundary } from "@/components/system/AppErrorBoundary";
@@ -239,6 +240,7 @@ function RootComponent() {
                 <AppRealtimeBridge />
                 <FcmTokenBridge />
                 <GoogleOAuthRelayBridge />
+                <OrderAssistant />
                 <LegalConsentGate />
                 <ErrorCollector />
                 <Toaster />
