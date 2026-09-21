@@ -308,14 +308,35 @@ export function OrderAssistant() {
   return (
     <>
       {open ? null : (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label="Yapay zekâ asistanını aç"
-          className="fixed bottom-20 right-4 z-40 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 sm:bottom-6"
-        >
-          <MessageCircle className="size-6" />
-        </button>
+        <>
+          <button
+            type="button"
+            onClick={() => (recording ? stopRecording() : void startRecording())}
+            disabled={busy || transcribing}
+            aria-label={recording ? "Kaydı bitir ve gönder" : "Sesli konuş"}
+            className={`fixed bottom-36 right-5 z-40 flex size-12 items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105 sm:bottom-24 ${
+              recording
+                ? "bg-destructive text-destructive-foreground"
+                : "bg-card text-primary border border-border"
+            }`}
+          >
+            {recording ? (
+              <Square className="size-5" />
+            ) : transcribing ? (
+              <Loader2 className="size-5 animate-spin" />
+            ) : (
+              <Mic className="size-5" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-label="Yapay zekâ asistanını aç"
+            className="fixed bottom-20 right-4 z-40 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 sm:bottom-6"
+          >
+            <MessageCircle className="size-6" />
+          </button>
+        </>
       )}
 
       {open ? (
