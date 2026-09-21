@@ -95,8 +95,10 @@ export function resolveAiProvider(env: Env): AiProviderConfig {
     };
   }
 
+  // Yedek yol varsayılan KAPALI: açıkça istenmediyse Lovable geçidine düşmez.
+  const fallbackAllowed = trimmed(env, "AI_ALLOW_LOVABLE_FALLBACK")?.toLowerCase() === "true";
   const lovableKey = trimmed(env, "LOVABLE_API_KEY");
-  if (lovableKey) {
+  if (fallbackAllowed && lovableKey) {
     return {
       name: "lovable",
       apiKey: lovableKey,
@@ -109,8 +111,35 @@ export function resolveAiProvider(env: Env): AiProviderConfig {
     };
   }
 
-  throw new Error("Yapay zekâ yapılandırması eksik.");
+  throw new Error(
+    "Yapay zekâ şu an yapılandırılmadı. Sistem yöneticisi OpenAI anahtarını ekledikten sonra çalışacak.",
+  );
 }
+
+/**
+ * Responses API sağlayıcı seçenekleri.
+ *
+ * `store: false` her çağrıda gerekli (geçmiş yeniden gönderiliyor). Akıl
+ * yürütme (reasoning) seçenekleri yalnızca bunu destekleyen modellerde
+ * gönderilir: gpt-5.6-luna gibi modeller `reasoning.effort` alanını
+ * reddediyor, gönderilirse istek 400 ile düşer.
+ */
+export function aiResponsesOptions(provider: AiProviderConfig) {
+  const model = provider.models.chat;
+  const supportsReasoning = /gpt-6|(^|\/)o\d/.test(model);
+  return {
+    openai: supportsReasoning
+      ? {
+          forceReasoning: true,
+          reasoningEffort: "low",
+          reasoningSummary: "auto",
+          store: false,
+          include: ["reasoning.encrypted_content"],
+        }
+      : { store: false },
+  } as const;
+}
+
 
 /** Süreç ortamından çözer; çağrı yerleri bunu kullanır. */
 export function aiProvider(): AiProviderConfig {
