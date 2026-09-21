@@ -173,28 +173,42 @@ function Index() {
           >
             <div className={bannerSlides.length > 0 ? "order-2 lg:order-1" : undefined}>
               <form
-                className="flex max-w-md gap-2"
+                className="max-w-md"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  apply({ kategori: activeSector, q: term.trim() || undefined });
+                  void runSearch();
                 }}
               >
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={term}
-                    name="q"
-                    onChange={(event) => setTerm(event.target.value)}
-                    placeholder="İşletme, mutfak veya ürün ara"
-                    aria-label="İşletme ara"
-                    className="h-12 rounded-full bg-card pl-9"
-                  />
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={term}
+                      name="q"
+                      onChange={(event) => setTerm(event.target.value)}
+                      placeholder="Ne arıyorsunuz? Örn. ucuz kahvaltı yapan kafe"
+                      aria-label="İşletme ara"
+                      className="h-12 rounded-full bg-card pl-9"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="h-12 rounded-full px-6"
+                    disabled={thinking}
+                  >
+                    {thinking ? "Anlıyor…" : "Ara"}
+                  </Button>
                 </div>
-                <Button type="submit" size="lg" className="h-12 rounded-full px-6">
-                  Ara
-                </Button>
+                {aiNote ? (
+                  <p className="mt-2 flex items-start gap-2 text-sm text-muted-foreground">
+                    <Sparkles className="mt-0.5 size-4 shrink-0" />
+                    <span>{aiNote}</span>
+                  </p>
+                ) : null}
               </form>
             </div>
+
             {bannerSlides.length > 0 ? (
               <div className="order-1 lg:order-2">
                 <HeroBannerSlider banners={bannerSlides} />
