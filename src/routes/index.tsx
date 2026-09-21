@@ -90,6 +90,9 @@ function Index() {
     refetchOnWindowFocus: true,
   });
   const [term, setTerm] = useState(search.q ?? "");
+  const [thinking, setThinking] = useState(false);
+  const [aiNote, setAiNote] = useState<string | null>(null);
+  const interpret = useServerFn(interpretSmartSearch);
   const activeSector = search.kategori;
   const liveBanners = bannersQuery.data && bannersQuery.data.length > 0 ? bannersQuery.data : [];
   const bannerSlides = liveBanners.length
@@ -112,6 +115,50 @@ function Index() {
   function apply(next: HomeSearch) {
     navigate({ to: "/", search: next });
   }
+
+  /**
+   * Akıllı arama: "ucuz kahvaltı" gibi serbest cümleler yapay zekâ ile
+   * kategori + anahtar kelimeye çevrilir. Tek kelimelik aramalar (marka/ürün
+   * adı) doğrudan normal aramaya gider; yapay zekâ yanıt vermezse de normal
+   * arama çalışır — arama hiçbir koşulda yapay zekâya bağımlı değildir.
+   */
+  async function runSearch() {
+    const raw = term.trim();
+    setAiNote(null);
+    if (!raw) {
+      apply({ kategori: activeSector });
+      return;
+    }
+    const looksLikeSentence = raw.split(/\s+/).length >= 2;
+    if (!looksLikeSentence) {
+      apply({ kategori: activeSector, q: raw });
+      return;
+    }
+
+    setThinking(true);
+    try {
+      const { intent } = await interpret({
+        data: {
+          query: raw,
+          sectors: categories.map((sector) => ({ slug: sector.slug, label: sector.label })),
+        },
+      });
+      if (intent && (intent.sector || intent.keywords)) {
+        setAiNote(intent.note ?? null);
+        apply({
+          kategori: intent.sector ?? activeSector,
+          q: intent.keywords ?? raw,
+        });
+        return;
+      }
+    } catch {
+      // Yapay zekâ yanıt vermedi; normal aramaya düşülür.
+    } finally {
+      setThinking(false);
+    }
+    apply({ kategori: activeSector, q: raw });
+  }
+
 
   return (
     <div>
