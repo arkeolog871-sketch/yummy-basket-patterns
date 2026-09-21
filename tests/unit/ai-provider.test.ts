@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { aiFailureMessage, resolveAiProvider } from "@/lib/ai-provider.server";
+import { aiFailureMessage, aiResponsesOptions, resolveAiProvider } from "@/lib/ai-provider.server";
 
 /**
  * Bu modülün kararı faturanın nereden çıkacağını belirliyor. Yanlış seçim
@@ -20,9 +20,9 @@ describe("yapay zekâ sağlayıcısı seçimi", () => {
   it("OpenAI'de model adları öneksiz", () => {
     // "openai/gpt-6-astra" geçidin adlandırması; OpenAI bunu tanımaz.
     const { models } = resolveAiProvider({ OPENAI_API_KEY: "sk-test" });
-    expect(models.chat).toBe("gpt-6-astra");
+    expect(models.chat).toBe("gpt-5.6-luna");
     expect(models.speech).toBe("gpt-4o-mini-tts");
-    expect(models.image).toBe("gpt-image-2.5-sunburst");
+    expect(models.image).toBe("gpt-image-1");
     for (const model of Object.values(models)) {
       expect(model).not.toContain("/");
     }
@@ -36,8 +36,11 @@ describe("yapay zekâ sağlayıcısı seçimi", () => {
     expect(openai.models.transcribe).toBe("gpt-4o-transcribe");
   });
 
-  it("OpenAI anahtarı yoksa Lovable geçidine düşer", () => {
-    const config = resolveAiProvider({ LOVABLE_API_KEY: "lov" });
+  it("OpenAI anahtarı yoksa ve yedek açıkken Lovable geçidine düşer", () => {
+    const config = resolveAiProvider({
+      LOVABLE_API_KEY: "lov",
+      AI_ALLOW_LOVABLE_FALLBACK: "true",
+    });
     expect(config.name).toBe("lovable");
     expect(config.baseUrl).toBe("https://ai.gateway.lovable.dev/v1");
     expect(config.headers["Lovable-API-Key"]).toBe("lov");
@@ -47,9 +50,13 @@ describe("yapay zekâ sağlayıcısı seçimi", () => {
   it("boş ve boşluklu anahtar yok sayılır", () => {
     // Sır alanı boş bırakılırsa OpenAI'ye boş anahtarla gidilmemeli.
     for (const value of ["", "   "]) {
-      expect(resolveAiProvider({ OPENAI_API_KEY: value, LOVABLE_API_KEY: "lov" }).name).toBe(
-        "lovable",
-      );
+      expect(
+        resolveAiProvider({
+          OPENAI_API_KEY: value,
+          LOVABLE_API_KEY: "lov",
+          AI_ALLOW_LOVABLE_FALLBACK: "true",
+        }).name,
+      ).toBe("lovable");
     }
   });
 
@@ -57,8 +64,31 @@ describe("yapay zekâ sağlayıcısı seçimi", () => {
     expect(resolveAiProvider({ OPENAI_API_KEY: "  sk-test\n" }).apiKey).toBe("sk-test");
   });
 
-  it("hiç anahtar yoksa açık hata verir", () => {
-    expect(() => resolveAiProvider({})).toThrow("Yapay zekâ yapılandırması eksik.");
+  it("hiç anahtar yoksa güvenli Türkçe hata verir", () => {
+    expect(() => resolveAiProvider({})).toThrow(/Yapay zekâ şu an yapılandırılmadı/);
+  });
+
+  it("yedek varsayılan KAPALI: OpenAI anahtarı yokken Lovable'a düşmez", () => {
+    // Harcamanın sessizce Lovable kredilerine kayması engelleniyor.
+    expect(() => resolveAiProvider({ LOVABLE_API_KEY: "lov" })).toThrow(
+      /Yapay zekâ şu an yapılandırılmadı/,
+    );
+    for (const flag of ["false", "1", "TRUE ", "yes"]) {
+      const env = { LOVABLE_API_KEY: "lov", AI_ALLOW_LOVABLE_FALLBACK: flag };
+      if (flag === "TRUE ") {
+        expect(resolveAiProvider(env).name).toBe("lovable");
+      } else {
+        expect(() => resolveAiProvider(env)).toThrow();
+      }
+    }
+  });
+
+  it("hata mesajı gerçek anahtarı sızdırmaz", () => {
+    try {
+      resolveAiProvider({});
+    } catch (error) {
+      expect((error as Error).message).not.toContain("sk-");
+    }
   });
 
   it("model adları ortamdan ezilebilir", () => {
@@ -77,9 +107,25 @@ describe("yapay zekâ sağlayıcısı seçimi", () => {
   it("ezme Lovable geçidinde de çalışır", () => {
     const config = resolveAiProvider({
       LOVABLE_API_KEY: "lov",
+      AI_ALLOW_LOVABLE_FALLBACK: "true",
       AI_CHAT_MODEL: "openai/gpt-5.6-luna",
     });
     expect(config.models.chat).toBe("openai/gpt-5.6-luna");
+  });
+});
+
+describe("Responses API seçenekleri modele uyar", () => {
+  it("gpt-5.6-luna reasoning alanı almaz", () => {
+    // Bu model reasoning.effort alanını reddediyor; gönderilirse istek 400 düşer.
+    const options = aiResponsesOptions(resolveAiProvider({ OPENAI_API_KEY: "sk-test" }));
+    expect(options.openai).toEqual({ store: false });
+  });
+
+  it("gpt-6-astra reasoning ayarlarını korur", () => {
+    const options = aiResponsesOptions(
+      resolveAiProvider({ OPENAI_API_KEY: "sk-test", AI_CHAT_MODEL: "gpt-6-astra" }),
+    );
+    expect(options.openai).toMatchObject({ forceReasoning: true, store: false });
   });
 });
 
@@ -100,6 +146,12 @@ describe("sağlayıcı hata cevapları", () => {
     const body = '{"error":{"code":"rate_limit_exceeded","message":"Rate limit reached"}}';
     expect(aiFailureMessage(429, body)).toContain("yoğun");
     expect(aiFailureMessage(429, body)).not.toContain("bakiye");
+  });
+
+  it("403 + kota gövdesi bakiye mesajı verir", () => {
+    expect(aiFailureMessage(403, '{"error":{"code":"insufficient_quota"}}')).toBe(
+      "Yapay zekâ bakiyesi tükendi.",
+    );
   });
 
   it("geçersiz anahtar ayrı mesaj alır", () => {
