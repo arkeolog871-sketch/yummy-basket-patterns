@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate, ClientOnly } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState, Suspense, lazy } from "react";
-import { Search } from "lucide-react";
+import { Search, Sparkles } from "lucide-react";
 import { RestaurantCard } from "@/components/restaurant/RestaurantCard";
 import { homeQuery, type HomeSearch } from "@/lib/catalog.queries";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -9,8 +10,10 @@ import { fetchPublicBanners } from "@/lib/advertisements";
 import { HeroBannerSlider, legacySlidesToBanners } from "@/components/home/HeroBannerSlider";
 import { FounderContact } from "@/components/home/FounderContact";
 import { useAppCategories } from "@/hooks/useTaxonomy";
+import { interpretSmartSearch } from "@/lib/ai-search.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
 
 const AllBusinessesMap = lazy(() => import("@/components/business/AllBusinessesMap"));
 
