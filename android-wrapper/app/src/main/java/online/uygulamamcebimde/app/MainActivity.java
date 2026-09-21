@@ -480,6 +480,25 @@ public class MainActivity extends Activity {
             }
             return;
         }
+        if (requestCode == WEB_MIC_PERMISSION_REQUEST) {
+            PermissionRequest request = webPermissionRequest;
+            webPermissionRequest = null;
+            if (request == null) return;
+            if (!hasRecordPermission()) {
+                showMicDeniedMessage();
+                request.deny();
+                return;
+            }
+            boolean wantsCamera = false;
+            for (String resource : request.getResources()) {
+                if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(resource)) {
+                    wantsCamera = true;
+                    break;
+                }
+            }
+            grantWebCaptureResources(request, wantsCamera, true);
+            return;
+        }
         if (requestCode == NOTIFICATION_PERMISSION_REQUEST) {
             return;
         }
