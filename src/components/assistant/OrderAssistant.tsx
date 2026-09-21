@@ -406,42 +406,53 @@ export function OrderAssistant() {
             ) : null}
           </div>
 
-          <form
-            className="flex items-center gap-2 border-t border-border px-3 py-3"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void sendText(draft);
-            }}
-          >
+          <div className="border-t border-border px-3 pb-3 pt-2">
             <Button
               type="button"
-              size="icon"
-              variant={recording ? "destructive" : "outline"}
-              className="shrink-0 rounded-full"
+              variant={recording ? "destructive" : "secondary"}
+              className="mb-2 w-full rounded-full"
               onClick={() => (recording ? stopRecording() : void startRecording())}
               disabled={busy || transcribing}
               aria-label={recording ? "Kaydı bitir ve gönder" : "Sesli konuş"}
             >
-              {recording ? <Square className="size-4" /> : <Mic className="size-4" />}
+              {recording ? (
+                <>
+                  <Square className="size-4" /> Dinliyorum… bitirmek için dokunun
+                </>
+              ) : (
+                <>
+                  <Mic className="size-4" /> Sesli konuş
+                </>
+              )}
             </Button>
-            <Input
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              placeholder={recording ? "Dinliyorum… bitirmek için karedeki tuşa basın" : "Yazın ya da mikrofona basın"}
-              aria-label="Asistana mesaj yazın"
-              className="rounded-full"
-              disabled={busy || recording || transcribing}
-            />
-            <Button
-              type="submit"
-              size="icon"
-              className="shrink-0 rounded-full"
-              disabled={busy || recording || transcribing || draft.trim().length === 0}
-              aria-label="Gönder"
+            <form
+              className="flex items-center gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void sendText(draft);
+              }}
             >
-              <Send className="size-4" />
-            </Button>
-          </form>
+              <Input
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                placeholder={
+                  recording ? "Dinliyorum… bitirmek için üstteki tuşa basın" : "Mesajınızı yazın"
+                }
+                aria-label="Asistana mesaj yazın"
+                className="rounded-full"
+                disabled={busy || recording || transcribing}
+              />
+              <Button
+                type="submit"
+                size="icon"
+                className="shrink-0 rounded-full"
+                disabled={busy || recording || transcribing || draft.trim().length === 0}
+                aria-label="Gönder"
+              >
+                <Send className="size-4" />
+              </Button>
+            </form>
+          </div>
         </div>
       ) : null}
     </>
