@@ -100,6 +100,7 @@ export function OrderAssistant() {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const objectUrlRef = useRef<string | null>(null);
   const spokenGreetingRef = useRef<string | null>(null);
   const historyLoadedRef = useRef(false);
 
@@ -209,7 +210,18 @@ export function OrderAssistant() {
         const audio = await speak({ data: { text: text.slice(0, 900) } });
         const element = audioRef.current ?? new Audio();
         audioRef.current = element;
-        element.src = `data:${audio.contentType};base64,${audio.base64}`;
+        // Mobil WebView'lerde uzun `data:` sesleri kimi zaman hiç açılmıyor;
+        // blob adresi iOS ve Android'de güvenilir çalışıyor.
+        const binary = atob(audio.base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let index = 0; index < binary.length; index += 1) {
+          bytes[index] = binary.charCodeAt(index);
+        }
+        const url = URL.createObjectURL(new Blob([bytes], { type: audio.contentType }));
+        const previous = objectUrlRef.current;
+        objectUrlRef.current = url;
+        if (previous) URL.revokeObjectURL(previous);
+        element.src = url;
         await element.play();
       } catch {
         /* sesli okuma başarısız olsa da yazılı yanıt ekranda duruyor */
@@ -260,28 +272,20 @@ export function OrderAssistant() {
 
   async function startRecording() {
     if (recording || busy || transcribing) return;
-    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
-      toast.error("Bu cihazda mikrofon kaydı desteklenmiyor.");
+    if (
+      typeof navigator === "undefined" ||
+      !navigator.mediaDevices?.getUserMedia ||
+      typeof MediaRecorder === "undefined"
+    ) {
+      // Çok eski iOS sürümlerinde ses kaydı yok; kullanıcı yazarak devam etsin.
+      toast.error("Bu cihazda ses kaydı desteklenmiyor. Mesajınızı yazabilirsiniz.");
       return;
     }
-    // İzin daha önce reddedildiyse tarayıcı artık sormaz; kullanıcıyı yönlendir.
-    try {
-      const permissionApi = (
-        navigator as Navigator & { permissions?: { query: (d: { name: string }) => Promise<{ state: string }> } }
-      ).permissions;
-      if (permissionApi) {
-        const status = await permissionApi.query({ name: "microphone" });
-        if (status.state === "denied") {
-          toast.error(
-            "Mikrofon izni kapalı. Tarayıcı ayarlarından bu site için mikrofona izin verin.",
-            { duration: 6000 },
-          );
-          return;
-        }
-      }
-    } catch {
-      /* Permissions API yoksa doğrudan izin istemeye geç */
-    }
+    // DİKKAT: burada izin durumu ÖNCEDEN sorgulanmaz. Android WebView ve bazı
+    // mobil tarayıcılar mikrofon iznini henüz sorulmamışken de "denied"
+    // bildiriyor; ön kontrol yüzünden izin ekranı hiç açılmıyor ve sesli
+    // konuşma mobilde hiç başlamıyordu. Doğru yol doğrudan izin istemek: izin
+    // ekranını sistem gösterir, sonuç olumsuzsa aşağıdaki mesajlar devreye girer.
     try {
       // İlk kullanımda tarayıcı tek seferlik izin sorar; izin verilince kayıt başlar.
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -302,8 +306,20 @@ export function OrderAssistant() {
       recorderRef.current = recorder;
       recorder.start();
       setRecording(true);
-    } catch {
-      toast.error("Mikrofon izni verilmedi.");
+    } catch (error) {
+      // İzin reddi ile "kayıt hiç başlatılamadı" farklı sorunlar: mobilde
+      // yanlış uyarı kullanıcıyı boşuna ayarlara gönderiyordu.
+      const name = (error as { name?: string } | null)?.name ?? "";
+      if (name === "NotAllowedError" || name === "SecurityError") {
+        toast.error(
+          "Mikrofon izni verilmedi. Uygulama ayarlarından mikrofon iznini açabilir ya da mesajınızı yazabilirsiniz.",
+          { duration: 6000 },
+        );
+      } else if (name === "NotFoundError" || name === "NotReadableError") {
+        toast.error("Mikrofona ulaşılamadı. Başka bir uygulama kullanıyor olabilir.");
+      } else {
+        toast.error("Ses kaydı başlatılamadı. Mesajınızı yazarak da gönderebilirsiniz.");
+      }
     }
   }
 

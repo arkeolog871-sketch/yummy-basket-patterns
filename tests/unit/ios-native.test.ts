@@ -92,3 +92,23 @@ describe("başlık dokunma katmanı", () => {
     expect(headerTag![0]).not.toMatch(/bg-background\/\d+/);
   });
 });
+
+/**
+ * iOS'ta mikrofon kaydı ses oturumunu `record` moduna alıyor; ardından çalan
+ * asistan yanıtı kulaklık hoparlöründen kısık geliyor veya hiç duyulmuyor.
+ * Ses oturumu `playAndRecord` + `defaultToSpeaker` olarak kurulmalı.
+ */
+describe("iOS sesli asistan ses oturumu", () => {
+  const appDelegate = readFileSync(join(ROOT, "ios/App/App/AppDelegate.swift"), "utf8");
+  const plist = readFileSync(join(ROOT, "ios/App/App/Info.plist"), "utf8");
+
+  it("mikrofon izin metnini taşır", () => {
+    expect(plist).toMatch(/NSMicrophoneUsageDescription/);
+  });
+
+  it("sesi hoparlöre yönlendirir", () => {
+    expect(appDelegate).toMatch(/import AVFoundation/);
+    expect(appDelegate).toMatch(/\.playAndRecord/);
+    expect(appDelegate).toMatch(/defaultToSpeaker/);
+  });
+});

@@ -118,3 +118,33 @@ describe("Android wrapper static controls", () => {
     expect(manifest).toMatch(/POST_NOTIFICATIONS/);
   });
 });
+
+/**
+ * Sesli asistan: yanıt sunucudan geldikten sonra çalıyor, yani WebView'in
+ * gözünde kullanıcı dokunuşu bitmiş olabiliyor. Ayar açık kalırsa ses hiç
+ * duyulmuyor ve hiçbir hata görünmüyor — bu yüzden ayrı bir test var.
+ */
+describe("Android sesli asistan", () => {
+  const activity = readFileSync(
+    join(ROOT, "android-wrapper/app/src/main/java/online/uygulamamcebimde/app/MainActivity.java"),
+    "utf8",
+  );
+  const manifest = readFileSync(
+    join(ROOT, "android-wrapper/app/src/main/AndroidManifest.xml"),
+    "utf8",
+  );
+
+  it("mikrofon iznini tanıtır", () => {
+    expect(manifest).toMatch(/android\.permission\.RECORD_AUDIO/);
+  });
+
+  it("WebView'in mikrofon isteğini karşılar", () => {
+    expect(activity).toMatch(/RESOURCE_AUDIO_CAPTURE/);
+    expect(activity).toMatch(/Manifest\.permission\.RECORD_AUDIO/);
+  });
+
+  it("sesli yanıtın çalmasını engellemez", () => {
+    expect(activity).toMatch(/setMediaPlaybackRequiresUserGesture\(false\)/);
+    expect(activity).not.toMatch(/setMediaPlaybackRequiresUserGesture\(true\)/);
+  });
+});
