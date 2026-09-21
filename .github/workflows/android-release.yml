@@ -94,6 +94,14 @@ jobs:
       - name: Keystore'u çöz
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          # Telefondan 3784 karakteri tek seferde yapıştırmak çoğu zaman
+          # yarıda kesiliyor (yaşandı: 3784 yerine 650 karakter geldi).
+          # İsteyen sırrı dörde bölüp ayrı ayrı girebilsin; sırayla
+          # birleştiriliyor. Kullanılmayan parçalar boş kalır, zararsız.
+          KEYSTORE_BASE64_1: ${{ secrets.ANDROID_KEYSTORE_BASE64_1 }}
+          KEYSTORE_BASE64_2: ${{ secrets.ANDROID_KEYSTORE_BASE64_2 }}
+          KEYSTORE_BASE64_3: ${{ secrets.ANDROID_KEYSTORE_BASE64_3 }}
+          KEYSTORE_BASE64_4: ${{ secrets.ANDROID_KEYSTORE_BASE64_4 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
@@ -103,18 +111,21 @@ jobs:
           # base64 alfabesi DIŞINDAKİ her karakteri at. Sadece boşluk temizlemek
           # yetmiyor: metin telefondan/sohbetten kopyalandığında görünmez BOM,
           # akıllı tırnak veya yazı yönü işareti taşıyabiliyor ve `base64 -d`
-          # bunlara "invalid input" deyip duruyor. Kırpılmış bir yapıştırmayı
-          # sessizce kabul etme riski yok: aşağıdaki keytool kontrolü bozuk
-          # keystore'u zaten yakalar.
-          CLEAN=$(printf '%s' "$KEYSTORE_BASE64" | tr -dc 'A-Za-z0-9+/=')
+          # bunlara "invalid input" deyip duruyor.
+          CLEAN=$(printf '%s%s%s%s%s' \
+            "$KEYSTORE_BASE64" "$KEYSTORE_BASE64_1" "$KEYSTORE_BASE64_2" \
+            "$KEYSTORE_BASE64_3" "$KEYSTORE_BASE64_4" | tr -dc 'A-Za-z0-9+/=')
           LEN=${#CLEAN}
           echo "Temizlenmiş base64 uzunluğu: $LEN karakter"
           if [ "$LEN" -eq 0 ]; then
             echo "ANDROID_KEYSTORE_BASE64 boş görünüyor."; exit 1
           fi
+          # Kırpılmış yapıştırmayı sessizce kabul etme: bozuk keystore ile
+          # imzalanmış bir APK telefonlara kurulmaz ve sebebi geç anlaşılır.
           if [ $((LEN % 4)) -ne 0 ]; then
             echo "Uzunluk 4'ün katı değil ($LEN) — yapıştırma EKSİK."
-            echo "Metnin tamamını kopyaladığınızdan emin olun; beklenen uzunluk 3784."
+            echo "Sırrı bilgisayardan yeniden yapıştırın ya da dörde bölüp"
+            echo "ANDROID_KEYSTORE_BASE64_1..4 sırlarına sırayla girin."
             exit 1
           fi
 
@@ -122,14 +133,13 @@ jobs:
             || { echo "base64 çözülemedi — sır base64 metni değil."; exit 1; }
           SIZE=$(stat -c%s "$RUNNER_TEMP/android-signing/release.jks")
           echo "Çözülen keystore: $SIZE bayt"
-          test "$SIZE" -gt 0 \
-            || { echo "Keystore boş çıktı."; exit 1; }
+          test "$SIZE" -gt 0 || { echo "Keystore boş çıktı."; exit 1; }
 
           # Parola ve alias doğru mu: 20 dakikalık derlemenin sonunda değil,
           # burada anlaşılsın. Bozuk/kırpılmış keystore de burada yakalanır.
           keytool -list -keystore "$RUNNER_TEMP/android-signing/release.jks" \
             -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" > /dev/null 2>&1 \
-            || { echo "Keystore açılamadı: ANDROID_KEYSTORE_PASSWORD veya ANDROID_KEY_ALIAS hatalı, ya da dosya bozuk."; exit 1; }
+            || { echo "Keystore açılamadı: parola/alias hatalı ya da dosya bozuk."; exit 1; }
           echo "Keystore çözüldü, parola ve alias doğrulandı."
 
       - name: İmzalı APK ve AAB derle
