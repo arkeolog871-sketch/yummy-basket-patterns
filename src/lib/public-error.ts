@@ -47,7 +47,7 @@ function sanitizeMessage(message: string, fallback: string): string {
     return "Bu işlem için yetkiniz yok.";
   }
   if (
-    /permission denied|PGRST|JWT|column|relation|violates|supabase|stack|ECONN|fetch failed|nosuchbucket|bucket not found|service[_-]?role|LOVABLE_API_KEY|GOOGLE_OAUTH_CLIENT_SECRET|SUPABASE_SERVICE_ROLE|Bearer\s+eyJ|(?:sk|pk)_live/i.test(
+    /permission denied|PGRST|JWT|column|relation|violates|supabase|stack|ECONN|fetch failed|nosuchbucket|bucket not found|service[_-]?role|LOVABLE_API_KEY|OPENAI_API_KEY|GOOGLE_OAUTH_CLIENT_SECRET|SUPABASE_SERVICE_ROLE|Bearer\s+eyJ|sk-[A-Za-z0-9_-]{8,}|(?:sk|pk)_live/i.test(
       text,
     )
   ) {

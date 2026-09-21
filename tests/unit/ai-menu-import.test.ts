@@ -42,9 +42,8 @@ describe("fotoğraftan ürün çıkarma — güvenlik sözleşmesi", () => {
     const server = readFileSync(SERVER, "utf8");
     expect(server).toMatch(/streamText\(/);
     expect(server).not.toMatch(/generateText|generateObject/);
-    expect(server).toMatch(/forceReasoning:\s*true/);
-    expect(server).toMatch(/store:\s*false/);
-    expect(server).toMatch(/include:\s*\["reasoning\.encrypted_content"\]/);
+    // Reasoning/store ayarları tek karar noktasından (ai-provider.server) geliyor.
+    expect(server).toMatch(/providerOptions: aiResponsesOptions\(provider\)/);
     // Model ve anahtar artık tek karar noktasından geliyor (ai-provider.server).
     // Burada elle yazılırsa sağlayıcı değiştiğinde bu dosya eski yerden
     // harcamaya devam eder; varsayılan model kimlikleri orada test ediliyor.
