@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, ClientOnly } from "@tanstack/react-router";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState, Suspense, lazy } from "react";
 import { Search } from "lucide-react";
 import { RestaurantCard } from "@/components/restaurant/RestaurantCard";
