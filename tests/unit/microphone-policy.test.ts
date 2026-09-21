@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { LEGAL_DOCUMENTS } from "@/lib/legal";
 import { SECURITY_HEADERS } from "@/lib/security-wall.server";
 
 const read = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
@@ -39,6 +40,29 @@ describe("mikrofon Permissions-Policy başlığı", () => {
     // Kullanmadığımız güçlü yetenekler kapalı kalmalı.
     expect(policy).toContain("payment=()");
     expect(policy).toContain("usb=()");
+  });
+
+  it("gizlilik metinleri mikrofon ve yapay zekâ aktarımını açıklıyor", () => {
+    // Uygulama mikrofon kaydını bir yapay zekâ sağlayıcısına gönderiyor.
+    // Apple ve KVKK, gizlilik metninin uygulamanın gerçekte topladığı veriyi
+    // karşılamasını istiyor; iOS incelemesinde eksik beyan ret sebebi.
+    // Bu test, özellik kodda dururken metnin sessizce geri alınmasına izin
+    // vermez.
+    const assistant = read("src/components/assistant/OrderAssistant.tsx");
+    expect(assistant, "asistan artık mikrofon kullanmıyorsa bu testi güncelle").toContain(
+      "getUserMedia",
+    );
+
+    const privacy = LEGAL_DOCUMENTS.privacy.paragraphs.join(" ").toLocaleLowerCase("tr");
+    expect(privacy).toContain("mikrofon");
+    expect(privacy).toContain("yapay zekâ");
+    // Ses kaydının saklanmadığı ve arka planda dinleme olmadığı yazmalı.
+    expect(privacy).toContain("saklanmaz");
+    expect(privacy).toContain("arka planda dinleme yapılmaz");
+
+    const kvkk = LEGAL_DOCUMENTS.kvkk.paragraphs.join(" ").toLocaleLowerCase("tr");
+    expect(kvkk).toContain("ses kaydı");
+    expect(kvkk).toContain("yapay zekâ");
   });
 
   it("Android mikrofon zincirinin diğer halkaları yerinde", () => {
