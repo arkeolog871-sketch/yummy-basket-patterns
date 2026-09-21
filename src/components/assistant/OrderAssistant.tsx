@@ -403,6 +403,12 @@ export function OrderAssistant() {
         userAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
         secureContext: typeof window !== "undefined" && window.isSecureContext,
         listDevices: () => navigator.mediaDevices.enumerateDevices(),
+        // Android sarmalayıcının Java tarafı ölçümü; köprüsü olmayan eski
+        // uygulama sürümlerinde bu alan yok ve tanı onsuz da dönüyor.
+        nativeProbe: () =>
+          (
+            window as unknown as { SilvanNative?: { micDiagnostics?: () => string } }
+          ).SilvanNative?.micDiagnostics?.(),
         // permissions.query BİLEREK kullanılmıyor: Android WebView mikrofon
         // iznini daha hiç sorulmamışken "denied" bildiriyor ve ön kontrol
         // izin penceresini hiç açtırmıyordu. Bu dosyada o çağrının

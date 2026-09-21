@@ -32,6 +32,8 @@ describe("mikrofon tanısı toplama", () => {
       audioInputs: 1,
       deviceLabels: true,
       engineVersion: "140",
+      nativeRecord: null,
+      nativeWebView: null,
       permission: "granted",
       secureContext: true,
       inApp: true,
@@ -233,5 +235,53 @@ describe("motor sürümü", () => {
   it("sürüm yoksa null döner", () => {
     expect(engineVersionOf("Mozilla/5.0 (iPhone) Safari/604.1")).toBeNull();
     expect(engineVersionOf("")).toBeNull();
+  });
+});
+
+describe("Java tarafı ölçümü", () => {
+  const native = (javaKayit: string, webviewSurum = "140.0.7339.80") =>
+    JSON.stringify({ izin: "granted", javaKayit, webviewSurum });
+
+  it("Java kaydı açılıyorsa sorun WebView katmanında kalır", async () => {
+    // Uygulamanın kendisi mikrofonu açabiliyor ama WebView açamıyorsa,
+    // kullanıcıyı telefon ayarlarına göndermenin anlamı yok.
+    const d = await collectMicrophoneDiagnostics(
+      { name: "NotReadableError" },
+      probe({ nativeProbe: () => native("acildi") }),
+    );
+    expect(d.nativeRecord).toBe("acildi");
+    expect(formatMicrophoneDiagnostics(d)).toContain("java: acildi");
+    expect(formatMicrophoneDiagnostics(d)).toContain("webview: 140.0.7339.80");
+    expect(microphoneAdvice(d)).toContain("site katmanı açamıyor");
+    expect(microphoneAdvice(d)).not.toContain("Hızlı Ayarlar");
+  });
+
+  it("Java da açamıyorsa cihaz ses katmanına yönlendirir", async () => {
+    const d = await collectMicrophoneDiagnostics(
+      { name: "NotReadableError" },
+      probe({ nativeProbe: () => native("kurulamadi") }),
+    );
+    expect(microphoneAdvice(d)).toContain("ses donanımı");
+    expect(microphoneAdvice(d)).toContain("kurulamadi");
+  });
+
+  it("Java izin yok diyorsa uygulama izinlerine yönlendirir", async () => {
+    const d = await collectMicrophoneDiagnostics(
+      { name: "NotReadableError" },
+      probe({ nativeProbe: () => native("izin-yok") }),
+    );
+    expect(microphoneAdvice(d)).toContain("İzinler");
+  });
+
+  it("köprüsü olmayan eski sürümde tanı yine döner", async () => {
+    // Play'deki 2.17'de bu köprü yok; alan boş kalmalı, hata değil.
+    for (const value of [undefined, null, "", "bozuk-json"]) {
+      const d = await collectMicrophoneDiagnostics(
+        { name: "NotReadableError" },
+        probe({ nativeProbe: () => value }),
+      );
+      expect(d.nativeRecord).toBeNull();
+      expect(formatMicrophoneDiagnostics(d)).not.toContain("java:");
+    }
   });
 });

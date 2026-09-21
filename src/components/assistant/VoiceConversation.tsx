@@ -196,6 +196,10 @@ export function VoiceConversation({
           userAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
           secureContext: typeof window !== "undefined" && window.isSecureContext,
           listDevices: () => navigator.mediaDevices.enumerateDevices(),
+          nativeProbe: () =>
+            (
+              window as unknown as { SilvanNative?: { micDiagnostics?: () => string } }
+            ).SilvanNative?.micDiagnostics?.(),
         });
         propsRef.current.onError(
           microphoneAdvice(diagnostics),

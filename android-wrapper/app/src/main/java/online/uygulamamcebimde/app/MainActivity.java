@@ -9,9 +9,13 @@ import android.app.NotificationManager;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
+import android.media.AudioFormat;
+import android.media.AudioRecord;
+import android.media.MediaRecorder;
 import android.graphics.Color;
 import android.net.Uri;
 import android.net.http.SslError;
@@ -39,6 +43,9 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import androidx.browser.customtabs.CustomTabsClient;
 import androidx.browser.customtabs.CustomTabsIntent;
@@ -598,6 +605,45 @@ public class MainActivity extends Activity {
         request.grant(grants.toArray(new String[0]));
     }
 
+    /**
+     * Uygulamanın kendisi bir ses kaydı açabiliyor mu? Açıp hemen kapatır;
+     * hiçbir ses okunmaz. Dönen metin doğrudan tanı satırına yazılıyor.
+     */
+    private String probeAudioRecord() {
+        if (!hasRecordPermission()) return "izin-yok";
+        AudioRecord recorder = null;
+        try {
+            int minBuffer = AudioRecord.getMinBufferSize(
+                    16000,
+                    AudioFormat.CHANNEL_IN_MONO,
+                    AudioFormat.ENCODING_PCM_16BIT);
+            if (minBuffer <= 0) return "tampon-yok:" + minBuffer;
+            recorder = new AudioRecord(
+                    MediaRecorder.AudioSource.MIC,
+                    16000,
+                    AudioFormat.CHANNEL_IN_MONO,
+                    AudioFormat.ENCODING_PCM_16BIT,
+                    minBuffer);
+            if (recorder.getState() != AudioRecord.STATE_INITIALIZED) return "kurulamadi";
+            recorder.startRecording();
+            int state = recorder.getRecordingState();
+            recorder.stop();
+            return state == AudioRecord.RECORDSTATE_RECORDING ? "acildi" : "baslamadi:" + state;
+        } catch (SecurityException error) {
+            return "guvenlik-reddi";
+        } catch (Throwable error) {
+            return "hata:" + error.getClass().getSimpleName();
+        } finally {
+            if (recorder != null) {
+                try {
+                    recorder.release();
+                } catch (Throwable ignored) {
+                    // Bırakılamayan kayıt nesnesi tanıyı engellemesin.
+                }
+            }
+        }
+    }
+
     private boolean hasRecordPermission() {
         return ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
                 == PackageManager.PERMISSION_GRANTED;
@@ -870,6 +916,42 @@ public class MainActivity extends Activity {
     }
 
     private final class SilvanNativeBridge {
+        /**
+         * Mikrofonun neden açılmadığını JAVA tarafından ölçer.
+         *
+         * NEDEN: WebView'de getUserMedia NotReadableError veriyor ama aynı
+         * cihazda Chrome ve WhatsApp mikrofonu sorunsuz açıyor; uygulama
+         * silinip yeniden kurulduğunda da değişmiyor. Web tarafından
+         * bakınca WebView'in içi görünmüyor: izin gerçekten var mı, kaydı
+         * açan kim engelliyor, hangi WebView sürümü çalışıyor bilinmiyor.
+         * Bu köprü o üç soruyu ölçerek cevaplıyor.
+         *
+         * AudioRecord yalnızca AÇILIP hemen kapatılıyor; ses kaydedilmiyor,
+         * hiçbir veri okunmuyor, hiçbir yere gönderilmiyor.
+         */
+        @JavascriptInterface
+        public String micDiagnostics() {
+            JSONObject out = new JSONObject();
+            try {
+                out.put("izin", hasRecordPermission() ? "granted" : "denied");
+                // WebView sağlayıcısı API 26'dan beri okunabiliyor; minSdk 24
+                // olduğu için sürüm korumalı.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    try {
+                        PackageInfo webView = WebView.getCurrentWebViewPackage();
+                        out.put("webviewPaket", webView == null ? "?" : webView.packageName);
+                        out.put("webviewSurum", webView == null ? "?" : webView.versionName);
+                    } catch (Throwable error) {
+                        out.put("webviewPaket", "okunamadi");
+                    }
+                }
+                out.put("javaKayit", probeAudioRecord());
+            } catch (JSONException error) {
+                return "{}";
+            }
+            return out.toString();
+        }
+
         @JavascriptInterface
         public void openMaps(final String url) {
             if (!isExternalMapsUrl(url)) return;

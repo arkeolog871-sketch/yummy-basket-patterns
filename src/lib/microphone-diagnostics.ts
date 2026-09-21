@@ -26,6 +26,13 @@ export interface MicrophoneProbe {
   listDevices?: () => Promise<{ kind: string; label?: string }[]>;
   /** navigator.permissions.query({ name: "microphone" }) sarmalayıcısı. */
   readPermission?: () => Promise<{ state: string }>;
+  /**
+   * Android sarmalayıcının Java tarafı ölçümü (SilvanNative.micDiagnostics).
+   * WebView'in içinden bakamadığımız üç şeyi söylüyor: işletim sistemi izni
+   * gerçekten var mı, uygulamanın KENDİSİ bir ses kaydı açabiliyor mu ve
+   * hangi WebView sürümü çalışıyor. Eski uygulama sürümlerinde bu köprü yok.
+   */
+  nativeProbe?: () => string | null | undefined;
 }
 
 export interface MicrophoneDiagnostics {
@@ -43,6 +50,10 @@ export interface MicrophoneDiagnostics {
   deviceLabels: boolean | null;
   /** WebView/tarayıcı Chromium sürümü; eski sürümlerde ses yakalama bozuk olabilir. */
   engineVersion: string | null;
+  /** Java tarafında ses kaydı açılabildi mi ("acildi", "izin-yok", "hata:..."). */
+  nativeRecord: string | null;
+  /** Cihazdaki WebView sağlayıcısının sürümü. */
+  nativeWebView: string | null;
   /** "granted" | "denied" | "prompt" | null (tarayıcı desteklemiyor). */
   permission: string | null;
   secureContext: boolean;
@@ -78,6 +89,22 @@ export async function collectMicrophoneDiagnostics(
     // Firefox ve eski WebView'ler "microphone" adını bilmiyor.
   }
 
+  let nativeRecord: string | null = null;
+  let nativeWebView: string | null = null;
+  try {
+    const raw = probe.nativeProbe?.();
+    if (raw) {
+      const parsed = JSON.parse(raw) as {
+        javaKayit?: string;
+        webviewSurum?: string;
+      };
+      nativeRecord = parsed.javaKayit ?? null;
+      nativeWebView = parsed.webviewSurum ?? null;
+    }
+  } catch {
+    // Köprüsü olmayan eski uygulama sürümü ya da bozuk JSON; tanı yine dönsün.
+  }
+
   return {
     kind: classifyMicrophoneError(error),
     errorName: name || "bilinmiyor",
@@ -85,6 +112,8 @@ export async function collectMicrophoneDiagnostics(
     permission,
     deviceLabels,
     engineVersion: engineVersionOf(probe.userAgent),
+    nativeRecord,
+    nativeWebView,
     secureContext: probe.secureContext,
     inApp: probe.userAgent.includes("SilvanCebimde"),
   };
@@ -105,6 +134,9 @@ export function formatMicrophoneDiagnostics(diagnostics: MicrophoneDiagnostics):
     `motor: ${diagnostics.engineVersion ?? "?"}`,
     `ortam: ${diagnostics.inApp ? "uygulama" : "tarayıcı"}`,
   ];
+  // Java ölçümü yalnızca uygulamada ve köprüsü olan sürümlerde var.
+  if (diagnostics.nativeRecord) parts.push(`java: ${diagnostics.nativeRecord}`);
+  if (diagnostics.nativeWebView) parts.push(`webview: ${diagnostics.nativeWebView}`);
   // Güvenli köken normalde doğru; yalnızca bozukken yer kaplasın.
   if (!diagnostics.secureContext) parts.push("güvenli köken: HAYIR");
   return parts.join(" · ");
@@ -117,6 +149,21 @@ export function formatMicrophoneDiagnostics(diagnostics: MicrophoneDiagnostics):
 export function microphoneAdvice(diagnostics: MicrophoneDiagnostics): string {
   if (!diagnostics.secureContext) {
     return "Sayfa güvenli bağlantıyla açılmamış; https adresinden girin.";
+  }
+  // Java ölçümü en güvenilir kaynak: uygulamanın KENDİSİ mikrofonu açabiliyor
+  // mu? Varsa diğer tahminlerin önüne geçer.
+  if (diagnostics.nativeRecord === "izin-yok") {
+    return "Uygulamaya mikrofon izni verilmemiş. Ayarlar > Uygulamalar > Silvan Cebimde > İzinler'den mikrofonu açın.";
+  }
+  if (diagnostics.nativeRecord && diagnostics.nativeRecord !== "acildi") {
+    // Java tarafı da açamıyorsa sorun WebView'de değil, cihazın ses
+    // katmanında; uygulama ayarlarıyla uğraşmanın faydası yok.
+    return `Telefonun ses donanımı kaydı başlatmadı (${diagnostics.nativeRecord}). Telefonu yeniden başlatmak çoğu zaman çözüyor.`;
+  }
+  if (diagnostics.nativeRecord === "acildi" && diagnostics.kind === "busy") {
+    // Uygulama açabiliyor ama WebView açamıyor: sorun cihazda değil, WebView
+    // katmanında. Kullanıcıyı telefon ayarlarında dolaştırmanın anlamı yok.
+    return "Uygulama mikrofonu açabiliyor ama site katmanı açamıyor. Bunu bana bildirin: cihazın WebView sürümünü güncellemek gerekiyor olabilir.";
   }
   if (diagnostics.audioInputs === 0) {
     return diagnostics.inApp
