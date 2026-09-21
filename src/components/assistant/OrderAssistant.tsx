@@ -48,11 +48,15 @@ type ChatMessage = {
   proposal?: CartProposal | null;
 };
 
-const GREETING: ChatMessage = {
-  role: "assistant",
-  content:
-    "Merhaba! Yazabilir ya da mikrofona basıp konuşabilirsiniz. Silvan hakkında sohbet edebilir, bilgi alabilir; uygulamadaki işletmelerden sipariş için sepet önerisi hazırlayabilirim. Siparişi her zaman siz onaylarsınız.",
-};
+function buildGreeting(firstName: string | null): ChatMessage {
+  const hello = firstName ? `Hoş geldin ${firstName}!` : "Hoş geldiniz!";
+  return {
+    role: "assistant",
+    content: `${hello} Nasıl yardımcı olabilirim? Yazabilir ya da mikrofona basıp konuşabilirsiniz. Silvan hakkında sohbet edebilir, bilgi alabilir; uygulamadaki işletmelerden sipariş için sepet önerisi hazırlayabilirim. Siparişi her zaman siz onaylarsınız.`,
+  };
+}
+
+const GREETING: ChatMessage = buildGreeting(null);
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
