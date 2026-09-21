@@ -160,10 +160,12 @@ function Index() {
                 ? (categories.find((sector) => sector.slug === activeSector)?.label ?? activeSector)
                 : "Tüm işletmeler"}
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {results.length} işletme listeleniyor
-              {search.q ? ` · “${search.q}” için` : ""}
-            </p>
+            {!loadFailed ? (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {results.length} işletme listeleniyor
+                {search.q ? ` · “${search.q}” için` : ""}
+              </p>
+            ) : null}
           </div>
         </div>
 
