@@ -10,7 +10,7 @@
  * ödeme sayfasındaki "Siparişi onayla" adımında kullanıcının onayıyla oluşur.
  * Sohbet ve talimat yalnızca cihazda saklanır.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useCart } from "@/hooks/useCart";
+import { useAuth } from "@/hooks/useAuth";
 import { formatPrice } from "@/lib/format";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { askOrderAssistant } from "@/lib/ai-assistant.functions";
