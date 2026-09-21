@@ -212,7 +212,13 @@ function Index() {
           })}
         </div>
 
-        {loadFailed ? (
+        {loadingFirst ? (
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-56 animate-pulse rounded-3xl bg-muted" />
+            ))}
+          </div>
+        ) : loadFailed ? (
           <div className="mt-10 rounded-3xl border border-destructive/30 bg-card p-10 text-center">
             <p className="font-semibold">İşletmeler yüklenemedi</p>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -274,7 +280,7 @@ function Index() {
         )}
       </section>
 
-      {!loadFailed ? (
+      {results.length > 0 ? (
         <section className="mx-auto w-full max-w-6xl px-4 pb-16">
           <ClientOnly fallback={<MapSkeleton />}>
             <Suspense fallback={<MapSkeleton />}>
