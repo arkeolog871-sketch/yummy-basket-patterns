@@ -17,7 +17,6 @@
  * OpenAI'ye geçmek o bağımlılığı kaldırmaz.
  */
 
-
 /** Model adları sağlayıcıya göre değişiyor; geçitte "openai/" öneki var. */
 export interface AiModels {
   chat: string;
@@ -56,7 +55,6 @@ const OPENAI_MODELS: AiModels = {
   speech: "gpt-4o-mini-tts",
   image: "gpt-image-1",
 };
-
 
 const LOVABLE_BASE_URL = "https://ai.gateway.lovable.dev/v1";
 const OPENAI_BASE_URL = "https://api.openai.com/v1";
@@ -139,7 +137,6 @@ export function aiResponsesOptions(provider: AiProviderConfig) {
       : { store: false },
   } as const;
 }
-
 
 /** Süreç ortamından çözer; çağrı yerleri bunu kullanır. */
 export function aiProvider(): AiProviderConfig {
