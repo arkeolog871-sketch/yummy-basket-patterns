@@ -1468,6 +1468,13 @@ export type Database = {
           updated_count: number
         }[]
       }
+      import_menu_items_by_name: {
+        Args: { p_restaurant_id: string; p_rows: Json }
+        Returns: {
+          created_count: number
+          updated_count: number
+        }[]
+      }
       increment_menu_item_stock: {
         Args: { p_delta: number; p_id: string }
         Returns: undefined

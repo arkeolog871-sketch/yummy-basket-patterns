@@ -57,8 +57,11 @@ export type ImportChunkResult = {
  * Aktarımı kimin yapabileceği: işletme kendi kataloğunu, kurucu/bölge
  * yöneticisi ise yetki alanındaki işletmenin kataloğunu aktarabilir.
  * İstemciden gelen restaurantId asla doğrudan kullanılmaz.
+ *
+ * Fotoğraftan ürün çıkarma (ai-menu-import.functions.ts) da aynı yetki
+ * yolunu kullanır; bu yüzden dışa açıktır.
  */
-async function assertImportAccess(
+export async function assertImportAccess(
   context: {
     supabase: Parameters<typeof import("./vendor.server").assertVendor>[0];
     userId: string;
@@ -82,9 +85,10 @@ async function assertImportAccess(
 }
 
 const normalizeName = (value: string) => value.trim().toLocaleLowerCase("tr");
+export { normalizeName };
 
 /** Dosyadaki kategori adlarını işletmenin kategorilerine bağlar, eksikleri açar. */
-async function resolveCategories(
+export async function resolveCategories(
   restaurantId: string,
   names: string[],
 ): Promise<Map<string, string>> {
