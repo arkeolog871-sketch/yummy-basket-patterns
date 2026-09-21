@@ -87,10 +87,20 @@ export function OrderAssistant() {
   const speak = useServerFn(speakAssistantReply);
   const cart = useCart();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const spokenGreetingRef = useRef<string | null>(null);
+
+  const firstName = useMemo(() => {
+    const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
+    const raw = meta["full_name"] ?? meta["name"] ?? meta["display_name"];
+    if (typeof raw !== "string") return null;
+    const first = raw.trim().split(/\s+/)[0];
+    return first ? first.slice(0, 30) : null;
+  }, [user]);
 
   useEffect(() => {
     try {
