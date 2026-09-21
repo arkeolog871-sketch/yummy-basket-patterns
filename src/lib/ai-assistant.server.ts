@@ -13,12 +13,12 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { stepCountIs, streamText, tool } from "ai";
 import { z } from "zod";
+import { aiProvider } from "./ai-provider.server";
 import { createLovableAiGatewayRunIdFetch } from "./ai-gateway.server";
 import { stripMarkdownForPlainText } from "./assistant-text";
 import { ilikePattern, matchesSearchTerms } from "./catalog-search";
 import { isBusinessOpen } from "./hours";
 import type { AssistantMessage, CartProposal, ProposalLine } from "./ai-assistant.types";
-
 
 const SYSTEM_PROMPT = [
   "Sen SİLVAN CEBİMDE uygulamasının yapay zekâ asistanısın. Türkçe, sıcak ve doğal konuş.",
@@ -99,8 +99,8 @@ export async function runAssistant(
   messages: AssistantMessage[],
   instruction?: string | null,
 ): Promise<{ reply: string; proposal: CartProposal | null }> {
-  const key = process.env["LOVABLE_API_KEY"];
-  if (!key) throw new Error("Yapay zekâ yapılandırması eksik.");
+  // Anahtar yoksa burada açık hatayla durur (bkz. ai-provider.server).
+  const provider = aiProvider();
 
   const { createPublicClient } = await import("./catalog.server");
   const supabase = createPublicClient();
@@ -171,14 +171,14 @@ export async function runAssistant(
 
   const runIdFetch = createLovableAiGatewayRunIdFetch();
   const lovable = createOpenAI({
-    baseURL: "https://ai.gateway.lovable.dev/v1",
-    apiKey: key,
-    headers: { "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
+    baseURL: provider.baseUrl,
+    apiKey: provider.apiKey,
+    headers: provider.headers,
     fetch: runIdFetch.fetch,
   });
 
   const result = streamText({
-    model: lovable.responses("openai/gpt-6-astra"),
+    model: lovable.responses(provider.models.chat),
     system: [
       SYSTEM_PROMPT,
       businessContext,
