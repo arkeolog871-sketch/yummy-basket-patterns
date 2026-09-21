@@ -1,0 +1,295 @@
+/**
+ * Sipariş asistanı — yalnızca sunucu tarafı.
+ *
+ * Asistan gerçek veriye bakar: işletme arama, menü listeleme, çalışma saati ve
+ * teslimat bilgisi araçları vitrin (anon) istemcisiyle çalışır, yani müşterinin
+ * göremediği hiçbir alanı göremez.
+ *
+ * ÖNEMLİ: Asistan SİPARİŞ OLUŞTURMAZ. Yapabileceği en ileri adım "sepet
+ * önerisi" hazırlamaktır; sepete ekleme kullanıcının butona basmasıyla
+ * tarayıcıda olur, sipariş ise her zaman mevcut ödeme akışında kullanıcının
+ * onayıyla oluşur.
+ */
+import { createOpenAI } from "@ai-sdk/openai";
+import { stepCountIs, streamText, tool } from "ai";
+import { z } from "zod";
+import { createLovableAiGatewayRunIdFetch } from "./ai-gateway.server";
+import { ilikePattern, matchesSearchTerms } from "./catalog-search";
+import { isBusinessOpen } from "./hours";
+import type { AssistantMessage, CartProposal, ProposalLine } from "./ai-assistant.types";
+
+
+const SYSTEM_PROMPT = [
+  "Sen SİLVAN CEBİMDE uygulamasının sipariş asistanısın. Türkçe, kısa ve sıcak konuş.",
+  "Sadece araçlardan gelen gerçek veriyi kullan; işletme, ürün, fiyat veya saat UYDURMA.",
+  "Kullanıcı bir şey sipariş etmek isterse: önce işletmeyi bul (searchBusinesses),",
+  "sonra menüsünü oku (getMenu), sonra proposeCart ile sepet önerisi hazırla.",
+  "Sipariş oluşturma yetkin YOK; sepeti kullanıcı onaylar ve ödeme adımını kendisi tamamlar.",
+  "Bunu kullanıcıya da söyle: 'Sepete ekleyip onaylamanız yeterli.'",
+  "Kapalı bir işletme için ürün önerirsen kapalı olduğunu belirt.",
+  "Yanıtların en fazla 4-5 cümle olsun; liste gerekiyorsa kısa madde madde yaz.",
+].join(" ");
+
+const LIST_COLUMNS =
+  "id, slug, name, tagline, category, sector, rating, delivery_fee, delivery_type, delivery_minutes, min_order, district, city, address, opens_at, closes_at, is_open_manual";
+
+type RestaurantRow = {
+  id: string;
+  slug: string;
+  name: string;
+  tagline: string | null;
+  category: string;
+  sector: string | null;
+  rating: number | null;
+  delivery_fee: number | string | null;
+  delivery_type: string | null;
+  delivery_minutes: number | null;
+  min_order: number | string | null;
+  district: string | null;
+  city: string | null;
+  address: string | null;
+  opens_at: string | null;
+  closes_at: string | null;
+  is_open_manual: boolean | null;
+};
+
+function openState(row: RestaurantRow): string {
+  try {
+    return isBusinessOpen({
+      opens_at: row.opens_at,
+      closes_at: row.closes_at,
+      is_open_manual: row.is_open_manual,
+    })
+      ? "açık"
+      : "kapalı";
+  } catch {
+    return "bilinmiyor";
+  }
+}
+
+function summarize(row: RestaurantRow) {
+  return {
+    slug: row.slug,
+    name: row.name,
+    kategori: row.category,
+    puan: row.rating,
+    ilce: row.district,
+    teslimatUcreti: Number(row.delivery_fee ?? 0),
+    minSepet: Number(row.min_order ?? 0),
+    teslimatSuresiDk: row.delivery_minutes,
+    calismaSaati: row.opens_at && row.closes_at ? `${row.opens_at} - ${row.closes_at}` : null,
+    durum: openState(row),
+  };
+}
+
+export async function runAssistant(
+  messages: AssistantMessage[],
+): Promise<{ reply: string; proposal: CartProposal | null }> {
+  const key = process.env["LOVABLE_API_KEY"];
+  if (!key) throw new Error("Yapay zekâ yapılandırması eksik.");
+
+  const { createPublicClient } = await import("./catalog.server");
+  const supabase = createPublicClient();
+  let proposal: CartProposal | null = null;
+
+  async function fetchRestaurants(search: string | null) {
+    let query = supabase
+      .from("restaurants")
+      .select(LIST_COLUMNS)
+      .eq("is_active", true)
+      .order("rating", { ascending: false })
+      .limit(60);
+    if (search) {
+      const pattern = ilikePattern(search);
+      if (pattern) {
+        query = query.or(
+          `name.ilike.${pattern},tagline.ilike.${pattern},category.ilike.${pattern}`,
+        );
+      }
+    }
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    const rows = (data ?? []) as unknown as RestaurantRow[];
+    if (rows.length > 0 || !search) return rows;
+
+    // Türkçe aksan katlaması: "kuafor" yazan kullanıcı "Kuaför"ü bulsun.
+    const { data: all, error: allError } = await supabase
+      .from("restaurants")
+      .select(LIST_COLUMNS)
+      .eq("is_active", true)
+      .order("rating", { ascending: false })
+      .limit(100);
+    if (allError) throw new Error(allError.message);
+    return ((all ?? []) as unknown as RestaurantRow[]).filter((row) =>
+      matchesSearchTerms([row.name, row.tagline, row.category, row.sector, row.district], search),
+    );
+  }
+
+  const runIdFetch = createLovableAiGatewayRunIdFetch();
+  const lovable = createOpenAI({
+    baseURL: "https://ai.gateway.lovable.dev/v1",
+    apiKey: key,
+    headers: { "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
+    fetch: runIdFetch.fetch,
+  });
+
+  const result = streamText({
+    model: lovable.responses("openai/gpt-6-astra"),
+    system: SYSTEM_PROMPT,
+    messages: messages.map((message) => ({ role: message.role, content: message.content })),
+    stopWhen: stepCountIs(12),
+    tools: {
+      searchBusinesses: tool({
+        description:
+          "Uygulamadaki aktif işletmeleri arar. Boş arama tüm işletmeleri döndürür. Puan, teslimat ücreti, minimum sepet, çalışma saati ve açık/kapalı durumunu verir.",
+        inputSchema: z.object({
+          query: z.string().nullable().describe("İşletme adı, kategori veya mutfak; yoksa null."),
+        }),
+        execute: async ({ query }) => {
+          const rows = await fetchRestaurants(query?.trim() || null);
+          return { businesses: rows.slice(0, 20).map(summarize) };
+        },
+      }),
+      getMenu: tool({
+        description:
+          "Bir işletmenin satıştaki ürünlerini döndürür. Ürün kimliklerini proposeCart için kullan.",
+        inputSchema: z.object({
+          slug: z.string().describe("searchBusinesses sonucundaki slug."),
+          query: z.string().nullable().describe("Ürün adı filtresi; yoksa null."),
+        }),
+        execute: async ({ slug, query }) => {
+          const { data: business, error } = await supabase
+            .from("restaurants")
+            .select(LIST_COLUMNS)
+            .eq("slug", slug)
+            .eq("is_active", true)
+            .maybeSingle();
+          if (error) throw new Error(error.message);
+          if (!business) return { error: "İşletme bulunamadı." };
+          const row = business as unknown as RestaurantRow;
+
+          const { data: items, error: itemsError } = await supabase
+            .from("menu_items")
+            .select("id, name, description, price, image_url")
+            .eq("restaurant_id", row.id)
+            .eq("is_available", true)
+            .order("name")
+            .limit(200);
+          if (itemsError) throw new Error(itemsError.message);
+
+          const needle = query?.trim() || null;
+          const filtered = (items ?? []).filter((item) =>
+            needle ? matchesSearchTerms([item.name, item.description], needle) : true,
+          );
+          return {
+            business: summarize(row),
+            items: filtered.slice(0, 40).map((item) => ({
+              menuItemId: item.id,
+              name: item.name,
+              price: Number(item.price),
+            })),
+          };
+        },
+      }),
+      proposeCart: tool({
+        description:
+          "Kullanıcıya gösterilecek sepet önerisi hazırlar. Sepete EKLEMEZ, sipariş OLUŞTURMAZ; kullanıcı butona basarsa sepete eklenir.",
+        inputSchema: z.object({
+          slug: z.string(),
+          items: z.array(
+            z.object({
+              menuItemId: z.string(),
+              quantity: z.number(),
+            }),
+          ),
+        }),
+        execute: async ({ slug, items }) => {
+          const { data: business, error } = await supabase
+            .from("restaurants")
+            .select(LIST_COLUMNS)
+            .eq("slug", slug)
+            .eq("is_active", true)
+            .maybeSingle();
+          if (error) throw new Error(error.message);
+          if (!business) return { error: "İşletme bulunamadı." };
+          const row = business as unknown as RestaurantRow;
+
+          const ids = [...new Set(items.map((item) => item.menuItemId))].slice(0, 20);
+          if (ids.length === 0) return { error: "Ürün seçilmedi." };
+          const { data: rows, error: itemsError } = await supabase
+            .from("menu_items")
+            .select("id, name, price, image_url")
+            .eq("restaurant_id", row.id)
+            .eq("is_available", true)
+            .in("id", ids);
+          if (itemsError) throw new Error(itemsError.message);
+          if (!rows || rows.length === 0) return { error: "Ürünler bulunamadı." };
+
+          const lines: ProposalLine[] = [];
+          for (const item of items) {
+            const match = rows.find((candidate) => candidate.id === item.menuItemId);
+            if (!match) continue;
+            const quantity = Math.min(20, Math.max(1, Math.round(item.quantity)));
+            const existing = lines.find((line) => line.menuItemId === match.id);
+            if (existing) existing.quantity = Math.min(20, existing.quantity + quantity);
+            else
+              lines.push({
+                menuItemId: match.id,
+                name: match.name,
+                price: Number(match.price),
+                quantity,
+                imageUrl: match.image_url ?? null,
+              });
+          }
+          if (lines.length === 0) return { error: "Ürünler bulunamadı." };
+
+          const subtotal = lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
+          proposal = {
+            restaurant: {
+              id: row.id,
+              slug: row.slug,
+              name: row.name,
+              deliveryFee: Number(row.delivery_fee ?? 0),
+              deliveryType: row.delivery_type ?? null,
+              minOrder: Number(row.min_order ?? 0),
+              deliveryMinutes: Number(row.delivery_minutes ?? 30),
+            },
+            lines,
+            subtotal,
+          };
+          return {
+            hazir: true,
+            isletme: row.name,
+            durum: openState(row),
+            urunler: lines.map((line) => ({
+              ad: line.name,
+              adet: line.quantity,
+              fiyat: line.price,
+            })),
+            araToplam: subtotal,
+            minSepet: Number(row.min_order ?? 0),
+            teslimatUcreti: Number(row.delivery_fee ?? 0),
+            not: "Kullanıcı 'Sepete ekle' butonuna basmadan hiçbir şey sepete girmez.",
+          };
+        },
+      }),
+    },
+    providerOptions: {
+      openai: {
+        forceReasoning: true,
+        reasoningEffort: "low",
+        reasoningSummary: "auto",
+        store: false,
+        include: ["reasoning.encrypted_content"],
+      },
+    },
+  });
+
+  const reply = (await result.text).trim();
+  return {
+    reply:
+      reply ||
+      "Şu an yanıt oluşturamadım. Sorunuzu biraz daha kısa yazıp tekrar deneyebilir misiniz?",
+    proposal,
+  };
+}

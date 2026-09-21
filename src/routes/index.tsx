@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate, ClientOnly } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState, Suspense, lazy } from "react";
-import { Search } from "lucide-react";
+import { Search, Sparkles } from "lucide-react";
 import { RestaurantCard } from "@/components/restaurant/RestaurantCard";
 import { homeQuery, type HomeSearch } from "@/lib/catalog.queries";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -9,8 +10,10 @@ import { fetchPublicBanners } from "@/lib/advertisements";
 import { HeroBannerSlider, legacySlidesToBanners } from "@/components/home/HeroBannerSlider";
 import { FounderContact } from "@/components/home/FounderContact";
 import { useAppCategories } from "@/hooks/useTaxonomy";
+import { interpretSmartSearch } from "@/lib/ai-search.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
 
 const AllBusinessesMap = lazy(() => import("@/components/business/AllBusinessesMap"));
 
@@ -87,6 +90,9 @@ function Index() {
     refetchOnWindowFocus: true,
   });
   const [term, setTerm] = useState(search.q ?? "");
+  const [thinking, setThinking] = useState(false);
+  const [aiNote, setAiNote] = useState<string | null>(null);
+  const interpret = useServerFn(interpretSmartSearch);
   const activeSector = search.kategori;
   const liveBanners = bannersQuery.data && bannersQuery.data.length > 0 ? bannersQuery.data : [];
   const bannerSlides = liveBanners.length
@@ -110,6 +116,50 @@ function Index() {
     navigate({ to: "/", search: next });
   }
 
+  /**
+   * Akıllı arama: "ucuz kahvaltı" gibi serbest cümleler yapay zekâ ile
+   * kategori + anahtar kelimeye çevrilir. Tek kelimelik aramalar (marka/ürün
+   * adı) doğrudan normal aramaya gider; yapay zekâ yanıt vermezse de normal
+   * arama çalışır — arama hiçbir koşulda yapay zekâya bağımlı değildir.
+   */
+  async function runSearch() {
+    const raw = term.trim();
+    setAiNote(null);
+    if (!raw) {
+      apply({ kategori: activeSector });
+      return;
+    }
+    const looksLikeSentence = raw.split(/\s+/).length >= 2;
+    if (!looksLikeSentence) {
+      apply({ kategori: activeSector, q: raw });
+      return;
+    }
+
+    setThinking(true);
+    try {
+      const { intent } = await interpret({
+        data: {
+          query: raw,
+          sectors: categories.map((sector) => ({ slug: sector.slug, label: sector.label })),
+        },
+      });
+      if (intent && (intent.sector || intent.keywords)) {
+        setAiNote(intent.note ?? null);
+        apply({
+          kategori: intent.sector ?? activeSector,
+          q: intent.keywords ?? raw,
+        });
+        return;
+      }
+    } catch {
+      // Yapay zekâ yanıt vermedi; normal aramaya düşülür.
+    } finally {
+      setThinking(false);
+    }
+    apply({ kategori: activeSector, q: raw });
+  }
+
+
   return (
     <div>
       <section className="bg-gradient-hero">
@@ -123,28 +173,42 @@ function Index() {
           >
             <div className={bannerSlides.length > 0 ? "order-2 lg:order-1" : undefined}>
               <form
-                className="flex max-w-md gap-2"
+                className="max-w-md"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  apply({ kategori: activeSector, q: term.trim() || undefined });
+                  void runSearch();
                 }}
               >
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={term}
-                    name="q"
-                    onChange={(event) => setTerm(event.target.value)}
-                    placeholder="İşletme, mutfak veya ürün ara"
-                    aria-label="İşletme ara"
-                    className="h-12 rounded-full bg-card pl-9"
-                  />
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={term}
+                      name="q"
+                      onChange={(event) => setTerm(event.target.value)}
+                      placeholder="Ne arıyorsunuz? Örn. ucuz kahvaltı yapan kafe"
+                      aria-label="İşletme ara"
+                      className="h-12 rounded-full bg-card pl-9"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="h-12 rounded-full px-6"
+                    disabled={thinking}
+                  >
+                    {thinking ? "Anlıyor…" : "Ara"}
+                  </Button>
                 </div>
-                <Button type="submit" size="lg" className="h-12 rounded-full px-6">
-                  Ara
-                </Button>
+                {aiNote ? (
+                  <p className="mt-2 flex items-start gap-2 text-sm text-muted-foreground">
+                    <Sparkles className="mt-0.5 size-4 shrink-0" />
+                    <span>{aiNote}</span>
+                  </p>
+                ) : null}
               </form>
             </div>
+
             {bannerSlides.length > 0 ? (
               <div className="order-1 lg:order-2">
                 <HeroBannerSlider banners={bannerSlides} />
