@@ -6,7 +6,7 @@
  */
 import { createOpenAI } from "@ai-sdk/openai";
 import { streamText } from "ai";
-import { aiFailureMessage, aiProvider } from "./ai-provider.server";
+import { aiFailureMessage, aiProvider, aiResponsesOptions } from "./ai-provider.server";
 import { createLovableAiGatewayRunIdFetch } from "./ai-gateway.server";
 
 /** Ürün için 1-2 cümlelik Türkçe satış açıklaması üretir. */
@@ -41,15 +41,7 @@ export async function generateProductDescription(input: {
       "Sadece düz metin döndür; başlık, tırnak veya madde işareti kullanma.",
     ].join(" "),
     prompt: details,
-    providerOptions: {
-      openai: {
-        forceReasoning: true,
-        reasoningEffort: "low",
-        reasoningSummary: "auto",
-        store: false,
-        include: ["reasoning.encrypted_content"],
-      },
-    },
+    providerOptions: aiResponsesOptions(provider),
   });
 
   const text = (await result.text).trim().replace(/^["'“”]+|["'“”]+$/g, "");

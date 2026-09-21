@@ -14,7 +14,7 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { Output, NoObjectGeneratedError, streamText } from "ai";
 import { z } from "zod";
-import { aiProvider } from "./ai-provider.server";
+import { aiProvider, aiResponsesOptions } from "./ai-provider.server";
 import { createLovableAiGatewayRunIdFetch } from "./ai-gateway.server";
 
 export const ExtractedProductSchema = z.object({
@@ -105,15 +105,7 @@ export async function extractProductsFromImages(images: string[]): Promise<Extra
       },
     ],
     output: Output.object({ schema: ExtractionOutputSchema }),
-    providerOptions: {
-      openai: {
-        forceReasoning: true,
-        reasoningEffort: "low",
-        reasoningSummary: "auto",
-        store: false,
-        include: ["reasoning.encrypted_content"],
-      },
-    },
+    providerOptions: aiResponsesOptions(provider),
   });
 
   try {
