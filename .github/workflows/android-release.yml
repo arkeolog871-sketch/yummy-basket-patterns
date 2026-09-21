@@ -94,12 +94,26 @@ jobs:
       - name: Keystore'u çöz
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/android-signing"
-          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/android-signing/release.jks"
+          # Boşlukları at. base64 sohbetten kopyalandığında satır sonu ve
+          # baştaki/sondaki boşluk taşıyor. Satır sonlarını `base64 -d` tolere
+          # ediyor ama TEK bir baştaki boşluk bile "invalid input" verip boş
+          # dosya üretiyor — ölçerek doğrulandı. Hata mesajı da sırrın yanlış
+          # olduğunu düşündürüp saatlerce yanlış yerde aratır.
+          printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d \
+            > "$RUNNER_TEMP/android-signing/release.jks"
           test -s "$RUNNER_TEMP/android-signing/release.jks" \
-            || { echo "Keystore çözülemedi — sır base64 değil olabilir."; exit 1; }
+            || { echo "Keystore çözülemedi — sırrın base64 olduğundan emin olun."; exit 1; }
+          # Parola ve alias doğru mu: 20 dakikalık derlemenin sonunda değil,
+          # burada anlaşılsın.
+          keytool -list -keystore "$RUNNER_TEMP/android-signing/release.jks" \
+            -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" > /dev/null 2>&1 \
+            || { echo "Keystore açılamadı: ANDROID_KEYSTORE_PASSWORD veya ANDROID_KEY_ALIAS hatalı."; exit 1; }
+          echo "Keystore çözüldü, parola ve alias doğrulandı."
 
       - name: İmzalı APK ve AAB derle
         working-directory: android-wrapper
