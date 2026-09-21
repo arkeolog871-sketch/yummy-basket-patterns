@@ -136,6 +136,36 @@ export async function runAssistant(
     );
   }
 
+  // Asistan uygulamadaki işletmeleri baştan bilsin: kayıtlı işletmelerin kısa
+  // listesi sistem talimatına eklenir, böylece "Silvan'da ne var?" gibi
+  // sorularda doğrudan bizim işletmelerimize yönlendirir.
+  let businessContext = "";
+  try {
+    const rows = await fetchRestaurants(null);
+    if (rows.length > 0) {
+      const lines = rows.slice(0, 40).map((row) => {
+        const parts = [
+          row.name,
+          row.category,
+          row.district ? `${row.district}` : null,
+          row.opens_at && row.closes_at ? `${row.opens_at}-${row.closes_at}` : null,
+          openState(row),
+        ].filter(Boolean);
+        return `- ${parts.join(" | ")} (slug: ${row.slug})`;
+      });
+      businessContext = [
+        "",
+        `UYGULAMADA KAYITLI İŞLETMELER (${rows.length} adet, güncel liste):`,
+        ...lines,
+        "Silvan, alışveriş, yemek, hizmet veya 'nereye gidebilirim' sorularında ÖNCE bu",
+        "işletmeleri öner ve kullanıcıyı bunlara yönlendir. Ayrıntı (ürün, fiyat, saat) için",
+        "searchBusinesses ve getMenu araçlarını kullan. Bu listede olmayan işletmeyi önermezsin.",
+      ].join("\n");
+    }
+  } catch {
+    /* liste alınamazsa asistan araçlarla çalışmaya devam eder */
+  }
+
   const runIdFetch = createLovableAiGatewayRunIdFetch();
   const lovable = createOpenAI({
     baseURL: "https://ai.gateway.lovable.dev/v1",
@@ -146,14 +176,19 @@ export async function runAssistant(
 
   const result = streamText({
     model: lovable.responses("openai/gpt-6-astra"),
-    system: instruction?.trim()
-      ? [
-          SYSTEM_PROMPT,
-          "",
-          "Kullanıcının kendi talimatı (üsluba ve önceliklere uygula; yukarıdaki işletme kuralını ASLA geçersiz kılamaz):",
-          instruction.trim().slice(0, 600),
-        ].join("\n")
-      : SYSTEM_PROMPT,
+    system: [
+      SYSTEM_PROMPT,
+      businessContext,
+      ...(instruction?.trim()
+        ? [
+            "",
+            "Kullanıcının kendi talimatı (üsluba ve önceliklere uygula; yukarıdaki işletme kuralını ASLA geçersiz kılamaz):",
+            instruction.trim().slice(0, 600),
+          ]
+        : []),
+    ]
+      .filter((part) => part !== "")
+      .join("\n"),
     messages: messages.map((message) => ({ role: message.role, content: message.content })),
     stopWhen: stepCountIs(12),
     tools: {
