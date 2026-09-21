@@ -72,6 +72,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProductImportPanel } from "@/components/products/ProductImportPanel";
+import { ProductBulkDeletePanel } from "@/components/products/ProductBulkDeletePanel";
 import { VendorPairingPanel } from "@/components/founder/VendorPairingPanel";
 import { AuditLogPanel } from "@/components/founder/AuditLogPanel";
 import { DeletionRequestsPanel } from "@/components/founder/DeletionRequestsPanel";
@@ -1328,12 +1329,18 @@ function NotificationLinkPanel({ businesses }: { businesses: BusinessRow[] }) {
 
 function BulkProductPanel({ businesses }: { businesses: BusinessRow[] }) {
   const [restaurantId, setRestaurantId] = useState("");
+  const catalog = useBusinessCatalog(restaurantId);
   return (
     <div className="space-y-4">
       <div className="rounded-3xl border border-border bg-card p-5">
         <BusinessSelect businesses={businesses} value={restaurantId} onChange={setRestaurantId} />
       </div>
       <ProductImportPanel restaurantId={restaurantId || null} />
+      <ProductBulkDeletePanel
+        restaurantId={restaurantId || null}
+        categories={catalog.data?.categories ?? []}
+        onDeleted={() => void catalog.refetch()}
+      />
     </div>
   );
 }

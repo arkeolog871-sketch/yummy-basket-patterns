@@ -311,3 +311,123 @@ export const listProductImports = createServerFn({ method: "GET" })
   );
 
 export { IMPORT_CHUNK_MAX };
+
+/**
+ * Toplu silme kapsamı.
+ *
+ * "imported" — yalnızca aktarımla gelenler (source = 'csv'). Yanlış fiyat
+ *              listesi yüklendiğinde elle girilmiş ürünlere dokunmadan
+ *              temizlemenin yolu budur; varsayılan da budur.
+ * "category" — tek bir kategorinin ürünleri.
+ * "all"      — işletmenin bütün ürünleri.
+ */
+const deleteScopeSchema = z.discriminatedUnion("scope", [
+  z.object({ scope: z.literal("imported") }),
+  z.object({ scope: z.literal("all") }),
+  z.object({ scope: z.literal("category"), categoryId: z.string().uuid() }),
+]);
+
+const deleteSchema = z.intersection(
+  z.object({
+    restaurantId: z.string().uuid(),
+    /**
+     * İstemcinin sildiğini sandığı sayı. Kullanıcıya "5000 ürün silinecek"
+     * yazıp arada liste değiştiyse sessizce fazlasını silmeyelim diye
+     * sunucu bunu gerçek sayıyla karşılaştırır.
+     */
+    expectedCount: z.number().int().min(0).max(1_000_000),
+  }),
+  deleteScopeSchema,
+);
+
+type DeleteScope = z.infer<typeof deleteScopeSchema>;
+
+/** Kapsam filtresini hem sayma hem silme sorgusuna aynı şekilde uygular. */
+function applyScope<T extends { eq: (column: string, value: string) => T }>(
+  query: T,
+  restaurantId: string,
+  scope: DeleteScope,
+): T {
+  const scoped = query.eq("restaurant_id", restaurantId);
+  if (scope.scope === "imported") return scoped.eq("source", "csv");
+  if (scope.scope === "category") return scoped.eq("category_id", scope.categoryId);
+  return scoped;
+}
+
+/** Silmeden önce "kaç ürün gidecek": onay ekranındaki sayı buradan gelir. */
+export const countProductsToDelete = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z.intersection(z.object({ restaurantId: z.string().uuid() }), deleteScopeSchema).parse(input),
+  )
+  .handler(async ({ data, context }) =>
+    runServerFn(async () => {
+      await assertImportAccess(
+        { supabase: context.supabase, userId: context.userId, claims: context.claims },
+        data.restaurantId,
+      );
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { count, error } = await applyScope(
+        supabaseAdmin.from("menu_items").select("id", { count: "exact", head: true }),
+        data.restaurantId,
+        data,
+      );
+      if (error) throw new Error(error.message);
+      return { count: count ?? 0 };
+    }),
+  );
+
+/**
+ * Ürünleri toplu siler.
+ *
+ * Sipariş geçmişi zarar görmez: order_items ürünün adını ve birim fiyatını
+ * kendi satırında saklıyor, menu_item_id bağı ON DELETE SET NULL. Yani geçmiş
+ * siparişler silinen ürünün adını göstermeye devam eder.
+ */
+export const deleteProductsBulk = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => deleteSchema.parse(input))
+  .handler(async ({ data, context }) =>
+    runServerFn(async () => {
+      await assertImportAccess(
+        { supabase: context.supabase, userId: context.userId, claims: context.claims },
+        data.restaurantId,
+      );
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+      // Önce say: kullanıcının onayladığı sayıdan fazlası silinmesin.
+      const { count, error: countError } = await applyScope(
+        supabaseAdmin.from("menu_items").select("id", { count: "exact", head: true }),
+        data.restaurantId,
+        data,
+      );
+      if (countError) throw new Error(countError.message);
+      const actual = count ?? 0;
+      if (actual !== data.expectedCount) {
+        throw new Error(
+          `Liste bu arada değişti: ${data.expectedCount} ürün bekleniyordu, şu an ${actual} ürün var. Sayfayı yenileyip tekrar deneyin.`,
+        );
+      }
+
+      const { audited } = await import("./audit.server");
+      return audited(
+        {
+          actorId: context.userId,
+          actorEmail: (context.claims as { email?: string } | null)?.email ?? null,
+          action: "menu_item.bulk_delete",
+          entity: "menu_items",
+          entityId: data.restaurantId,
+          detail: { scope: data.scope, count: actual },
+        },
+        async () => {
+          const { error } = await applyScope(
+            supabaseAdmin.from("menu_items").delete(),
+            data.restaurantId,
+            data,
+          );
+          if (error) throw new Error(error.message);
+          return { deleted: actual };
+        },
+      );
+    }),
+  );
