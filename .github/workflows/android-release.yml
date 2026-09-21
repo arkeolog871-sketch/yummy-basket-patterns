@@ -1,0 +1,144 @@
+# İmzalı Android sürümü (APK + AAB). Yalnızca elle başlatılır.
+#
+# Gereken depo sırları (Settings > Secrets and variables > Actions):
+#   ANDROID_KEYSTORE_BASE64    keystore dosyasının base64 hali
+#                              (base64 -w0 silvan.jks | pbcopy)
+#   ANDROID_KEYSTORE_PASSWORD  keystore parolası
+#   ANDROID_KEY_ALIAS          anahtar takma adı
+#   ANDROID_KEY_PASSWORD       anahtar parolası
+#
+# Keystore'u ASLA depoya koymayın: .gitignore *.jks / *.keystore dosyalarını
+# engelliyor ama tek koruma o olmamalı. Keystore kaybolursa Play Store'daki
+# uygulama bir daha GÜNCELLENEMEZ — yedeğini ayrı bir yerde saklayın.
+name: Android sürüm (imzalı)
+
+on:
+  workflow_dispatch:
+    inputs:
+      versionCode:
+        description: "versionCode (Play Store her yüklemede artmasını ister; boşsa build.gradle.kts'teki değer)"
+        required: false
+        type: string
+      versionName:
+        description: "versionName (örn. 2.17; boşsa build.gradle.kts'teki değer)"
+        required: false
+        type: string
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: İmzalı APK ve AAB
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Sırlar eksikken derleme başlatmak 20 dakika sonra anlaşılmaz bir
+      # imzalama hatasıyla bitiyor; burada saniyesinde ve açık mesajla düşsün.
+      - name: İmzalama sırlarının varlığını denetle
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          missing=""
+          [ -n "$KEYSTORE_BASE64" ]   || missing="$missing ANDROID_KEYSTORE_BASE64"
+          [ -n "$KEYSTORE_PASSWORD" ] || missing="$missing ANDROID_KEYSTORE_PASSWORD"
+          [ -n "$KEY_ALIAS" ]         || missing="$missing ANDROID_KEY_ALIAS"
+          [ -n "$KEY_PASSWORD" ]      || missing="$missing ANDROID_KEY_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "Şu depo sırları tanımlı değil:$missing"
+            echo "Settings > Secrets and variables > Actions altından ekleyin."
+            exit 1
+          fi
+          echo "İmzalama sırları yerinde."
+
+      - name: JDK 21 kur
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Android SDK kur
+        uses: android-actions/setup-android@v3
+
+      - name: android-36 platformunu indir
+        run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Gradle kur (önbellekli)
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          build-scan-publish: false
+
+      # Keystore diske yazılır: Gradle'ın signingConfig'i gerçek bir dosya
+      # istiyor. RUNNER_TEMP iş bitince silinir ve depoya hiç girmez.
+      - name: Keystore'u çöz
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/android-signing"
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/android-signing/release.jks"
+          test -s "$RUNNER_TEMP/android-signing/release.jks" \
+            || { echo "Keystore çözülemedi — sır base64 değil olabilir."; exit 1; }
+
+      - name: İmzalı APK ve AAB derle
+        working-directory: android-wrapper
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/android-signing/release.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          # Boş bırakılırsa build.gradle.kts kendi varsayılanına düşer.
+          ANDROID_VERSION_CODE: ${{ inputs.versionCode }}
+          ANDROID_VERSION_NAME: ${{ inputs.versionName }}
+        run: ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease
+
+      # İmzasız bir APK sessizce üretilip dağıtılırsa telefonlara kurulmaz.
+      # apksigner'a sorup emin oluyoruz.
+      - name: İmzayı ve izinleri doğrula
+        working-directory: android-wrapper
+        run: |
+          set -euo pipefail
+          TOOLS="$ANDROID_HOME/build-tools/36.0.0"
+          APK=app/build/outputs/apk/release/app-release.apk
+          AAB=app/build/outputs/bundle/release/app-release.aab
+          test -f "$APK" || { echo "APK üretilmedi"; exit 1; }
+          test -f "$AAB" || { echo "AAB üretilmedi"; exit 1; }
+
+          echo "--- imza doğrulaması"
+          "$TOOLS/apksigner" verify --verbose --print-certs "$APK"
+
+          echo "--- paket ve izinler"
+          "$TOOLS/aapt2" dump badging "$APK" > /tmp/badging.txt
+          grep '^package:' /tmp/badging.txt
+          grep '^uses-permission' /tmp/badging.txt
+          for perm in \
+            android.permission.INTERNET \
+            android.permission.CAMERA \
+            android.permission.RECORD_AUDIO \
+            android.permission.POST_NOTIFICATIONS
+          do
+            grep -q "name='$perm'" /tmp/badging.txt \
+              || { echo "EKSİK İZİN: $perm"; exit 1; }
+          done
+
+      - name: İmzalı çıktıları yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release
+          path: |
+            android-wrapper/app/build/outputs/apk/release/app-release.apk
+            android-wrapper/app/build/outputs/bundle/release/app-release.aab
+            android-wrapper/app/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: error
+          retention-days: 30

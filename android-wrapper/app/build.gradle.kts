@@ -18,8 +18,24 @@ android {
         applicationId = "online.uygulamamcebimde.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 27
-        versionName = "2.16"
+        // Sürüm CI'dan ezilebilsin: Play Store her yüklemede versionCode'un
+        // artmasını şart koşuyor, bunu her seferinde elle düzenlemek
+        // unutuluyor. Değişken verilmezse buradaki değerler aynen kullanılır,
+        // yani yerel derleme davranışı değişmez. (İmzalama ayarları da
+        // aşağıda aynı kalıbı kullanıyor.)
+        versionCode = (
+            providers.gradleProperty("android.versionCode")
+                .orElse(providers.environmentVariable("ANDROID_VERSION_CODE"))
+                .orNull
+                ?.trim()
+                ?.toIntOrNull()
+            ) ?: 27
+        versionName = providers.gradleProperty("android.versionName")
+            .orElse(providers.environmentVariable("ANDROID_VERSION_NAME"))
+            .orNull
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: "2.16"
     }
 
     val signingStore = providers.gradleProperty("android.keystorePath")
