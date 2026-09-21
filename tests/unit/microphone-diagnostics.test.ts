@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  engineVersionOf,
   collectMicrophoneDiagnostics,
   formatMicrophoneDiagnostics,
   microphoneAdvice,
@@ -13,7 +14,10 @@ function probe(over: Partial<MicrophoneProbe> = {}): MicrophoneProbe {
   return {
     userAgent: APP_UA,
     secureContext: true,
-    listDevices: async () => [{ kind: "audioinput" }, { kind: "videoinput" }],
+    listDevices: async () => [
+      { kind: "audioinput", label: "Dahili mikrofon" },
+      { kind: "videoinput", label: "Ön kamera" },
+    ],
     readPermission: async () => ({ state: "granted" }),
     ...over,
   };
@@ -26,6 +30,8 @@ describe("mikrofon tanısı toplama", () => {
       kind: "busy",
       errorName: "NotReadableError",
       audioInputs: 1,
+      deviceLabels: true,
+      engineVersion: "140",
       permission: "granted",
       secureContext: true,
       inApp: true,
@@ -102,7 +108,7 @@ describe("tanı satırı", () => {
   it("ekran görüntüsünden okunacak alanları taşır", async () => {
     const d = await collectMicrophoneDiagnostics({ name: "NotReadableError" }, probe());
     expect(formatMicrophoneDiagnostics(d)).toBe(
-      "NotReadableError · mikrofon: 1 · izin: granted · ortam: uygulama",
+      "NotReadableError · mikrofon: 1 · etiket: var · motor: 140 · ortam: uygulama",
     );
   });
 
@@ -112,7 +118,7 @@ describe("tanı satırı", () => {
       { userAgent: BROWSER_UA, secureContext: true },
     );
     expect(formatMicrophoneDiagnostics(d)).toBe(
-      "NotFoundError · mikrofon: ? · izin: ? · ortam: tarayıcı",
+      "NotFoundError · mikrofon: ? · etiket: ? · motor: 140 · ortam: tarayıcı",
     );
   });
 
@@ -182,5 +188,50 @@ describe("yönlendirme ölçüme dayanır", () => {
   it("bilinmeyen hatada yazarak devam etmeyi önerir", async () => {
     const d = await collectMicrophoneDiagnostics(new Error("boom"), probe());
     expect(microphoneAdvice(d)).toContain("yazarak");
+  });
+});
+
+describe("aygıt adı ölçümü izni ayırt eder", () => {
+  it("adı boş cihaz, iznin Chromium'a ulaşmadığını gösterir", async () => {
+    // Chromium aygıt adlarını YALNIZCA sayfaya mikrofon izni verildikten
+    // sonra dolduruyor. İşletim sistemi izni verilmiş görünürken adın boş
+    // olması, iznin WebView katmanında hiç uygulanmadığı anlamına gelir —
+    // "izin var ama donanım açılmıyor" ile karışan tam olarak bu durum.
+    const d = await collectMicrophoneDiagnostics(
+      { name: "NotReadableError" },
+      probe({ listDevices: async () => [{ kind: "audioinput", label: "" }] }),
+    );
+    expect(d.deviceLabels).toBe(false);
+    expect(microphoneAdvice(d)).toContain("Zorla durdur");
+  });
+
+  it("adı dolu cihazda meşgul yönlendirmesi verilir", async () => {
+    const d = await collectMicrophoneDiagnostics({ name: "NotReadableError" }, probe());
+    expect(d.deviceLabels).toBe(true);
+    expect(microphoneAdvice(d)).toContain("Hızlı Ayarlar");
+  });
+
+  it("tarayıcıda uygulama ayarlarına yönlendirmez", async () => {
+    const d = await collectMicrophoneDiagnostics(
+      { name: "NotReadableError" },
+      probe({
+        userAgent: BROWSER_UA,
+        listDevices: async () => [{ kind: "audioinput", label: "" }],
+      }),
+    );
+    expect(microphoneAdvice(d)).toContain("kilit simgesinden");
+    expect(microphoneAdvice(d)).not.toContain("Silvan Cebimde");
+  });
+});
+
+describe("motor sürümü", () => {
+  it("kullanıcı aracısından Chromium ana sürümünü okur", () => {
+    expect(engineVersionOf(APP_UA)).toBe("140");
+    expect(engineVersionOf("Mozilla/5.0 Chrome/89.0.4389.90 Mobile")).toBe("89");
+  });
+
+  it("sürüm yoksa null döner", () => {
+    expect(engineVersionOf("Mozilla/5.0 (iPhone) Safari/604.1")).toBeNull();
+    expect(engineVersionOf("")).toBeNull();
   });
 });

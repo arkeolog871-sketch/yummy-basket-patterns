@@ -23,7 +23,7 @@ export interface MicrophoneProbe {
   userAgent: string;
   secureContext: boolean;
   /** navigator.mediaDevices.enumerateDevices sarmalayıcısı. */
-  listDevices?: () => Promise<{ kind: string }[]>;
+  listDevices?: () => Promise<{ kind: string; label?: string }[]>;
   /** navigator.permissions.query({ name: "microphone" }) sarmalayıcısı. */
   readPermission?: () => Promise<{ state: string }>;
 }
@@ -33,6 +33,16 @@ export interface MicrophoneDiagnostics {
   errorName: string;
   /** Sistemin saydığı ses girişi. null = ölçülemedi. */
   audioInputs: number | null;
+  /**
+   * Cihaz adı (label) dolu mu. Chromium aygıt adlarını YALNIZCA sayfaya
+   * mikrofon izni gerçekten verildikten sonra dolduruyor. Boşsa izin
+   * Chromium katmanında verilmemiş demektir — işletim sistemi izni verilmiş
+   * görünse bile. Bu, "izin var ama donanım açılmıyor" ile "izin aslında
+   * yok" durumlarını birbirinden ayıran tek ölçüm.
+   */
+  deviceLabels: boolean | null;
+  /** WebView/tarayıcı Chromium sürümü; eski sürümlerde ses yakalama bozuk olabilir. */
+  engineVersion: string | null;
   /** "granted" | "denied" | "prompt" | null (tarayıcı desteklemiyor). */
   permission: string | null;
   secureContext: boolean;
@@ -47,9 +57,14 @@ export async function collectMicrophoneDiagnostics(
   const name = (error as { name?: string } | null | undefined)?.name ?? "";
 
   let audioInputs: number | null = null;
+  let deviceLabels: boolean | null = null;
   try {
     const devices = await probe.listDevices?.();
-    if (devices) audioInputs = devices.filter((device) => device.kind === "audioinput").length;
+    if (devices) {
+      const inputs = devices.filter((device) => device.kind === "audioinput");
+      audioInputs = inputs.length;
+      deviceLabels = inputs.some((device) => (device.label ?? "").trim().length > 0);
+    }
   } catch {
     // enumerateDevices bazı WebView sürümlerinde patlıyor; tanı yüzünden
     // kullanıcıya ikinci bir hata göstermenin anlamı yok.
@@ -68,9 +83,17 @@ export async function collectMicrophoneDiagnostics(
     errorName: name || "bilinmiyor",
     audioInputs,
     permission,
+    deviceLabels,
+    engineVersion: engineVersionOf(probe.userAgent),
     secureContext: probe.secureContext,
     inApp: probe.userAgent.includes("SilvanCebimde"),
   };
+}
+
+/** Kullanıcı aracısından Chromium ana sürümü. */
+export function engineVersionOf(userAgent: string): string | null {
+  const match = userAgent.match(/Chrome\/(\d+)/);
+  return match?.[1] ?? null;
 }
 
 /** Ekran görüntüsünden okunabilecek tek satır. */
@@ -78,7 +101,8 @@ export function formatMicrophoneDiagnostics(diagnostics: MicrophoneDiagnostics):
   const parts = [
     diagnostics.errorName,
     `mikrofon: ${diagnostics.audioInputs === null ? "?" : diagnostics.audioInputs}`,
-    `izin: ${diagnostics.permission ?? "?"}`,
+    `etiket: ${diagnostics.deviceLabels === null ? "?" : diagnostics.deviceLabels ? "var" : "yok"}`,
+    `motor: ${diagnostics.engineVersion ?? "?"}`,
     `ortam: ${diagnostics.inApp ? "uygulama" : "tarayıcı"}`,
   ];
   // Güvenli köken normalde doğru; yalnızca bozukken yer kaplasın.
@@ -101,6 +125,18 @@ export function microphoneAdvice(diagnostics: MicrophoneDiagnostics): string {
   }
   if (diagnostics.permission === "denied") {
     return "İzin kalıcı olarak reddedilmiş. Ayarlar > Uygulamalar > Silvan Cebimde > İzinler'den mikrofonu açın.";
+  }
+  if (
+    diagnostics.audioInputs !== null &&
+    diagnostics.audioInputs > 0 &&
+    diagnostics.deviceLabels === false
+  ) {
+    // Cihaz listede ama adı boş: izin Chromium katmanına hiç ulaşmamış.
+    // Uygulamayı tamamen durdurup açmak bunu çözüyor; arka plandaki eski
+    // süreç izni almadan önceki hâlini taşıyor olabilir.
+    return diagnostics.inApp
+      ? "Uygulama mikrofon iznini alamamış. Ayarlar > Uygulamalar > Silvan Cebimde > Zorla durdur deyip uygulamayı yeniden açın; izin penceresi çıkınca İzin Ver'i seçin."
+      : "Tarayıcı bu site için mikrofon iznini almamış. Adres çubuğundaki kilit simgesinden mikrofona izin verin.";
   }
   if (diagnostics.kind === "busy") {
     // ÖLÇÜLEN durum: izin kapısı geçildi, cihaz listede görünüyor, ama
