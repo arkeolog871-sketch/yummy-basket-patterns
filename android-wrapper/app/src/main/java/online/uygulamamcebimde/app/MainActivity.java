@@ -74,6 +74,7 @@ public class MainActivity extends Activity {
     private static final int LOCATION_PERMISSION_REQUEST = 1004;
     private static final int WEB_CAMERA_PERMISSION_REQUEST = 1005;
     private static final int NOTIFICATION_PERMISSION_REQUEST = 1006;
+    private static final int WEB_MIC_PERMISSION_REQUEST = 1007;
     /**
      * Herkese açık duyuruların yayınlandığı konu. Sunucudaki
      * FCM_BROADCAST_TOPIC ve iOS tarafındaki adla birebir aynı olmak zorunda;
