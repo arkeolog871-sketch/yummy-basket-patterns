@@ -44,16 +44,19 @@ const LOVABLE_MODELS: AiModels = {
 };
 
 /**
- * OpenAI'de model adları öneksiz. Ses yazıya çevirme Google modeliydi;
- * OpenAI'de karşılığı gpt-4o-transcribe (dakikası $0.006). Diğer üç model
- * zaten OpenAI modeli, aynısı doğrudan kullanılıyor.
+ * OpenAI'de model adları öneksiz. Sohbet varsayılanı `gpt-5.6-luna`:
+ * maliyeti gpt-6-astra'nın onda birinden az, uygulamadaki işler (sohbet,
+ * arama niyeti, menü okuma, kısa metin) için yeterli. Ses yazıya çevirme
+ * Google modeliydi; OpenAI karşılığı gpt-4o-transcribe. Görsel üretiminde
+ * Lovable'a özgü ad yerine OpenAI'nin kendi modeli (gpt-image-1) kullanılır.
  */
 const OPENAI_MODELS: AiModels = {
-  chat: "gpt-6-astra",
+  chat: "gpt-5.6-luna",
   transcribe: "gpt-4o-transcribe",
   speech: "gpt-4o-mini-tts",
-  image: "gpt-image-2.5-sunburst",
+  image: "gpt-image-1",
 };
+
 
 const LOVABLE_BASE_URL = "https://ai.gateway.lovable.dev/v1";
 const OPENAI_BASE_URL = "https://api.openai.com/v1";
