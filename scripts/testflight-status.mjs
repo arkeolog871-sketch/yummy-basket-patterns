@@ -70,7 +70,13 @@ export function buildsRequestUrl(appId, limit) {
     limit: String(limit),
     sort: "-uploadedDate",
     include: "preReleaseVersion",
-    "fields[builds]": "version,processingState,uploadedDate,expirationDate,expired",
+    // DİKKAT: fields[builds] yalnızca öznitelikleri değil, dönecek
+    // İLİŞKİLERİ de kısıtlıyor. preReleaseVersion bu listede yoksa
+    // include çalışsa bile build kaydında relationships gelmiyor ve liste
+    // "1.1 (30)" yerine "? (30)" gösteriyor — ilk başarılı koşuda aynen
+    // böyle çıktı.
+    "fields[builds]":
+      "version,processingState,uploadedDate,expirationDate,expired,preReleaseVersion",
     "fields[preReleaseVersions]": "version",
   });
   return `${API}/v1/builds?${params.toString()}`;

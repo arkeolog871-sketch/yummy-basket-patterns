@@ -140,6 +140,17 @@ describe("build listesi isteğinin adresi", () => {
     expect(url.searchParams.get("fields[preReleaseVersions]")).toBe("version");
   });
 
+  it("ilişki, fields[builds] listesinde de yer alır", () => {
+    // fields[builds] yalnızca öznitelikleri değil, dönecek İLİŞKİLERİ de
+    // kısıtlıyor. preReleaseVersion bu listede yoksa include çalışsa bile
+    // build kaydı relationships taşımıyor ve liste "? (30)" gösteriyor —
+    // ilk başarılı koşuda aynen böyle çıktı.
+    const fields = (url.searchParams.get("fields[builds]") ?? "").split(",");
+    expect(fields).toContain("preReleaseVersion");
+    expect(fields).toContain("version");
+    expect(fields).toContain("processingState");
+  });
+
   it("en yeni build üstte ve sınır uygulanır", () => {
     expect(url.searchParams.get("sort")).toBe("-uploadedDate");
     expect(url.searchParams.get("limit")).toBe("10");

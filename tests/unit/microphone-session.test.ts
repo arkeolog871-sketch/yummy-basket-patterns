@@ -189,3 +189,81 @@ describe("mikrofon hatası sınıflandırma", () => {
     expect(classifyMicrophoneError("metin")).toBe("unknown");
   });
 });
+
+describe("meşgul hatasında tek yeniden deneme", () => {
+  function busyError() {
+    const error = new Error("meşgul");
+    error.name = "NotReadableError";
+    return error;
+  }
+
+  it("ikinci deneme başarılıysa kayıt başlar", async () => {
+    const stream = fakeStream();
+    let calls = 0;
+    const waits: number[] = [];
+    const session = new MicrophoneSession({
+      openStream: async () => {
+        calls += 1;
+        if (calls === 1) throw busyError();
+        return stream;
+      },
+      createRecorder: () => fakeRecorder(),
+      sleep: async (ms) => {
+        waits.push(ms);
+      },
+    });
+
+    await session.start(noop, noop);
+    expect(calls).toBe(2);
+    expect(waits).toEqual([500]);
+    expect(session.active).toBe(true);
+  });
+
+  it("ikinci deneme de düşerse hata kullanıcıya çıkar", async () => {
+    let calls = 0;
+    const session = new MicrophoneSession({
+      openStream: async () => {
+        calls += 1;
+        throw busyError();
+      },
+      createRecorder: () => fakeRecorder(),
+      sleep: async () => {},
+    });
+
+    await expect(session.start(noop, noop)).rejects.toThrow("meşgul");
+    // Tek yeniden deneme; döngüye girmiyor.
+    expect(calls).toBe(2);
+  });
+
+  it("izin reddinde yeniden denenmez", async () => {
+    // Kalıcı engelde beklemenin faydası yok, kullanıcıyı oyalar.
+    let calls = 0;
+    const session = new MicrophoneSession({
+      openStream: async () => {
+        calls += 1;
+        const error = new Error("izin yok");
+        error.name = "NotAllowedError";
+        throw error;
+      },
+      createRecorder: () => fakeRecorder(),
+      sleep: async () => {},
+    });
+
+    await expect(session.start(noop, noop)).rejects.toThrow("izin yok");
+    expect(calls).toBe(1);
+  });
+
+  it("sleep verilmemişse eski davranış korunur", async () => {
+    let calls = 0;
+    const session = new MicrophoneSession({
+      openStream: async () => {
+        calls += 1;
+        throw busyError();
+      },
+      createRecorder: () => fakeRecorder(),
+    });
+
+    await expect(session.start(noop, noop)).rejects.toThrow("meşgul");
+    expect(calls).toBe(1);
+  });
+});

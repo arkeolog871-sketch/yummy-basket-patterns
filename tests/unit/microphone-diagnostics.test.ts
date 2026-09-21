@@ -156,9 +156,27 @@ describe("yönlendirme ölçüme dayanır", () => {
     expect(microphoneAdvice(d)).toContain("İzinler");
   });
 
-  it("mikrofon görünüyor ama meşgulse başka uygulamayı işaret eder", async () => {
-    const d = await collectMicrophoneDiagnostics({ name: "NotReadableError" }, probe());
-    expect(microphoneAdvice(d)).toContain("başka bir uygulamada açık");
+  it("mikrofon görünüyor ama açılmıyorsa üç sebebi de sıralar", async () => {
+    // Ölçülen durum: izin geçildi, cihaz listede, donanım açılmadı. Tek
+    // sebep gösterilirse cihaz anahtarı kapalı olan kullanıcı boşuna
+    // uygulama kapatmaya çalışır.
+    const advice = microphoneAdvice(
+      await collectMicrophoneDiagnostics({ name: "NotReadableError" }, probe()),
+    );
+    expect(advice).toContain("ses kaydı");
+    expect(advice).toContain("Hızlı Ayarlar");
+    expect(advice).toContain("İzinler");
+  });
+
+  it("tarayıcıda uygulama ayarlarına yönlendirmez", async () => {
+    const advice = microphoneAdvice(
+      await collectMicrophoneDiagnostics(
+        { name: "NotReadableError" },
+        probe({ userAgent: BROWSER_UA }),
+      ),
+    );
+    expect(advice).toContain("tarayıcıya");
+    expect(advice).not.toContain("Silvan Cebimde > İzinler");
   });
 
   it("bilinmeyen hatada yazarak devam etmeyi önerir", async () => {

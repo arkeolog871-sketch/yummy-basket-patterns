@@ -35,6 +35,8 @@ export interface MicrophoneDeps {
   openStream(): Promise<AudioStreamLike>;
   /** Akıştan kaydedici üretir. Kurucu hata atabilir; oturum akışı yine bırakır. */
   createRecorder(stream: AudioStreamLike): RecorderLike;
+  /** "Meşgul" hatasından sonraki tek yeniden deneme için bekleme. */
+  sleep?(ms: number): Promise<void>;
 }
 
 /** Kullanıcıya gösterilecek mesajı seçmek için hata sınıflandırması. */
@@ -53,6 +55,9 @@ export function classifyMicrophoneError(error: unknown): MicrophoneErrorKind {
   }
   return "unknown";
 }
+
+/** Meşgul hatasından sonra tek yeniden denemenin bekleme süresi. */
+const RETRY_DELAY_MS = 500;
 
 export class MicrophoneSession {
   private stream: AudioStreamLike | null = null;
@@ -74,7 +79,18 @@ export class MicrophoneSession {
    */
   async start(onChunk: (chunk: { size: number }) => void, onStop: () => void): Promise<void> {
     this.release();
-    const stream = await this.deps.openStream();
+    let stream: AudioStreamLike;
+    try {
+      stream = await this.deps.openStream();
+    } catch (error) {
+      // Donanım "meşgul" derken bazen gerçekten geçici: az önce kapanan bir
+      // ses oynatması ya da bırakılmakta olan başka bir uygulama. Kalıcı
+      // engelde (cihaz anahtarı, izin) ikinci deneme de aynı hatayı verir,
+      // maliyeti yarım saniye. BİR kez denenir; döngü yok.
+      if (classifyMicrophoneError(error) !== "busy" || !this.deps.sleep) throw error;
+      await this.deps.sleep(RETRY_DELAY_MS);
+      stream = await this.deps.openStream();
+    }
     this.stream = stream;
     try {
       const recorder = this.deps.createRecorder(stream);
