@@ -5,18 +5,17 @@
  * dönüştürülür (speech). Anahtar tarayıcıya çıkmaz.
  */
 
-const GATEWAY = "https://ai.gateway.lovable.dev/v1";
-const TRANSCRIBE_MODEL = "google/gemini-3.5-transcribe";
-const SPEECH_MODEL = "openai/gpt-4o-mini-tts";
+import { aiFailureMessage, aiProvider } from "./ai-provider.server";
 
 /** İzin verilen ses türleri — tarayıcı kaydı webm/mp4/ogg/wav üretir. */
-const ALLOWED_AUDIO = ["audio/webm", "audio/mp4", "audio/mpeg", "audio/ogg", "audio/wav", "audio/x-m4a"];
-
-function requireKey(): string {
-  const key = process.env["LOVABLE_API_KEY"];
-  if (!key) throw new Error("Yapay zekâ yapılandırması eksik.");
-  return key;
-}
+const ALLOWED_AUDIO = [
+  "audio/webm",
+  "audio/mp4",
+  "audio/mpeg",
+  "audio/ogg",
+  "audio/wav",
+  "audio/x-m4a",
+];
 
 function base64ToBytes(base64: string): Uint8Array {
   const clean = base64.includes(",") ? (base64.split(",")[1] ?? "") : base64;
@@ -42,28 +41,30 @@ export async function transcribeAudio(base64: string, mimeType: string): Promise
   if (bytes.byteLength === 0) throw new Error("Ses kaydı boş.");
   if (bytes.byteLength > 8 * 1024 * 1024) throw new Error("Ses kaydı çok uzun (en fazla 8 MB).");
 
-  const extension = type.includes("mp4") || type.includes("m4a")
-    ? "m4a"
-    : type.includes("mpeg")
-      ? "mp3"
-      : type.includes("ogg")
-        ? "ogg"
-        : type.includes("wav")
-          ? "wav"
-          : "webm";
+  const extension =
+    type.includes("mp4") || type.includes("m4a")
+      ? "m4a"
+      : type.includes("mpeg")
+        ? "mp3"
+        : type.includes("ogg")
+          ? "ogg"
+          : type.includes("wav")
+            ? "wav"
+            : "webm";
 
   const form = new FormData();
-  form.append("model", TRANSCRIBE_MODEL);
+  form.append("model", aiProvider().models.transcribe);
   form.append("file", new Blob([bytes as unknown as BlobPart], { type }), `kayit.${extension}`);
 
-  const response = await fetch(`${GATEWAY}/audio/transcriptions`, {
+  const provider = aiProvider();
+  const response = await fetch(`${provider.baseUrl}/audio/transcriptions`, {
     method: "POST",
-    headers: { "Lovable-API-Key": requireKey(), "X-Lovable-AIG-SDK": "fetch" },
+    headers: provider.headers,
     body: form,
   });
   if (!response.ok) {
-    if (response.status === 402) throw new Error("Yapay zekâ kredisi tükendi.");
-    throw new Error("Ses anlaşılamadı, tekrar deneyin.");
+    const failure = aiFailureMessage(response.status, await response.text().catch(() => ""));
+    throw new Error(failure ?? "Ses anlaşılamadı, tekrar deneyin.");
   }
   const payload = (await response.json()) as { text?: string };
   const text = (payload.text ?? "").trim();
@@ -72,19 +73,18 @@ export async function transcribeAudio(base64: string, mimeType: string): Promise
 }
 
 /** Metni sese çevirir; base64 mp3 döndürür. */
-export async function synthesizeSpeech(text: string): Promise<{ base64: string; contentType: string }> {
+export async function synthesizeSpeech(
+  text: string,
+): Promise<{ base64: string; contentType: string }> {
   const input = text.trim().slice(0, 900);
   if (!input) throw new Error("Okunacak metin yok.");
 
-  const response = await fetch(`${GATEWAY}/audio/speech`, {
+  const provider = aiProvider();
+  const response = await fetch(`${provider.baseUrl}/audio/speech`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Lovable-API-Key": requireKey(),
-      "X-Lovable-AIG-SDK": "fetch",
-    },
+    headers: { "Content-Type": "application/json", ...provider.headers },
     body: JSON.stringify({
-      model: SPEECH_MODEL,
+      model: provider.models.speech,
       input,
       voice: "alloy",
       response_format: "mp3",
@@ -92,8 +92,8 @@ export async function synthesizeSpeech(text: string): Promise<{ base64: string; 
     }),
   });
   if (!response.ok) {
-    if (response.status === 402) throw new Error("Yapay zekâ kredisi tükendi.");
-    throw new Error("Sesli yanıt üretilemedi.");
+    const failure = aiFailureMessage(response.status, await response.text().catch(() => ""));
+    throw new Error(failure ?? "Sesli yanıt üretilemedi.");
   }
   const bytes = new Uint8Array(await response.arrayBuffer());
   if (bytes.byteLength === 0) throw new Error("Sesli yanıt üretilemedi.");

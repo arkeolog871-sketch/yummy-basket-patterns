@@ -6,15 +6,8 @@
  */
 import { createOpenAI } from "@ai-sdk/openai";
 import { streamText } from "ai";
+import { aiFailureMessage, aiProvider } from "./ai-provider.server";
 import { createLovableAiGatewayRunIdFetch } from "./ai-gateway.server";
-
-const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1";
-
-function requireKey(): string {
-  const key = process.env["LOVABLE_API_KEY"];
-  if (!key) throw new Error("Yapay zekâ yapılandırması eksik.");
-  return key;
-}
 
 /** Ürün için 1-2 cümlelik Türkçe satış açıklaması üretir. */
 export async function generateProductDescription(input: {
@@ -22,12 +15,12 @@ export async function generateProductDescription(input: {
   categoryName?: string | null;
   businessName?: string | null;
 }): Promise<string> {
-  const key = requireKey();
+  const provider = aiProvider();
   const runIdFetch = createLovableAiGatewayRunIdFetch();
   const lovable = createOpenAI({
-    baseURL: GATEWAY_URL,
-    apiKey: key,
-    headers: { "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
+    baseURL: provider.baseUrl,
+    apiKey: provider.apiKey,
+    headers: provider.headers,
     fetch: runIdFetch.fetch,
   });
 
@@ -40,7 +33,7 @@ export async function generateProductDescription(input: {
     .join("\n");
 
   const result = streamText({
-    model: lovable.responses("openai/gpt-6-astra"),
+    model: lovable.responses(provider.models.chat),
     system: [
       "Yerel bir sipariş uygulaması için ürün açıklaması yazıyorsun.",
       "Türkçe yaz. En fazla 2 kısa cümle, toplam 200 karakteri geçme.",
@@ -69,18 +62,14 @@ export async function generateProductImage(input: {
   name: string;
   categoryName?: string | null;
 }): Promise<{ base64: string; contentType: string }> {
-  const key = requireKey();
+  const provider = aiProvider();
   const subject = input.categoryName ? `${input.name} (${input.categoryName})` : input.name;
 
-  const response = await fetch(`${GATEWAY_URL}/images/generations`, {
+  const response = await fetch(`${provider.baseUrl}/images/generations`, {
     method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "Lovable-API-Key": key,
-      "X-Lovable-AIG-SDK": "fetch",
-    },
+    headers: { "content-type": "application/json", ...provider.headers },
     body: JSON.stringify({
-      model: "openai/gpt-image-2.5-sunburst",
+      model: provider.models.image,
       prompt: [
         `Ürün tanıtım fotoğrafı: ${subject}.`,
         "Tek ürün ortada, sade açık renkli zemin, doğal yumuşak ışık,",
@@ -93,9 +82,8 @@ export async function generateProductImage(input: {
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
-    if (response.status === 402) {
-      throw new Error("Yapay zekâ kredisi tükendi. Lütfen kredi yükleyin.");
-    }
+    const failure = aiFailureMessage(response.status, detail);
+    if (failure) throw new Error(failure);
     if (response.status === 429) {
       throw new Error("Şu an çok yoğunluk var. Biraz sonra tekrar deneyin.");
     }

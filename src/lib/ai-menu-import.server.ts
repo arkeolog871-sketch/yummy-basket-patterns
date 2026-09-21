@@ -14,6 +14,7 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { Output, NoObjectGeneratedError, streamText } from "ai";
 import { z } from "zod";
+import { aiProvider } from "./ai-provider.server";
 import { createLovableAiGatewayRunIdFetch } from "./ai-gateway.server";
 
 export const ExtractedProductSchema = z.object({
@@ -72,19 +73,19 @@ function clampProduct(raw: ExtractedProductModel, index: number): ExtractedProdu
  * ~2 dakikalık sessizlik sınırına takılır ve faturalanan üretim boşa gider.
  */
 export async function extractProductsFromImages(images: string[]): Promise<ExtractedProduct[]> {
-  const key = process.env["LOVABLE_API_KEY"];
-  if (!key) throw new Error("Yapay zekâ yapılandırması eksik (LOVABLE_API_KEY).");
+  // Anahtar yoksa burada açık hatayla durur (bkz. ai-provider.server).
+  const provider = aiProvider();
 
   const runIdFetch = createLovableAiGatewayRunIdFetch();
   const lovable = createOpenAI({
-    baseURL: "https://ai.gateway.lovable.dev/v1",
-    apiKey: key, // Yalnızca SDK'yı mutmain eder; geçit Lovable-API-Key başlığıyla doğrular.
-    headers: { "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
+    baseURL: provider.baseUrl,
+    apiKey: provider.apiKey,
+    headers: provider.headers,
     fetch: runIdFetch.fetch,
   });
 
   const result = streamText({
-    model: lovable.responses("openai/gpt-6-astra"),
+    model: lovable.responses(provider.models.chat),
     system: SYSTEM_PROMPT,
     messages: [
       {

@@ -11,7 +11,7 @@ describe("fotoğraftan ürün çıkarma — güvenlik sözleşmesi", () => {
     const source = readFileSync(FUNCTIONS, "utf8");
     for (const fn of ["extractMenuItemsFromPhoto", "importExtractedMenuItems"]) {
       expect(source).toContain(`export const ${fn} = createServerFn`);
-    expect(source).toContain(".middleware([requireSupabaseAuth])");
+      expect(source).toContain(".middleware([requireSupabaseAuth])");
     }
     // Her handler assertImportAccess'i çağırır: işletme kendi kataloğunu,
     // kurucu/bölge yöneticisi yalnızca yetki alanındaki işletmeyi işleyebilir.
@@ -45,10 +45,12 @@ describe("fotoğraftan ürün çıkarma — güvenlik sözleşmesi", () => {
     expect(server).toMatch(/forceReasoning:\s*true/);
     expect(server).toMatch(/store:\s*false/);
     expect(server).toMatch(/include:\s*\["reasoning\.encrypted_content"\]/);
-    // Model kimliği katalogdaki gibi prefix'li yazılır.
-    expect(server).toMatch(/lovable\.responses\("openai\/gpt-6-astra"\)/);
-    // Anahtar asla modül kapsamında okunmaz, handler içinde okunur.
-    expect(server).toMatch(/process\.env\["LOVABLE_API_KEY"\]/);
+    // Model ve anahtar artık tek karar noktasından geliyor (ai-provider.server).
+    // Burada elle yazılırsa sağlayıcı değiştiğinde bu dosya eski yerden
+    // harcamaya devam eder; varsayılan model kimlikleri orada test ediliyor.
+    expect(server).toMatch(/lovable\.responses\(provider\.models\.chat\)/);
+    expect(server).toMatch(/const provider = aiProvider\(\)/);
+    expect(server).not.toMatch(/process\.env\["LOVABLE_API_KEY"\]/);
   });
 
   it("sonuç asla doğrudan veritabanına yazılmaz — bileşen onay akışı kullanır", () => {

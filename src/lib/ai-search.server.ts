@@ -10,6 +10,7 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { NoObjectGeneratedError, Output, streamText } from "ai";
 import { z } from "zod";
+import { aiProvider } from "./ai-provider.server";
 import { createLovableAiGatewayRunIdFetch } from "./ai-gateway.server";
 
 const IntentSchema = z.object({
@@ -46,19 +47,24 @@ export async function interpretSearchIntent(
   query: string,
   sectors: SectorOption[],
 ): Promise<SearchIntent | null> {
-  const key = process.env["LOVABLE_API_KEY"];
-  if (!key) return null;
+  // Yapılandırma yoksa akıllı arama sessizce kapanır; düz arama çalışır.
+  let provider;
+  try {
+    provider = aiProvider();
+  } catch {
+    return null;
+  }
 
   const runIdFetch = createLovableAiGatewayRunIdFetch();
   const lovable = createOpenAI({
-    baseURL: "https://ai.gateway.lovable.dev/v1",
-    apiKey: key,
-    headers: { "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
+    baseURL: provider.baseUrl,
+    apiKey: provider.apiKey,
+    headers: provider.headers,
     fetch: runIdFetch.fetch,
   });
 
   const result = streamText({
-    model: lovable.responses("openai/gpt-6-astra"),
+    model: lovable.responses(provider.models.chat),
     system: systemPrompt(sectors),
     prompt: query,
     output: Output.object({ schema: IntentSchema }),
@@ -76,8 +82,7 @@ export async function interpretSearchIntent(
   try {
     const output = await result.output;
     const allowed = new Set(sectors.map((sector) => sector.slug));
-    const sector =
-      output.sector && allowed.has(output.sector.trim()) ? output.sector.trim() : null;
+    const sector = output.sector && allowed.has(output.sector.trim()) ? output.sector.trim() : null;
     const keywords = output.keywords?.trim().slice(0, 60) || null;
     const note = output.note?.trim().slice(0, 160) || null;
     if (!sector && !keywords) return null;
