@@ -10,7 +10,7 @@
  * ödeme sayfasındaki "Siparişi onayla" adımında kullanıcının onayıyla oluşur.
  * Sohbet ve talimat yalnızca cihazda saklanır.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useCart } from "@/hooks/useCart";
+import { useAuth } from "@/hooks/useAuth";
 import { formatPrice } from "@/lib/format";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { askOrderAssistant } from "@/lib/ai-assistant.functions";
@@ -47,11 +48,15 @@ type ChatMessage = {
   proposal?: CartProposal | null;
 };
 
-const GREETING: ChatMessage = {
-  role: "assistant",
-  content:
-    "Merhaba! Yazabilir ya da mikrofona basıp konuşabilirsiniz. Silvan hakkında sohbet edebilir, bilgi alabilir; uygulamadaki işletmelerden sipariş için sepet önerisi hazırlayabilirim. Siparişi her zaman siz onaylarsınız.",
-};
+function buildGreeting(firstName: string | null): ChatMessage {
+  const hello = firstName ? `Hoş geldin ${firstName}!` : "Hoş geldiniz!";
+  return {
+    role: "assistant",
+    content: `${hello} Nasıl yardımcı olabilirim? Yazabilir ya da mikrofona basıp konuşabilirsiniz. Silvan hakkında sohbet edebilir, bilgi alabilir; uygulamadaki işletmelerden sipariş için sepet önerisi hazırlayabilirim. Siparişi her zaman siz onaylarsınız.`,
+  };
+}
+
+const GREETING: ChatMessage = buildGreeting(null);
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -82,10 +87,20 @@ export function OrderAssistant() {
   const speak = useServerFn(speakAssistantReply);
   const cart = useCart();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const spokenGreetingRef = useRef<string | null>(null);
+
+  const firstName = useMemo(() => {
+    const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
+    const raw = meta["full_name"] ?? meta["name"] ?? meta["display_name"];
+    if (typeof raw !== "string") return null;
+    const first = raw.trim().split(/\s+/)[0];
+    return first ? first.slice(0, 30) : null;
+  }, [user]);
 
   useEffect(() => {
     try {
@@ -116,6 +131,27 @@ export function OrderAssistant() {
     const element = scrollRef.current;
     if (element) element.scrollTop = element.scrollHeight;
   }, [messages, open, busy, transcribing]);
+
+  // Kullanıcı adı gelince henüz konuşulmamış karşılamayı kişiselleştir.
+  useEffect(() => {
+    if (!firstName) return;
+    setMessages((prev) =>
+      prev.length === 1 && prev[0]?.content === GREETING.content
+        ? [buildGreeting(firstName)]
+        : prev,
+    );
+  }, [firstName]);
+
+  // Sohbet açılınca karşılama sesli okunur (açma dokunuşu kullanıcı hareketi sayılır).
+  useEffect(() => {
+    if (!open || !voiceOn) return;
+    const first = messages[0];
+    if (!first || first.role !== "assistant" || messages.length !== 1) return;
+    if (spokenGreetingRef.current === first.content) return;
+    spokenGreetingRef.current = first.content;
+    void playReply(first.content);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, voiceOn, messages]);
 
   const playReply = useCallback(
     async (text: string) => {
@@ -272,14 +308,35 @@ export function OrderAssistant() {
   return (
     <>
       {open ? null : (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label="Yapay zekâ asistanını aç"
-          className="fixed bottom-20 right-4 z-40 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 sm:bottom-6"
-        >
-          <MessageCircle className="size-6" />
-        </button>
+        <>
+          <button
+            type="button"
+            onClick={() => (recording ? stopRecording() : void startRecording())}
+            disabled={busy || transcribing}
+            aria-label={recording ? "Kaydı bitir ve gönder" : "Sesli konuş"}
+            className={`fixed bottom-36 right-5 z-40 flex size-12 items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105 sm:bottom-24 ${
+              recording
+                ? "bg-destructive text-destructive-foreground"
+                : "bg-card text-primary border border-border"
+            }`}
+          >
+            {recording ? (
+              <Square className="size-5" />
+            ) : transcribing ? (
+              <Loader2 className="size-5 animate-spin" />
+            ) : (
+              <Mic className="size-5" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-label="Yapay zekâ asistanını aç"
+            className="fixed bottom-20 right-4 z-40 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 sm:bottom-6"
+          >
+            <MessageCircle className="size-6" />
+          </button>
+        </>
       )}
 
       {open ? (
@@ -315,7 +372,10 @@ export function OrderAssistant() {
                 variant="ghost"
                 size="sm"
                 className="rounded-full text-xs"
-                onClick={() => setMessages([GREETING])}
+                onClick={() => {
+                  spokenGreetingRef.current = null;
+                  setMessages([buildGreeting(firstName)]);
+                }}
               >
                 Yeni sohbet
               </Button>
