@@ -50,8 +50,7 @@ async function fetchFromVoiceGateway(
   path: string,
   build: (provider: AiProviderConfig) => RequestInit,
 ): Promise<{ provider: AiProviderConfig; response: Response }> {
-  // Ses yolu sağlayıcı zincirine girmez: yalnızca kullanıcının openai-gateway
-  // fonksiyonuna gider; doğrudan OpenAI/Lovable yedeği burada mümkün değildir.
+  // Öncelik her zaman kullanıcının openai-gateway fonksiyonudur.
   const provider = voiceGatewayProvider();
   try {
     return { provider, response: await fetch(`${provider.baseUrl}${path}`, build(provider)) };
@@ -60,8 +59,15 @@ async function fetchFromVoiceGateway(
     if (!/fetch failed|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|network|Failed to fetch|getaddrinfo|dns/i.test(detail)) {
       throw error;
     }
-    // Ad çözümlemesi başarısız: adres yazım hatalı ya da proje kapalı.
-    // Kullanıcıya hangi düzeltmenin gerektiği açıkça söylenir.
+    // Geçit adresine hiç ulaşılamıyor (adres yanlış ya da proje kapalı).
+    // Sesli asistan tümden susmasın diye tek bir yedek denenir.
+    const fallback = voiceFallbackProvider();
+    if (fallback) {
+      return {
+        provider: fallback,
+        response: await fetch(`${fallback.baseUrl}${path}`, build(fallback)),
+      };
+    }
     throw new Error(
       "Sesli asistan sunucusuna ulaşılamıyor: yapay zekâ geçidi adresi bulunamadı. " +
         "Geçidin bulunduğu proje adresi (AI_GATEWAY_URL) hatalı ya da proje kapalı görünüyor.",
