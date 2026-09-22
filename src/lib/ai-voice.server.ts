@@ -12,10 +12,9 @@
  *    gidiyor ve sağlayıcı biçimi reddediyordu. Kap artık BAYTLARDAN tanınıyor.
  *
  * 2) ULAŞILAMAYAN GEÇİT. Geçit adresi çözümlenmediğinde `fetch` istisna
- *    atıyor; bu istisna kullanıcıya "İşlem tamamlanamadı" olarak dönüyordu ve
- *    sıradaki sağlayıcı hiç denenmiyordu. Artık ağ hatasında geçit ölü
- *    işaretlenip bir sonraki sağlayıcıyla TEK kez yeniden denenir; hiçbiri
- *    yoksa sebebi anlaşılır bir mesaj verilir.
+ *    atıyor ve bu istisna kullanıcıya "İşlem tamamlanamadı" olarak dönüyordu.
+ *    Artık ağ hatası açıkça bildirilir; başka bir sağlayıcıya sessizce
+ *    düşülmez.
  */
 
 import {
