@@ -150,7 +150,7 @@ export function useRealtimeVoice({
           onError: (message) => cbRef.current.onError(message),
           onLatency: (_marks: TurnMarks, value) => setLatency(value),
           now: () => (typeof performance === "undefined" ? Date.now() : performance.now()),
-          log: debug ? (line) => console.info(line) : undefined,
+          ...(debug ? { log: (line: string) => console.info(line) } : {}),
           voice,
           instructions: INSTRUCTIONS,
         });
