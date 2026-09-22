@@ -119,7 +119,6 @@ export async function transcribeAudio(base64: string, mimeType: string): Promise
   return text.slice(0, 1500);
 }
 
-
 /** Metni sese çevirir; base64 mp3 döndürür. */
 export async function synthesizeSpeech(
   text: string,
@@ -127,8 +126,7 @@ export async function synthesizeSpeech(
   const input = text.trim().slice(0, 900);
   if (!input) throw new Error("Okunacak metin yok.");
 
-  const provider = await aiProviderForUse();
-  const response = await fetch(`${provider.baseUrl}/audio/speech`, {
+  const { response } = await fetchWithProviderFallback("/audio/speech", (provider) => ({
     method: "POST",
     headers: { "Content-Type": "application/json", ...provider.headers },
     body: JSON.stringify({
@@ -138,7 +136,8 @@ export async function synthesizeSpeech(
       response_format: "mp3",
       instructions: "Türkçe, sıcak ve sakin bir tonla, doğal hızda konuş.",
     }),
-  });
+  }));
+
   if (!response.ok) {
     const failure = aiFailureMessage(response.status, await response.text().catch(() => ""));
     throw new Error(failure ?? "Sesli yanıt üretilemedi.");
