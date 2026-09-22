@@ -286,6 +286,25 @@ export function markAiProviderUnavailable(baseUrl: string) {
 }
 
 /**
+ * Bir sağlayıcıya ULAŞILAMADIĞINDA sıradakini verir.
+ *
+ * NEDEN: geçit adresi çözümlenmediğinde `fetch` istisna atıyor ve yoklama bunu
+ * "kalıcı değil" saydığı için aynı ölü adres her istekte yeniden seçiliyordu.
+ * Çağrı yeri bir kez yeniden deneyebilsin diye ölü işaretleme + sıradaki
+ * sağlayıcı seçimi tek yerde toplandı. Zincirde başka sağlayıcı yoksa null.
+ */
+export async function nextAiProviderAfterFailure(
+  failed: AiProviderConfig,
+): Promise<AiProviderConfig | null> {
+  markAiProviderUnavailable(failed.baseUrl);
+  const next = resolveAiProviderChain(process.env as Env).find(
+    (candidate) => !deadAiBaseUrls.has(candidate.baseUrl),
+  );
+  return next ?? null;
+}
+
+
+/**
  * Sağlayıcının "ödeme/kota" cevabını tek yerde tanır.
  *
  * Lovable geçidi krediler bitince 402 döndürüyor. OpenAI ise 402 KULLANMIYOR:

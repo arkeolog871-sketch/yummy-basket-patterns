@@ -88,6 +88,9 @@ export function VoiceConversation({
   // Üst üste anlaşılamayan tur sayısı. Tek bir "anlamadım" sohbeti
   // bitirmemeli; ama sonsuza kadar da denememeli.
   const failureRef = useRef(0);
+  /** Kaydedicinin bildirdiği gerçek kap; blob bununla etiketlenir. */
+  const recordedTypeRef = useRef<string>("audio/webm");
+
   const [hint, setHint] = useState<string | null>(null);
 
   const stopMetering = useCallback(() => {
@@ -129,10 +132,15 @@ export function VoiceConversation({
             const mimeType = ["audio/webm", "audio/mp4", "audio/ogg"].find((type) =>
               MediaRecorder.isTypeSupported(type),
             );
-            return new MediaRecorder(
+            const recorder = new MediaRecorder(
               stream as unknown as MediaStream,
               mimeType ? { mimeType } : undefined,
-            ) as unknown as RecorderLike;
+            );
+            // Kaydın GERÇEK kabı saklanır. Eskiden blob koşulsuz "audio/webm"
+            // etiketleniyordu; iOS Safari mp4 üretiyor ve yazıya çevirme ucu
+            // mp4 içeriği webm adıyla alınca biçimi reddediyordu.
+            recordedTypeRef.current = recorder.mimeType || mimeType || "audio/webm";
+            return recorder as unknown as RecorderLike;
           },
           sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
         });
@@ -143,7 +151,8 @@ export function VoiceConversation({
         session
           .start(
             (chunk) => chunks.push(chunk as Blob),
-            () => resolve(new Blob(chunks, { type: "audio/webm" })),
+            () => resolve(new Blob(chunks, { type: recordedTypeRef.current || "audio/webm" })),
+
           )
           .then(() => {
             if (!liveRef.current) return;
