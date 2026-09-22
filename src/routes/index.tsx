@@ -130,7 +130,7 @@ function Index() {
       return;
     }
     const looksLikeSentence = raw.split(/\s+/).length >= 2;
-    if (!looksLikeSentence) {
+    if (!looksLikeSentence || !AI_UI_ENABLED) {
       apply({ kategori: activeSector, q: raw });
       return;
     }
