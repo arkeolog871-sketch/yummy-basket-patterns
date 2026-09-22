@@ -57,12 +57,23 @@ export function isNativeShell(): boolean {
  */
 export const NATIVE_SHELL_ATTRIBUTE = "data-native-shell";
 
+/**
+ * Android uygulaması ayrıca işaretlenir: sarmalayıcı durum çubuğu için
+ * sayfayı zaten aşağı itiyor (MainActivity → applySafeAreaInsets). Aynı
+ * WindowInsets tüketilmeden WebView'e de geçtiği için yeni WebView
+ * sürümleri bunu `env(safe-area-inset-top)` olarak sayfaya verebiliyor;
+ * başlık o boşluğu bir kez daha eklerse üstte durum çubuğu kadar ikinci bir
+ * boşluk oluşuyor. Android'de başlık bu değeri yok sayar (styles.css).
+ */
+export const ANDROID_SHELL_ATTRIBUTE = "data-android-shell";
+
 export function nativeShellMarkerInlineScript(): string {
-  return `try{var w=window,c=w.Capacitor,ios=!!(c&&c.isNativePlatform&&c.isNativePlatform()&&c.getPlatform&&c.getPlatform()==="ios");if(ios||w.SilvanNative)document.documentElement.setAttribute("${NATIVE_SHELL_ATTRIBUTE}","")}catch(e){}`;
+  return `try{var w=window,d=document.documentElement,c=w.Capacitor,ios=!!(c&&c.isNativePlatform&&c.isNativePlatform()&&c.getPlatform&&c.getPlatform()==="ios");if(ios||w.SilvanNative)d.setAttribute("${NATIVE_SHELL_ATTRIBUTE}","");if(w.SilvanNative)d.setAttribute("${ANDROID_SHELL_ATTRIBUTE}","")}catch(e){}`;
 }
 
 /** Erken betik kaçırdıysa (köprü geç geldiyse) işareti sonradan koyar. */
 export function markNativeShell(): void {
   if (typeof document === "undefined" || !isNativeShell()) return;
   document.documentElement.setAttribute(NATIVE_SHELL_ATTRIBUTE, "");
+  if (isAndroidNativeShell()) document.documentElement.setAttribute(ANDROID_SHELL_ATTRIBUTE, "");
 }

@@ -2,7 +2,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { APP_SCROLL_ID } from "@/lib/app-scroll";
-import { NATIVE_SHELL_ATTRIBUTE, nativeShellMarkerInlineScript } from "@/lib/native-shell";
+import {
+  ANDROID_SHELL_ATTRIBUTE,
+  NATIVE_SHELL_ATTRIBUTE,
+  nativeShellMarkerInlineScript,
+} from "@/lib/native-shell";
 
 const ROOT = join(import.meta.dirname, "../..");
 const read = (relative: string) => readFileSync(join(ROOT, relative), "utf8");
@@ -95,5 +99,38 @@ describe("uygulamalarda başlık düzenle sabit", () => {
 
   it("başlık sabit kolonda küçülmüyor", () => {
     expect(read("src/components/layout/Header.tsx")).toMatch(/className=\{`z-40 shrink-0 /);
+  });
+});
+
+/**
+ * Android sarmalayıcısı durum çubuğu boşluğunu zaten bırakıyor ve aynı
+ * WindowInsets'i WebView'e de geçiriyor. Başlık env(safe-area-inset-top)'u
+ * ikinci kez eklerse üstte fazladan bir boşluk oluşuyor.
+ */
+describe("Android'de üstte çift boşluk yok", () => {
+  const attributesFor = (win: Record<string, unknown>) => {
+    const attributes = new Set<string>();
+    const fakeDocument = {
+      documentElement: { setAttribute: (name: string) => attributes.add(name) },
+    };
+    new Function("window", "document", nativeShellMarkerInlineScript())(win, fakeDocument);
+    return attributes;
+  };
+
+  it("Android işareti yalnız Android köprüsü varken konur", () => {
+    expect(attributesFor({ SilvanNative: {} }).has(ANDROID_SHELL_ATTRIBUTE)).toBe(true);
+    expect(
+      attributesFor({
+        Capacitor: { isNativePlatform: () => true, getPlatform: () => "ios" },
+      }).has(ANDROID_SHELL_ATTRIBUTE),
+    ).toBe(false);
+    expect(attributesFor({}).size).toBe(0);
+  });
+
+  it("Android'de başlık üst güvenli alan boşluğunu eklemez", () => {
+    const css = read("src/styles.css").replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(css).toMatch(
+      /html\[data-android-shell\] \[data-app-header\]\s*\{\s*padding-top:\s*0;?\s*\}/,
+    );
   });
 });
