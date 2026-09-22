@@ -298,8 +298,31 @@ describe("sunucunun gördüğü anahtar bildirilir", () => {
     expect(resolveAiProviderChain({})).toEqual([]);
   });
 
-  it("Lovable açık izin olmadan yedek olmaz", () => {
-    expect(resolveAiProviderChain({ LOVABLE_API_KEY: "lov" })).toEqual([]);
+  it("başka sağlayıcı yoksa Lovable son çare olarak kalır", () => {
+    // ÖLÇÜLDÜ: sunucu OpenAI anahtarını hiç görmüyor, yalnız Lovable anahtarı
+    // var. Bu istisna olmasa yapay zekâ tümden susuyordu.
+    expect(resolveAiProviderChain({ LOVABLE_API_KEY: "lov" }).map((item) => item.name)).toEqual([
+      "lovable",
+    ]);
+  });
+
+  it("çalışan bir sağlayıcı varsa Lovable izinsiz sıraya girmez", () => {
+    expect(
+      resolveAiProviderChain({ LOVABLE_API_KEY: "lov", OPENAI_API_KEY: "sk-test" }).map(
+        (item) => item.name,
+      ),
+    ).toEqual(["openai"]);
+    expect(
+      resolveAiProviderChain({ LOVABLE_API_KEY: "lov", AI_GATEWAY_URL: GW }).map(
+        (item) => item.name,
+      ),
+    ).toEqual(["supabase-gateway"]);
+  });
+
+  it("son çare açıkça kapatılabilir", () => {
+    expect(
+      resolveAiProviderChain({ LOVABLE_API_KEY: "lov", AI_DISABLE_LOVABLE_FALLBACK: "true" }),
+    ).toEqual([]);
   });
 });
 
@@ -424,8 +447,15 @@ describe("ses sağlayıcısı: geçit varsa geçit, yoksa doğrudan OpenAI", () 
     expect(provider?.name).toBe("openai");
   });
 
+  it("geçit ve OpenAI yoksa ses de Lovable'a düşer", () => {
+    expect(voiceProvider({ LOVABLE_API_KEY: "lov" })?.name).toBe("lovable");
+  });
+
   it("hiçbir yapılandırma yoksa null döner", () => {
     expect(voiceProvider({})).toBeNull();
+    expect(
+      voiceProvider({ LOVABLE_API_KEY: "lov", AI_DISABLE_LOVABLE_FALLBACK: "true" }),
+    ).toBeNull();
   });
 
   it("yalnız açıkça tanımlanmış geçit jetonunu gönderir", () => {

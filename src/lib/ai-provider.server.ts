@@ -169,11 +169,18 @@ export function resolveAiProviderChain(env: Env): AiProviderConfig[] {
     });
   }
 
-  // Lovable yolu yalnızca açıkça izin verildiğinde ses dışındaki çağrılar için
-  // zincire girer. Ses yolu bu zinciri kullanmaz.
+  // Lovable yolu açıkça izin verildiğinde yedek olarak zincire girer.
+  //
+  // SON ÇARE İSTİSNASI: başka hiçbir sağlayıcı yoksa (geçit adresi yok ya da
+  // geçersiz VE OPENAI_API_KEY sunucuda görünmüyor) Lovable yine de kullanılır.
+  // ÖLÇÜLDÜ (22 Eylül): sunucu OpenAI anahtarını hiç görmüyor, yalnız Lovable
+  // anahtarı var. Bu istisna olmadan yapay zekâ tümden susuyor. Harcamanın
+  // sessizce kaymaması için istisna YALNIZCA zincir boşken geçerli;
+  // AI_DISABLE_LOVABLE_FALLBACK=true ile tümden kapatılabilir.
   const fallbackAllowed = trimmed(env, "AI_ALLOW_LOVABLE_FALLBACK")?.toLowerCase() === "true";
+  const fallbackDisabled = trimmed(env, "AI_DISABLE_LOVABLE_FALLBACK")?.toLowerCase() === "true";
   const lovableKey = trimmed(env, "LOVABLE_API_KEY");
-  if (fallbackAllowed && lovableKey) {
+  if (lovableKey && !fallbackDisabled && (fallbackAllowed || chain.length === 0)) {
     chain.push({
       name: "lovable",
       apiKey: lovableKey,
@@ -280,8 +287,9 @@ export function voiceProvider(env: Env = process.env as Env): AiProviderConfig |
     };
   }
 
+  // Son çare: geçit de anahtar da yoksa ses tümden susmasın.
   const lovableKey = trimmed(env, "LOVABLE_API_KEY");
-  if (trimmed(env, "AI_ALLOW_LOVABLE_FALLBACK")?.toLowerCase() === "true" && lovableKey) {
+  if (lovableKey && trimmed(env, "AI_DISABLE_LOVABLE_FALLBACK")?.toLowerCase() !== "true") {
     return {
       name: "lovable",
       apiKey: lovableKey,
