@@ -1,10 +1,11 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   containerFromMimeType,
   resolveAudioContainer,
   sniffAudioContainer,
 } from "@/lib/audio-container";
+import { transcribeAudio } from "@/lib/ai-voice.server";
 
 function bytes(...values: number[]): Uint8Array {
   return new Uint8Array([...values, ...new Array(16).fill(0)]);
@@ -105,6 +106,79 @@ describe("yazıya çevirme isteği kodu", () => {
 
   it("yanıttaki metin alanı okunur", () => {
     expect(source).toContain("payload?.text ?? payload?.results?.[0]?.text");
+  });
+});
+
+describe("yazıya çevirme çalışma zamanı isteği", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it("yalnız gerçek gateway'e multipart POST gönderir ve transcript'i döndürür", async () => {
+    vi.stubEnv("AI_GATEWAY_URL", "");
+    vi.stubEnv("AI_GATEWAY_TOKEN", "");
+    vi.stubEnv("OPENAI_API_KEY", "sk-uygulamada-kullanilmamali");
+    vi.stubEnv("LOVABLE_API_KEY", "lov-kullanilmamali");
+    vi.stubEnv("AI_ALLOW_LOVABLE_FALLBACK", "true");
+
+    const wav = new Uint8Array([
+      ...[..."RIFF"].map((char) => char.charCodeAt(0)),
+      36,
+      0,
+      0,
+      0,
+      ...[..."WAVEfmt "].map((char) => char.charCodeAt(0)),
+      ...new Array(32).fill(0),
+    ]);
+    const audio = btoa(String.fromCharCode(...wav));
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ text: "Silvan'da kahve ara" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+
+    await expect(transcribeAudio(audio, "audio/webm;codecs=opus")).resolves.toBe(
+      "Silvan'da kahve ara",
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe(
+      "https://poxltwuruskxbympriz.supabase.co/functions/v1/openai-gateway/audio/transcriptions",
+    );
+    expect(init?.method).toBe("POST");
+    expect(init?.headers).toEqual({});
+    expect(init?.body).toBeInstanceOf(FormData);
+
+    const form = init?.body as FormData;
+    expect(form.get("model")).toBe("gpt-4o-transcribe");
+    expect(form.get("language")).toBe("tr");
+    expect(form.get("response_format")).toBe("json");
+    const file = form.get("file");
+    expect(file).toBeInstanceOf(File);
+    if (!(file instanceof File)) throw new Error("Ses dosyası forma eklenmedi.");
+    expect(file.name).toBe("kayit.wav");
+    expect(file.type).toBe("audio/wav");
+  });
+
+  it("gateway hatasında başka sağlayıcıyı çağırmadan anlamlı hata döndürür", async () => {
+    vi.stubEnv("AI_GATEWAY_URL", "");
+    vi.stubEnv("OPENAI_API_KEY", "sk-uygulamada-kullanilmamali");
+    vi.stubEnv("LOVABLE_API_KEY", "lov-kullanilmamali");
+    vi.stubEnv("AI_ALLOW_LOVABLE_FALLBACK", "true");
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response('{"code":"NOT_FOUND","message":"Requested function was not found"}', {
+        status: 404,
+      }),
+    );
+    const wav = ascii("WAVE", [...[..."RIFF"].map((char) => char.charCodeAt(0)), 0, 0, 0, 0]);
+
+    await expect(
+      transcribeAudio(btoa(String.fromCharCode(...wav)), "audio/wav"),
+    ).rejects.toThrow("Yapay zekâ geçidi sunucuda bulunamadı");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 
