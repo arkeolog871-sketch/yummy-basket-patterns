@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { resolveAiProviderChain,
+  describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import {
   aiFailureMessage,
@@ -292,5 +293,25 @@ describe("Supabase openai-gateway sağlayıcısı", () => {
     expect(aiFailureMessage(404, '{"code":"NOT_FOUND","message":"Requested function was not found"}')).toMatch(
       /geçidi sunucuda bulunamadı/,
     );
+  });
+});
+
+describe("sağlayıcı sırası (geçit → doğrudan OpenAI)", () => {
+  it("geçit birincil, doğrudan OpenAI yedek sırada durur", () => {
+    const chain = resolveAiProviderChain({
+      SUPABASE_URL: "https://ref.supabase.co",
+      SUPABASE_PUBLISHABLE_KEY: "sb_publishable_x",
+      OPENAI_API_KEY: "sk-test",
+    });
+    expect(chain.map((item) => item.name)).toEqual(["supabase-gateway", "openai"]);
+  });
+
+  it("Lovable yolu izin verilmedikçe sıraya girmez", () => {
+    const chain = resolveAiProviderChain({ LOVABLE_API_KEY: "lov", OPENAI_API_KEY: "sk-test" });
+    expect(chain.map((item) => item.name)).toEqual(["openai"]);
+  });
+
+  it("hiç yapılandırma yoksa sıra boştur", () => {
+    expect(resolveAiProviderChain({})).toHaveLength(0);
   });
 });
