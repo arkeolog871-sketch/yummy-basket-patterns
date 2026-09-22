@@ -82,17 +82,47 @@ function overrideModels(env: Env, base: AiModels): AiModels {
 }
 
 /**
- * Bağlı canlı backend'de yayında olan `openai-gateway` fonksiyonunun adresi.
+ * Yayındaki `openai-gateway` fonksiyonunun adresi.
  * OpenAI anahtarı yalnızca o fonksiyonun içinde yaşar; tarayıcıya çıkmaz.
- * Ortamlar ayrıldığında AI_GATEWAY_URL bu varsayılanı güvenli biçimde ezer.
+ * AI_GATEWAY_URL bu varsayılanı güvenli biçimde ezer.
+ *
+ * YAŞANMIŞ ARIZA: elle girilen proje kodu eksik kopyalandığı için adres
+ * (19 harfli ref) ad çözümlemesinde hiç bulunamıyordu; ses isteği HTTP
+ * katmanına ulaşmadan ölüyordu. Bu yüzden adres artık ÖN DOĞRULAMADAN
+ * geçiyor: Supabase proje kodu tam 20 harf olmalı. Geçerli değilse geçit
+ * "yapılandırılmamış" sayılır ve ses yolu boşa istek atmaz.
  */
-const DEFAULT_AI_GATEWAY_URL =
-  "https://poxltwuruskxbympriz.supabase.co/functions/v1/openai-gateway";
+const DEFAULT_AI_GATEWAY_URL = "";
 
 function resolveGatewayUrl(env: Env): string {
   const explicit = trimmed(env, "AI_GATEWAY_URL");
-  return (explicit ?? DEFAULT_AI_GATEWAY_URL).replace(/\/+$/, "");
+  const supabaseUrl = trimmed(env, "SUPABASE_URL") ?? trimmed(env, "VITE_SUPABASE_URL");
+  const derived = supabaseUrl ? `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/openai-gateway` : "";
+  return (explicit ?? DEFAULT_AI_GATEWAY_URL ?? "").replace(/\/+$/, "") || derived;
 }
+
+/**
+ * Adresin gerçekten çağrılabilir görünüp görünmediğini söyler.
+ * Supabase alan adlarında proje kodu tam 20 küçük harf olmalıdır.
+ */
+export function isUsableGatewayUrl(url: string): boolean {
+  if (!/^https?:\/\//i.test(url)) return false;
+  let host: string;
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    return false;
+  }
+  const supabase = /^([a-z0-9-]+)\.supabase\.(co|in)$/i.exec(host);
+  if (supabase) return (supabase[1] ?? "").length === 20;
+  return true;
+}
+
+/** Ses/sohbet için geçit adresi kullanılabilir mi? */
+export function gatewayConfigured(env: Env = process.env as Env): boolean {
+  return isUsableGatewayUrl(resolveGatewayUrl(env));
+}
+
 
 /**
  * Kullanılabilir sağlayıcıları SIRAYLA verir (ilk seçenek birincil yoldur).
