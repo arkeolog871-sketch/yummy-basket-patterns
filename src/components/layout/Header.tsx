@@ -217,7 +217,12 @@ export function Header() {
           </div>
         </form>
 
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+        {/*
+          Mobilde üst tuşlar kendi satırında TÜM GENİŞLİĞE eşit aralıkla
+          yayılır (ilk tuş sola, son tuş sağa yaslı). Masaüstünde tek satırlık
+          başlıkta eskisi gibi sağa toplanır.
+        */}
+        <div className="flex w-full shrink-0 items-center justify-between gap-2 sm:ml-auto sm:w-auto sm:justify-start">
           <TextPrefsPanel />
           <Button asChild variant="secondary" className="relative rounded-full">
             <Link to="/sepet">
