@@ -13,7 +13,8 @@
  *   (SpeechEndDetector); cümle arası nefes bitiş sanılmıyor.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Mic, Volume2, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
+import capedS from "@/assets/caped-s.png";
 import {
   MicrophoneSession,
   type AudioStreamLike,
