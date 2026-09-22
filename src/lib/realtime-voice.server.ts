@@ -53,11 +53,18 @@ export async function createRealtimeSecret(): Promise<RealtimeSecret> {
   // /realtime/client_secrets ucu yok (ölçüldü: HTTP 404). Sessizce oraya
   // düşmek yerine gerçek sebebi bildiriyoruz; arayüz klasik tur döngüsüne
   // düşerek konuşmaya devam ediyor.
+  //
+  // ÖLÇÜLDÜ (22 Eylül 2026): bu uygulamanın sunucu ortamında OPENAI_API_KEY
+  // sırrı YOK ve AI_GATEWAY_URL tanımlı değil. Anahtar yalnızca kullanıcının
+  // ayrı Supabase projesindeki fonksiyon sırrı olarak duruyor; o sır bu
+  // uygulamanın sunucusundan okunamaz. Bu yüzden zincir Lovable'a düşüyor ve
+  // gerçek zamanlı ses açılamıyor.
   if (provider.name === "lovable") {
     throw new Error(
-      "Gerçek zamanlı ses bu sağlayıcıda desteklenmiyor (geçit adresi veya OpenAI anahtarı tanımlı değil).",
+      "Gerçek zamanlı ses için sunucuda OpenAI anahtarı (OPENAI_API_KEY) veya geçerli bir geçit adresi (AI_GATEWAY_URL) tanımlı değil.",
     );
   }
+
   const model = realtimeModel();
 
   let response: Response;
