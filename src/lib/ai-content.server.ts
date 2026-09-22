@@ -6,7 +6,11 @@
  */
 import { createOpenAI } from "@ai-sdk/openai";
 import { streamText } from "ai";
-import { aiFailureMessage, aiProvider, aiResponsesOptions } from "./ai-provider.server";
+import {
+  aiFailureMessage,
+  aiProviderForUse,
+  aiResponsesOptions,
+} from "./ai-provider.server";
 import { createLovableAiGatewayRunIdFetch } from "./ai-gateway.server";
 
 /** Ürün için 1-2 cümlelik Türkçe satış açıklaması üretir. */
@@ -15,7 +19,7 @@ export async function generateProductDescription(input: {
   categoryName?: string | null;
   businessName?: string | null;
 }): Promise<string> {
-  const provider = aiProvider();
+  const provider = await aiProviderForUse();
   const runIdFetch = createLovableAiGatewayRunIdFetch();
   const lovable = createOpenAI({
     baseURL: provider.baseUrl,
@@ -54,7 +58,7 @@ export async function generateProductImage(input: {
   name: string;
   categoryName?: string | null;
 }): Promise<{ base64: string; contentType: string }> {
-  const provider = aiProvider();
+  const provider = await aiProviderForUse();
   const subject = input.categoryName ? `${input.name} (${input.categoryName})` : input.name;
 
   const response = await fetch(`${provider.baseUrl}/images/generations`, {

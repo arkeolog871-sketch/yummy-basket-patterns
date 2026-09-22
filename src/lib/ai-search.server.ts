@@ -10,7 +10,7 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { NoObjectGeneratedError, Output, streamText } from "ai";
 import { z } from "zod";
-import { aiProvider, aiResponsesOptions } from "./ai-provider.server";
+import { aiProviderForUse, aiResponsesOptions } from "./ai-provider.server";
 import { createLovableAiGatewayRunIdFetch } from "./ai-gateway.server";
 
 const IntentSchema = z.object({
@@ -48,9 +48,9 @@ export async function interpretSearchIntent(
   sectors: SectorOption[],
 ): Promise<SearchIntent | null> {
   // Yapılandırma yoksa akıllı arama sessizce kapanır; düz arama çalışır.
-  let provider: ReturnType<typeof aiProvider>;
+  let provider: Awaited<ReturnType<typeof aiProviderForUse>>;
   try {
-    provider = aiProvider();
+    provider = await aiProviderForUse();
   } catch {
     return null;
   }
