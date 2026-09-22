@@ -254,3 +254,43 @@ describe("sunucunun gördüğü anahtar bildirilir", () => {
     expect(() => resolveAiProvider({})).toThrow(/hiç görmüyor/);
   });
 });
+
+describe("Supabase openai-gateway sağlayıcısı", () => {
+  const gatewayEnv = {
+    SUPABASE_URL: "https://proje.supabase.co/",
+    SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
+    OPENAI_API_KEY: "sk-test",
+  };
+
+  it("geçit adresi ve anahtarı varsa birincil yol geçittir", () => {
+    const config = resolveAiProvider(gatewayEnv);
+    expect(config.name).toBe("supabase-gateway");
+    expect(config.baseUrl).toBe("https://proje.supabase.co/functions/v1/openai-gateway");
+    expect(config.headers["Authorization"]).toBe("Bearer sb_publishable_test");
+    expect(config.headers["apikey"]).toBe("sb_publishable_test");
+    expect(config.headers["Lovable-API-Key"]).toBeUndefined();
+  });
+
+  it("geçit üzerinden de sohbet modeli gpt-5.6-luna'dır", () => {
+    expect(resolveAiProvider(gatewayEnv).models.chat).toBe("gpt-5.6-luna");
+    expect(resolveAiProvider({ ...gatewayEnv, OPENAI_MODEL: "gpt-5.6-terra" }).models.chat).toBe(
+      "gpt-5.6-terra",
+    );
+  });
+
+  it("AI_GATEWAY_URL verilirse o adres kullanılır", () => {
+    expect(
+      resolveAiProvider({ ...gatewayEnv, AI_GATEWAY_URL: "https://x.dev/functions/v1/gw/" }).baseUrl,
+    ).toBe("https://x.dev/functions/v1/gw");
+  });
+
+  it("geçit yoksa doğrudan OpenAI yolu kalır", () => {
+    expect(resolveAiProvider({ OPENAI_API_KEY: "sk-test" }).name).toBe("openai");
+  });
+
+  it("geçit fonksiyonu yayında değilse anlaşılır Türkçe mesaj döner", () => {
+    expect(aiFailureMessage(404, '{"code":"NOT_FOUND","message":"Requested function was not found"}')).toMatch(
+      /geçidi sunucuda bulunamadı/,
+    );
+  });
+});
