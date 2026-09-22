@@ -88,6 +88,9 @@ export function VoiceConversation({
   // Üst üste anlaşılamayan tur sayısı. Tek bir "anlamadım" sohbeti
   // bitirmemeli; ama sonsuza kadar da denememeli.
   const failureRef = useRef(0);
+  /** Kaydedicinin bildirdiği gerçek kap; blob bununla etiketlenir. */
+  const recordedTypeRef = useRef<string>("audio/webm");
+
   const [hint, setHint] = useState<string | null>(null);
 
   const stopMetering = useCallback(() => {
