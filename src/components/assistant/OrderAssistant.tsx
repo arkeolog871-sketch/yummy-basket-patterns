@@ -249,9 +249,13 @@ export function OrderAssistant() {
   );
 
   const playReply = useCallback(
-    async (text: string) => {
+    // voiceOverride: ses seçilir seçilmez örnek dinletilirken durum değişkeni
+    // henüz güncellenmemiş oluyor; yeni ses doğrudan verilir.
+    async (text: string, voiceOverride?: string) => {
       try {
-        const audio = await speak({ data: { text: text.slice(0, 900), voice: voiceName } });
+        const audio = await speak({
+          data: { text: text.slice(0, 900), voice: voiceOverride ?? voiceName },
+        });
         const element = audioRef.current ?? new Audio();
         audioRef.current = element;
         // Mobil WebView'lerde uzun `data:` sesleri kimi zaman hiç açılmıyor;
