@@ -98,11 +98,12 @@ describe("yazıya çevirme isteği kodu", () => {
   it("ağ hatasında başka bir sağlayıcıya düşmez", () => {
     expect(source).not.toContain("nextAiProviderAfterFailure");
     expect(source).toContain("fetchFromVoiceGateway");
-    expect(source).toContain("voiceGatewayProvider()");
+    // Sağlayıcı TEK YERDEN çözülür; adres ve anahtar bu dosyaya yazılmaz.
+    expect(source).toContain("voiceProvider()");
     expect(source).not.toMatch(/\baiProvider\(\)/);
     expect(source).not.toContain("aiProviderForUse");
-    expect(source).not.toContain("voiceFallbackProvider");
     expect(source).not.toContain("api.openai.com");
+    expect(source).not.toContain("supabase.co");
   });
 
   it("yanıttaki metin alanı okunur", () => {
@@ -150,7 +151,7 @@ describe("yazıya çevirme çalışma zamanı isteği", () => {
 
     const [url, init] = fetchMock.mock.calls[0] ?? [];
     expect(url).toBe(
-      "https://poxltwuruskxbympriz.supabase.co/functions/v1/openai-gateway/audio/transcriptions",
+      "https://abcdefghijklmnopqrst.supabase.co/functions/v1/openai-gateway/audio/transcriptions",
     );
     expect(init?.method).toBe("POST");
     expect(init?.headers).toEqual({});
@@ -182,19 +183,26 @@ describe("yazıya çevirme çalışma zamanı isteği", () => {
     );
     const wav = ascii("WAVE", [...[..."RIFF"].map((char) => char.charCodeAt(0)), 0, 0, 0, 0]);
 
-    await expect(
-      transcribeAudio(btoa(String.fromCharCode(...wav)), "audio/wav"),
-    ).rejects.toThrow("durum 404");
+    await expect(transcribeAudio(btoa(String.fromCharCode(...wav)), "audio/wav")).rejects.toThrow(
+      "durum 404",
+    );
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("geçidin 5xx durumunu görünür kılar", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response('{"error":{"message":"upstream unavailable"}}', { status: 502 }),
+    vi.stubEnv(
+      "AI_GATEWAY_URL",
+      "https://abcdefghijklmnopqrst.supabase.co/functions/v1/openai-gateway",
     );
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response('{"error":{"message":"upstream unavailable"}}', { status: 502 }),
+      );
     const wav = ascii("WAVE", [...[..."RIFF"].map((char) => char.charCodeAt(0)), 0, 0, 0, 0]);
-    await expect(transcribeAudio(btoa(String.fromCharCode(...wav)), "audio/wav"))
-      .rejects.toThrow("durum 502");
+    await expect(transcribeAudio(btoa(String.fromCharCode(...wav)), "audio/wav")).rejects.toThrow(
+      "durum 502",
+    );
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
