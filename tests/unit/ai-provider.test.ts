@@ -443,3 +443,30 @@ describe("describeAiStreamError", () => {
     expect(describeAiStreamError(new Error("fetch failed"))).toBe("fetch failed");
   });
 });
+
+/** SDK yeniden denemeleri sebebi sarmalıyordu; sarmal açılmalı. */
+describe("describeAiStreamError — sarmal", () => {
+  it("RetryError içindeki asıl API hatasını açar", () => {
+    const inner = Object.assign(new Error("Bad Request"), {
+      statusCode: 400,
+      responseBody: '{"error":{"message":"Unsupported parameter: reasoning.effort"}}',
+    });
+    const outer = Object.assign(new Error("Failed after 3 attempts. Last error: AI_APICallError"), {
+      lastError: inner,
+      errors: [inner],
+    });
+    const detail = describeAiStreamError(outer);
+    expect(detail).toContain("HTTP 400");
+    expect(detail).toContain("Unsupported parameter");
+    expect(detail).toContain("Failed after 3 attempts");
+  });
+
+  it("sarmalın içindeki bakiye hatasını da tanır", () => {
+    const inner = Object.assign(new Error("Too Many Requests"), {
+      statusCode: 429,
+      responseBody: '{"error":{"code":"insufficient_quota"}}',
+    });
+    const outer = Object.assign(new Error("Failed after 3 attempts."), { lastError: inner });
+    expect(describeAiStreamError(outer)).toBe("Yapay zekâ bakiyesi tükendi.");
+  });
+});

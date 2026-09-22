@@ -357,8 +357,31 @@ export function aiFailureMessage(status: number, body: string): string | null {
  * GÜVENLİK: gövde yalnızca kısaltılarak taşınır; `public-error.ts` anahtar
  * adı içeren mesajları zaten siliyor.
  */
+/**
+ * Sarmalanmış hatanın EN İÇTEKİ sebebini bulur.
+ *
+ * YAŞANMIŞ ARIZA: SDK yeniden denemeleri `RetryError` ile sarıyor ve dışarıya
+ * yalnızca "Failed after 3 attempts. Last error: AI_APICallError" çıkıyordu.
+ * Durum kodu ve sunucu gövdesi en içteki `AI_APICallError` üzerindeydi;
+ * sarmal açılmadan sebep hâlâ görünmüyordu.
+ */
+function unwrapAiError(error: unknown): unknown {
+  let current = error;
+  for (let depth = 0; depth < 5; depth += 1) {
+    const record = (current ?? {}) as Record<string, unknown>;
+    const inner =
+      record["lastError"] ??
+      (Array.isArray(record["errors"]) ? (record["errors"] as unknown[]).at(-1) : undefined) ??
+      record["cause"];
+    if (!inner || inner === current) break;
+    current = inner;
+  }
+  return current;
+}
+
 export function describeAiStreamError(error: unknown): string {
-  const record = (error ?? {}) as Record<string, unknown>;
+  const root = unwrapAiError(error);
+  const record = (root ?? {}) as Record<string, unknown>;
   const status = typeof record["statusCode"] === "number" ? (record["statusCode"] as number) : 0;
   const bodyRaw =
     typeof record["responseBody"] === "string" ? (record["responseBody"] as string) : "";
@@ -367,9 +390,12 @@ export function describeAiStreamError(error: unknown): string {
   const known = status ? aiFailureMessage(status, body) : null;
   if (known) return known;
 
-  const base = error instanceof Error ? error.message : String(error ?? "");
+  const base = root instanceof Error ? root.message : String(root ?? "");
+  const outer = error instanceof Error ? error.message : "";
   const parts = [base.trim()].filter(Boolean);
   if (status) parts.push(`HTTP ${status}`);
   if (body) parts.push(body.replace(/\s+/g, " ").trim());
+  // Sarmal farklıysa dış mesaj da kalsın: kaç deneme yapıldığını o söylüyor.
+  if (outer && outer !== base) parts.push(outer.trim());
   return parts.join(" · ") || "Yapay zekâ yanıt üretemedi.";
 }
