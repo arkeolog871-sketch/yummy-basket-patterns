@@ -203,7 +203,7 @@ describe("sağlayıcı tek yerden seçiliyor", () => {
       expect(source, `${file} anahtarı doğrudan okuyor`).not.toContain(
         'process.env["LOVABLE_API_KEY"]',
       );
-      expect(source, `${file} sağlayıcıyı kullanmıyor`).toContain("aiProvider(");
+      expect(source, `${file} sağlayıcıyı kullanmıyor`).toContain("aiProviderForUse(");
     }
   });
 });
