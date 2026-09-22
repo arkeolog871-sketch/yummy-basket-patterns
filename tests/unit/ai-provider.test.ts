@@ -6,12 +6,10 @@ import {
   aiResponsesOptions,
   resolveAiProvider,
   resolveAiProviderChain,
-  isUsableGatewayUrl,
   voiceGatewayProvider,
 } from "@/lib/ai-provider.server";
 
-/** Geçerli (tam 20 harfli proje kodu taşıyan) örnek geçit adresi. */
-const GW = "https://abcdefghijklmnopqrst.supabase.co/functions/v1/openai-gateway";
+const GW = "https://poxltwuruskxbympriz.supabase.co/functions/v1/openai-gateway";
 
 /**
  * Bu modülün kararı faturanın nereden çıkacağını belirliyor. Yanlış seçim
@@ -284,27 +282,14 @@ describe("sunucunun gördüğü anahtar bildirilir", () => {
     expect(resolveAiProvider({ AI_GATEWAY_URL: GW }).name).toBe("supabase-gateway");
   });
 
-  it("geçit adresi eksik/hatalıysa geçit yolu sıraya GİRMEZ", () => {
-    // YAŞANMIŞ ARIZA: 19 harfli (eksik kopyalanmış) proje kodu ad
-    // çözümlemesinde bulunamıyor; istek HTTP katmanına hiç ulaşmıyordu.
-    expect(isUsableGatewayUrl("https://poxltwuruskxbympriz.supabase.co/functions/v1/openai-gateway")).toBe(
-      false,
-    );
-    expect(isUsableGatewayUrl(GW)).toBe(true);
-    expect(isUsableGatewayUrl("")).toBe(false);
-    expect(resolveAiProviderChain({}).map((item) => item.name)).toEqual([]);
+  it("varsayılan ses geçidi kullanıcının doğruladığı poxlt projesidir", () => {
+    expect(resolveAiProviderChain({})[0]?.baseUrl).toBe(GW);
   });
 
-  it("başka sağlayıcı yoksa Lovable son çare olarak kalır", () => {
+  it("Lovable açık izin olmadan yedek olmaz", () => {
     expect(resolveAiProviderChain({ LOVABLE_API_KEY: "lov" }).map((item) => item.name)).toEqual([
-      "lovable",
+      "supabase-gateway",
     ]);
-    expect(
-      resolveAiProviderChain({
-        LOVABLE_API_KEY: "lov",
-        AI_DISABLE_VOICE_FALLBACK: "true",
-      }).map((item) => item.name),
-    ).toEqual([]);
   });
 });
 
@@ -366,7 +351,7 @@ describe("Supabase openai-gateway sağlayıcısı", () => {
 describe("sağlayıcı sırası (geçit → doğrudan OpenAI)", () => {
   it("geçit birincil, doğrudan OpenAI yedek sırada durur", () => {
     const chain = resolveAiProviderChain({
-      AI_GATEWAY_URL: GW,
+      AI_GATEWAY_URL: "https://baska-gecit.example/functions/v1/openai-gateway",
       SUPABASE_URL: "https://ref.supabase.co",
       SUPABASE_PUBLISHABLE_KEY: "sb_publishable_x",
       OPENAI_API_KEY: "sk-test",

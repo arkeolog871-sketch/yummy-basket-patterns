@@ -134,14 +134,11 @@ export function resolveAiProviderChain(env: Env): AiProviderConfig[] {
     });
   }
 
-  // Yedek yol varsayılan KAPALI: açıkça istenmediyse Lovable geçidine düşmez.
-  // TEK İSTİSNA: başka hiçbir sağlayıcı yoksa (geçit adresi yok/geçersiz ve
-  // OpenAI anahtarı tanımsız) yapay zekâ tümden susmasın diye son çare
-  // olarak kullanılır. AI_DISABLE_VOICE_FALLBACK=true ile kapatılabilir.
+  // Lovable yolu yalnızca açıkça izin verildiğinde ses dışındaki çağrılar için
+  // zincire girer. Ses yolu bu zinciri kullanmaz.
   const fallbackAllowed = trimmed(env, "AI_ALLOW_LOVABLE_FALLBACK")?.toLowerCase() === "true";
-  const fallbackDisabled = trimmed(env, "AI_DISABLE_VOICE_FALLBACK")?.toLowerCase() === "true";
   const lovableKey = trimmed(env, "LOVABLE_API_KEY");
-  if (lovableKey && (fallbackAllowed || (chain.length === 0 && !fallbackDisabled))) {
+  if (fallbackAllowed && lovableKey) {
     chain.push({
       name: "lovable",
       apiKey: lovableKey,
