@@ -33,7 +33,11 @@ export const SECURITY_HEADERS: Record<string, string> = {
     "font-src 'self' data: https://fonts.gstatic.com https://unpkg.com; " +
     "img-src 'self' data: blob: https:; " +
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://oauth2.googleapis.com https://accounts.google.com " +
-    "https://maps.googleapis.com https://unpkg.com " +
+    // api.openai.com: gerçek zamanlı sesin WebRTC el sıkışması (SDP) buraya
+    // gider ve YALNIZ sunucunun ürettiği ~60 saniyelik geçici jetonu taşır;
+    // kalıcı anahtar tarayıcıya çıkmaz.
+    "https://maps.googleapis.com https://unpkg.com https://api.openai.com " +
+
     `https://tile.openstreetmap.org${DEV_CONNECT_SRC}; ` +
     "frame-src 'self' https://www.openstreetmap.org https://accounts.google.com; " +
     "media-src 'self' blob: https:",
