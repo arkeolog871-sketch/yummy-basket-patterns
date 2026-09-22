@@ -109,9 +109,40 @@ export function resolveAiProvider(env: Env): AiProviderConfig {
     };
   }
 
-  throw new Error(
-    "Yapay zekâ şu an yapılandırılmadı. Sistem yöneticisi OpenAI anahtarını ekledikten sonra çalışacak.",
-  );
+  throw new Error(`Yapay zekâ şu an yapılandırılmadı. ${aiKeyHint(env)}`);
+}
+
+/**
+ * Sunucunun hangi yapay zekâ anahtarını GÖRDÜĞÜNÜ söyler.
+ *
+ * NEDEN: sır panele eklendikten ve uygulama yeniden yayınlandıktan sonra da
+ * hata sürüyordu. Bu noktada iki ihtimal birbirine benziyor ve dışarıdan
+ * ayrılamıyor: sır sunucuya hiç ulaşmamış olabilir, ya da ulaşmış ama adı
+ * beklenenden farklı yazılmış olabilir. İkisinin çözümü ayrı.
+ *
+ * GÜVENLİK: yalnızca VARLIK bildiriliyor; hiçbir anahtar değeri, hiçbir
+ * parça, hiçbir uzunluk yazılmıyor. Ortam değişkeni adları da olduğu gibi
+ * basılmıyor — public-error.ts o adları içeren mesajları zaten siliyor.
+ */
+export function aiKeyHint(env: Env): string {
+  const names = Object.keys(env);
+  const openAiNames = names.filter((name) => /openai/i.test(name));
+  const hasExactName = openAiNames.some((name) => name === "OPENAI_API_KEY");
+  const hasValue = Boolean(trimmed(env, "OPENAI_API_KEY"));
+  const lovable = trimmed(env, "LOVABLE_API_KEY") ? " Lovable anahtarı görünüyor." : "";
+
+  if (hasValue) {
+    // Buraya normalde düşülmez (anahtar varsa yukarıda dönülür); yedek
+    // yolun kapalı olduğu bir yapılandırma hatasıdır.
+    return `OpenAI anahtarı sunucuda görünüyor.${lovable}`;
+  }
+  if (openAiNames.length === 0) {
+    return `Sunucu OpenAI anahtarını hiç görmüyor: sır kaydedilmemiş ya da bu ortama ulaşmamış olabilir.${lovable}`;
+  }
+  if (!hasExactName) {
+    return `OpenAI sırrı farklı bir adla tanımlı görünüyor; adın tam olarak beklenen hâlde olması gerekiyor.${lovable}`;
+  }
+  return `OpenAI sırrı tanımlı ama değeri boş görünüyor.${lovable}`;
 }
 
 /**

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { aiFailureMessage, aiResponsesOptions, resolveAiProvider } from "@/lib/ai-provider.server";
+import {
+  aiFailureMessage,
+  aiKeyHint,
+  aiResponsesOptions,
+  resolveAiProvider,
+} from "@/lib/ai-provider.server";
 
 /**
  * Bu modülün kararı faturanın nereden çıkacağını belirliyor. Yanlış seçim
@@ -187,5 +192,52 @@ describe("sağlayıcı tek yerden seçiliyor", () => {
       );
       expect(source, `${file} sağlayıcıyı kullanmıyor`).toContain("aiProvider(");
     }
+  });
+});
+
+describe("sunucunun gördüğü anahtar bildirilir", () => {
+  it("hiç OpenAI sırrı yoksa 'hiç görmüyor' der", () => {
+    // Sır panele eklenip yeniden yayınlandıktan sonra da hata sürüyordu;
+    // bu iki ihtimali ayırmak için eklendi.
+    expect(aiKeyHint({})).toContain("hiç görmüyor");
+  });
+
+  it("adı yanlış yazılmış sırrı ayırt eder", () => {
+    for (const name of ["OPENAI_KEY", "OPENAI_APIKEY", "openai_api_key", "VITE_OPENAI_API_KEY"]) {
+      expect(aiKeyHint({ [name]: "sk-test" }), name).toContain("farklı bir adla");
+    }
+  });
+
+  it("doğru adla tanımlı ama boş değeri ayırt eder", () => {
+    expect(aiKeyHint({ OPENAI_API_KEY: "   " })).toContain("değeri boş");
+  });
+
+  it("Lovable anahtarının varlığını da söyler", () => {
+    expect(aiKeyHint({ LOVABLE_API_KEY: "lov" })).toContain("Lovable anahtarı görünüyor");
+    expect(aiKeyHint({})).not.toContain("Lovable anahtarı görünüyor");
+  });
+
+  it("hiçbir anahtar DEĞERİ sızdırmaz", () => {
+    // İpucu son kullanıcıya gösteriliyor; değer, parça veya uzunluk yazılmamalı.
+    const hint = aiKeyHint({
+      OPENAI_API_KEY: "sk-gizli-anahtar-123",
+      LOVABLE_API_KEY: "lov-gizli",
+    });
+    expect(hint).not.toContain("sk-gizli");
+    expect(hint).not.toContain("lov-gizli");
+    expect(hint).not.toMatch(/\d{2,}/);
+  });
+
+  it("ortam değişkeni adlarını olduğu gibi basmaz", () => {
+    // public-error.ts bu adları içeren mesajları tamamen siliyor; ipucu
+    // kullanıcıya hiç ulaşmazdı.
+    const hint = aiKeyHint({ LOVABLE_API_KEY: "lov" });
+    expect(hint).not.toContain("OPENAI_API_KEY");
+    expect(hint).not.toContain("LOVABLE_API_KEY");
+  });
+
+  it("yapılandırma hatası bu ipucunu taşır", () => {
+    expect(() => resolveAiProvider({})).toThrow(/yapılandırılmadı/);
+    expect(() => resolveAiProvider({})).toThrow(/hiç görmüyor/);
   });
 });
