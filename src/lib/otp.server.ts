@@ -375,12 +375,16 @@ export async function createVerifiedSession(
   const before = await supabaseAdmin.auth.admin.getUserById(userId);
   const wasUnconfirmed = !before.data.user?.email_confirmed_at;
 
-  await supabaseAdmin.auth.admin.updateUserById(userId, { email_confirm: true });
+  // Yalnızca gerçekten doğrulanmamışsa yaz; her girişte gereksiz admin çağrısı yapmaz.
+  if (wasUnconfirmed) {
+    await supabaseAdmin.auth.admin.updateUserById(userId, { email_confirm: true });
+  }
 
   // Doğrulanmamış hesaplarda recovery linki reddedilebilir; önce magiclink dene.
   const linkTypes = ["magiclink", "recovery"] as const;
   let hashedToken: string | undefined;
   let emailOtp: string | undefined;
+  let linkType: (typeof linkTypes)[number] = "magiclink";
   for (const type of linkTypes) {
     const { data: link, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type,
@@ -388,6 +392,7 @@ export async function createVerifiedSession(
     });
     hashedToken = link?.properties?.hashed_token;
     emailOtp = link?.properties?.email_otp;
+    linkType = type;
     if (!linkError && (hashedToken || emailOtp)) break;
   }
   if (!hashedToken && !emailOtp) {
@@ -396,19 +401,29 @@ export async function createVerifiedSession(
   }
 
   const supabase = createServerAuthClient();
+  // Jeton hangi bağlantı tipiyle üretildiyse önce onunla doğrula; uyuşmayan tip
+  // GoTrue'da her zaman 4xx döndüğü için yalnızca tek yedek tip denenir.
+  const verifyTypes = [linkType, "email" as const].filter(
+    (value, index, list) => list.indexOf(value) === index,
+  );
   const attempts = [
-    hashedToken ? { token_hash: hashedToken, type: "magiclink" as const } : null,
-    hashedToken ? { token_hash: hashedToken, type: "recovery" as const } : null,
-    hashedToken ? { token_hash: hashedToken, type: "email" as const } : null,
-    emailOtp ? { email, token: emailOtp, type: "magiclink" as const } : null,
-    emailOtp ? { email, token: emailOtp, type: "recovery" as const } : null,
-    emailOtp ? { email, token: emailOtp, type: "email" as const } : null,
-  ].filter((value): value is NonNullable<typeof value> => value !== null);
+    ...(hashedToken ? verifyTypes.map((type) => ({ token_hash: hashedToken, type })) : []),
+    ...(emailOtp ? verifyTypes.map((type) => ({ email, token: emailOtp, type })) : []),
+  ];
 
   let verified: Awaited<ReturnType<typeof supabase.auth.verifyOtp>> | null = null;
   for (const params of attempts) {
-    verified = await supabase.auth.verifyOtp(params);
+    verified = await supabase.auth.verifyOtp(
+      params as Parameters<typeof supabase.auth.verifyOtp>[0],
+    );
     if (!verified.error && verified.data.session) break;
+    console.warn("[otp] doğrulama denemesi başarısız", {
+      // Jeton/kod yazılmaz; yalnızca hangi uç ve tipin reddedildiği.
+      endpoint: "auth/v1/verify",
+      type: params.type,
+      credential: "token_hash" in params ? "token_hash" : "email_otp",
+      status: verified.error?.status ?? null,
+    });
   }
   if (!verified || verified.error || !verified.data.session) {
     console.error("[otp] oturum doğrulanamadı", { message: verified?.error?.message });
