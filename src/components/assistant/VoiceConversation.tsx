@@ -14,7 +14,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, X } from "lucide-react";
-import capedS from "@/assets/caped-s.png";
+import capedS from "@/assets/pelerinli-s.png";
 import {
   MicrophoneSession,
   type AudioStreamLike,
