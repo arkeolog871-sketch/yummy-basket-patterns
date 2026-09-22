@@ -227,6 +227,67 @@ export function aiProvider(): AiProviderConfig {
 }
 
 /**
+ * Çalışma anında KULLANILABİLİR sağlayıcıyı verir.
+ *
+ * NEDEN: geçit fonksiyonu sunucuda yayında değilse her istek 404 alıyor ve
+ * asistan tümden susuyordu. Artık geçit bir kez yoklanır; "fonksiyon yok"
+ * cevabı gelirse o adres ölü işaretlenir ve sıradaki sağlayıcı (doğrudan
+ * OpenAI) kullanılır. Yoklama süreç başına bir kezdir, istek başına değil.
+ */
+const deadAiBaseUrls = new Set<string>();
+const probedAiBaseUrls = new Map<string, Promise<boolean>>();
+
+async function gatewayReachable(provider: AiProviderConfig): Promise<boolean> {
+  const cached = probedAiBaseUrls.get(provider.baseUrl);
+  if (cached) return cached;
+
+  const probe = (async () => {
+    try {
+      const response = await fetch(`${provider.baseUrl}/responses`, {
+        method: "POST",
+        headers: { "content-type": "application/json", ...provider.headers },
+        body: "{}",
+      });
+      if (response.status === 404) {
+        const body = await response.text().catch(() => "");
+        if (/NOT_FOUND|function was not found/i.test(body)) {
+          deadAiBaseUrls.add(provider.baseUrl);
+          return false;
+        }
+      }
+      return true;
+    } catch {
+      // Ağ hatası kalıcı sayılmaz: bir sonraki istekte tekrar denenir.
+      probedAiBaseUrls.delete(provider.baseUrl);
+      return true;
+    }
+  })();
+
+  probedAiBaseUrls.set(provider.baseUrl, probe);
+  return probe;
+}
+
+export async function aiProviderForUse(): Promise<AiProviderConfig> {
+  const chain = resolveAiProviderChain(process.env as Env).filter(
+    (candidate) => !deadAiBaseUrls.has(candidate.baseUrl),
+  );
+
+  for (const candidate of chain) {
+    if (candidate.name !== "supabase-gateway") return candidate;
+    if (await gatewayReachable(candidate)) return candidate;
+  }
+
+  const [fallback] = resolveAiProviderChain(process.env as Env);
+  if (fallback) return fallback;
+  throw new Error(`Yapay zekâ şu an yapılandırılmadı. ${aiKeyHint(process.env as Env)}`);
+}
+
+/** Geçit isteği "fonksiyon yok" dediğinde çağrı yerleri bunu bildirir. */
+export function markAiProviderUnavailable(baseUrl: string) {
+  deadAiBaseUrls.add(baseUrl);
+}
+
+/**
  * Sağlayıcının "ödeme/kota" cevabını tek yerde tanır.
  *
  * Lovable geçidi krediler bitince 402 döndürüyor. OpenAI ise 402 KULLANMIYOR:
