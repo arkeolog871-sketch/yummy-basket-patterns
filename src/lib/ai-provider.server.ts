@@ -173,8 +173,9 @@ export function aiKeyHint(env: Env): string {
     return `OpenAI anahtarı sunucuda görünüyor.${lovable}`;
   }
   if (openAiNames.length === 0) {
-    return `Sunucu OpenAI anahtarını hiç görmüyor: sır kaydedilmemiş ya da bu ortama ulaşmamış olabilir.${lovable}`;
+    return `Sunucu ne yapay zekâ geçidi adresini ne de OpenAI anahtarını görüyor: yapılandırma bu ortama ulaşmamış olabilir.${lovable}`;
   }
+
   if (!hasExactName) {
     return `OpenAI sırrı farklı bir adla tanımlı görünüyor; adın tam olarak beklenen hâlde olması gerekiyor.${lovable}`;
   }
