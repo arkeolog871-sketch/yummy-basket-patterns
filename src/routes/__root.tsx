@@ -29,6 +29,8 @@ import { LegalConsentGate } from "@/components/legal/LegalConsentGate";
 import { ErrorCollector } from "@/components/system/ErrorCollector";
 import { AppErrorBoundary } from "@/components/system/AppErrorBoundary";
 import { fcmTokenCatcherInlineScript, publicEnvInlineScript } from "@/lib/public-env";
+import { iosShellMarkerInlineScript, markIosShell } from "@/lib/native-shell";
+import { APP_SCROLL_ID } from "@/lib/app-scroll";
 import { TextPrefsProvider } from "@/hooks/useTextPrefs";
 import { installMapsSchemeGuard } from "@/lib/maps";
 import { installTelSchemeGuard } from "@/lib/ios";
@@ -141,8 +143,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="tr">
+    // suppressHydrationWarning: iOS kabuğunda satır içi betik, React
+    // bağlanmadan önce <html>'e data-ios-shell ekliyor.
+    <html lang="tr" suppressHydrationWarning>
       <head>
+        {/* iOS kabuğu işareti İLK betik: düzen ilk boyamadan önce kurulsun. */}
+        <script
+          dangerouslySetInnerHTML={{ __html: iosShellMarkerInlineScript() }}
+          suppressHydrationWarning
+        />
         <script
           dangerouslySetInnerHTML={{ __html: publicEnvInlineScript() }}
           suppressHydrationWarning
@@ -167,22 +176,41 @@ function AppChrome() {
 
   useEffect(() => {
     setFramed(window.self !== window.top);
+    markIosShell();
   }, []);
 
   return (
     <div
       className="flex min-h-screen w-full max-w-full flex-col overflow-x-clip"
       data-app-frame={framed ? "true" : undefined}
+      data-app-shell
     >
       <Header />
-      {/* min-w-0: flex öğesinin min-genişliği "auto" olduğundan, içindeki geniş
-          intrinsic görseller (ör. width=1280 kapak) sayfayı viewport'un dışına
-          taşırıyordu. min-w-0 ile ana içerik viewport'a küçülür, yatay kaydırma
-          oluşmaz. */}
-      <main className="w-full min-w-0 flex-1">
-        <Outlet />
-      </main>
-      {framed ? null : <Footer />}
+      {/*
+        İçerik alanı. Tarayıcıda ve Android'de sıradan bir sarmalayıcı: belge
+        kayar, başlık yapışkan kalır. iOS kabuğunda (html[data-ios-shell])
+        KAYAN ALAN budur: belge sabit durur, başlık akışta en üstte kalır ve
+        çentik şeridinin altından sayfa akmaz. Bkz. styles.css.
+
+        id + data-scroll-restoration-id: router yeni sayfada bu alanı başa
+        alır, geri dönüşte eski konumunu geri yükler (router.tsx →
+        scrollToTopSelectors).
+      */}
+      <div
+        id={APP_SCROLL_ID}
+        data-app-scroll
+        data-scroll-restoration-id={APP_SCROLL_ID}
+        className="flex w-full min-w-0 flex-1 flex-col"
+      >
+        {/* min-w-0: flex öğesinin min-genişliği "auto" olduğundan, içindeki geniş
+            intrinsic görseller (ör. width=1280 kapak) sayfayı viewport'un dışına
+            taşırıyordu. min-w-0 ile ana içerik viewport'a küçülür, yatay kaydırma
+            oluşmaz. */}
+        <main className="w-full min-w-0 flex-1">
+          <Outlet />
+        </main>
+        {framed ? null : <Footer />}
+      </div>
       {framed ? null : <IosHomeScreenGuide />}
     </div>
   );

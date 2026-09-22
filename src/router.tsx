@@ -1,6 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
+import { APP_SCROLL_ID } from "./lib/app-scroll";
 
 export const getRouter = () => {
   const queryClient = new QueryClient({
@@ -18,6 +19,9 @@ export const getRouter = () => {
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
+    // iOS kabuğunda belge kaymıyor, içerik alanı kayıyor. Yeni sayfa bu alanın
+    // da başından açılsın; geri dönüşte eski konum geri yüklenir.
+    scrollToTopSelectors: [`#${APP_SCROLL_ID}`],
     // Bağlantı üzerine gelinir gelinmez (tıklamadan önce) veriyi önceden çekmeye
     // başla — gezinme neredeyse anında hissettirir.
     defaultPreload: "intent",

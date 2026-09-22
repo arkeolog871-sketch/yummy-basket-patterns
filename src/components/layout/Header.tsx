@@ -110,11 +110,17 @@ export function Header() {
     // olduğu gibi kalıyor.
     <header
       data-app-header
-      className={`z-40 border-b border-border/70 bg-background pt-[env(safe-area-inset-top)] ${
+      className={`z-40 shrink-0 border-b border-border/70 bg-background pt-[env(safe-area-inset-top)] ${
         iosShell ? "" : "sticky top-0"
       }`}
     >
-      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
+      {/*
+        Mobilde başlık iki satır: [logo · bölge] ve [tuşlar]. Eskiden logo,
+        bölge ve tuşlar ayrı satırlardaydı; başlık ana sayfada 157px, diğer
+        sayfalarda 209px tutuyordu. Başlık artık sabit durduğu için bu kadar
+        yer kaplamamalı.
+      */}
+      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-2 gap-y-2 px-4 py-2 sm:gap-3 sm:py-3">
         {/*
           Geri düğmesi YALNIZCA iOS kabuğunda çizilir. Tarayıcının kendi geri
           tuşu, Android'in donanım/hareket geri tuşu var; iOS kabuğunda ise
@@ -143,47 +149,59 @@ export function Header() {
             <img
               src={settings.logo_url}
               alt={`${settings.brand_name} logosu`}
-              className="size-9 rounded-2xl object-cover"
+              className="size-8 rounded-2xl object-cover sm:size-9"
             />
           ) : (
-            <span className="flex size-9 items-center justify-center rounded-2xl bg-gradient-warm text-primary-foreground shadow-glow">
+            <span className="flex size-8 items-center justify-center rounded-2xl bg-gradient-warm text-primary-foreground shadow-glow sm:size-9">
               <UtensilsCrossed className="size-5" />
             </span>
           )}
-          <span className="font-display text-lg font-semibold tracking-tight">
+          <span className="font-display text-base font-semibold tracking-tight sm:text-lg">
             {settings.brand_name}
           </span>
         </Link>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="rounded-full px-3 text-sm">
-              <MapPin className="size-4 text-accent" />
-              <span className="max-w-[9rem] truncate" suppressHydrationWarning>
-                {activeCity}
-              </span>
-              <ChevronDown className="size-3.5 opacity-60" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
-            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-              Teslimat bölgesi
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuRadioGroup value={activeCity} onValueChange={selectCity}>
-              {areaOptions.map((option) => (
-                <DropdownMenuRadioItem key={option} value={option}>
-                  {option}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-            {areaOptions.length === 0 ? (
-              <p className="px-2 py-2 text-xs text-muted-foreground">
-                Henüz teslimat bölgesi tanımlanmadı. Sayfa yöneticisi panelinden ekleyebilirsiniz.
-              </p>
-            ) : null}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Mobilde bölge logonun satırında kalır (taban genişliği 0, kalan
+            yeri doldurur) ve sığmazsa adı kısaltılır; alta ayrı satır açmaz. */}
+        <div className="flex min-w-0 flex-1 justify-end sm:flex-none">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="min-w-0 max-w-full rounded-full px-2 text-sm sm:px-3"
+              >
+                <MapPin className="size-4 text-accent" />
+                {/* Mobilde yalnızca ilçe: "SİLVAN, DİYAR…" diye kesilmesin. Tam ad
+                  masaüstünde ve açılır menüde. */}
+                <span className="min-w-0 truncate sm:hidden" suppressHydrationWarning>
+                  {activeCity.split(",")[0]}
+                </span>
+                <span className="hidden max-w-[9rem] truncate sm:inline" suppressHydrationWarning>
+                  {activeCity}
+                </span>
+                <ChevronDown className="size-3.5 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                Teslimat bölgesi
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioGroup value={activeCity} onValueChange={selectCity}>
+                {areaOptions.map((option) => (
+                  <DropdownMenuRadioItem key={option} value={option}>
+                    {option}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+              {areaOptions.length === 0 ? (
+                <p className="px-2 py-2 text-xs text-muted-foreground">
+                  Henüz teslimat bölgesi tanımlanmadı. Sayfa yöneticisi panelinden ekleyebilirsiniz.
+                </p>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
 
         <form
           className={`order-last w-full min-w-0 flex-1 sm:order-none sm:w-auto${
@@ -212,7 +230,7 @@ export function Header() {
               onChange={(event) => setTerm(event.target.value)}
               placeholder="İşletme, mutfak veya ürün ara"
               aria-label="İşletme ara"
-              className="h-10 rounded-full bg-card pl-9"
+              className="h-9 rounded-full bg-card pl-9 sm:h-10"
             />
           </div>
         </form>

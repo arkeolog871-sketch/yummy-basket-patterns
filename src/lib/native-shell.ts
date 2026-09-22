@@ -35,3 +35,26 @@ export function isAndroidNativeShell(): boolean {
 export function isNativeShell(): boolean {
   return isAndroidNativeShell() || isIosNativeShell();
 }
+
+/**
+ * iOS kabuğunda `<html data-ios-shell>` işaretini koyan satır içi betik.
+ *
+ * NEDEN erken: iOS'ta başlık yapışkan olamıyor (WKWebView'de yapışkan
+ * başlığın tuşları ilk boyamada dokunmaya cevap vermiyordu). Sabit başlık
+ * bunun yerine düzenle sağlanıyor: belge kaymıyor, yalnızca başlığın altındaki
+ * içerik alanı kayıyor (styles.css → `html[data-ios-shell]`). Bu düzen React
+ * bağlanmadan önce kurulmazsa sayfa bir an eski düzende çizilip zıplıyor.
+ * Capacitor köprüsü belge başında enjekte edildiği için `window.Capacitor`
+ * bu betik çalıştığında hazır.
+ */
+export const IOS_SHELL_ATTRIBUTE = "data-ios-shell";
+
+export function iosShellMarkerInlineScript(): string {
+  return `try{var c=window.Capacitor;if(c&&c.isNativePlatform&&c.isNativePlatform()&&c.getPlatform&&c.getPlatform()==="ios")document.documentElement.setAttribute("${IOS_SHELL_ATTRIBUTE}","")}catch(e){}`;
+}
+
+/** Erken betik kaçırdıysa (köprü geç geldiyse) işareti sonradan koyar. */
+export function markIosShell(): void {
+  if (typeof document === "undefined" || !isIosNativeShell()) return;
+  document.documentElement.setAttribute(IOS_SHELL_ATTRIBUTE, "");
+}
