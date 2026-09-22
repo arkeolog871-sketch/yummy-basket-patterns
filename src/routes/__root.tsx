@@ -29,7 +29,7 @@ import { LegalConsentGate } from "@/components/legal/LegalConsentGate";
 import { ErrorCollector } from "@/components/system/ErrorCollector";
 import { AppErrorBoundary } from "@/components/system/AppErrorBoundary";
 import { fcmTokenCatcherInlineScript, publicEnvInlineScript } from "@/lib/public-env";
-import { iosShellMarkerInlineScript, markIosShell } from "@/lib/native-shell";
+import { markNativeShell, nativeShellMarkerInlineScript } from "@/lib/native-shell";
 import { APP_SCROLL_ID } from "@/lib/app-scroll";
 import { TextPrefsProvider } from "@/hooks/useTextPrefs";
 import { installMapsSchemeGuard } from "@/lib/maps";
@@ -143,13 +143,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    // suppressHydrationWarning: iOS kabuğunda satır içi betik, React
-    // bağlanmadan önce <html>'e data-ios-shell ekliyor.
+    // suppressHydrationWarning: native kabukta satır içi betik, React
+    // bağlanmadan önce <html>'e data-native-shell ekliyor.
     <html lang="tr" suppressHydrationWarning>
       <head>
-        {/* iOS kabuğu işareti İLK betik: düzen ilk boyamadan önce kurulsun. */}
+        {/* Native kabuk işareti İLK betik: düzen ilk boyamadan önce kurulsun. */}
         <script
-          dangerouslySetInnerHTML={{ __html: iosShellMarkerInlineScript() }}
+          dangerouslySetInnerHTML={{ __html: nativeShellMarkerInlineScript() }}
           suppressHydrationWarning
         />
         <script
@@ -176,7 +176,7 @@ function AppChrome() {
 
   useEffect(() => {
     setFramed(window.self !== window.top);
-    markIosShell();
+    markNativeShell();
   }, []);
 
   return (
@@ -187,10 +187,10 @@ function AppChrome() {
     >
       <Header />
       {/*
-        İçerik alanı. Tarayıcıda ve Android'de sıradan bir sarmalayıcı: belge
-        kayar, başlık yapışkan kalır. iOS kabuğunda (html[data-ios-shell])
-        KAYAN ALAN budur: belge sabit durur, başlık akışta en üstte kalır ve
-        çentik şeridinin altından sayfa akmaz. Bkz. styles.css.
+        İçerik alanı. Tarayıcıda sıradan bir sarmalayıcı: belge kayar, başlık
+        yapışkan kalır. iOS ve Android uygulamasında (html[data-native-shell])
+        KAYAN ALAN budur: belge sabit durur, başlık akışta en üstte kalır.
+        Bkz. styles.css, native-shell.ts.
 
         id + data-scroll-restoration-id: router yeni sayfada bu alanı başa
         alır, geri dönüşte eski konumunu geri yükler (router.tsx →

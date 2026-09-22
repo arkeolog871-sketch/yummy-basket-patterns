@@ -2,33 +2,37 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { APP_SCROLL_ID } from "@/lib/app-scroll";
-import { IOS_SHELL_ATTRIBUTE, iosShellMarkerInlineScript } from "@/lib/native-shell";
+import { NATIVE_SHELL_ATTRIBUTE, nativeShellMarkerInlineScript } from "@/lib/native-shell";
 
 const ROOT = join(import.meta.dirname, "../..");
 const read = (relative: string) => readFileSync(join(ROOT, relative), "utf8");
 
 /**
- * ÖLÇÜLDÜ (iOS kabuğu taklidi): başlık sayfayla birlikte kayıp gidiyordu
- * (300px kaydırınca başlığın üstü −300) ve kabuk `contentInset: automatic`
- * ile çalıştığı için sayfa çentik şeridinin altından akıyordu.
+ * iOS: başlık sayfayla birlikte kayıp gidiyordu (ölçüldü: 300px kaydırınca
+ * başlığın üstü −300). Yapışkanlık orada kullanılamıyor (ios-header-touch).
+ * Android: kullanıcı cihazında kaydırınca başlığın kaybolduğunu bildirdi;
+ * Chromium'da aynı sayfa yapışkan kalıyordu, yani sebep cihazın WebView'inde.
  *
- * Başlığa `sticky` vermek çözüm değil (ios-header-touch.test.ts). Sabitlik
- * düzenle sağlanıyor: iOS'ta belge kaymıyor, yalnızca içerik alanı kayıyor.
+ * İkisinde de sabitlik düzenle sağlanıyor: belge kaymıyor, yalnızca içerik
+ * alanı kayıyor. Başlığın yerinde durması artık `sticky`'ye bağlı değil.
  */
-describe("iOS'ta başlık düzenle sabit", () => {
-  it("işaret betiği yalnızca iOS Capacitor kabuğunda işaret koyar", () => {
-    const run = (capacitor: unknown) => {
+describe("uygulamalarda başlık düzenle sabit", () => {
+  it("işaret betiği yalnızca iOS ve Android uygulamasında işaret koyar", () => {
+    const run = (capacitor: unknown, silvanNative?: unknown) => {
       const attributes = new Map<string, string>();
-      const fakeWindow = { Capacitor: capacitor };
+      const fakeWindow = { Capacitor: capacitor, SilvanNative: silvanNative };
       const fakeDocument = {
         documentElement: {
           setAttribute: (name: string, value: string) => attributes.set(name, value),
         },
       };
-      new Function("window", "document", iosShellMarkerInlineScript())(fakeWindow, fakeDocument);
-      return attributes.has(IOS_SHELL_ATTRIBUTE);
+      new Function("window", "document", nativeShellMarkerInlineScript())(fakeWindow, fakeDocument);
+      return attributes.has(NATIVE_SHELL_ATTRIBUTE);
     };
     expect(run({ isNativePlatform: () => true, getPlatform: () => "ios" })).toBe(true);
+    // Android sarmalayıcısı Capacitor değil; köprü nesnesiyle tanınır.
+    expect(run(undefined, { micDiagnostics: () => "{}" })).toBe(true);
+    // Tarayıcı: işaret yok, belge kayar, başlık yapışkan.
     expect(run({ isNativePlatform: () => true, getPlatform: () => "android" })).toBe(false);
     expect(run({ isNativePlatform: () => false, getPlatform: () => "web" })).toBe(false);
     expect(run(undefined)).toBe(false);
@@ -45,25 +49,24 @@ describe("iOS'ta başlık düzenle sabit", () => {
   it("işaret betiği <head>'de, React'ten önce çalışıyor", () => {
     const root = read("src/routes/__root.tsx");
     const head = root.slice(root.indexOf("<head>"), root.indexOf("</head>"));
-    expect(head).toContain("iosShellMarkerInlineScript()");
-    expect(head.indexOf("iosShellMarkerInlineScript()")).toBeLessThan(
+    expect(head).toContain("nativeShellMarkerInlineScript()");
+    expect(head.indexOf("nativeShellMarkerInlineScript()")).toBeLessThan(
       head.indexOf("publicEnvInlineScript()"),
     );
     // Betik <html>'e öznitelik eklediği için hidrasyon uyarısı bastırılıyor.
     expect(root).toMatch(/<html lang="tr" suppressHydrationWarning>/);
   });
 
-  it("iOS'ta belge kaymıyor, yalnızca içerik alanı kayıyor", () => {
+  it("uygulamada belge kaymıyor, yalnızca içerik alanı kayıyor", () => {
     const css = read("src/styles.css").replace(/\/\*[\s\S]*?\*\//g, "");
-    const rootRule = /html\[data-ios-shell\],\s*html\[data-ios-shell\] body\s*\{([^}]*)\}/.exec(
-      css,
-    );
+    const rootRule =
+      /html\[data-native-shell\],\s*html\[data-native-shell\] body\s*\{([^}]*)\}/.exec(css);
     expect(rootRule, "html/body kuralı yok").not.toBeNull();
     expect(rootRule![1]).toMatch(/overflow:\s*hidden/);
     expect(rootRule![1]).toMatch(/height:\s*100%/);
     expect(rootRule![1]).toMatch(/overscroll-behavior:\s*none/);
 
-    const scrollRule = /html\[data-ios-shell\] \[data-app-scroll\]\s*\{([^}]*)\}/.exec(css);
+    const scrollRule = /html\[data-native-shell\] \[data-app-scroll\]\s*\{([^}]*)\}/.exec(css);
     expect(scrollRule, "içerik alanı kuralı yok").not.toBeNull();
     expect(scrollRule![1]).toMatch(/overflow-y:\s*auto/);
     expect(scrollRule![1]).toMatch(/min-height:\s*0/);

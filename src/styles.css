@@ -450,35 +450,35 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
- * iOS kabuğu: SABİT BAŞLIK, düzenle (yapışkanlıkla değil).
+ * Native kabuk (iOS ve Android uygulaması): SABİT BAŞLIK, düzenle.
  *
- * Ölçüldü: iOS uygulamasında başlık sayfayla birlikte kayıp gidiyordu ve
- * kabuk `contentInset: automatic` ile çalıştığı için sayfa çentik şeridinin
- * altından akıyordu. Başlığa `position: sticky` vermek çözüm değil: WKWebView
- * yapışkan öğeyi ayrı katmana alıyor ve tuşları ilk açılışta dokunmaya cevap
- * vermiyordu (bkz. Header.tsx, ios-header-touch.test.ts).
+ * Ölçüldü / bildirildi:
+ * - iOS: başlık sayfayla birlikte kayıyordu (300px kaydırınca üstü -300) ve
+ *   `contentInset: automatic` yüzünden sayfa çentik şeridinin altından akıyordu.
+ *   iOS'ta yapışkanlık kullanılamıyor: WKWebView yapışkan başlığın tuşlarını
+ *   ilk açılışta dokunmaya kapatıyordu (ios-header-touch.test.ts).
+ * - Android: kullanıcı cihazında kaydırınca başlığın kaybolduğunu bildirdi;
+ *   aynı sayfa Chromium'da yapışkan kalıyordu. Sebep cihazın WebView'inde.
  *
- * Bunun yerine iOS'ta belge HİÇ kaymıyor: html/body ekran yüksekliğinde ve
- * taşmasız. Başlık akışta en üstte duruyor; kayan tek şey altındaki içerik
- * alanı ([data-app-scroll]). Çentik şeridinin arkasında kayan içerik
- * kalmadığı için şerit de sabit görünüyor. overscroll-behavior: none, belgenin
- * esneyip başlığı aşağı sürüklemesini engelliyor.
+ * İkisinde de sabitlik `position: sticky`'ye bırakılmıyor: belge HİÇ kaymıyor
+ * (html/body ekran yüksekliğinde, taşmasız, esnemesiz). Başlık akışta en
+ * üstte duruyor; kayan tek şey altındaki içerik alanı ([data-app-scroll]).
  *
  * Katmansız: yukarıdaki html/body overflow-x kuralını yeniden tanımlıyor.
  * ------------------------------------------------------------------------- */
-html[data-ios-shell],
-html[data-ios-shell] body {
+html[data-native-shell],
+html[data-native-shell] body {
   height: 100%;
   overflow: hidden;
   overscroll-behavior: none;
 }
 
-html[data-ios-shell] [data-app-shell] {
+html[data-native-shell] [data-app-shell] {
   height: 100%;
   min-height: 0;
 }
 
-html[data-ios-shell] [data-app-scroll] {
+html[data-native-shell] [data-app-scroll] {
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
