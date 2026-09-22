@@ -96,9 +96,10 @@ const DEFAULT_AI_GATEWAY_URL = "";
 
 function resolveGatewayUrl(env: Env): string {
   const explicit = trimmed(env, "AI_GATEWAY_URL");
-  const supabaseUrl = trimmed(env, "SUPABASE_URL") ?? trimmed(env, "VITE_SUPABASE_URL");
-  const derived = supabaseUrl ? `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/openai-gateway` : "";
-  return (explicit ?? DEFAULT_AI_GATEWAY_URL ?? "").replace(/\/+$/, "") || derived;
+  // Adres YALNIZCA açıkça verildiğinde kullanılır. Bağlı projenin adresinden
+  // türetilmez: o projede `openai-gateway` yayında değil ve her istek 404
+  // alıyordu.
+  return (explicit ?? DEFAULT_AI_GATEWAY_URL).replace(/\/+$/, "");
 }
 
 /**

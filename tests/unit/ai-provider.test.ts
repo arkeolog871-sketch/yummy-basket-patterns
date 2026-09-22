@@ -322,13 +322,13 @@ describe("Supabase openai-gateway sağlayıcısı", () => {
     expect(config.baseUrl).toBe(GW);
   });
 
-  it("adres verilmezse bağlı projenin fonksiyon adresinden türetilir", () => {
+  it("adres verilmezse geçit yolu hiç kurulmaz", () => {
+    // Bağlı projede openai-gateway yayında değil; adres türetmek her isteği
+    // 404'e sürüklüyordu.
     const chain = resolveAiProviderChain({
       SUPABASE_URL: "https://wxkyhwkcuiqxxxpawcid.supabase.co",
     });
-    expect(chain[0]?.baseUrl).toBe(
-      "https://wxkyhwkcuiqxxxpawcid.supabase.co/functions/v1/openai-gateway",
-    );
+    expect(chain.map((item) => item.name)).not.toContain("supabase-gateway");
   });
 
   it("geçide bağlı projenin publishable anahtarı dayatılmaz", () => {

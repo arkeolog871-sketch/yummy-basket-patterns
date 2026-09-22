@@ -59,7 +59,14 @@ async function fetchFromVoiceGateway(
   const gateway = gatewayConfigured() ? voiceGatewayProvider() : null;
   if (gateway) {
     try {
-      return { provider: gateway, response: await fetch(`${gateway.baseUrl}${path}`, build(gateway)) };
+      const response = await fetch(`${gateway.baseUrl}${path}`, build(gateway));
+      // 404 + NOT_FOUND: geçit fonksiyonu o projede yayında değil. Bu bir
+      // yapılandırma eksiği, geçici bir sunucu hatası değil; yedeğe geçilir.
+      if (response.status !== 404) return { provider: gateway, response };
+      const body = await response.clone().text().catch(() => "");
+      if (!/NOT_FOUND|function was not found/i.test(body)) {
+        return { provider: gateway, response };
+      }
     } catch (error) {
       // Ağ katmanı isteği hiç taşıyamadı (ad çözümlenmedi, bağlantı
       // kurulamadı). Hata metnine GÜVENİLMEZ: çalışma ortamları bu durumu
