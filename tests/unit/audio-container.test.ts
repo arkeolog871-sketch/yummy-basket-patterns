@@ -101,7 +101,8 @@ describe("yazıya çevirme isteği kodu", () => {
     expect(source).toContain("voiceGatewayProvider()");
     expect(source).not.toMatch(/\baiProvider\(\)/);
     expect(source).not.toContain("aiProviderForUse");
-    expect(source).toContain("gatewayConfigured()");
+    expect(source).not.toContain("voiceFallbackProvider");
+    expect(source).not.toContain("api.openai.com");
   });
 
   it("yanıttaki metin alanı okunur", () => {
@@ -149,7 +150,7 @@ describe("yazıya çevirme çalışma zamanı isteği", () => {
 
     const [url, init] = fetchMock.mock.calls[0] ?? [];
     expect(url).toBe(
-      "https://abcdefghijklmnopqrst.supabase.co/functions/v1/openai-gateway/audio/transcriptions",
+      "https://poxltwuruskxbympriz.supabase.co/functions/v1/openai-gateway/audio/transcriptions",
     );
     expect(init?.method).toBe("POST");
     expect(init?.headers).toEqual({});
@@ -166,7 +167,7 @@ describe("yazıya çevirme çalışma zamanı isteği", () => {
     expect(file.type).toBe("audio/wav");
   });
 
-  it("geçit fonksiyonu yayında değilse TEK yedek denenir, sonra anlamlı hata döner", async () => {
+  it("geçit fonksiyonu hata verirse başka sağlayıcı çağrılmaz", async () => {
     vi.stubEnv(
       "AI_GATEWAY_URL",
       "https://abcdefghijklmnopqrst.supabase.co/functions/v1/openai-gateway",
@@ -184,11 +185,17 @@ describe("yazıya çevirme çalışma zamanı isteği", () => {
     await expect(
       transcribeAudio(btoa(String.fromCharCode(...wav)), "audio/wav"),
     ).rejects.toThrow("Yapay zekâ geçidi sunucuda bulunamadı");
-    // 404 + NOT_FOUND bir yapılandırma eksiği: yedek sağlayıcı BİR kez denenir.
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(String(fetchMock.mock.calls[1]?.[0])).toBe(
-      "https://api.openai.com/v1/audio/transcriptions",
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("geçidin 5xx durumunu görünür kılar", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response('{"error":{"message":"upstream unavailable"}}', { status: 502 }),
     );
+    const wav = ascii("WAVE", [...[..."RIFF"].map((char) => char.charCodeAt(0)), 0, 0, 0, 0]);
+    await expect(transcribeAudio(btoa(String.fromCharCode(...wav)), "audio/wav"))
+      .rejects.toThrow("durum 502");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 

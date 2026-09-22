@@ -322,13 +322,11 @@ describe("Supabase openai-gateway sağlayıcısı", () => {
     expect(config.baseUrl).toBe(GW);
   });
 
-  it("adres verilmezse geçit yolu hiç kurulmaz", () => {
-    // Bağlı projede openai-gateway yayında değil; adres türetmek her isteği
-    // 404'e sürüklüyordu.
+  it("adres verilmezse doğrulanmış canlı geçit kullanılır", () => {
     const chain = resolveAiProviderChain({
-      SUPABASE_URL: "https://wxkyhwkcuiqxxxpawcid.supabase.co",
+      SUPABASE_URL: "https://ornek.supabase.co",
     });
-    expect(chain.map((item) => item.name)).not.toContain("supabase-gateway");
+    expect(chain[0]?.baseUrl).toContain("poxltwuruskxbympriz.supabase.co");
   });
 
   it("geçide bağlı projenin publishable anahtarı dayatılmaz", () => {
@@ -404,6 +402,15 @@ describe("ses sağlayıcısı yalnız kullanıcı geçididir", () => {
       Authorization: "Bearer tok",
       apikey: "tok",
     });
+  });
+
+  it("ses kodunda doğrudan OpenAI veya Lovable yedeği yoktur", () => {
+    const providerSource = readFileSync("src/lib/ai-provider.server.ts", "utf8");
+    const voiceSource = readFileSync("src/lib/ai-voice.server.ts", "utf8");
+    expect(providerSource).not.toContain("voiceFallbackProvider");
+    expect(providerSource).not.toContain("AI_DISABLE_VOICE_FALLBACK");
+    expect(voiceSource).not.toContain("api.openai.com");
+    expect(voiceSource).not.toContain("voiceFallbackProvider");
   });
 });
 
