@@ -359,3 +359,18 @@ describe("ses sağlayıcısı yalnız kullanıcı geçididir", () => {
     });
   });
 });
+
+describe("akış hatası yutulmaz", () => {
+  const assistant = readFileSync("src/lib/ai-assistant.server.ts", "utf8");
+
+  it("streamText hatası yakalanıp asıl sebep atılır", () => {
+    // Yaşandı: OpenAI'ye geçtikten sonra kullanıcı "No output generated.
+    // Check the stream for errors." gördü. Sağlayıcının asıl mesajı (model
+    // bulunamadı, bakiye yok, geçersiz parametre) hiçbir yerde görünmedi;
+    // sebep aranamaz hâle geldi.
+    expect(assistant).toContain("onError:");
+    expect(assistant).toContain("streamFailure");
+    // result.text çıplak çağrılmamalı; hatası yakalanmalı.
+    expect(assistant).toMatch(/try\s*\{[\s\S]{0,120}await result\.text/);
+  });
+});

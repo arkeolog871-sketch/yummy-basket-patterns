@@ -177,7 +177,13 @@ export async function runAssistant(
     fetch: runIdFetch.fetch,
   });
 
+  // streamText'in akış içinde aldığı hata burada yakalanıyor; result.text
+  // bunu kendi genel mesajıyla değiştiriyor.
+  let streamFailure: unknown = null;
   const result = streamText({
+    onError: ({ error }) => {
+      streamFailure = error;
+    },
     model: lovable.responses(provider.models.chat),
     system: [
       SYSTEM_PROMPT,
@@ -368,7 +374,21 @@ export async function runAssistant(
     providerOptions: aiResponsesOptions(provider),
   });
 
-  const reply = stripMarkdownForPlainText(await result.text);
+  // Akış hatası YUTULMASIN. streamText içeride düşerse `result.text`
+  // "No output generated. Check the stream for errors." diye genel bir hata
+  // atıyor; sağlayıcının asıl mesajı (model bulunamadı, bakiye yok, geçersiz
+  // parametre) kaybolup gidiyor ve sebep aranamıyor hâle geliyor. Yaşandı:
+  // OpenAI'ye geçtikten sonra tam olarak bu mesaj çıktı ve arkasındaki
+  // gerçek sebep hiçbir yerde görünmedi.
+  let reply: string;
+  try {
+    reply = stripMarkdownForPlainText(await result.text);
+  } catch (error) {
+    const cause = streamFailure ?? error;
+    const detail = cause instanceof Error ? cause.message : String(cause);
+    console.error("[ai-assistant] akış hatası", { detail });
+    throw new Error(detail || "Yapay zekâ yanıt üretemedi.");
+  }
   return {
     reply:
       reply ||
