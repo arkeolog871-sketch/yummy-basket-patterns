@@ -166,6 +166,7 @@ export function OrderAssistant() {
       setInstruction(savedInstruction);
       setInstructionDraft(savedInstruction);
       setVoiceOn(window.localStorage.getItem(VOICE_KEY) === "1");
+      setVoiceName(normalizeAssistantVoice(window.localStorage.getItem(VOICE_NAME_KEY)));
     } catch {
       /* bozuk sohbet kaydı yok sayılır */
     }
@@ -250,7 +251,7 @@ export function OrderAssistant() {
   const playReply = useCallback(
     async (text: string) => {
       try {
-        const audio = await speak({ data: { text: text.slice(0, 900) } });
+        const audio = await speak({ data: { text: text.slice(0, 900), voice: voiceName } });
         const element = audioRef.current ?? new Audio();
         audioRef.current = element;
         // Mobil WebView'lerde uzun `data:` sesleri kimi zaman hiç açılmıyor;
@@ -288,7 +289,7 @@ export function OrderAssistant() {
         return { ok: false as const, reason: toPublicErrorMessage(error) || name || "bilinmiyor" };
       }
     },
-    [speak],
+    [speak, voiceName],
   );
 
   const sendText = useCallback(
