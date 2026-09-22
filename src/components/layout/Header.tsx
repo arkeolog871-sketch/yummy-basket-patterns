@@ -1,4 +1,4 @@
-import { Link, useCanGoBack, useNavigate, useRouter } from "@tanstack/react-router";
+import { Link, useCanGoBack, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getUnreadNotificationCount } from "@/lib/notifications.functions";
@@ -68,6 +68,10 @@ export function Header() {
   const [city, setCity] = useState<string>("");
   const [hydrated, setHydrated] = useState(false);
   const [term, setTerm] = useState("");
+  // Ana sayfada hero bölümünde zaten büyük bir arama çubuğu var. Mobilde
+  // üst çubuktaki arama ayrı bir satıra düşüyor ve ikisi alt alta iki arama
+  // çubuğu gibi görünüyordu; mobilde ana sayfada üstteki gizlenir.
+  const isHome = useRouterState({ select: (state) => state.location.pathname === "/" });
   const areaOptions = areas.map(areaLabel);
   const activeCity = (hydrated && city) || areaOptions[0] || "Bölge seçin";
 
@@ -182,7 +186,9 @@ export function Header() {
         </DropdownMenu>
 
         <form
-          className="order-last w-full min-w-0 flex-1 sm:order-none sm:w-auto"
+          className={`order-last w-full min-w-0 flex-1 sm:order-none sm:w-auto${
+            isHome ? " hidden sm:block" : ""
+          }`}
           onSubmit={(event) => {
             event.preventDefault();
             navigate({
