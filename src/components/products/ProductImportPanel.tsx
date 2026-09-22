@@ -441,7 +441,7 @@ export function ProductImportPanel({
         )}
       </div>
 
-      <PhotoMenuImport restaurantId={restaurantId} blocked={blocked} />
+      {AI_UI_ENABLED ? <PhotoMenuImport restaurantId={restaurantId} blocked={blocked} /> : null}
 
       <BulkDeleteSection restaurantId={restaurantId} />
 
