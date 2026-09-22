@@ -20,7 +20,7 @@
 
 import {
   aiFailureMessage,
-  aiProviderForUse,
+  aiProvider,
   type AiProviderConfig,
 } from "./ai-provider.server";
 import { resolveAudioContainer } from "./audio-container";
@@ -51,7 +51,7 @@ async function fetchFromVoiceGateway(
   path: string,
   build: (provider: AiProviderConfig) => RequestInit,
 ): Promise<{ provider: AiProviderConfig; response: Response }> {
-  const provider = await aiProviderForUse();
+  const provider = aiProvider();
   try {
     return { provider, response: await fetch(`${provider.baseUrl}${path}`, build(provider)) };
   } catch (error) {
