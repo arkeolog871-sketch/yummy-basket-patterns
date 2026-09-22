@@ -94,8 +94,9 @@ describe("yazıya çevirme isteği kodu", () => {
     expect(source).toContain("`kayit.${container.extension}`");
   });
 
-  it("ağ hatasında sıradaki sağlayıcıyla tek kez yeniden denenir", () => {
-    expect(source).toContain("nextAiProviderAfterFailure(provider)");
+  it("ağ hatasında başka bir sağlayıcıya düşmez", () => {
+    expect(source).not.toContain("nextAiProviderAfterFailure");
+    expect(source).toContain("fetchFromVoiceGateway");
     expect(source).toContain("Sesli asistan sunucusuna ulaşılamıyor");
   });
 
