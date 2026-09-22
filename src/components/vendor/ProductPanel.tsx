@@ -43,6 +43,7 @@ import {
   generateProductDescriptionFn,
   generateProductImageFn,
 } from "@/lib/ai-content.functions";
+import { AI_UI_ENABLED } from "@/lib/ai-features";
 import {
   createVendorCategory,
   createVendorProduct,
