@@ -26,7 +26,7 @@ export interface AiModels {
 }
 
 export interface AiProviderConfig {
-  name: "openai" | "lovable";
+  name: "openai" | "lovable" | "supabase-gateway";
   apiKey: string;
   /** Vercel AI SDK'ya verilecek taban adres; OpenAI'de varsayılan kullanılır. */
   baseUrl: string;
