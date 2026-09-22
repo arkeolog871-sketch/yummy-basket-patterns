@@ -229,6 +229,11 @@ export function aiFailureMessage(status: number, body: string): string | null {
   }
   if (status === 403 && quota) return "Yapay zekâ bakiyesi tükendi.";
   if (status === 401 || status === 403) return "Yapay zekâ anahtarı geçersiz.";
+  // Geçit fonksiyonu (openai-gateway) sunucuda yoksa buraya düşer.
+  if (status === 404 && /NOT_FOUND|function was not found/i.test(body)) {
+    return "Yapay zekâ geçidi sunucuda bulunamadı; yöneticinin geçidi yayına almasi gerekiyor.";
+  }
+
 
   return null;
 }
