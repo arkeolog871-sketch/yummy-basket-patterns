@@ -1,11 +1,11 @@
-import { resolveAiProviderChain,
-  describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import {
   aiFailureMessage,
   aiKeyHint,
   aiResponsesOptions,
   resolveAiProvider,
+  resolveAiProviderChain,
 } from "@/lib/ai-provider.server";
 
 /**
