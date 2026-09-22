@@ -135,7 +135,9 @@ function ClassicVoiceConversation({
   /** Kaydedicinin bildirdiği gerçek kap; blob bununla etiketlenir. */
   const recordedTypeRef = useRef<string>("audio/webm");
 
-  const [hint, setHint] = useState<string | null>(null);
+  // Gerçek zamanlı yol kurulamadıysa sebebi gizlemiyoruz: kullanıcı neden
+  // klasik (daha yavaş) moda düşüldüğünü görüyor.
+  const [hint, setHint] = useState<string | null>(downgradeReason ?? null);
 
   const stopMetering = useCallback(() => {
     if (timerRef.current !== null) {
