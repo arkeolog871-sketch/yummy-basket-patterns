@@ -122,7 +122,7 @@ export function Header() {
         telefonda logo simgesi marka yerine geçiyor. Arama çubuğu (ana sayfa
         dışında) ayrı satıra iner.
       */}
-      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-2 gap-y-2 px-4 py-2 sm:gap-3 sm:py-3">
+      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-1.5 gap-y-2 px-4 py-2 min-[380px]:gap-x-2 sm:gap-3 sm:py-3">
         {/*
           Geri düğmesi YALNIZCA iOS kabuğunda çizilir. Tarayıcının kendi geri
           tuşu, Android'in donanım/hareket geri tuşu var; iOS kabuğunda ise
@@ -152,10 +152,16 @@ export function Header() {
           aria-label={`${settings.brand_name} ana sayfa`}
         >
           {settings.logo_url ? (
+            // Amblem YATAY (pelerinli S) ama dosya 512x512 kare: amblem
+            // genişliğin %89'unu, yüksekliğin yalnız %62'sini kaplıyor; üstte
+            // ve altta krem boşluk var. Kare kutuda ~28x20px görünüyordu.
+            // Yatay kutu + object-cover o boş şeritleri kırpar, amblem satır
+            // yüksekliğini değiştirmeden neredeyse iki kat büyür. Zemin
+            // başlıkla aynı krem olduğu için köşe yuvarlatmasına gerek yok.
             <img
               src={settings.logo_url}
               alt={`${settings.brand_name} logosu`}
-              className="size-8 rounded-2xl object-cover sm:size-9"
+              className="h-9 w-[3.25rem] object-cover min-[380px]:w-[3.5rem] sm:h-10 sm:w-16"
             />
           ) : (
             <span className="flex size-8 items-center justify-center rounded-2xl bg-gradient-warm text-primary-foreground shadow-glow sm:size-9">
@@ -174,9 +180,13 @@ export function Header() {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="min-w-0 max-w-full gap-1 rounded-full px-1.5 text-sm sm:gap-2 sm:px-3"
+                className="min-w-0 max-w-full gap-1 rounded-full px-1 text-sm min-[380px]:px-1.5 sm:gap-2 sm:px-3"
               >
-                <MapPin className="size-4 text-accent" />
+                {/* Ana renk (primary): vurgu rengi (accent) kurucu panelinden
+                    geliyor ve canlıda başlık zemininin AYNISI (#f4edda) seçilmiş;
+                    simge krem üstünde krem kalıp görünmüyordu. Ana renk tuşlarda
+                    kullanıldığı için zeminden her zaman ayrışır. */}
+                <MapPin className="size-4 text-primary" />
                 {/* Mobilde yalnızca ilçe: "SİLVAN, DİYAR…" diye kesilmesin. Tam ad
                   masaüstünde ve açılır menüde. */}
                 <span className="min-w-0 truncate sm:hidden" suppressHydrationWarning>
@@ -243,7 +253,9 @@ export function Header() {
 
         {/* Tuşlar logonun satırında, sağda. Mobilde sepet ve bildirim
             yalnız simge (36px), masaüstünde yazılı. */}
-        <div className="flex shrink-0 items-center gap-1.5 sm:ml-auto sm:gap-2">
+        {/* 380px'ten dar telefonlarda aralıklar biraz sıkı: 360px'te bölge
+            adı 15px eksik kalıp "SİL…" diye kesiliyordu (ölçüldü). */}
+        <div className="flex shrink-0 items-center gap-2 min-[380px]:gap-2.5 sm:ml-auto sm:gap-2">
           <TextPrefsPanel />
           <Button
             asChild
@@ -254,7 +266,9 @@ export function Header() {
               <ShoppingBag className="size-4" />
               <span className="hidden sm:inline">Sepet</span>
               {itemCount > 0 ? (
-                <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-accent text-[11px] font-semibold text-accent-foreground">
+                // Ana renk: vurgu rengi zeminle aynı seçildiğinde sayı
+                // (krem zemin, beyaza yakın yazı) okunmuyordu.
+                <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">
                   {itemCount}
                 </span>
               ) : null}
