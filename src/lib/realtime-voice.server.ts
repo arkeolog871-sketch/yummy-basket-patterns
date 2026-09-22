@@ -49,6 +49,15 @@ export async function createRealtimeSecret(): Promise<RealtimeSecret> {
       "Gerçek zamanlı ses yapılandırılmadı: ne geçit adresi ne de yapay zekâ anahtarı tanımlı.",
     );
   }
+  // Gerçek zamanlı ses için Lovable geçidi KULLANILMAZ: bu geçitte
+  // /realtime/client_secrets ucu yok (ölçüldü: HTTP 404). Sessizce oraya
+  // düşmek yerine gerçek sebebi bildiriyoruz; arayüz klasik tur döngüsüne
+  // düşerek konuşmaya devam ediyor.
+  if (provider.name === "lovable") {
+    throw new Error(
+      "Gerçek zamanlı ses bu sağlayıcıda desteklenmiyor (geçit adresi veya OpenAI anahtarı tanımlı değil).",
+    );
+  }
   const model = realtimeModel();
 
   let response: Response;
