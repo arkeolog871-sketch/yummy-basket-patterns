@@ -3,19 +3,28 @@
  *
  * Kullanıcının sesi metne çevrilir (transcribe) ve asistanın yanıtı sese
  * dönüştürülür (speech). Anahtar tarayıcıya çıkmaz.
+ *
+ * İKİ YAŞANMIŞ ARIZA burada kilitleniyor:
+ *
+ * 1) KAP ETİKETİ. Kayıt biçimi istemcinin bildirdiği MIME'a göre seçiliyordu.
+ *    iOS Safari `audio/mp4` üretiyor, sesli sohbet ekranı ise kaydı koşulsuz
+ *    "audio/webm" diye etiketliyordu; dosya `kayit.webm` adıyla mp4 içerikle
+ *    gidiyor ve sağlayıcı biçimi reddediyordu. Kap artık BAYTLARDAN tanınıyor.
+ *
+ * 2) ULAŞILAMAYAN GEÇİT. Geçit adresi çözümlenmediğinde `fetch` istisna
+ *    atıyor; bu istisna kullanıcıya "İşlem tamamlanamadı" olarak dönüyordu ve
+ *    sıradaki sağlayıcı hiç denenmiyordu. Artık ağ hatasında geçit ölü
+ *    işaretlenip bir sonraki sağlayıcıyla TEK kez yeniden denenir; hiçbiri
+ *    yoksa sebebi anlaşılır bir mesaj verilir.
  */
 
-import { aiFailureMessage, aiProviderForUse } from "./ai-provider.server";
-
-/** İzin verilen ses türleri — tarayıcı kaydı webm/mp4/ogg/wav üretir. */
-const ALLOWED_AUDIO = [
-  "audio/webm",
-  "audio/mp4",
-  "audio/mpeg",
-  "audio/ogg",
-  "audio/wav",
-  "audio/x-m4a",
-];
+import {
+  aiFailureMessage,
+  aiProviderForUse,
+  nextAiProviderAfterFailure,
+  type AiProviderConfig,
+} from "./ai-provider.server";
+import { resolveAudioContainer } from "./audio-container";
 
 function base64ToBytes(base64: string): Uint8Array {
   const clean = base64.includes(",") ? (base64.split(",")[1] ?? "") : base64;
@@ -34,43 +43,82 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
+/** Ağ katmanı hatası mı (adres çözülmedi, bağlantı kurulamadı)? */
+function isNetworkFailure(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /fetch failed|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|network|Failed to fetch|getaddrinfo|dns/i.test(
+    message,
+  );
+}
+
+/**
+ * Ses ucuna istek atar; geçide ULAŞILAMAZSA sıradaki sağlayıcıyla bir kez
+ * yeniden dener. Yalnızca ses uçları için: yazılı akışlara dokunulmuyor.
+ */
+async function fetchWithProviderFallback(
+  path: string,
+  build: (provider: AiProviderConfig) => RequestInit,
+): Promise<{ provider: AiProviderConfig; response: Response }> {
+  let provider = await aiProviderForUse();
+  try {
+    return { provider, response: await fetch(`${provider.baseUrl}${path}`, build(provider)) };
+  } catch (error) {
+    if (!isNetworkFailure(error)) throw error;
+    const next = await nextAiProviderAfterFailure(provider);
+    if (!next || next.baseUrl === provider.baseUrl) {
+      throw new Error(
+        "Sesli asistan sunucusuna ulaşılamıyor; yapay zekâ geçidi adresi yanıt vermiyor.",
+      );
+    }
+    provider = next;
+    try {
+      return { provider, response: await fetch(`${provider.baseUrl}${path}`, build(provider)) };
+    } catch (retryError) {
+      if (!isNetworkFailure(retryError)) throw retryError;
+      throw new Error(
+        "Sesli asistan sunucusuna ulaşılamıyor; yapay zekâ geçidi adresi yanıt vermiyor.",
+      );
+    }
+  }
+}
+
 /** Ses kaydını Türkçe metne çevirir. */
 export async function transcribeAudio(base64: string, mimeType: string): Promise<string> {
-  const type = ALLOWED_AUDIO.includes(mimeType) ? mimeType : "audio/webm";
   const bytes = base64ToBytes(base64);
   if (bytes.byteLength === 0) throw new Error("Ses kaydı boş.");
   if (bytes.byteLength > 8 * 1024 * 1024) throw new Error("Ses kaydı çok uzun (en fazla 8 MB).");
 
-  const extension =
-    type.includes("mp4") || type.includes("m4a")
-      ? "m4a"
-      : type.includes("mpeg")
-        ? "mp3"
-        : type.includes("ogg")
-          ? "ogg"
-          : type.includes("wav")
-            ? "wav"
-            : "webm";
+  // Kap istemcinin etiketine DEĞİL baytlara göre seçilir; etiket yalnız yedek.
+  const container = resolveAudioContainer(bytes, mimeType);
 
-  const provider = await aiProviderForUse();
-  const form = new FormData();
-  form.append("model", provider.models.transcribe);
-  form.append("file", new Blob([bytes as unknown as BlobPart], { type }), `kayit.${extension}`);
-
-  const response = await fetch(`${provider.baseUrl}/audio/transcriptions`, {
-    method: "POST",
-    headers: provider.headers,
-    body: form,
+  const { response } = await fetchWithProviderFallback("/audio/transcriptions", (provider) => {
+    const form = new FormData();
+    form.append("model", provider.models.transcribe);
+    form.append("language", "tr");
+    form.append("response_format", "json");
+    form.append(
+      "file",
+      new Blob([bytes as unknown as BlobPart], { type: container.mimeType }),
+      `kayit.${container.extension}`,
+    );
+    // DİKKAT: content-type ELLE verilmez. Verilirse multipart sınır (boundary)
+    // eksik kalır ve gövde sunucuda ayrıştırılamaz.
+    return { method: "POST", headers: provider.headers, body: form };
   });
+
   if (!response.ok) {
-    const failure = aiFailureMessage(response.status, await response.text().catch(() => ""));
+    const body = await response.text().catch(() => "");
+    const failure = aiFailureMessage(response.status, body);
     throw new Error(failure ?? "Ses anlaşılamadı, tekrar deneyin.");
   }
-  const payload = (await response.json()) as { text?: string };
-  const text = (payload.text ?? "").trim();
+  const payload = (await response.json().catch(() => null)) as
+    | { text?: string; results?: { text?: string }[] }
+    | null;
+  const text = (payload?.text ?? payload?.results?.[0]?.text ?? "").trim();
   if (!text) throw new Error("Ses anlaşılamadı, tekrar deneyin.");
   return text.slice(0, 1500);
 }
+
 
 /** Metni sese çevirir; base64 mp3 döndürür. */
 export async function synthesizeSpeech(
