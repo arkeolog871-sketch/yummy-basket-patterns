@@ -36,6 +36,6 @@ export const speakAssistantReply = createServerFn({ method: "POST" })
       const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
       await enforceSensitiveRateLimit("ai-assistant-speak", 40, 60_000);
       const { synthesizeSpeech } = await import("./ai-voice.server");
-      return synthesizeSpeech(data.text);
+      return synthesizeSpeech(data.text, data.voice);
     }),
   );
