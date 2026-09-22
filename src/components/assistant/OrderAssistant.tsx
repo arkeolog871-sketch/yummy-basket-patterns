@@ -63,6 +63,7 @@ import type { CartProposal } from "@/lib/ai-assistant.types";
 const STORAGE_KEY = "silvan.assistant.v1";
 const INSTRUCTION_KEY = "silvan.assistant.instruction.v1";
 const VOICE_KEY = "silvan.assistant.voice.v1";
+const VOICE_NAME_KEY = "silvan.assistant.voiceName.v1";
 const MAX_HISTORY = 18;
 
 type ChatMessage = {
