@@ -14,6 +14,8 @@ const transcribeSchema = z.object({
 
 const speakSchema = z.object({
   text: z.string().trim().min(1).max(900),
+  // Ses kategorisi: geçersiz değer sunucuda varsayılana çekilir.
+  voice: z.string().trim().max(30).optional(),
 });
 
 export const transcribeAssistantAudio = createServerFn({ method: "POST" })
@@ -34,6 +36,6 @@ export const speakAssistantReply = createServerFn({ method: "POST" })
       const { enforceSensitiveRateLimit } = await import("./rate-limit.server");
       await enforceSensitiveRateLimit("ai-assistant-speak", 40, 60_000);
       const { synthesizeSpeech } = await import("./ai-voice.server");
-      return synthesizeSpeech(data.text);
+      return synthesizeSpeech(data.text, data.voice);
     }),
   );

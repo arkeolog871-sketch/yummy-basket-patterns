@@ -59,10 +59,16 @@ import {
   listAssistantHistory,
 } from "@/lib/assistant-history.functions";
 import type { CartProposal } from "@/lib/ai-assistant.types";
+import {
+  ASSISTANT_VOICES,
+  DEFAULT_ASSISTANT_VOICE,
+  normalizeAssistantVoice,
+} from "@/lib/assistant-voices";
 
 const STORAGE_KEY = "silvan.assistant.v1";
 const INSTRUCTION_KEY = "silvan.assistant.instruction.v1";
 const VOICE_KEY = "silvan.assistant.voice.v1";
+const VOICE_NAME_KEY = "silvan.assistant.voiceName.v1";
 const MAX_HISTORY = 18;
 
 type ChatMessage = {
@@ -102,6 +108,7 @@ export function OrderAssistant() {
   const [transcribing, setTranscribing] = useState(false);
   const [voiceOn, setVoiceOn] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
+  const [voiceName, setVoiceName] = useState(DEFAULT_ASSISTANT_VOICE);
   const [showSettings, setShowSettings] = useState(false);
   const [instruction, setInstruction] = useState("");
   const [instructionDraft, setInstructionDraft] = useState("");
@@ -159,6 +166,7 @@ export function OrderAssistant() {
       setInstruction(savedInstruction);
       setInstructionDraft(savedInstruction);
       setVoiceOn(window.localStorage.getItem(VOICE_KEY) === "1");
+      setVoiceName(normalizeAssistantVoice(window.localStorage.getItem(VOICE_NAME_KEY)));
     } catch {
       /* bozuk sohbet kaydı yok sayılır */
     }
@@ -241,9 +249,13 @@ export function OrderAssistant() {
   );
 
   const playReply = useCallback(
-    async (text: string) => {
+    // voiceOverride: ses seçilir seçilmez örnek dinletilirken durum değişkeni
+    // henüz güncellenmemiş oluyor; yeni ses doğrudan verilir.
+    async (text: string, voiceOverride?: string) => {
       try {
-        const audio = await speak({ data: { text: text.slice(0, 900) } });
+        const audio = await speak({
+          data: { text: text.slice(0, 900), voice: voiceOverride ?? voiceName },
+        });
         const element = audioRef.current ?? new Audio();
         audioRef.current = element;
         // Mobil WebView'lerde uzun `data:` sesleri kimi zaman hiç açılmıyor;
@@ -281,7 +293,7 @@ export function OrderAssistant() {
         return { ok: false as const, reason: toPublicErrorMessage(error) || name || "bilinmiyor" };
       }
     },
-    [speak],
+    [speak, voiceName],
   );
 
   const sendText = useCallback(
@@ -703,7 +715,39 @@ export function OrderAssistant() {
           </div>
 
           {showSettings ? (
-            <div className="space-y-2 border-b border-border bg-muted/40 px-4 py-3">
+            <div className="space-y-3 border-b border-border bg-muted/40 px-4 py-3">
+              <div className="space-y-1">
+                <label
+                  htmlFor="asistan-sesi"
+                  className="text-xs font-medium text-muted-foreground"
+                >
+                  Asistanın sesi
+                </label>
+                <select
+                  id="asistan-sesi"
+                  value={voiceName}
+                  onChange={(event) => {
+                    const next = normalizeAssistantVoice(event.target.value);
+                    setVoiceName(next);
+                    try {
+                      window.localStorage.setItem(VOICE_NAME_KEY, next);
+                    } catch {
+                      /* depolama kapalıysa tercih yalnız bu oturumda geçerli */
+                    }
+                    void playReply("Merhaba, sesim böyle. Nasıl yardımcı olabilirim?", next);
+                  }}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                >
+                  {ASSISTANT_VOICES.map((voice) => (
+                    <option key={voice.id} value={voice.id}>
+                      {voice.label} — {voice.hint}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-muted-foreground">
+                  Seçtiğinizde kısa bir örnek dinletir; tercihiniz bu cihazda saklanır.
+                </p>
+              </div>
               <p className="text-xs text-muted-foreground">
                 Asistana kalıcı talimat verin. Örn. “Bana kısa ve samimi cevap ver, fiyatları her
                 zaman belirt.”
