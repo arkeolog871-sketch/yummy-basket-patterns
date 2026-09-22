@@ -19,8 +19,8 @@
 
 import {
   aiFailureMessage,
-  aiProvider,
   type AiProviderConfig,
+  voiceGatewayProvider,
 } from "./ai-provider.server";
 import { resolveAudioContainer } from "./audio-container";
 
@@ -50,7 +50,9 @@ async function fetchFromVoiceGateway(
   path: string,
   build: (provider: AiProviderConfig) => RequestInit,
 ): Promise<{ provider: AiProviderConfig; response: Response }> {
-  const provider = aiProvider();
+  // Ses yolu sağlayıcı zincirine girmez: yalnızca kullanıcının openai-gateway
+  // fonksiyonuna gider; doğrudan OpenAI/Lovable yedeği burada mümkün değildir.
+  const provider = voiceGatewayProvider();
   try {
     return { provider, response: await fetch(`${provider.baseUrl}${path}`, build(provider)) };
   } catch (error) {
@@ -91,7 +93,11 @@ export async function transcribeAudio(base64: string, mimeType: string): Promise
   if (!response.ok) {
     const body = await response.text().catch(() => "");
     const failure = aiFailureMessage(response.status, body);
-    throw new Error(failure ?? "Ses anlaşılamadı, tekrar deneyin.");
+    if (failure) throw new Error(failure);
+    if (response.status >= 500) {
+      throw new Error("Sesli asistan sunucusu geçici olarak yanıt veremiyor.");
+    }
+    throw new Error("Ses kaydı işlenemedi, tekrar deneyin.");
   }
   const payload = (await response.json().catch(() => null)) as
     | { text?: string; results?: { text?: string }[] }
@@ -122,7 +128,11 @@ export async function synthesizeSpeech(
 
   if (!response.ok) {
     const failure = aiFailureMessage(response.status, await response.text().catch(() => ""));
-    throw new Error(failure ?? "Sesli yanıt üretilemedi.");
+    if (failure) throw new Error(failure);
+    if (response.status >= 500) {
+      throw new Error("Sesli asistan sunucusu geçici olarak yanıt veremiyor.");
+    }
+    throw new Error("Sesli yanıt üretilemedi.");
   }
   const bytes = new Uint8Array(await response.arrayBuffer());
   if (bytes.byteLength === 0) throw new Error("Sesli yanıt üretilemedi.");

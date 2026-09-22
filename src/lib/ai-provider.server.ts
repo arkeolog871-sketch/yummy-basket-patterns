@@ -6,8 +6,8 @@
  * dokunmak, birini unutmak ise faturanın bir kısmının eski yerden çıkmaya
  * devam etmesi demekti. Karar buraya toplandı.
  *
- * SEÇİM KURALI (üretim): BİRİNCİL sağlayıcı doğrudan OpenAI'dir
- * (`OPENAI_API_KEY`). Lovable geçidi yalnızca
+ * SEÇİM KURALI (üretim): BİRİNCİL sağlayıcı kullanıcının OpenAI geçididir.
+ * Lovable geçidi yalnızca
  * `AI_ALLOW_LOVABLE_FALLBACK=true` verildiğinde yedek olarak devreye girer;
  * varsayılan olarak KAPALIDIR. Böylece anahtar yanlış yazıldığında harcama
  * sessizce Lovable kredilerine kaymaz, açık bir yapılandırma hatası alınır.
@@ -87,7 +87,7 @@ function overrideModels(env: Env, base: AiModels): AiModels {
  * Ortamlar ayrıldığında AI_GATEWAY_URL bu varsayılanı güvenli biçimde ezer.
  */
 const DEFAULT_AI_GATEWAY_URL =
-  "https://wxkyhwkcuiqxxxpawcid.supabase.co/functions/v1/openai-gateway";
+  "https://poxltwuruskxbympriz.supabase.co/functions/v1/openai-gateway";
 
 function resolveGatewayUrl(env: Env): string {
   const explicit = trimmed(env, "AI_GATEWAY_URL");
@@ -218,6 +218,26 @@ export function aiResponsesOptions(provider: AiProviderConfig) {
 /** Süreç ortamından çözer; çağrı yerleri bunu kullanır. */
 export function aiProvider(): AiProviderConfig {
   return resolveAiProvider(process.env as Env);
+}
+
+/**
+ * Ses uçları için yalnızca kullanıcının sunucu geçidini döndürür.
+ *
+ * Bu ayrı çözümleyici bilinçlidir: süreçte doğrudan OpenAI anahtarı veya
+ * Lovable yedeği bulunsa bile STT/TTS çağrısı sağlayıcı zincirine girmez.
+ * OPENAI_API_KEY yalnızca uzaktaki openai-gateway fonksiyonunda kalır.
+ */
+export function voiceGatewayProvider(env: Env = process.env as Env): AiProviderConfig {
+  const gatewayToken = trimmed(env, "AI_GATEWAY_TOKEN");
+  return {
+    name: "supabase-gateway",
+    apiKey: gatewayToken ?? "",
+    baseUrl: resolveGatewayUrl(env),
+    headers: gatewayToken
+      ? { Authorization: `Bearer ${gatewayToken}`, apikey: gatewayToken }
+      : {},
+    models: overrideModels(env, OPENAI_MODELS),
+  };
 }
 
 /**
