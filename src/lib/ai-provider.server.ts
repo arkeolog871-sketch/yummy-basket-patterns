@@ -82,18 +82,20 @@ function overrideModels(env: Env, base: AiModels): AiModels {
 }
 
 /**
- * Supabase üzerindeki `openai-gateway` fonksiyonunun adresini kurar.
+ * Kullanıcının KENDİ Supabase projesinde yayında olan `openai-gateway`
+ * fonksiyonunun adresi. OpenAI anahtarı yalnızca o fonksiyonun içinde yaşar;
+ * bu uygulama OpenAI'ye doğrudan bağlanmaz.
  *
- * Anahtar (OPENAI_API_KEY) yalnızca o fonksiyonun içinde yaşar; bu uygulama
- * OpenAI'ye hiç doğrudan bağlanmaz. Adres elle yazılmaz: projenin gerçek
- * Supabase adresinden türetilir, istenirse AI_GATEWAY_URL ile ezilir.
+ * NEDEN sabit: geçit, Lovable'ın bağlı olduğu Supabase projesinde DEĞİL,
+ * kullanıcının ayrı projesinde duruyor. Bu yüzden adres bağlı projenin
+ * SUPABASE_URL'inden türetilmez; türetilse yanlış projeye gider.
  */
-function resolveGatewayUrl(env: Env): string | undefined {
+const DEFAULT_AI_GATEWAY_URL =
+  "https://poxltwuruskxbympriz.supabase.co/functions/v1/openai-gateway";
+
+function resolveGatewayUrl(env: Env): string {
   const explicit = trimmed(env, "AI_GATEWAY_URL");
-  if (explicit) return explicit.replace(/\/+$/, "");
-  const base = trimmed(env, "SUPABASE_URL") ?? trimmed(env, "VITE_SUPABASE_URL");
-  if (!base) return undefined;
-  return `${base.replace(/\/+$/, "")}/functions/v1/openai-gateway`;
+  return (explicit ?? DEFAULT_AI_GATEWAY_URL).replace(/\/+$/, "");
 }
 
 /**
@@ -106,24 +108,21 @@ function resolveGatewayUrl(env: Env): string | undefined {
 export function resolveAiProviderChain(env: Env): AiProviderConfig[] {
   const chain: AiProviderConfig[] = [];
 
-  // BİRİNCİL yol: kendi Supabase geçidimiz (openai-gateway → OpenAI).
+  // BİRİNCİL yol: kullanıcının Supabase geçidi (openai-gateway → OpenAI).
   const gatewayUrl = resolveGatewayUrl(env);
-  const supabaseKey =
-    trimmed(env, "SUPABASE_PUBLISHABLE_KEY") ??
-    trimmed(env, "VITE_SUPABASE_PUBLISHABLE_KEY") ??
-    trimmed(env, "SUPABASE_ANON_KEY");
-  if (gatewayUrl && supabaseKey) {
-    chain.push({
-      name: "supabase-gateway",
-      apiKey: supabaseKey,
-      baseUrl: gatewayUrl,
-      headers: {
-        Authorization: `Bearer ${supabaseKey}`,
-        apikey: supabaseKey,
-      },
-      models: overrideModels(env, OPENAI_MODELS),
-    });
-  }
+  // Geçit dışarıdan çağrılabilen bir proxy: kendi kodunda JWT doğrulaması
+  // yok. Bu yüzden bağlı projenin publishable anahtarı geçide DAYATILMAZ;
+  // yalnızca geçit için ayrıca bir jeton tanımlanmışsa gönderilir.
+  const gatewayToken = trimmed(env, "AI_GATEWAY_TOKEN");
+  chain.push({
+    name: "supabase-gateway",
+    apiKey: gatewayToken ?? "",
+    baseUrl: gatewayUrl,
+    headers: gatewayToken
+      ? { Authorization: `Bearer ${gatewayToken}`, apikey: gatewayToken }
+      : {},
+    models: overrideModels(env, OPENAI_MODELS),
+  });
 
   const openAiKey = trimmed(env, "OPENAI_API_KEY");
   if (openAiKey) {
