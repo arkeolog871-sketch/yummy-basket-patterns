@@ -25,7 +25,7 @@ describe("yapay zekâ sağlayıcısı seçimi", () => {
     const config = resolveAiProvider({ OPENAI_API_KEY: "sk-test", LOVABLE_API_KEY: "lov" });
     expect(config.name).toBe("supabase-gateway");
     expect(config.baseUrl).toBe(
-      "https://poxltwuruskxbympriz.supabase.co/functions/v1/openai-gateway",
+      "https://wxkyhwkcuiqxxxpawcid.supabase.co/functions/v1/openai-gateway",
     );
     expect(config.headers["Lovable-API-Key"]).toBeUndefined();
   });
@@ -273,13 +273,13 @@ describe("Supabase openai-gateway sağlayıcısı", () => {
     OPENAI_API_KEY: "sk-test",
   };
 
-  it("geçit kullanıcının ayrı projesindeki adrestir, bağlı projeden türetilmez", () => {
+  it("geçit bağlı canlı projenin doğrulanmış adresidir", () => {
     const config = resolveAiProvider(gatewayEnv);
     expect(config.name).toBe("supabase-gateway");
     expect(config.baseUrl).toBe(
-      "https://poxltwuruskxbympriz.supabase.co/functions/v1/openai-gateway",
+      "https://wxkyhwkcuiqxxxpawcid.supabase.co/functions/v1/openai-gateway",
     );
-    expect(config.baseUrl).not.toContain("proje.supabase.co");
+    expect(config.baseUrl).toContain("wxkyhwkcuiqxxxpawcid.supabase.co");
   });
 
   it("geçide bağlı projenin publishable anahtarı dayatılmaz", () => {
