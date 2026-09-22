@@ -18,6 +18,7 @@
  */
 
 import { type AiProviderConfig, voiceProvider } from "./ai-provider.server";
+import { DEFAULT_ASSISTANT_VOICE, normalizeAssistantVoice } from "./assistant-voices";
 import { resolveAudioContainer } from "./audio-container";
 
 function base64ToBytes(base64: string): Uint8Array {
@@ -133,9 +134,16 @@ export async function transcribeAudio(base64: string, mimeType: string): Promise
 /** Metni sese çevirir; base64 mp3 döndürür. */
 export async function synthesizeSpeech(
   text: string,
+  voice?: string,
 ): Promise<{ base64: string; contentType: string }> {
   const input = text.trim().slice(0, 900);
   if (!input) throw new Error("Okunacak metin yok.");
+
+  // Ses kategorisi kullanıcı tercihinden gelir; listede olmayan değer
+  // varsayılana çekilir, yani istemci serbest metinle sağlayıcıyı yönlendiremez.
+  const selectedVoice = normalizeAssistantVoice(
+    voice ?? process.env["AI_SPEECH_VOICE"] ?? DEFAULT_ASSISTANT_VOICE,
+  );
 
   const { response } = await fetchFromVoiceGateway("/audio/speech", (provider) => ({
     method: "POST",
@@ -143,9 +151,7 @@ export async function synthesizeSpeech(
     body: JSON.stringify({
       model: provider.models.speech,
       input,
-      // "alloy" düz ve metalik duyuluyordu; "coral" daha yumuşak, zarif ve
-      // sıcak bir ton veriyor. Gerekirse AI_SPEECH_VOICE ile değiştirilir.
-      voice: process.env["AI_SPEECH_VOICE"]?.trim() || "coral",
+      voice: selectedVoice,
       response_format: "mp3",
       speed: 1.05,
       instructions:
