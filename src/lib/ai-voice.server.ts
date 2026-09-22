@@ -12,16 +12,14 @@
  *    gidiyor ve sağlayıcı biçimi reddediyordu. Kap artık BAYTLARDAN tanınıyor.
  *
  * 2) ULAŞILAMAYAN GEÇİT. Geçit adresi çözümlenmediğinde `fetch` istisna
- *    atıyor; bu istisna kullanıcıya "İşlem tamamlanamadı" olarak dönüyordu ve
- *    sıradaki sağlayıcı hiç denenmiyordu. Artık ağ hatasında geçit ölü
- *    işaretlenip bir sonraki sağlayıcıyla TEK kez yeniden denenir; hiçbiri
- *    yoksa sebebi anlaşılır bir mesaj verilir.
+ *    atıyor ve bu istisna kullanıcıya "İşlem tamamlanamadı" olarak dönüyordu.
+ *    Artık ağ hatası açıkça bildirilir; başka bir sağlayıcıya sessizce
+ *    düşülmez.
  */
 
 import {
   aiFailureMessage,
-  aiProviderForUse,
-  nextAiProviderAfterFailure,
+  aiProvider,
   type AiProviderConfig,
 } from "./ai-provider.server";
 import { resolveAudioContainer } from "./audio-container";
@@ -43,42 +41,26 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-/** Ağ katmanı hatası mı (adres çözülmedi, bağlantı kurulamadı)? */
-function isNetworkFailure(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error ?? "");
-  return /fetch failed|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|network|Failed to fetch|getaddrinfo|dns/i.test(
-    message,
-  );
-}
-
 /**
- * Ses ucuna istek atar; geçide ULAŞILAMAZSA sıradaki sağlayıcıyla bir kez
- * yeniden dener. Yalnızca ses uçları için: yazılı akışlara dokunulmuyor.
+ * Ses ucuna yalnızca yapılandırılmış geçit üzerinden istek atar.
+ * Ağ hatasında başka bir sağlayıcıya düşülmez; kullanıcının OpenAI geçidi
+ * dışındaki bir yolun sessizce kullanılması engellenir.
  */
-async function fetchWithProviderFallback(
+async function fetchFromVoiceGateway(
   path: string,
   build: (provider: AiProviderConfig) => RequestInit,
 ): Promise<{ provider: AiProviderConfig; response: Response }> {
-  let provider = await aiProviderForUse();
+  const provider = aiProvider();
   try {
     return { provider, response: await fetch(`${provider.baseUrl}${path}`, build(provider)) };
   } catch (error) {
-    if (!isNetworkFailure(error)) throw error;
-    const next = await nextAiProviderAfterFailure(provider);
-    if (!next || next.baseUrl === provider.baseUrl) {
-      throw new Error(
-        "Sesli asistan sunucusuna ulaşılamıyor; yapay zekâ geçidi adresi yanıt vermiyor.",
-      );
+    const detail = error instanceof Error ? error.message : String(error ?? "");
+    if (!/fetch failed|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|network|Failed to fetch|getaddrinfo|dns/i.test(detail)) {
+      throw error;
     }
-    provider = next;
-    try {
-      return { provider, response: await fetch(`${provider.baseUrl}${path}`, build(provider)) };
-    } catch (retryError) {
-      if (!isNetworkFailure(retryError)) throw retryError;
-      throw new Error(
-        "Sesli asistan sunucusuna ulaşılamıyor; yapay zekâ geçidi adresi yanıt vermiyor.",
-      );
-    }
+    throw new Error(
+      "Sesli asistan sunucusuna ulaşılamıyor; yapay zekâ geçidi adresi yanıt vermiyor.",
+    );
   }
 }
 
@@ -91,7 +73,7 @@ export async function transcribeAudio(base64: string, mimeType: string): Promise
   // Kap istemcinin etiketine DEĞİL baytlara göre seçilir; etiket yalnız yedek.
   const container = resolveAudioContainer(bytes, mimeType);
 
-  const { response } = await fetchWithProviderFallback("/audio/transcriptions", (provider) => {
+  const { response } = await fetchFromVoiceGateway("/audio/transcriptions", (provider) => {
     const form = new FormData();
     form.append("model", provider.models.transcribe);
     form.append("language", "tr");
@@ -126,7 +108,7 @@ export async function synthesizeSpeech(
   const input = text.trim().slice(0, 900);
   if (!input) throw new Error("Okunacak metin yok.");
 
-  const { response } = await fetchWithProviderFallback("/audio/speech", (provider) => ({
+  const { response } = await fetchFromVoiceGateway("/audio/speech", (provider) => ({
     method: "POST",
     headers: { "Content-Type": "application/json", ...provider.headers },
     body: JSON.stringify({

@@ -208,7 +208,14 @@ describe("sağlayıcı tek yerden seçiliyor", () => {
       expect(source, `${file} anahtarı doğrudan okuyor`).not.toContain(
         'process.env["LOVABLE_API_KEY"]',
       );
-      expect(source, `${file} sağlayıcıyı kullanmıyor`).toContain("aiProviderForUse(");
+      if (file === "src/lib/ai-voice.server.ts") {
+        expect(source, `${file} yalnızca birincil geçidi kullanmıyor`).toContain("aiProvider(");
+        expect(source, `${file} başka sağlayıcıya düşüyor`).not.toContain(
+          "nextAiProviderAfterFailure",
+        );
+      } else {
+        expect(source, `${file} sağlayıcıyı kullanmıyor`).toContain("aiProviderForUse(");
+      }
     }
   });
 });
