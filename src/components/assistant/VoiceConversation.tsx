@@ -110,7 +110,7 @@ function ClassicVoiceConversation({
   onClose,
   transcript,
   onError,
-}: VoiceConversationProps) {
+}: VoiceConversationProps & { downgradeReason?: string | null }) {
   const [phase, setPhase] = useState<VoicePhase>("hazirlaniyor");
   const [level, setLevel] = useState(0);
   const micRef = useRef<MicrophoneSession | null>(null);
