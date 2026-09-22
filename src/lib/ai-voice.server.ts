@@ -18,10 +18,7 @@
  */
 
 import {
-  aiFailureMessage,
   type AiProviderConfig,
-  gatewayConfigured,
-  voiceFallbackProvider,
   voiceGatewayProvider,
 } from "./ai-provider.server";
 import { resolveAudioContainer } from "./audio-container";
@@ -46,46 +43,37 @@ function bytesToBase64(bytes: Uint8Array): string {
 /**
  * Ses ucuna istek atar.
  *
- * SIRA: geçit adresi ÖN DOĞRULAMADAN geçiyorsa (bkz. isUsableGatewayUrl)
- * önce o denenir. Adres yok/geçersizse ya da ağ katmanı isteği hiç
- * taşıyamazsa TEK bir yedek sağlayıcı denenir. Sunucudan gelen 4xx/5xx
- * yanıtlarında sağlayıcı DEĞİŞTİRİLMEZ; gerçek durum kodu kullanıcıya
- * anlamlı bir Türkçe mesajla bildirilir.
+ * Tek yol doğrulanmış openai-gateway'dir. Ağ ve HTTP hatalarında sağlayıcı
+ * değiştirilmez; gerçek durum kullanıcıya güvenli biçimde bildirilir.
  */
 async function fetchFromVoiceGateway(
   path: string,
   build: (provider: AiProviderConfig) => RequestInit,
 ): Promise<{ provider: AiProviderConfig; response: Response }> {
-  const gateway = gatewayConfigured() ? voiceGatewayProvider() : null;
-  if (gateway) {
-    try {
-      const response = await fetch(`${gateway.baseUrl}${path}`, build(gateway));
-      // 404 + NOT_FOUND: geçit fonksiyonu o projede yayında değil. Bu bir
-      // yapılandırma eksiği, geçici bir sunucu hatası değil; yedeğe geçilir.
-      if (response.status !== 404) return { provider: gateway, response };
-      const body = await response.clone().text().catch(() => "");
-      if (!/NOT_FOUND|function was not found/i.test(body)) {
-        return { provider: gateway, response };
-      }
-    } catch (error) {
-      // Ağ katmanı isteği hiç taşıyamadı (ad çözümlenmedi, bağlantı
-      // kurulamadı). Hata metnine GÜVENİLMEZ: çalışma ortamları bu durumu
-      // farklı sözcüklerle bildiriyor. Bu yüzden her istisnada yedek denenir.
-      void error;
-    }
+  const gateway = voiceGatewayProvider();
+  try {
+    return { provider: gateway, response: await fetch(`${gateway.baseUrl}${path}`, build(gateway)) };
+  } catch (error) {
+    const cause = error instanceof Error ? (error.cause as { code?: unknown } | undefined) : undefined;
+    const code = typeof cause?.code === "string" ? cause.code : "FETCH_FAILED";
+    throw new Error(`Sesli asistan geçidine ulaşılamadı (ağ hatası: ${code}).`);
   }
+}
 
-  const fallback = voiceFallbackProvider();
-  if (!fallback) {
-    throw new Error(
-      "Sesli asistan yapılandırılmadı: yapay zekâ geçidi adresi (AI_GATEWAY_URL) " +
-        "eksik ya da hatalı ve yedek anahtar tanımlı değil.",
-    );
+function gatewayErrorDetail(body: string): string | null {
+  try {
+    const payload = JSON.parse(body) as { message?: unknown; error?: unknown };
+    const nested = payload.error && typeof payload.error === "object"
+      ? (payload.error as { message?: unknown }).message
+      : payload.error;
+    const value = typeof payload.message === "string" ? payload.message : nested;
+    if (typeof value !== "string") return null;
+    const clean = value.replace(/[\r\n]+/g, " ").trim();
+    if (!clean || clean.length > 180 || /sk-[A-Za-z0-9_-]+|bearer\s+|OPENAI_API_KEY|secret/i.test(clean)) return null;
+    return clean;
+  } catch {
+    return null;
   }
-  return {
-    provider: fallback,
-    response: await fetch(`${fallback.baseUrl}${path}`, build(fallback)),
-  };
 }
 
 
@@ -115,14 +103,8 @@ export async function transcribeAudio(base64: string, mimeType: string): Promise
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
-    const failure = aiFailureMessage(response.status, body);
-    if (failure) throw new Error(failure);
-    if (response.status >= 500) {
-      throw new Error(
-        `Sesli asistan sunucusu şu an yanıt veremiyor (durum ${response.status}).`,
-      );
-    }
-    throw new Error(`Ses kaydı işlenemedi (durum ${response.status}), tekrar deneyin.`);
+    const detail = gatewayErrorDetail(body);
+    throw new Error(`Ses kaydı geçit tarafından reddedildi (durum ${response.status})${detail ? `: ${detail}` : "."}`);
   }
   const payload = (await response.json().catch(() => null)) as
     | { text?: string; results?: { text?: string }[] }
@@ -152,14 +134,9 @@ export async function synthesizeSpeech(
   }));
 
   if (!response.ok) {
-    const failure = aiFailureMessage(response.status, await response.text().catch(() => ""));
-    if (failure) throw new Error(failure);
-    if (response.status >= 500) {
-      throw new Error(
-        `Sesli yanıt sunucusu şu an yanıt veremiyor (durum ${response.status}).`,
-      );
-    }
-    throw new Error(`Sesli yanıt üretilemedi (durum ${response.status}).`);
+    const body = await response.text().catch(() => "");
+    const detail = gatewayErrorDetail(body);
+    throw new Error(`Sesli yanıt geçit tarafından reddedildi (durum ${response.status})${detail ? `: ${detail}` : "."}`);
   }
   const bytes = new Uint8Array(await response.arrayBuffer());
   if (bytes.byteLength === 0) throw new Error("Sesli yanıt üretilemedi.");

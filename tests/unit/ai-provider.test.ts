@@ -6,12 +6,10 @@ import {
   aiResponsesOptions,
   resolveAiProvider,
   resolveAiProviderChain,
-  isUsableGatewayUrl,
   voiceGatewayProvider,
 } from "@/lib/ai-provider.server";
 
-/** Geçerli (tam 20 harfli proje kodu taşıyan) örnek geçit adresi. */
-const GW = "https://abcdefghijklmnopqrst.supabase.co/functions/v1/openai-gateway";
+const GW = "https://poxltwuruskxbympriz.supabase.co/functions/v1/openai-gateway";
 
 /**
  * Bu modülün kararı faturanın nereden çıkacağını belirliyor. Yanlış seçim
@@ -284,27 +282,14 @@ describe("sunucunun gördüğü anahtar bildirilir", () => {
     expect(resolveAiProvider({ AI_GATEWAY_URL: GW }).name).toBe("supabase-gateway");
   });
 
-  it("geçit adresi eksik/hatalıysa geçit yolu sıraya GİRMEZ", () => {
-    // YAŞANMIŞ ARIZA: 19 harfli (eksik kopyalanmış) proje kodu ad
-    // çözümlemesinde bulunamıyor; istek HTTP katmanına hiç ulaşmıyordu.
-    expect(isUsableGatewayUrl("https://poxltwuruskxbympriz.supabase.co/functions/v1/openai-gateway")).toBe(
-      false,
-    );
-    expect(isUsableGatewayUrl(GW)).toBe(true);
-    expect(isUsableGatewayUrl("")).toBe(false);
-    expect(resolveAiProviderChain({}).map((item) => item.name)).toEqual([]);
+  it("varsayılan ses geçidi kullanıcının doğruladığı poxlt projesidir", () => {
+    expect(resolveAiProviderChain({})[0]?.baseUrl).toBe(GW);
   });
 
-  it("başka sağlayıcı yoksa Lovable son çare olarak kalır", () => {
+  it("Lovable açık izin olmadan yedek olmaz", () => {
     expect(resolveAiProviderChain({ LOVABLE_API_KEY: "lov" }).map((item) => item.name)).toEqual([
-      "lovable",
+      "supabase-gateway",
     ]);
-    expect(
-      resolveAiProviderChain({
-        LOVABLE_API_KEY: "lov",
-        AI_DISABLE_VOICE_FALLBACK: "true",
-      }).map((item) => item.name),
-    ).toEqual([]);
   });
 });
 
@@ -322,13 +307,11 @@ describe("Supabase openai-gateway sağlayıcısı", () => {
     expect(config.baseUrl).toBe(GW);
   });
 
-  it("adres verilmezse geçit yolu hiç kurulmaz", () => {
-    // Bağlı projede openai-gateway yayında değil; adres türetmek her isteği
-    // 404'e sürüklüyordu.
+  it("adres verilmezse doğrulanmış canlı geçit kullanılır", () => {
     const chain = resolveAiProviderChain({
-      SUPABASE_URL: "https://wxkyhwkcuiqxxxpawcid.supabase.co",
+      SUPABASE_URL: "https://ornek.supabase.co",
     });
-    expect(chain.map((item) => item.name)).not.toContain("supabase-gateway");
+    expect(chain[0]?.baseUrl).toContain("poxltwuruskxbympriz.supabase.co");
   });
 
   it("geçide bağlı projenin publishable anahtarı dayatılmaz", () => {
@@ -368,7 +351,7 @@ describe("Supabase openai-gateway sağlayıcısı", () => {
 describe("sağlayıcı sırası (geçit → doğrudan OpenAI)", () => {
   it("geçit birincil, doğrudan OpenAI yedek sırada durur", () => {
     const chain = resolveAiProviderChain({
-      AI_GATEWAY_URL: GW,
+      AI_GATEWAY_URL: "https://baska-gecit.example/functions/v1/openai-gateway",
       SUPABASE_URL: "https://ref.supabase.co",
       SUPABASE_PUBLISHABLE_KEY: "sb_publishable_x",
       OPENAI_API_KEY: "sk-test",
@@ -404,6 +387,15 @@ describe("ses sağlayıcısı yalnız kullanıcı geçididir", () => {
       Authorization: "Bearer tok",
       apikey: "tok",
     });
+  });
+
+  it("ses kodunda doğrudan OpenAI veya Lovable yedeği yoktur", () => {
+    const providerSource = readFileSync("src/lib/ai-provider.server.ts", "utf8");
+    const voiceSource = readFileSync("src/lib/ai-voice.server.ts", "utf8");
+    expect(providerSource).not.toContain("voiceFallbackProvider");
+    expect(providerSource).not.toContain("AI_DISABLE_VOICE_FALLBACK");
+    expect(voiceSource).not.toContain("api.openai.com");
+    expect(voiceSource).not.toContain("voiceFallbackProvider");
   });
 });
 

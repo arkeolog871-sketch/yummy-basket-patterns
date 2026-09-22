@@ -84,44 +84,15 @@ function overrideModels(env: Env, base: AiModels): AiModels {
 /**
  * Yayındaki `openai-gateway` fonksiyonunun adresi.
  * OpenAI anahtarı yalnızca o fonksiyonun içinde yaşar; tarayıcıya çıkmaz.
- * AI_GATEWAY_URL bu varsayılanı güvenli biçimde ezer.
- *
- * YAŞANMIŞ ARIZA: elle girilen proje kodu eksik kopyalandığı için adres
- * (19 harfli ref) ad çözümlemesinde hiç bulunamıyordu; ses isteği HTTP
- * katmanına ulaşmadan ölüyordu. Bu yüzden adres artık ÖN DOĞRULAMADAN
- * geçiyor: Supabase proje kodu tam 20 harf olmalı. Geçerli değilse geçit
- * "yapılandırılmamış" sayılır ve ses yolu boşa istek atmaz.
+ * AI_GATEWAY_URL, ses dışındaki yapay zekâ çağrılarında bu varsayılanı ezer.
+ * Ses yolu ise doğrulanmış canlı geçide sabittir ve başka sağlayıcıya düşmez.
  */
-const DEFAULT_AI_GATEWAY_URL = "";
+const DEFAULT_AI_GATEWAY_URL =
+  "https://poxltwuruskxbympriz.supabase.co/functions/v1/openai-gateway";
 
 function resolveGatewayUrl(env: Env): string {
   const explicit = trimmed(env, "AI_GATEWAY_URL");
-  // Adres YALNIZCA açıkça verildiğinde kullanılır. Bağlı projenin adresinden
-  // türetilmez: o projede `openai-gateway` yayında değil ve her istek 404
-  // alıyordu.
   return (explicit ?? DEFAULT_AI_GATEWAY_URL).replace(/\/+$/, "");
-}
-
-/**
- * Adresin gerçekten çağrılabilir görünüp görünmediğini söyler.
- * Supabase alan adlarında proje kodu tam 20 küçük harf olmalıdır.
- */
-export function isUsableGatewayUrl(url: string): boolean {
-  if (!/^https?:\/\//i.test(url)) return false;
-  let host: string;
-  try {
-    host = new URL(url).hostname;
-  } catch {
-    return false;
-  }
-  const supabase = /^([a-z0-9-]+)\.supabase\.(co|in)$/i.exec(host);
-  if (supabase) return (supabase[1] ?? "").length === 20;
-  return true;
-}
-
-/** Ses/sohbet için geçit adresi kullanılabilir mi? */
-export function gatewayConfigured(env: Env = process.env as Env): boolean {
-  return isUsableGatewayUrl(resolveGatewayUrl(env));
 }
 
 
@@ -141,19 +112,15 @@ export function resolveAiProviderChain(env: Env): AiProviderConfig[] {
   // yok. Bu yüzden bağlı projenin publishable anahtarı geçide DAYATILMAZ;
   // yalnızca geçit için ayrıca bir jeton tanımlanmışsa gönderilir.
   const gatewayToken = trimmed(env, "AI_GATEWAY_TOKEN");
-  // Adres kullanılamaz görünüyorsa (eksik/yanlış proje kodu) zincire hiç
-  // girmez: aksi hâlde her istek ad çözümleme hatasıyla ölüyordu.
-  if (isUsableGatewayUrl(gatewayUrl)) {
-    chain.push({
-      name: "supabase-gateway",
-      apiKey: gatewayToken ?? "",
-      baseUrl: gatewayUrl,
-      headers: gatewayToken
-        ? { Authorization: `Bearer ${gatewayToken}`, apikey: gatewayToken }
-        : {},
-      models: overrideModels(env, OPENAI_MODELS),
-    });
-  }
+  chain.push({
+    name: "supabase-gateway",
+    apiKey: gatewayToken ?? "",
+    baseUrl: gatewayUrl,
+    headers: gatewayToken
+      ? { Authorization: `Bearer ${gatewayToken}`, apikey: gatewayToken }
+      : {},
+    models: overrideModels(env, OPENAI_MODELS),
+  });
 
 
   const openAiKey = trimmed(env, "OPENAI_API_KEY");
@@ -167,14 +134,11 @@ export function resolveAiProviderChain(env: Env): AiProviderConfig[] {
     });
   }
 
-  // Yedek yol varsayılan KAPALI: açıkça istenmediyse Lovable geçidine düşmez.
-  // TEK İSTİSNA: başka hiçbir sağlayıcı yoksa (geçit adresi yok/geçersiz ve
-  // OpenAI anahtarı tanımsız) yapay zekâ tümden susmasın diye son çare
-  // olarak kullanılır. AI_DISABLE_VOICE_FALLBACK=true ile kapatılabilir.
+  // Lovable yolu yalnızca açıkça izin verildiğinde ses dışındaki çağrılar için
+  // zincire girer. Ses yolu bu zinciri kullanmaz.
   const fallbackAllowed = trimmed(env, "AI_ALLOW_LOVABLE_FALLBACK")?.toLowerCase() === "true";
-  const fallbackDisabled = trimmed(env, "AI_DISABLE_VOICE_FALLBACK")?.toLowerCase() === "true";
   const lovableKey = trimmed(env, "LOVABLE_API_KEY");
-  if (lovableKey && (fallbackAllowed || (chain.length === 0 && !fallbackDisabled))) {
+  if (fallbackAllowed && lovableKey) {
     chain.push({
       name: "lovable",
       apiKey: lovableKey,
@@ -273,45 +237,11 @@ export function voiceGatewayProvider(env: Env = process.env as Env): AiProviderC
   return {
     name: "supabase-gateway",
     apiKey: gatewayToken ?? "",
-    baseUrl: resolveGatewayUrl(env),
+    baseUrl: DEFAULT_AI_GATEWAY_URL,
     headers: gatewayToken
       ? { Authorization: `Bearer ${gatewayToken}`, apikey: gatewayToken }
       : {},
     models: overrideModels(env, OPENAI_MODELS),
-  };
-}
-
-/**
- * Geçit adresi hiç YOKSA ses yolunun son çaresi.
- *
- * NEDEN: yapılandırılan geçit adresi ad çözümlemesinde bulunamadığında sesli
- * asistan tümden susuyordu. Kullanıcı deneyimi bir yapılandırma hatası
- * yüzünden tamamen kaybolmasın diye tek bir yedek tanımlandı; doğrudan
- * OpenAI anahtarı varsa o, yoksa Lovable geçidi kullanılır.
- * `AI_DISABLE_VOICE_FALLBACK=true` ile tümden kapatılabilir.
- */
-export function voiceFallbackProvider(env: Env = process.env as Env): AiProviderConfig | null {
-  if (trimmed(env, "AI_DISABLE_VOICE_FALLBACK")?.toLowerCase() === "true") return null;
-
-  const openAiKey = trimmed(env, "OPENAI_API_KEY");
-  if (openAiKey) {
-    return {
-      name: "openai",
-      apiKey: openAiKey,
-      baseUrl: OPENAI_BASE_URL,
-      headers: { Authorization: `Bearer ${openAiKey}` },
-      models: overrideModels(env, OPENAI_MODELS),
-    };
-  }
-
-  const lovableKey = trimmed(env, "LOVABLE_API_KEY");
-  if (!lovableKey) return null;
-  return {
-    name: "lovable",
-    apiKey: lovableKey,
-    baseUrl: LOVABLE_BASE_URL,
-    headers: { "Lovable-API-Key": lovableKey, "X-Lovable-AIG-SDK": "fetch" },
-    models: overrideModels(env, LOVABLE_MODELS),
   };
 }
 
