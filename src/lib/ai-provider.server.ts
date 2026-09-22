@@ -82,16 +82,12 @@ function overrideModels(env: Env, base: AiModels): AiModels {
 }
 
 /**
- * Kullanıcının KENDİ Supabase projesinde yayında olan `openai-gateway`
- * fonksiyonunun adresi. OpenAI anahtarı yalnızca o fonksiyonun içinde yaşar;
- * bu uygulama OpenAI'ye doğrudan bağlanmaz.
- *
- * NEDEN sabit: geçit, Lovable'ın bağlı olduğu Supabase projesinde DEĞİL,
- * kullanıcının ayrı projesinde duruyor. Bu yüzden adres bağlı projenin
- * SUPABASE_URL'inden türetilmez; türetilse yanlış projeye gider.
+ * Bağlı canlı backend'de yayında olan `openai-gateway` fonksiyonunun adresi.
+ * OpenAI anahtarı yalnızca o fonksiyonun içinde yaşar; tarayıcıya çıkmaz.
+ * Ortamlar ayrıldığında AI_GATEWAY_URL bu varsayılanı güvenli biçimde ezer.
  */
 const DEFAULT_AI_GATEWAY_URL =
-  "https://poxltwuruskxbympriz.supabase.co/functions/v1/openai-gateway";
+  "https://wxkyhwkcuiqxxxpawcid.supabase.co/functions/v1/openai-gateway";
 
 function resolveGatewayUrl(env: Env): string {
   const explicit = trimmed(env, "AI_GATEWAY_URL");
