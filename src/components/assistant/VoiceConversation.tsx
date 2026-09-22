@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import capedS from "@/assets/pelerinli-s.png";
+import { CapeEmblem } from "./CapeEmblem";
 import {
   MicrophoneSession,
   type AudioStreamLike,
