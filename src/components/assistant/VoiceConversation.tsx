@@ -13,7 +13,8 @@
  *   (SpeechEndDetector); cümle arası nefes bitiş sanılmıyor.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Mic, Volume2, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
+import capedS from "@/assets/caped-s.png";
 import {
   MicrophoneSession,
   type AudioStreamLike,
@@ -300,24 +301,35 @@ export function VoiceConversation({
       </div>
 
       <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 text-center">
+        {/* Karanlık yüzey: amblem parlak olduğu için koyu zeminde okunuyor ve
+         * ekran "konuşma modunda" olduğunu tek bakışta anlatıyor. */}
         <div
           aria-hidden
-          className={`flex size-32 items-center justify-center rounded-full transition-transform ${
-            phase === "dinliyor" ? "bg-primary/15" : "bg-muted"
-          }`}
+          className="relative flex size-56 items-center justify-center rounded-full bg-neutral-950 shadow-2xl ring-1 ring-white/10 transition-transform"
           style={
             phase === "dinliyor"
-              ? { transform: `scale(${1 + Math.min(level * 4, 0.6)})` }
+              ? { transform: `scale(${1 + Math.min(level * 3, 0.35)})` }
               : undefined
           }
         >
-          {phase === "konusuyor" ? (
-            <Volume2 className="size-12 text-primary" />
-          ) : phase === "dinliyor" ? (
-            <Mic className="size-12 text-primary" />
-          ) : (
-            <Loader2 className="size-12 animate-spin text-primary" />
-          )}
+          <span
+            className={`absolute inset-4 rounded-full ${
+              phase === "dinliyor" ? "bg-primary/20 blur-xl" : "bg-white/5 blur-lg"
+            }`}
+          />
+          <img
+            src={capedS}
+            alt=""
+            width={816}
+            height={816}
+            loading="lazy"
+            className={`relative size-40 object-contain drop-shadow-[0_8px_20px_rgba(0,0,0,0.6)] ${
+              phase === "hazirlaniyor" ? "opacity-70" : "cape-wave"
+            }`}
+          />
+          {phase === "yaziya-ceviriyor" || phase === "dusunuyor" ? (
+            <Loader2 className="absolute bottom-3 size-6 animate-spin text-primary" />
+          ) : null}
         </div>
 
         <p aria-live="polite" className="text-lg font-medium">
