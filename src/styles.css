@@ -486,6 +486,13 @@ html[data-native-shell] [data-app-scroll] {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Android uygulaması: durum çubuğu boşluğunu sarmalayıcı zaten bırakıyor.
+ * WebView aynı boşluğu env(safe-area-inset-top) olarak da verirse başlık
+ * onu ikinci kez eklemesin (bkz. native-shell.ts → ANDROID_SHELL_ATTRIBUTE). */
+html[data-android-shell] [data-app-header] {
+  padding-top: 0;
+}
+
 /* Görseller için son güvence: bazı <img>'ler (kapak, ürün, splash) taşıyıcı
  * boyutlarını CSS sınıflarıyla (size-full, object-cover…) alır. Eğer bu
  * sınıflar herhangi bir sebeple (WebView'de CSS yüklenme sırası/önbellek

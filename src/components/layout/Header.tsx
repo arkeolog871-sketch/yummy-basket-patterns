@@ -115,10 +115,12 @@ export function Header() {
       }`}
     >
       {/*
-        Mobilde başlık iki satır: [logo · bölge] ve [tuşlar]. Eskiden logo,
-        bölge ve tuşlar ayrı satırlardaydı; başlık ana sayfada 157px, diğer
-        sayfalarda 209px tutuyordu. Başlık artık sabit durduğu için bu kadar
-        yer kaplamamalı.
+        Mobilde başlık TEK satır: [logo simgesi · bölge · tuşlar]. Başlık
+        uygulamada sabit durduğu için ekranın ne kadarını kapladığı önemli:
+        önce 157px (üç satır), sonra 97px (iki satır) idi; kullanıcı üçte bir
+        daha azaltılmasını istedi. Marka yazısı yalnız masaüstünde görünüyor,
+        telefonda logo simgesi marka yerine geçiyor. Arama çubuğu (ana sayfa
+        dışında) ayrı satıra iner.
       */}
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-2 gap-y-2 px-4 py-2 sm:gap-3 sm:py-3">
         {/*
@@ -144,7 +146,11 @@ export function Header() {
           </Button>
         ) : null}
 
-        <Link to="/" className="flex items-center gap-2">
+        <Link
+          to="/"
+          className="flex shrink-0 items-center gap-2"
+          aria-label={`${settings.brand_name} ana sayfa`}
+        >
           {settings.logo_url ? (
             <img
               src={settings.logo_url}
@@ -156,19 +162,19 @@ export function Header() {
               <UtensilsCrossed className="size-5" />
             </span>
           )}
-          <span className="font-display text-base font-semibold tracking-tight sm:text-lg">
+          <span className="hidden font-display text-lg font-semibold tracking-tight sm:inline">
             {settings.brand_name}
           </span>
         </Link>
 
-        {/* Mobilde bölge logonun satırında kalır (taban genişliği 0, kalan
-            yeri doldurur) ve sığmazsa adı kısaltılır; alta ayrı satır açmaz. */}
-        <div className="flex min-w-0 flex-1 justify-end sm:flex-none">
+        {/* Mobilde bölge logonun yanında, kalan yeri doldurur (taban
+            genişliği 0) ve sığmazsa adı kısaltılır; tuşları sağa iter. */}
+        <div className="flex min-w-0 flex-1 sm:flex-none">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="min-w-0 max-w-full rounded-full px-2 text-sm sm:px-3"
+                className="min-w-0 max-w-full gap-1 rounded-full px-1.5 text-sm sm:gap-2 sm:px-3"
               >
                 <MapPin className="size-4 text-accent" />
                 {/* Mobilde yalnızca ilçe: "SİLVAN, DİYAR…" diye kesilmesin. Tam ad
@@ -179,7 +185,7 @@ export function Header() {
                 <span className="hidden max-w-[9rem] truncate sm:inline" suppressHydrationWarning>
                   {activeCity}
                 </span>
-                <ChevronDown className="size-3.5 opacity-60" />
+                <ChevronDown className="hidden size-3.5 opacity-60 sm:block" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56">
@@ -204,7 +210,7 @@ export function Header() {
         </div>
 
         <form
-          className={`order-last w-full min-w-0 flex-1 sm:order-none sm:w-auto${
+          className={`order-last w-full min-w-0 basis-full sm:order-none sm:w-auto sm:flex-1 sm:basis-0${
             isHome ? " hidden sm:block" : ""
           }`}
           onSubmit={(event) => {
@@ -235,15 +241,16 @@ export function Header() {
           </div>
         </form>
 
-        {/*
-          Mobilde üst tuşlar kendi satırında TÜM GENİŞLİĞE eşit aralıkla
-          yayılır (ilk tuş sola, son tuş sağa yaslı). Masaüstünde tek satırlık
-          başlıkta eskisi gibi sağa toplanır.
-        */}
-        <div className="flex w-full shrink-0 items-center justify-between gap-2 sm:ml-auto sm:w-auto sm:justify-start">
+        {/* Tuşlar logonun satırında, sağda. Mobilde sepet ve bildirim
+            yalnız simge (36px), masaüstünde yazılı. */}
+        <div className="flex shrink-0 items-center gap-1.5 sm:ml-auto sm:gap-2">
           <TextPrefsPanel />
-          <Button asChild variant="secondary" className="relative rounded-full">
-            <Link to="/sepet">
+          <Button
+            asChild
+            variant="secondary"
+            className="relative w-9 rounded-full px-0 sm:w-auto sm:px-4"
+          >
+            <Link to="/sepet" aria-label="Sepet">
               <ShoppingBag className="size-4" />
               <span className="hidden sm:inline">Sepet</span>
               {itemCount > 0 ? (
@@ -262,7 +269,7 @@ export function Header() {
           <Button
             asChild
             variant="secondary"
-            className="relative rounded-full bg-warm text-warm-foreground hover:bg-warm/85"
+            className="relative w-9 rounded-full bg-warm px-0 text-warm-foreground hover:bg-warm/85 sm:w-auto sm:px-4"
           >
             <Link to="/bildirimler" aria-label="Bildirimler">
               <Bell className="size-4" />
@@ -318,8 +325,11 @@ export function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button asChild className="rounded-full">
-              <Link to="/auth">Giriş yap</Link>
+            <Button asChild className="rounded-full px-3 sm:px-4">
+              <Link to="/auth">
+                <span className="sm:hidden">Giriş</span>
+                <span className="hidden sm:inline">Giriş yap</span>
+              </Link>
             </Button>
           )}
         </div>
