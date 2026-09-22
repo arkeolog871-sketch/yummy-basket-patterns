@@ -20,6 +20,7 @@
 import {
   aiFailureMessage,
   type AiProviderConfig,
+  voiceFallbackProvider,
   voiceGatewayProvider,
 } from "./ai-provider.server";
 import { resolveAudioContainer } from "./audio-container";
