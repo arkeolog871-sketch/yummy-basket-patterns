@@ -711,7 +711,39 @@ export function OrderAssistant() {
           </div>
 
           {showSettings ? (
-            <div className="space-y-2 border-b border-border bg-muted/40 px-4 py-3">
+            <div className="space-y-3 border-b border-border bg-muted/40 px-4 py-3">
+              <div className="space-y-1">
+                <label
+                  htmlFor="asistan-sesi"
+                  className="text-xs font-medium text-muted-foreground"
+                >
+                  Asistanın sesi
+                </label>
+                <select
+                  id="asistan-sesi"
+                  value={voiceName}
+                  onChange={(event) => {
+                    const next = normalizeAssistantVoice(event.target.value);
+                    setVoiceName(next);
+                    try {
+                      window.localStorage.setItem(VOICE_NAME_KEY, next);
+                    } catch {
+                      /* depolama kapalıysa tercih yalnız bu oturumda geçerli */
+                    }
+                    void playReply("Merhaba, sesim böyle. Nasıl yardımcı olabilirim?");
+                  }}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                >
+                  {ASSISTANT_VOICES.map((voice) => (
+                    <option key={voice.id} value={voice.id}>
+                      {voice.label} — {voice.hint}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-muted-foreground">
+                  Seçtiğinizde kısa bir örnek dinletir; tercihiniz bu cihazda saklanır.
+                </p>
+              </div>
               <p className="text-xs text-muted-foreground">
                 Asistana kalıcı talimat verin. Örn. “Bana kısa ve samimi cevap ver, fiyatları her
                 zaman belirt.”
