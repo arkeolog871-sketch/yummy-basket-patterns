@@ -143,9 +143,13 @@ export async function synthesizeSpeech(
     body: JSON.stringify({
       model: provider.models.speech,
       input,
-      voice: "alloy",
+      // "alloy" düz ve metalik duyuluyordu; "coral" daha yumuşak, zarif ve
+      // sıcak bir ton veriyor. Gerekirse AI_SPEECH_VOICE ile değiştirilir.
+      voice: process.env["AI_SPEECH_VOICE"]?.trim() || "coral",
       response_format: "mp3",
-      instructions: "Türkçe, sıcak ve sakin bir tonla, doğal hızda konuş.",
+      speed: 1.05,
+      instructions:
+        "Türkçe konuş. Zarif, sıcak ve güven veren bir ton kullan; kendinden emin ama yumuşak, cömert ve davetkâr. Cümleleri doğal akışta, hafif canlı bir hızda söyle; robotik veya monoton olma. Fiyat ve isimleri net telaffuz et.",
     }),
   }));
 

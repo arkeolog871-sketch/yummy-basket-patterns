@@ -274,7 +274,10 @@ export async function runAssistant(
       .filter((part) => part !== "")
       .join("\n"),
     messages: messages.map((message) => ({ role: message.role, content: message.content })),
-    stopWhen: stepCountIs(12),
+    // Bekleme süresi: 12 araç turu sesli sohbette çok uzun sürüyordu. 6 tur
+    // tüm senaryolara yetiyor; yanıt uzunluğu da sınırlı tutulur.
+    stopWhen: stepCountIs(6),
+    maxOutputTokens: 700,
     tools: {
       searchBusinesses: tool({
         description:
