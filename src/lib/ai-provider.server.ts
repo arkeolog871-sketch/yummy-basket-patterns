@@ -96,8 +96,16 @@ function resolveGatewayUrl(env: Env): string | undefined {
   return `${base.replace(/\/+$/, "")}/functions/v1/openai-gateway`;
 }
 
-/** Ortamdan sağlayıcıyı çözer. Saf: test edilebilir, süreç ortamına bakmaz. */
-export function resolveAiProvider(env: Env): AiProviderConfig {
+/**
+ * Kullanılabilir sağlayıcıları SIRAYLA verir (ilk seçenek birincil yoldur).
+ *
+ * NEDEN sıra: geçit fonksiyonu sunucuda yayında olmadığında (404) uygulama
+ * kilitlenmesin; varsa doğrudan OpenAI anahtarına düşsün. Lovable yolu bu
+ * sıraya ancak açıkça izin verildiğinde girer.
+ */
+export function resolveAiProviderChain(env: Env): AiProviderConfig[] {
+  const chain: AiProviderConfig[] = [];
+
   // BİRİNCİL yol: kendi Supabase geçidimiz (openai-gateway → OpenAI).
   const gatewayUrl = resolveGatewayUrl(env);
   const supabaseKey =
@@ -105,7 +113,7 @@ export function resolveAiProvider(env: Env): AiProviderConfig {
     trimmed(env, "VITE_SUPABASE_PUBLISHABLE_KEY") ??
     trimmed(env, "SUPABASE_ANON_KEY");
   if (gatewayUrl && supabaseKey) {
-    return {
+    chain.push({
       name: "supabase-gateway",
       apiKey: supabaseKey,
       baseUrl: gatewayUrl,
@@ -114,26 +122,25 @@ export function resolveAiProvider(env: Env): AiProviderConfig {
         apikey: supabaseKey,
       },
       models: overrideModels(env, OPENAI_MODELS),
-    };
+    });
   }
 
   const openAiKey = trimmed(env, "OPENAI_API_KEY");
   if (openAiKey) {
-    return {
+    chain.push({
       name: "openai",
       apiKey: openAiKey,
       baseUrl: OPENAI_BASE_URL,
       headers: { Authorization: `Bearer ${openAiKey}` },
       models: overrideModels(env, OPENAI_MODELS),
-    };
+    });
   }
-
 
   // Yedek yol varsayılan KAPALI: açıkça istenmediyse Lovable geçidine düşmez.
   const fallbackAllowed = trimmed(env, "AI_ALLOW_LOVABLE_FALLBACK")?.toLowerCase() === "true";
   const lovableKey = trimmed(env, "LOVABLE_API_KEY");
   if (fallbackAllowed && lovableKey) {
-    return {
+    chain.push({
       name: "lovable",
       apiKey: lovableKey,
       baseUrl: LOVABLE_BASE_URL,
@@ -142,11 +149,19 @@ export function resolveAiProvider(env: Env): AiProviderConfig {
         "X-Lovable-AIG-SDK": "vercel-ai-sdk",
       },
       models: overrideModels(env, LOVABLE_MODELS),
-    };
+    });
   }
 
+  return chain;
+}
+
+/** Ortamdan sağlayıcıyı çözer. Saf: test edilebilir, süreç ortamına bakmaz. */
+export function resolveAiProvider(env: Env): AiProviderConfig {
+  const [primary] = resolveAiProviderChain(env);
+  if (primary) return primary;
   throw new Error(`Yapay zekâ şu an yapılandırılmadı. ${aiKeyHint(env)}`);
 }
+
 
 /**
  * Sunucunun hangi yapay zekâ anahtarını GÖRDÜĞÜNÜ söyler.
