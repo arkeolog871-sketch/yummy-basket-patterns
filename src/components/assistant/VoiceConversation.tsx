@@ -16,6 +16,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import capedS from "@/assets/pelerinli-s.png";
 import { CapeEmblem } from "./CapeEmblem";
+import { RealtimeVoiceStage } from "./RealtimeVoiceStage";
+import { DEFAULT_ASSISTANT_VOICE } from "@/lib/assistant-voices";
 import {
   MicrophoneSession,
   type AudioStreamLike,
