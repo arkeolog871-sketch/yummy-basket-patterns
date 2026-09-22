@@ -472,29 +472,26 @@ canvas {
  * veriyor, GPU'da yalnız transform değiştiği için düşük güçlü telefonlarda da
  * akıcı kalıyor. prefers-reduced-motion açıkken animasyon durur.
  */
-@keyframes cape-wave {
-  0% {
-    transform: rotate(-3deg) scale(1) translateY(0);
-  }
-  35% {
-    transform: rotate(2.5deg) scale(1.04) translateY(-3px);
-  }
-  65% {
-    transform: rotate(-1.5deg) scale(1.02) translateY(2px);
-  }
-  100% {
-    transform: rotate(-3deg) scale(1) translateY(0);
-  }
-}
-
-.cape-wave {
-  animation: cape-wave 2.6s ease-in-out infinite;
-  transform-origin: 70% 40%;
-  will-change: transform;
+/* Dalgalanan pelerin katmanı: maske harfin durduğu merkezi dışarıda bırakır,
+ * böylece yalnız pelerin kumaşı kıvrılır. */
+.cape-breeze {
+  -webkit-mask-image: radial-gradient(
+    circle at 50% 44%,
+    transparent 0 26%,
+    rgba(0, 0, 0, 0.35) 34%,
+    #000 44%
+  );
+  mask-image: radial-gradient(
+    circle at 50% 44%,
+    transparent 0 26%,
+    rgba(0, 0, 0, 0.35) 34%,
+    #000 44%
+  );
+  will-change: filter;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cape-wave {
-    animation: none;
+  .cape-breeze {
+    filter: none !important;
   }
 }
