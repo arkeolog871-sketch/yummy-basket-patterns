@@ -20,6 +20,7 @@
 import {
   aiFailureMessage,
   type AiProviderConfig,
+  gatewayConfigured,
   voiceFallbackProvider,
   voiceGatewayProvider,
 } from "./ai-provider.server";
@@ -110,9 +111,11 @@ export async function transcribeAudio(base64: string, mimeType: string): Promise
     const failure = aiFailureMessage(response.status, body);
     if (failure) throw new Error(failure);
     if (response.status >= 500) {
-      throw new Error("Sesli asistan sunucusu geçici olarak yanıt veremiyor.");
+      throw new Error(
+        `Sesli asistan sunucusu şu an yanıt veremiyor (durum ${response.status}).`,
+      );
     }
-    throw new Error("Ses kaydı işlenemedi, tekrar deneyin.");
+    throw new Error(`Ses kaydı işlenemedi (durum ${response.status}), tekrar deneyin.`);
   }
   const payload = (await response.json().catch(() => null)) as
     | { text?: string; results?: { text?: string }[] }
@@ -145,9 +148,11 @@ export async function synthesizeSpeech(
     const failure = aiFailureMessage(response.status, await response.text().catch(() => ""));
     if (failure) throw new Error(failure);
     if (response.status >= 500) {
-      throw new Error("Sesli asistan sunucusu geçici olarak yanıt veremiyor.");
+      throw new Error(
+        `Sesli yanıt sunucusu şu an yanıt veremiyor (durum ${response.status}).`,
+      );
     }
-    throw new Error("Sesli yanıt üretilemedi.");
+    throw new Error(`Sesli yanıt üretilemedi (durum ${response.status}).`);
   }
   const bytes = new Uint8Array(await response.arrayBuffer());
   if (bytes.byteLength === 0) throw new Error("Sesli yanıt üretilemedi.");
