@@ -140,15 +140,20 @@ export function resolveAiProviderChain(env: Env): AiProviderConfig[] {
   // yok. Bu yüzden bağlı projenin publishable anahtarı geçide DAYATILMAZ;
   // yalnızca geçit için ayrıca bir jeton tanımlanmışsa gönderilir.
   const gatewayToken = trimmed(env, "AI_GATEWAY_TOKEN");
-  chain.push({
-    name: "supabase-gateway",
-    apiKey: gatewayToken ?? "",
-    baseUrl: gatewayUrl,
-    headers: gatewayToken
-      ? { Authorization: `Bearer ${gatewayToken}`, apikey: gatewayToken }
-      : {},
-    models: overrideModels(env, OPENAI_MODELS),
-  });
+  // Adres kullanılamaz görünüyorsa (eksik/yanlış proje kodu) zincire hiç
+  // girmez: aksi hâlde her istek ad çözümleme hatasıyla ölüyordu.
+  if (isUsableGatewayUrl(gatewayUrl)) {
+    chain.push({
+      name: "supabase-gateway",
+      apiKey: gatewayToken ?? "",
+      baseUrl: gatewayUrl,
+      headers: gatewayToken
+        ? { Authorization: `Bearer ${gatewayToken}`, apikey: gatewayToken }
+        : {},
+      models: overrideModels(env, OPENAI_MODELS),
+    });
+  }
+
 
   const openAiKey = trimmed(env, "OPENAI_API_KEY");
   if (openAiKey) {
