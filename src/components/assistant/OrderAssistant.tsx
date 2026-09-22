@@ -59,6 +59,11 @@ import {
   listAssistantHistory,
 } from "@/lib/assistant-history.functions";
 import type { CartProposal } from "@/lib/ai-assistant.types";
+import {
+  ASSISTANT_VOICES,
+  DEFAULT_ASSISTANT_VOICE,
+  normalizeAssistantVoice,
+} from "@/lib/assistant-voices";
 
 const STORAGE_KEY = "silvan.assistant.v1";
 const INSTRUCTION_KEY = "silvan.assistant.instruction.v1";
@@ -103,6 +108,7 @@ export function OrderAssistant() {
   const [transcribing, setTranscribing] = useState(false);
   const [voiceOn, setVoiceOn] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
+  const [voiceName, setVoiceName] = useState(DEFAULT_ASSISTANT_VOICE);
   const [showSettings, setShowSettings] = useState(false);
   const [instruction, setInstruction] = useState("");
   const [instructionDraft, setInstructionDraft] = useState("");
