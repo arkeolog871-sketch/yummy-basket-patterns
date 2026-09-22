@@ -24,6 +24,7 @@ import { AppRealtimeBridge } from "@/hooks/useAppRealtime";
 import { FcmTokenBridge } from "@/hooks/useFcmTokenBridge";
 import { GoogleOAuthRelayBridge } from "@/components/auth/GoogleOAuthRelayBridge";
 import { OrderAssistant } from "@/components/assistant/OrderAssistant";
+import { AI_UI_ENABLED } from "@/lib/ai-features";
 import { LegalConsentGate } from "@/components/legal/LegalConsentGate";
 import { ErrorCollector } from "@/components/system/ErrorCollector";
 import { AppErrorBoundary } from "@/components/system/AppErrorBoundary";
