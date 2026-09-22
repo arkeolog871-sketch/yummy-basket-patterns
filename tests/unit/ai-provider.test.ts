@@ -112,6 +112,19 @@ describe("yapay zekâ sağlayıcısı seçimi", () => {
     expect(config.models.speech).toBe("gpt-4o-mini-tts");
   });
 
+  it("OPENAI_MODEL de sohbet modelini ezer, AI_CHAT_MODEL önce gelir", () => {
+    expect(
+      resolveAiProvider({ OPENAI_API_KEY: "sk-test", OPENAI_MODEL: "gpt-5.6-terra" }).models.chat,
+    ).toBe("gpt-5.6-terra");
+    expect(
+      resolveAiProvider({
+        OPENAI_API_KEY: "sk-test",
+        OPENAI_MODEL: "gpt-5.6-terra",
+        AI_CHAT_MODEL: "gpt-5.6-luna",
+      }).models.chat,
+    ).toBe("gpt-5.6-luna");
+  });
+
   it("ezme Lovable geçidinde de çalışır", () => {
     const config = resolveAiProvider({
       LOVABLE_API_KEY: "lov",

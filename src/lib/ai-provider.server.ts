@@ -73,7 +73,8 @@ function trimmed(env: Env, name: string): string | undefined {
  */
 function overrideModels(env: Env, base: AiModels): AiModels {
   return {
-    chat: trimmed(env, "AI_CHAT_MODEL") ?? base.chat,
+    // OPENAI_MODEL de kabul edilir: sır panelinde bu adla eklenmiş olabilir.
+    chat: trimmed(env, "AI_CHAT_MODEL") ?? trimmed(env, "OPENAI_MODEL") ?? base.chat,
     transcribe: trimmed(env, "AI_TRANSCRIBE_MODEL") ?? base.transcribe,
     speech: trimmed(env, "AI_SPEECH_MODEL") ?? base.speech,
     image: trimmed(env, "AI_IMAGE_MODEL") ?? base.image,
