@@ -81,8 +81,42 @@ function overrideModels(env: Env, base: AiModels): AiModels {
   };
 }
 
+/**
+ * Supabase üzerindeki `openai-gateway` fonksiyonunun adresini kurar.
+ *
+ * Anahtar (OPENAI_API_KEY) yalnızca o fonksiyonun içinde yaşar; bu uygulama
+ * OpenAI'ye hiç doğrudan bağlanmaz. Adres elle yazılmaz: projenin gerçek
+ * Supabase adresinden türetilir, istenirse AI_GATEWAY_URL ile ezilir.
+ */
+function resolveGatewayUrl(env: Env): string | undefined {
+  const explicit = trimmed(env, "AI_GATEWAY_URL");
+  if (explicit) return explicit.replace(/\/+$/, "");
+  const base = trimmed(env, "SUPABASE_URL") ?? trimmed(env, "VITE_SUPABASE_URL");
+  if (!base) return undefined;
+  return `${base.replace(/\/+$/, "")}/functions/v1/openai-gateway`;
+}
+
 /** Ortamdan sağlayıcıyı çözer. Saf: test edilebilir, süreç ortamına bakmaz. */
 export function resolveAiProvider(env: Env): AiProviderConfig {
+  // BİRİNCİL yol: kendi Supabase geçidimiz (openai-gateway → OpenAI).
+  const gatewayUrl = resolveGatewayUrl(env);
+  const supabaseKey =
+    trimmed(env, "SUPABASE_PUBLISHABLE_KEY") ??
+    trimmed(env, "VITE_SUPABASE_PUBLISHABLE_KEY") ??
+    trimmed(env, "SUPABASE_ANON_KEY");
+  if (gatewayUrl && supabaseKey) {
+    return {
+      name: "supabase-gateway",
+      apiKey: supabaseKey,
+      baseUrl: gatewayUrl,
+      headers: {
+        Authorization: `Bearer ${supabaseKey}`,
+        apikey: supabaseKey,
+      },
+      models: overrideModels(env, OPENAI_MODELS),
+    };
+  }
+
   const openAiKey = trimmed(env, "OPENAI_API_KEY");
   if (openAiKey) {
     return {
@@ -93,6 +127,7 @@ export function resolveAiProvider(env: Env): AiProviderConfig {
       models: overrideModels(env, OPENAI_MODELS),
     };
   }
+
 
   // Yedek yol varsayılan KAPALI: açıkça istenmediyse Lovable geçidine düşmez.
   const fallbackAllowed = trimmed(env, "AI_ALLOW_LOVABLE_FALLBACK")?.toLowerCase() === "true";
