@@ -101,7 +101,7 @@ describe("yazıya çevirme isteği kodu", () => {
     expect(source).toContain("voiceGatewayProvider()");
     expect(source).not.toMatch(/\baiProvider\(\)/);
     expect(source).not.toContain("aiProviderForUse");
-    expect(source).toContain("Sesli asistan sunucusuna ulaşılamıyor");
+    expect(source).toContain("gatewayConfigured()");
   });
 
   it("yanıttaki metin alanı okunur", () => {
@@ -116,7 +116,10 @@ describe("yazıya çevirme çalışma zamanı isteği", () => {
   });
 
   it("yalnız gerçek gateway'e multipart POST gönderir ve transcript'i döndürür", async () => {
-    vi.stubEnv("AI_GATEWAY_URL", "");
+    vi.stubEnv(
+      "AI_GATEWAY_URL",
+      "https://abcdefghijklmnopqrst.supabase.co/functions/v1/openai-gateway",
+    );
     vi.stubEnv("AI_GATEWAY_TOKEN", "");
     vi.stubEnv("OPENAI_API_KEY", "sk-uygulamada-kullanilmamali");
     vi.stubEnv("LOVABLE_API_KEY", "lov-kullanilmamali");
@@ -146,7 +149,7 @@ describe("yazıya çevirme çalışma zamanı isteği", () => {
 
     const [url, init] = fetchMock.mock.calls[0] ?? [];
     expect(url).toBe(
-      "https://poxltwuruskxbympriz.supabase.co/functions/v1/openai-gateway/audio/transcriptions",
+      "https://abcdefghijklmnopqrst.supabase.co/functions/v1/openai-gateway/audio/transcriptions",
     );
     expect(init?.method).toBe("POST");
     expect(init?.headers).toEqual({});
@@ -164,7 +167,10 @@ describe("yazıya çevirme çalışma zamanı isteği", () => {
   });
 
   it("gateway hatasında başka sağlayıcıyı çağırmadan anlamlı hata döndürür", async () => {
-    vi.stubEnv("AI_GATEWAY_URL", "");
+    vi.stubEnv(
+      "AI_GATEWAY_URL",
+      "https://abcdefghijklmnopqrst.supabase.co/functions/v1/openai-gateway",
+    );
     vi.stubEnv("OPENAI_API_KEY", "sk-uygulamada-kullanilmamali");
     vi.stubEnv("LOVABLE_API_KEY", "lov-kullanilmamali");
     vi.stubEnv("AI_ALLOW_LOVABLE_FALLBACK", "true");
