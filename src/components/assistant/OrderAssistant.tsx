@@ -34,6 +34,7 @@ import {
   parseVoiceConfirmation,
 } from "@/lib/voice-order-confirmation";
 import { VoiceConversation } from "./VoiceConversation";
+import capedS from "@/assets/pelerinli-s.png";
 import {
   collectMicrophoneDiagnostics,
   formatMicrophoneDiagnostics,
