@@ -184,7 +184,7 @@ describe("yazıya çevirme çalışma zamanı isteği", () => {
 
     await expect(
       transcribeAudio(btoa(String.fromCharCode(...wav)), "audio/wav"),
-    ).rejects.toThrow("Yapay zekâ geçidi sunucuda bulunamadı");
+    ).rejects.toThrow("durum 404");
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
