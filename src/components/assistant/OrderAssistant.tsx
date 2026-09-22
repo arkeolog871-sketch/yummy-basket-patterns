@@ -34,6 +34,7 @@ import {
   parseVoiceConfirmation,
 } from "@/lib/voice-order-confirmation";
 import { VoiceConversation } from "./VoiceConversation";
+import capedS from "@/assets/pelerinli-s.png";
 import {
   collectMicrophoneDiagnostics,
   formatMicrophoneDiagnostics,
@@ -637,18 +638,24 @@ export function OrderAssistant() {
               setVoiceMode(true);
             }}
             aria-label="Sesli sohbeti başlat"
-            className={`fixed bottom-36 right-5 z-40 flex size-12 items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105 sm:bottom-24 ${
-              recording
-                ? "bg-destructive text-destructive-foreground"
-                : "bg-card text-primary border border-border"
+            className={`fixed bottom-36 right-5 z-40 flex size-12 items-center justify-center overflow-hidden rounded-full shadow-lg transition-transform hover:scale-105 sm:bottom-24 ${
+              recording ? "bg-destructive text-destructive-foreground" : "bg-black"
             }`}
           >
             {recording ? (
               <Square className="size-5" />
             ) : transcribing ? (
-              <Loader2 className="size-5 animate-spin" />
+              <Loader2 className="size-5 animate-spin text-white" />
             ) : (
-              <Mic className="size-5" />
+              // Mikrofon simgesi yerine uygulamanın pelerinli "S" amblemi.
+              <img
+                src={capedS}
+                alt=""
+                width={1024}
+                height={1024}
+                loading="lazy"
+                className="size-9 object-contain"
+              />
             )}
           </button>
           <button

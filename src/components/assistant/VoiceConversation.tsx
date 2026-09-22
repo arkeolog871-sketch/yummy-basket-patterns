@@ -14,7 +14,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, X } from "lucide-react";
-import capedS from "@/assets/caped-s.png";
+import capedS from "@/assets/pelerinli-s.png";
 import {
   MicrophoneSession,
   type AudioStreamLike,
@@ -284,7 +284,10 @@ export function VoiceConversation({
   const lastAssistant = [...transcript].reverse().find((m) => m.role === "assistant");
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-background">
+    // Karanlık siyah sahne: pelerinli amblem parlak olduğu için koyu zeminde
+    // okunuyor; ekran "konuşma modunda" olduğunu tek bakışta anlatıyor.
+    // Renkler sabit koyu tonlarda tutuluyor (tema açık olsa da sahne karanlık).
+    <div className="fixed inset-0 z-[60] flex flex-col bg-black text-white">
       <div className="flex items-center justify-between px-4 py-3">
         <p className="font-semibold">Sesli sohbet</p>
         <button
@@ -294,41 +297,39 @@ export function VoiceConversation({
             onClose();
           }}
           aria-label="Sesli sohbeti kapat"
-          className="flex size-10 items-center justify-center rounded-full border border-border bg-card"
+          className="flex size-10 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white"
         >
           <X className="size-5" />
         </button>
       </div>
 
       <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 text-center">
-        {/* Karanlık yüzey: amblem parlak olduğu için koyu zeminde okunuyor ve
-         * ekran "konuşma modunda" olduğunu tek bakışta anlatıyor. */}
         <div
           aria-hidden
-          className="relative flex size-56 items-center justify-center rounded-full bg-neutral-950 shadow-2xl ring-1 ring-white/10 transition-transform"
+          className="relative flex size-64 items-center justify-center transition-transform"
           style={
             phase === "dinliyor"
-              ? { transform: `scale(${1 + Math.min(level * 3, 0.35)})` }
+              ? { transform: `scale(${1 + Math.min(level * 3, 0.3)})` }
               : undefined
           }
         >
           <span
-            className={`absolute inset-4 rounded-full ${
-              phase === "dinliyor" ? "bg-primary/20 blur-xl" : "bg-white/5 blur-lg"
+            className={`absolute inset-6 rounded-full blur-2xl ${
+              phase === "dinliyor" ? "bg-red-500/25" : "bg-white/5"
             }`}
           />
           <img
             src={capedS}
             alt=""
-            width={816}
-            height={816}
+            width={1024}
+            height={1024}
             loading="lazy"
-            className={`relative size-40 object-contain drop-shadow-[0_8px_20px_rgba(0,0,0,0.6)] ${
+            className={`relative w-56 object-contain drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)] ${
               phase === "hazirlaniyor" ? "opacity-70" : "cape-wave"
             }`}
           />
           {phase === "yaziya-ceviriyor" || phase === "dusunuyor" ? (
-            <Loader2 className="absolute bottom-3 size-6 animate-spin text-primary" />
+            <Loader2 className="absolute bottom-0 size-6 animate-spin text-white/80" />
           ) : null}
         </div>
 
@@ -336,17 +337,19 @@ export function VoiceConversation({
           {PHASE_LABEL[phase]}
         </p>
 
-        {hint ? <p className="max-w-md text-sm text-destructive">{hint}</p> : null}
+        {hint ? <p className="max-w-md text-sm text-red-300">{hint}</p> : null}
 
         {lastUser ? (
-          <p className="max-w-md text-sm text-muted-foreground">“{lastUser.content}”</p>
+          <p className="max-w-md text-sm text-white/60">“{lastUser.content}”</p>
         ) : (
-          <p className="max-w-md text-sm text-muted-foreground">
+          <p className="max-w-md text-sm text-white/60">
             Ne istediğinizi söyleyin. Örneğin: “Silvan’da açık kafe var mı?”
           </p>
         )}
         {lastAssistant ? (
-          <p className="max-h-40 max-w-md overflow-y-auto text-base">{lastAssistant.content}</p>
+          <p className="max-h-40 max-w-md overflow-y-auto text-base text-white">
+            {lastAssistant.content}
+          </p>
         ) : null}
       </div>
 
@@ -357,7 +360,7 @@ export function VoiceConversation({
             teardown();
             onClose();
           }}
-          className="text-sm text-muted-foreground underline"
+          className="text-sm text-white/60 underline"
         >
           Yazışmaya dön
         </button>
