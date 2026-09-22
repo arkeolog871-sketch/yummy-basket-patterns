@@ -95,7 +95,6 @@ function resolveGatewayUrl(env: Env): string {
   return (explicit ?? DEFAULT_AI_GATEWAY_URL).replace(/\/+$/, "");
 }
 
-
 /**
  * Kullanılabilir sağlayıcıları SIRAYLA verir (ilk seçenek birincil yoldur).
  *
@@ -116,12 +115,9 @@ export function resolveAiProviderChain(env: Env): AiProviderConfig[] {
     name: "supabase-gateway",
     apiKey: gatewayToken ?? "",
     baseUrl: gatewayUrl,
-    headers: gatewayToken
-      ? { Authorization: `Bearer ${gatewayToken}`, apikey: gatewayToken }
-      : {},
+    headers: gatewayToken ? { Authorization: `Bearer ${gatewayToken}`, apikey: gatewayToken } : {},
     models: overrideModels(env, OPENAI_MODELS),
   });
-
 
   const openAiKey = trimmed(env, "OPENAI_API_KEY");
   if (openAiKey) {
@@ -150,7 +146,6 @@ export function resolveAiProviderChain(env: Env): AiProviderConfig[] {
       models: overrideModels(env, LOVABLE_MODELS),
     });
   }
-
 
   return chain;
 }
@@ -238,9 +233,7 @@ export function voiceGatewayProvider(env: Env = process.env as Env): AiProviderC
     name: "supabase-gateway",
     apiKey: gatewayToken ?? "",
     baseUrl: DEFAULT_AI_GATEWAY_URL,
-    headers: gatewayToken
-      ? { Authorization: `Bearer ${gatewayToken}`, apikey: gatewayToken }
-      : {},
+    headers: gatewayToken ? { Authorization: `Bearer ${gatewayToken}`, apikey: gatewayToken } : {},
     models: overrideModels(env, OPENAI_MODELS),
   };
 }
@@ -324,7 +317,6 @@ export async function nextAiProviderAfterFailure(
   return next ?? null;
 }
 
-
 /**
  * Sağlayıcının "ödeme/kota" cevabını tek yerde tanır.
  *
@@ -350,4 +342,34 @@ export function aiFailureMessage(status: number, body: string): string | null {
   }
 
   return null;
+}
+
+/**
+ * Akış içinde düşen sağlayıcı hatasını OKUNABİLİR tek satıra indirger.
+ *
+ * NEDEN: `streamText` akış hatasını `NoOutputGeneratedError` ile sarıyor ve
+ * dışarıya yalnızca "No output generated. Check the stream for errors."
+ * çıkıyor. Asıl sebep (model bulunamadı, bakiye yok, parametre reddedildi)
+ * hata nesnesinin `statusCode`/`responseBody` alanlarında duruyor ama hiçbir
+ * yere yazılmıyordu. Yaşandı: OpenAI'ye geçtikten sonra tam olarak bu mesaj
+ * çıktı ve sebep aranamadı.
+ *
+ * GÜVENLİK: gövde yalnızca kısaltılarak taşınır; `public-error.ts` anahtar
+ * adı içeren mesajları zaten siliyor.
+ */
+export function describeAiStreamError(error: unknown): string {
+  const record = (error ?? {}) as Record<string, unknown>;
+  const status = typeof record["statusCode"] === "number" ? (record["statusCode"] as number) : 0;
+  const bodyRaw =
+    typeof record["responseBody"] === "string" ? (record["responseBody"] as string) : "";
+  const body = bodyRaw.slice(0, 400);
+
+  const known = status ? aiFailureMessage(status, body) : null;
+  if (known) return known;
+
+  const base = error instanceof Error ? error.message : String(error ?? "");
+  const parts = [base.trim()].filter(Boolean);
+  if (status) parts.push(`HTTP ${status}`);
+  if (body) parts.push(body.replace(/\s+/g, " ").trim());
+  return parts.join(" · ") || "Yapay zekâ yanıt üretemedi.";
 }

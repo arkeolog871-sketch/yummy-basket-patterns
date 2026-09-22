@@ -13,10 +13,12 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { stepCountIs, streamText, tool } from "ai";
 import { z } from "zod";
-import { aiProviderForUse, aiResponsesOptions } from "./ai-provider.server";
+import { aiProviderForUse, aiResponsesOptions, describeAiStreamError } from "./ai-provider.server";
 import { createLovableAiGatewayRunIdFetch } from "./ai-gateway.server";
 import { stripMarkdownForPlainText } from "./assistant-text";
 import { ilikePattern, matchesSearchTerms } from "./catalog-search";
+// Yalnızca tip: istemci çalışma anında dinamik import ile alınıyor.
+import type { createPublicClient } from "./catalog.server";
 import { isBusinessOpen } from "./hours";
 import type { AssistantMessage, CartProposal, ProposalLine } from "./ai-assistant.types";
 
@@ -65,6 +67,79 @@ type RestaurantRow = {
   closes_at: string | null;
   is_open_manual: boolean | null;
 };
+
+/**
+ * Bir işletmenin ürünlerinde arama yapar.
+ *
+ * YAŞANMIŞ ARIZA: eskiden ürünlerin yalnızca ALFABETİK İLK 200'ü çekilip
+ * süzülüyordu. 5000 ürünlü markette "süt" araması, ürün o ilk 200'e girmediği
+ * için "bulunamadı" dönüyordu; sesli sipariş bu yüzden büyük katalogda hiç
+ * çalışmıyordu.
+ *
+ * ÇÖZÜM iki aşamalı: önce veritabanında `ilike` ile aranır (hızlı yol, tüm
+ * kataloğu görür). Aksan yüzünden ("sut" yazıp "Süt" aramak) boş dönerse
+ * katalog sayfa sayfa taranıp Türkçe katlamayla elenir. Tarama üst sınırla
+ * bağlıdır; sınırsız veri çekilmez.
+ */
+const MENU_PAGE_SIZE = 1000;
+const MENU_SCAN_LIMIT = 5000;
+const MENU_RESULT_LIMIT = 40;
+
+type MenuItemRow = {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number | string;
+};
+
+export async function findMenuItems(
+  supabase: ReturnType<typeof createPublicClient>,
+  restaurantId: string,
+  needle: string | null,
+): Promise<{ items: MenuItemRow[]; truncated: boolean }> {
+  const base = () =>
+    supabase
+      .from("menu_items")
+      .select("id, name, description, price")
+      .eq("restaurant_id", restaurantId)
+      .eq("is_available", true);
+
+  if (!needle) {
+    const { data, error } = await base().order("name").limit(MENU_RESULT_LIMIT);
+    if (error) throw new Error(error.message);
+    const items = (data ?? []) as unknown as MenuItemRow[];
+    return { items, truncated: items.length === MENU_RESULT_LIMIT };
+  }
+
+  const pattern = ilikePattern(needle);
+  if (pattern) {
+    const { data, error } = await base()
+      .or(`name.ilike.${pattern},description.ilike.${pattern}`)
+      .order("name")
+      .limit(MENU_RESULT_LIMIT);
+    if (error) throw new Error(error.message);
+    const hits = ((data ?? []) as unknown as MenuItemRow[]).filter((item) =>
+      matchesSearchTerms([item.name, item.description], needle),
+    );
+    if (hits.length > 0) return { items: hits, truncated: hits.length === MENU_RESULT_LIMIT };
+  }
+
+  const found: MenuItemRow[] = [];
+  for (let offset = 0; offset < MENU_SCAN_LIMIT; offset += MENU_PAGE_SIZE) {
+    const { data, error } = await base()
+      .order("name")
+      .range(offset, offset + MENU_PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    const page = (data ?? []) as unknown as MenuItemRow[];
+    for (const item of page) {
+      if (!matchesSearchTerms([item.name, item.description], needle)) continue;
+      found.push(item);
+      if (found.length >= MENU_RESULT_LIMIT) return { items: found, truncated: true };
+    }
+    if (page.length < MENU_PAGE_SIZE) break;
+  }
+  return { items: found, truncated: false };
+}
 
 function openState(row: RestaurantRow): string {
   try {
@@ -230,26 +305,17 @@ export async function runAssistant(
           if (!business) return { error: "İşletme bulunamadı." };
           const row = business as unknown as RestaurantRow;
 
-          const { data: items, error: itemsError } = await supabase
-            .from("menu_items")
-            .select("id, name, description, price, image_url")
-            .eq("restaurant_id", row.id)
-            .eq("is_available", true)
-            .order("name")
-            .limit(200);
-          if (itemsError) throw new Error(itemsError.message);
-
-          const needle = query?.trim() || null;
-          const filtered = (items ?? []).filter((item) =>
-            needle ? matchesSearchTerms([item.name, item.description], needle) : true,
-          );
+          const found = await findMenuItems(supabase, row.id, query?.trim() || null);
           return {
             business: summarize(row),
-            items: filtered.slice(0, 40).map((item) => ({
+            items: found.items.map((item) => ({
               menuItemId: item.id,
               name: item.name,
               price: Number(item.price),
             })),
+            ...(found.truncated
+              ? { not: "Daha fazla eşleşme var; gerekirse aramayı daraltarak tekrar sor." }
+              : {}),
           };
         },
       }),
@@ -385,9 +451,23 @@ export async function runAssistant(
     reply = stripMarkdownForPlainText(await result.text);
   } catch (error) {
     const cause = streamFailure ?? error;
-    const detail = cause instanceof Error ? cause.message : String(cause);
-    console.error("[ai-assistant] akış hatası", { detail });
-    throw new Error(detail || "Yapay zekâ yanıt üretemedi.");
+    const detail = describeAiStreamError(cause);
+    console.error("[ai-assistant] akış hatası", {
+      detail,
+      model: provider.models.chat,
+      saglayici: provider.name,
+    });
+    throw new Error(`${detail} (model: ${provider.models.chat})`);
+  }
+  if (!reply) {
+    // Hata yok ama metin de yok: sebebi bitiş nedeni söyler (örn. araç
+    // döngüsünde adım sınırına takılmak ya da içerik filtresi).
+    const finishReason = await Promise.resolve(result.finishReason).catch(() => "bilinmiyor");
+    console.error("[ai-assistant] boş yanıt", {
+      finishReason,
+      model: provider.models.chat,
+      saglayici: provider.name,
+    });
   }
   return {
     reply:
