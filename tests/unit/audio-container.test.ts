@@ -97,6 +97,9 @@ describe("yazıya çevirme isteği kodu", () => {
   it("ağ hatasında başka bir sağlayıcıya düşmez", () => {
     expect(source).not.toContain("nextAiProviderAfterFailure");
     expect(source).toContain("fetchFromVoiceGateway");
+    expect(source).toContain("voiceGatewayProvider()");
+    expect(source).not.toMatch(/\baiProvider\(\)/);
+    expect(source).not.toContain("aiProviderForUse");
     expect(source).toContain("Sesli asistan sunucusuna ulaşılamıyor");
   });
 

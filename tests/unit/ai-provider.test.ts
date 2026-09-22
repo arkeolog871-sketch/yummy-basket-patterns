@@ -6,6 +6,7 @@ import {
   aiResponsesOptions,
   resolveAiProvider,
   resolveAiProviderChain,
+  voiceGatewayProvider,
 } from "@/lib/ai-provider.server";
 
 /**
@@ -25,7 +26,7 @@ describe("yapay zekâ sağlayıcısı seçimi", () => {
     const config = resolveAiProvider({ OPENAI_API_KEY: "sk-test", LOVABLE_API_KEY: "lov" });
     expect(config.name).toBe("supabase-gateway");
     expect(config.baseUrl).toBe(
-      "https://wxkyhwkcuiqxxxpawcid.supabase.co/functions/v1/openai-gateway",
+      "https://poxltwuruskxbympriz.supabase.co/functions/v1/openai-gateway",
     );
     expect(config.headers["Lovable-API-Key"]).toBeUndefined();
   });
@@ -277,9 +278,9 @@ describe("Supabase openai-gateway sağlayıcısı", () => {
     const config = resolveAiProvider(gatewayEnv);
     expect(config.name).toBe("supabase-gateway");
     expect(config.baseUrl).toBe(
-      "https://wxkyhwkcuiqxxxpawcid.supabase.co/functions/v1/openai-gateway",
+      "https://poxltwuruskxbympriz.supabase.co/functions/v1/openai-gateway",
     );
-    expect(config.baseUrl).toContain("wxkyhwkcuiqxxxpawcid.supabase.co");
+    expect(config.baseUrl).toContain("poxltwuruskxbympriz.supabase.co");
   });
 
   it("geçide bağlı projenin publishable anahtarı dayatılmaz", () => {
@@ -329,5 +330,27 @@ describe("sağlayıcı sırası (geçit → doğrudan OpenAI)", () => {
   it("Lovable yolu izin verilmedikçe sıraya girmez", () => {
     const chain = resolveAiProviderChain({ LOVABLE_API_KEY: "lov", OPENAI_API_KEY: "sk-test" });
     expect(chain.map((item) => item.name)).toEqual(["supabase-gateway", "openai"]);
+  });
+});
+
+describe("ses sağlayıcısı yalnız kullanıcı geçididir", () => {
+  it("doğrudan OpenAI ve Lovable anahtarları olsa da yalnız geçidi döndürür", () => {
+    const provider = voiceGatewayProvider({
+      OPENAI_API_KEY: "sk-test",
+      LOVABLE_API_KEY: "lov",
+      AI_ALLOW_LOVABLE_FALLBACK: "true",
+    });
+    expect(provider.name).toBe("supabase-gateway");
+    expect(provider.baseUrl).toBe(
+      "https://poxltwuruskxbympriz.supabase.co/functions/v1/openai-gateway",
+    );
+    expect(provider.headers).toEqual({});
+  });
+
+  it("yalnız açıkça tanımlanmış geçit jetonunu gönderir", () => {
+    expect(voiceGatewayProvider({ AI_GATEWAY_TOKEN: "tok" }).headers).toEqual({
+      Authorization: "Bearer tok",
+      apikey: "tok",
+    });
   });
 });
