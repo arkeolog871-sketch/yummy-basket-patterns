@@ -60,8 +60,11 @@ async function fetchFromVoiceGateway(
     if (!/fetch failed|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|network|Failed to fetch|getaddrinfo|dns/i.test(detail)) {
       throw error;
     }
+    // Ad çözümlemesi başarısız: adres yazım hatalı ya da proje kapalı.
+    // Kullanıcıya hangi düzeltmenin gerektiği açıkça söylenir.
     throw new Error(
-      "Sesli asistan sunucusuna ulaşılamıyor; yapay zekâ geçidi adresi yanıt vermiyor.",
+      "Sesli asistan sunucusuna ulaşılamıyor: yapay zekâ geçidi adresi bulunamadı. " +
+        "Geçidin bulunduğu proje adresi (AI_GATEWAY_URL) hatalı ya da proje kapalı görünüyor.",
     );
   }
 }
