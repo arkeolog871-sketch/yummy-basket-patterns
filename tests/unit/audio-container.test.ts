@@ -166,7 +166,7 @@ describe("yazıya çevirme çalışma zamanı isteği", () => {
     expect(file.type).toBe("audio/wav");
   });
 
-  it("gateway hatasında başka sağlayıcıyı çağırmadan anlamlı hata döndürür", async () => {
+  it("geçit fonksiyonu yayında değilse TEK yedek denenir, sonra anlamlı hata döner", async () => {
     vi.stubEnv(
       "AI_GATEWAY_URL",
       "https://abcdefghijklmnopqrst.supabase.co/functions/v1/openai-gateway",
@@ -184,7 +184,11 @@ describe("yazıya çevirme çalışma zamanı isteği", () => {
     await expect(
       transcribeAudio(btoa(String.fromCharCode(...wav)), "audio/wav"),
     ).rejects.toThrow("Yapay zekâ geçidi sunucuda bulunamadı");
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // 404 + NOT_FOUND bir yapılandırma eksiği: yedek sağlayıcı BİR kez denenir.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[1]?.[0])).toBe(
+      "https://api.openai.com/v1/audio/transcriptions",
+    );
   });
 });
 
