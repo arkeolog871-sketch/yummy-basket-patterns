@@ -241,6 +241,40 @@ export function voiceGatewayProvider(env: Env = process.env as Env): AiProviderC
 }
 
 /**
+ * Geçit adresi hiç YOKSA ses yolunun son çaresi.
+ *
+ * NEDEN: yapılandırılan geçit adresi ad çözümlemesinde bulunamadığında sesli
+ * asistan tümden susuyordu. Kullanıcı deneyimi bir yapılandırma hatası
+ * yüzünden tamamen kaybolmasın diye tek bir yedek tanımlandı; doğrudan
+ * OpenAI anahtarı varsa o, yoksa Lovable geçidi kullanılır.
+ * `AI_DISABLE_VOICE_FALLBACK=true` ile tümden kapatılabilir.
+ */
+export function voiceFallbackProvider(env: Env = process.env as Env): AiProviderConfig | null {
+  if (trimmed(env, "AI_DISABLE_VOICE_FALLBACK")?.toLowerCase() === "true") return null;
+
+  const openAiKey = trimmed(env, "OPENAI_API_KEY");
+  if (openAiKey) {
+    return {
+      name: "openai",
+      apiKey: openAiKey,
+      baseUrl: OPENAI_BASE_URL,
+      headers: { Authorization: `Bearer ${openAiKey}` },
+      models: overrideModels(env, OPENAI_MODELS),
+    };
+  }
+
+  const lovableKey = trimmed(env, "LOVABLE_API_KEY");
+  if (!lovableKey) return null;
+  return {
+    name: "lovable",
+    apiKey: lovableKey,
+    baseUrl: LOVABLE_BASE_URL,
+    headers: { "Lovable-API-Key": lovableKey, "X-Lovable-AIG-SDK": "fetch" },
+    models: overrideModels(env, LOVABLE_MODELS),
+  };
+}
+
+/**
  * Çalışma anında KULLANILABİLİR sağlayıcıyı verir.
  *
  * NEDEN: geçit fonksiyonu sunucuda yayında değilse her istek 404 alıyor ve
