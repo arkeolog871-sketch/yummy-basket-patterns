@@ -734,7 +734,7 @@ export function OrderAssistant() {
                     } catch {
                       /* depolama kapalıysa tercih yalnız bu oturumda geçerli */
                     }
-                    void playReply("Merhaba, sesim böyle. Nasıl yardımcı olabilirim?");
+                    void playReply("Merhaba, sesim böyle. Nasıl yardımcı olabilirim?", next);
                   }}
                   className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
                 >
