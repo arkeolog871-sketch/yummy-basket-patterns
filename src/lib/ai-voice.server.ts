@@ -43,38 +43,43 @@ function bytesToBase64(bytes: Uint8Array): string {
 }
 
 /**
- * Ses ucuna yalnızca yapılandırılmış geçit üzerinden istek atar.
- * Ağ hatasında başka bir sağlayıcıya düşülmez; kullanıcının OpenAI geçidi
- * dışındaki bir yolun sessizce kullanılması engellenir.
+ * Ses ucuna istek atar.
+ *
+ * SIRA: geçit adresi ÖN DOĞRULAMADAN geçiyorsa (bkz. isUsableGatewayUrl)
+ * önce o denenir. Adres yok/geçersizse ya da ağ katmanı isteği hiç
+ * taşıyamazsa TEK bir yedek sağlayıcı denenir. Sunucudan gelen 4xx/5xx
+ * yanıtlarında sağlayıcı DEĞİŞTİRİLMEZ; gerçek durum kodu kullanıcıya
+ * anlamlı bir Türkçe mesajla bildirilir.
  */
 async function fetchFromVoiceGateway(
   path: string,
   build: (provider: AiProviderConfig) => RequestInit,
 ): Promise<{ provider: AiProviderConfig; response: Response }> {
-  // Öncelik her zaman kullanıcının openai-gateway fonksiyonudur.
-  const provider = voiceGatewayProvider();
-  try {
-    return { provider, response: await fetch(`${provider.baseUrl}${path}`, build(provider)) };
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error ?? "");
-    if (!/fetch failed|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|network|Failed to fetch|getaddrinfo|dns/i.test(detail)) {
-      throw error;
+  const gateway = gatewayConfigured() ? voiceGatewayProvider() : null;
+  if (gateway) {
+    try {
+      return { provider: gateway, response: await fetch(`${gateway.baseUrl}${path}`, build(gateway)) };
+    } catch (error) {
+      // Ağ katmanı isteği hiç taşıyamadı (ad çözümlenmedi, bağlantı
+      // kurulamadı). Hata metnine GÜVENİLMEZ: çalışma ortamları bu durumu
+      // farklı sözcüklerle bildiriyor. Bu yüzden her istisnada yedek denenir.
+      void error;
     }
-    // Geçit adresine hiç ulaşılamıyor (adres yanlış ya da proje kapalı).
-    // Sesli asistan tümden susmasın diye tek bir yedek denenir.
-    const fallback = voiceFallbackProvider();
-    if (fallback) {
-      return {
-        provider: fallback,
-        response: await fetch(`${fallback.baseUrl}${path}`, build(fallback)),
-      };
-    }
+  }
+
+  const fallback = voiceFallbackProvider();
+  if (!fallback) {
     throw new Error(
-      "Sesli asistan sunucusuna ulaşılamıyor: yapay zekâ geçidi adresi bulunamadı. " +
-        "Geçidin bulunduğu proje adresi (AI_GATEWAY_URL) hatalı ya da proje kapalı görünüyor.",
+      "Sesli asistan yapılandırılmadı: yapay zekâ geçidi adresi (AI_GATEWAY_URL) " +
+        "eksik ya da hatalı ve yedek anahtar tanımlı değil.",
     );
   }
+  return {
+    provider: fallback,
+    response: await fetch(`${fallback.baseUrl}${path}`, build(fallback)),
+  };
 }
+
 
 /** Ses kaydını Türkçe metne çevirir. */
 export async function transcribeAudio(base64: string, mimeType: string): Promise<string> {
