@@ -82,17 +82,50 @@ function overrideModels(env: Env, base: AiModels): AiModels {
 }
 
 /**
- * Yayındaki `openai-gateway` fonksiyonunun adresi.
- * OpenAI anahtarı yalnızca o fonksiyonun içinde yaşar; tarayıcıya çıkmaz.
- * AI_GATEWAY_URL, ses dışındaki yapay zekâ çağrılarında bu varsayılanı ezer.
- * Ses yolu ise doğrulanmış canlı geçide sabittir ve başka sağlayıcıya düşmez.
+ * `openai-gateway` fonksiyonunun adresi — YALNIZCA `AI_GATEWAY_URL` ile
+ * verilir. Gömülü varsayılan yok.
+ *
+ * YAŞANMIŞ ARIZA (22 Eylül 2026, ölçüldü): koda gömülü varsayılan adres
+ * "poxltwuruskxbympriz" proje kodunu taşıyordu. Supabase proje kodları tam
+ * 20 harftir, bu 19 harf — adres eksik kopyalanmış. O konak Cloudflare'in
+ * arkasında her isteğe `HTTP 530 · error code: 1016` (origin DNS error)
+ * döndürüyordu. Sonuç: sohbet "Failed after 3 attempts" ile, seslendirme
+ * "geçit tarafından reddedildi (durum 530)" ile tümden ölüydü. Üstelik bu
+ * depoda `supabase/functions/openai-gateway` diye bir fonksiyon YOK; geçit
+ * hiçbir zaman doğrulanmadı. Çalışan yol, sunucudaki OPENAI_API_KEY ile
+ * doğrudan OpenAI'dir.
+ *
+ * Bu yüzden geçit artık SEÇMELİ: adres açıkça verilir ve ön doğrulamadan
+ * geçerse kullanılır, yoksa doğrudan OpenAI'ye gidilir.
  */
-const DEFAULT_AI_GATEWAY_URL =
-  "https://poxltwuruskxbympriz.supabase.co/functions/v1/openai-gateway";
+const DEFAULT_AI_GATEWAY_URL = "";
 
 function resolveGatewayUrl(env: Env): string {
   const explicit = trimmed(env, "AI_GATEWAY_URL");
   return (explicit ?? DEFAULT_AI_GATEWAY_URL).replace(/\/+$/, "");
+}
+
+/**
+ * Adresin çağrılabilir görünüp görünmediğini söyler.
+ * Supabase alan adlarında proje kodu tam 20 harftir; eksik kopyalanan adres
+ * ad çözümlemesinde hiç bulunamıyor ve istek HTTP katmanına varmadan ölüyor.
+ */
+export function isUsableGatewayUrl(url: string): boolean {
+  if (!/^https?:\/\//i.test(url)) return false;
+  let host: string;
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    return false;
+  }
+  const supabase = /^([a-z0-9-]+)\.supabase\.(co|in)$/i.exec(host);
+  if (supabase) return (supabase[1] ?? "").length === 20;
+  return true;
+}
+
+/** Geçit adresi kullanılabilir mi? */
+export function gatewayConfigured(env: Env = process.env as Env): boolean {
+  return isUsableGatewayUrl(resolveGatewayUrl(env));
 }
 
 /**
@@ -111,13 +144,19 @@ export function resolveAiProviderChain(env: Env): AiProviderConfig[] {
   // yok. Bu yüzden bağlı projenin publishable anahtarı geçide DAYATILMAZ;
   // yalnızca geçit için ayrıca bir jeton tanımlanmışsa gönderilir.
   const gatewayToken = trimmed(env, "AI_GATEWAY_TOKEN");
-  chain.push({
-    name: "supabase-gateway",
-    apiKey: gatewayToken ?? "",
-    baseUrl: gatewayUrl,
-    headers: gatewayToken ? { Authorization: `Bearer ${gatewayToken}`, apikey: gatewayToken } : {},
-    models: overrideModels(env, OPENAI_MODELS),
-  });
+  // Adres kullanılamaz görünüyorsa zincire hiç girmez: aksi hâlde her istek
+  // 530 ile ölüyor ve çalışan OpenAI yoluna hiç sıra gelmiyordu.
+  if (isUsableGatewayUrl(gatewayUrl)) {
+    chain.push({
+      name: "supabase-gateway",
+      apiKey: gatewayToken ?? "",
+      baseUrl: gatewayUrl,
+      headers: gatewayToken
+        ? { Authorization: `Bearer ${gatewayToken}`, apikey: gatewayToken }
+        : {},
+      models: overrideModels(env, OPENAI_MODELS),
+    });
+  }
 
   const openAiKey = trimmed(env, "OPENAI_API_KEY");
   if (openAiKey) {
@@ -215,6 +254,46 @@ export function aiResponsesOptions(provider: AiProviderConfig) {
   } as const;
 }
 
+/**
+ * Ses uçları (STT/TTS) için KULLANILABİLİR sağlayıcıyı verir.
+ *
+ * SIRA: geçit adresi açıkça verilmiş ve ön doğrulamadan geçiyorsa geçit;
+ * yoksa sunucudaki OPENAI_API_KEY ile doğrudan OpenAI; o da yoksa açıkça
+ * izin verilmişse Lovable. Hiçbiri yoksa null.
+ *
+ * NEDEN yedek var: ses yolu bir süre yalnız geçide sabitlenmişti. Geçit
+ * adresi hatalı olduğu için seslendirme "geçit tarafından reddedildi
+ * (durum 530)" diyerek tümden sustu — ölçüldü. Anahtar zaten sunucuda ve
+ * çalışıyor; sunucuda kalır, tarayıcıya çıkmaz.
+ */
+export function voiceProvider(env: Env = process.env as Env): AiProviderConfig | null {
+  if (gatewayConfigured(env)) return voiceGatewayProvider(env);
+
+  const openAiKey = trimmed(env, "OPENAI_API_KEY");
+  if (openAiKey) {
+    return {
+      name: "openai",
+      apiKey: openAiKey,
+      baseUrl: OPENAI_BASE_URL,
+      headers: { Authorization: `Bearer ${openAiKey}` },
+      models: overrideModels(env, OPENAI_MODELS),
+    };
+  }
+
+  const lovableKey = trimmed(env, "LOVABLE_API_KEY");
+  if (trimmed(env, "AI_ALLOW_LOVABLE_FALLBACK")?.toLowerCase() === "true" && lovableKey) {
+    return {
+      name: "lovable",
+      apiKey: lovableKey,
+      baseUrl: LOVABLE_BASE_URL,
+      headers: { "Lovable-API-Key": lovableKey, "X-Lovable-AIG-SDK": "fetch" },
+      models: overrideModels(env, LOVABLE_MODELS),
+    };
+  }
+
+  return null;
+}
+
 /** Süreç ortamından çözer; çağrı yerleri bunu kullanır. */
 export function aiProvider(): AiProviderConfig {
   return resolveAiProvider(process.env as Env);
@@ -232,7 +311,7 @@ export function voiceGatewayProvider(env: Env = process.env as Env): AiProviderC
   return {
     name: "supabase-gateway",
     apiKey: gatewayToken ?? "",
-    baseUrl: DEFAULT_AI_GATEWAY_URL,
+    baseUrl: resolveGatewayUrl(env),
     headers: gatewayToken ? { Authorization: `Bearer ${gatewayToken}`, apikey: gatewayToken } : {},
     models: overrideModels(env, OPENAI_MODELS),
   };
@@ -267,11 +346,21 @@ async function gatewayReachable(provider: AiProviderConfig): Promise<boolean> {
           return false;
         }
       }
+      // YAŞANMIŞ ARIZA: yoklama yalnızca 404'e bakıyordu. Geçit konağı her
+      // isteğe 530 (Cloudflare 1016, origin DNS error) döndürüyordu; 404
+      // olmadığı için "ulaşılabilir" sayılıyor ve tüm istekler oraya
+      // gidiyordu. 5xx artık bu istek için kullanılamaz demektir; kalıcı
+      // ölü işaretlenmez, sonraki istekte yeniden yoklanır.
+      if (response.status >= 500) {
+        probedAiBaseUrls.delete(provider.baseUrl);
+        return false;
+      }
       return true;
     } catch {
-      // Ağ hatası kalıcı sayılmaz: bir sonraki istekte tekrar denenir.
+      // Ağ katmanı isteği hiç taşıyamadı. Bu istek için kullanılamaz;
+      // kalıcı sayılmaz, bir sonraki istekte tekrar denenir.
       probedAiBaseUrls.delete(provider.baseUrl);
-      return true;
+      return false;
     }
   })();
 
@@ -289,7 +378,10 @@ export async function aiProviderForUse(): Promise<AiProviderConfig> {
     if (await gatewayReachable(candidate)) return candidate;
   }
 
-  const [fallback] = resolveAiProviderChain(process.env as Env);
+  // Hiçbiri seçilemedi: geçit olmayan ilk sağlayıcıya düş. Son çare olarak
+  // bile ulaşılamayan geçide dönmek, her isteği 530 ile öldürmek demekti.
+  const rest = resolveAiProviderChain(process.env as Env);
+  const fallback = rest.find((candidate) => candidate.name !== "supabase-gateway") ?? rest[0];
   if (fallback) return fallback;
   throw new Error(`Yapay zekâ şu an yapılandırılmadı. ${aiKeyHint(process.env as Env)}`);
 }

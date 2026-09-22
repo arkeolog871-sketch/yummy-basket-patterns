@@ -17,10 +17,7 @@
  *    düşülmez.
  */
 
-import {
-  type AiProviderConfig,
-  voiceGatewayProvider,
-} from "./ai-provider.server";
+import { type AiProviderConfig, voiceProvider } from "./ai-provider.server";
 import { resolveAudioContainer } from "./audio-container";
 
 function base64ToBytes(base64: string): Uint8Array {
@@ -43,39 +40,55 @@ function bytesToBase64(bytes: Uint8Array): string {
 /**
  * Ses ucuna istek atar.
  *
- * Tek yol doğrulanmış openai-gateway'dir. Ağ ve HTTP hatalarında sağlayıcı
- * değiştirilmez; gerçek durum kullanıcıya güvenli biçimde bildirilir.
+ * Sağlayıcı voiceProvider() ile seçilir: geçit adresi verilmiş ve geçerliyse
+ * geçit, değilse sunucudaki anahtarla doğrudan OpenAI. Anahtar sunucuda kalır.
+ * Ağ ve HTTP hatalarında sağlayıcı ORTA YERDE değiştirilmez; gerçek durum
+ * kullanıcıya güvenli biçimde bildirilir.
  */
 async function fetchFromVoiceGateway(
   path: string,
   build: (provider: AiProviderConfig) => RequestInit,
 ): Promise<{ provider: AiProviderConfig; response: Response }> {
-  const gateway = voiceGatewayProvider();
+  const provider = voiceProvider();
+  if (!provider) {
+    throw new Error(
+      "Sesli asistan yapılandırılmadı: ne geçit adresi ne de yapay zekâ anahtarı tanımlı.",
+    );
+  }
   try {
-    return { provider: gateway, response: await fetch(`${gateway.baseUrl}${path}`, build(gateway)) };
+    return {
+      provider,
+      response: await fetch(`${provider.baseUrl}${path}`, build(provider)),
+    };
   } catch (error) {
-    const cause = error instanceof Error ? (error.cause as { code?: unknown } | undefined) : undefined;
+    const cause =
+      error instanceof Error ? (error.cause as { code?: unknown } | undefined) : undefined;
     const code = typeof cause?.code === "string" ? cause.code : "FETCH_FAILED";
-    throw new Error(`Sesli asistan geçidine ulaşılamadı (ağ hatası: ${code}).`);
+    throw new Error(`Sesli asistan sağlayıcısına ulaşılamadı (ağ hatası: ${code}).`);
   }
 }
 
 function gatewayErrorDetail(body: string): string | null {
   try {
     const payload = JSON.parse(body) as { message?: unknown; error?: unknown };
-    const nested = payload.error && typeof payload.error === "object"
-      ? (payload.error as { message?: unknown }).message
-      : payload.error;
+    const nested =
+      payload.error && typeof payload.error === "object"
+        ? (payload.error as { message?: unknown }).message
+        : payload.error;
     const value = typeof payload.message === "string" ? payload.message : nested;
     if (typeof value !== "string") return null;
     const clean = value.replace(/[\r\n]+/g, " ").trim();
-    if (!clean || clean.length > 180 || /sk-[A-Za-z0-9_-]+|bearer\s+|OPENAI_API_KEY|secret/i.test(clean)) return null;
+    if (
+      !clean ||
+      clean.length > 180 ||
+      /sk-[A-Za-z0-9_-]+|bearer\s+|OPENAI_API_KEY|secret/i.test(clean)
+    )
+      return null;
     return clean;
   } catch {
     return null;
   }
 }
-
 
 /** Ses kaydını Türkçe metne çevirir. */
 export async function transcribeAudio(base64: string, mimeType: string): Promise<string> {
@@ -104,11 +117,14 @@ export async function transcribeAudio(base64: string, mimeType: string): Promise
   if (!response.ok) {
     const body = await response.text().catch(() => "");
     const detail = gatewayErrorDetail(body);
-    throw new Error(`Ses kaydı geçit tarafından reddedildi (durum ${response.status})${detail ? `: ${detail}` : "."}`);
+    throw new Error(
+      `Ses kaydı sağlayıcı tarafından reddedildi (durum ${response.status})${detail ? `: ${detail}` : "."}`,
+    );
   }
-  const payload = (await response.json().catch(() => null)) as
-    | { text?: string; results?: { text?: string }[] }
-    | null;
+  const payload = (await response.json().catch(() => null)) as {
+    text?: string;
+    results?: { text?: string }[];
+  } | null;
   const text = (payload?.text ?? payload?.results?.[0]?.text ?? "").trim();
   if (!text) throw new Error("Ses anlaşılamadı, tekrar deneyin.");
   return text.slice(0, 1500);
@@ -136,7 +152,9 @@ export async function synthesizeSpeech(
   if (!response.ok) {
     const body = await response.text().catch(() => "");
     const detail = gatewayErrorDetail(body);
-    throw new Error(`Sesli yanıt geçit tarafından reddedildi (durum ${response.status})${detail ? `: ${detail}` : "."}`);
+    throw new Error(
+      `Sesli yanıt sağlayıcı tarafından reddedildi (durum ${response.status})${detail ? `: ${detail}` : "."}`,
+    );
   }
   const bytes = new Uint8Array(await response.arrayBuffer());
   if (bytes.byteLength === 0) throw new Error("Sesli yanıt üretilemedi.");
