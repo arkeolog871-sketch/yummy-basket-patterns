@@ -18,7 +18,6 @@
  */
 
 import {
-  aiFailureMessage,
   type AiProviderConfig,
   voiceGatewayProvider,
 } from "./ai-provider.server";
@@ -70,7 +69,7 @@ function gatewayErrorDetail(body: string): string | null {
     const value = typeof payload.message === "string" ? payload.message : nested;
     if (typeof value !== "string") return null;
     const clean = value.replace(/[\r\n]+/g, " ").trim();
-    if (!clean || clean.length > 180 || /sk-[A-Za-z0-9_-]+|bearer\s+/i.test(clean)) return null;
+    if (!clean || clean.length > 180 || /sk-[A-Za-z0-9_-]+|bearer\s+|OPENAI_API_KEY|secret/i.test(clean)) return null;
     return clean;
   } catch {
     return null;
@@ -104,8 +103,6 @@ export async function transcribeAudio(base64: string, mimeType: string): Promise
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
-    const failure = aiFailureMessage(response.status, body);
-    if (failure) throw new Error(failure);
     const detail = gatewayErrorDetail(body);
     throw new Error(`Ses kaydı geçit tarafından reddedildi (durum ${response.status})${detail ? `: ${detail}` : "."}`);
   }
@@ -138,8 +135,6 @@ export async function synthesizeSpeech(
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
-    const failure = aiFailureMessage(response.status, body);
-    if (failure) throw new Error(failure);
     const detail = gatewayErrorDetail(body);
     throw new Error(`Sesli yanıt geçit tarafından reddedildi (durum ${response.status})${detail ? `: ${detail}` : "."}`);
   }
