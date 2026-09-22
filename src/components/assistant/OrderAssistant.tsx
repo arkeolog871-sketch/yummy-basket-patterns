@@ -602,6 +602,7 @@ export function OrderAssistant() {
   if (voiceMode) {
     return (
       <VoiceConversation
+        voice={voiceName}
         transcript={messages}
         onClose={() => setVoiceMode(false)}
         onError={(message, detail) =>
