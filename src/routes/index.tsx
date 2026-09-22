@@ -11,6 +11,7 @@ import { HeroBannerSlider, legacySlidesToBanners } from "@/components/home/HeroB
 import { FounderContact } from "@/components/home/FounderContact";
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { interpretSmartSearch } from "@/lib/ai-search.functions";
+import { AI_UI_ENABLED } from "@/lib/ai-features";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -130,7 +131,7 @@ function Index() {
       return;
     }
     const looksLikeSentence = raw.split(/\s+/).length >= 2;
-    if (!looksLikeSentence) {
+    if (!looksLikeSentence || !AI_UI_ENABLED) {
       apply({ kategori: activeSector, q: raw });
       return;
     }
