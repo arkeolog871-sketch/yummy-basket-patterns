@@ -240,7 +240,7 @@ function RootComponent() {
                 <AppRealtimeBridge />
                 <FcmTokenBridge />
                 <GoogleOAuthRelayBridge />
-                <OrderAssistant />
+                {AI_UI_ENABLED ? <OrderAssistant /> : null}
                 <LegalConsentGate />
                 <ErrorCollector />
                 <Toaster />
