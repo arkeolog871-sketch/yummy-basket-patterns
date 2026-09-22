@@ -281,7 +281,8 @@ describe("Supabase openai-gateway sağlayıcısı", () => {
 
   it("AI_GATEWAY_URL verilirse o adres kullanılır", () => {
     expect(
-      resolveAiProvider({ ...gatewayEnv, AI_GATEWAY_URL: "https://x.dev/functions/v1/gw/" }).baseUrl,
+      resolveAiProvider({ ...gatewayEnv, AI_GATEWAY_URL: "https://x.dev/functions/v1/gw/" })
+        .baseUrl,
     ).toBe("https://x.dev/functions/v1/gw");
   });
 
@@ -290,9 +291,9 @@ describe("Supabase openai-gateway sağlayıcısı", () => {
   });
 
   it("geçit fonksiyonu yayında değilse anlaşılır Türkçe mesaj döner", () => {
-    expect(aiFailureMessage(404, '{"code":"NOT_FOUND","message":"Requested function was not found"}')).toMatch(
-      /geçidi sunucuda bulunamadı/,
-    );
+    expect(
+      aiFailureMessage(404, '{"code":"NOT_FOUND","message":"Requested function was not found"}'),
+    ).toMatch(/geçidi sunucuda bulunamadı/);
   });
 });
 

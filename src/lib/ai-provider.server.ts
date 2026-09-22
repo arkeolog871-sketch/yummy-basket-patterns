@@ -162,7 +162,6 @@ export function resolveAiProvider(env: Env): AiProviderConfig {
   throw new Error(`Yapay zekâ şu an yapılandırılmadı. ${aiKeyHint(env)}`);
 }
 
-
 /**
  * Sunucunun hangi yapay zekâ anahtarını GÖRDÜĞÜNÜ söyler.
  *
@@ -310,7 +309,6 @@ export function aiFailureMessage(status: number, body: string): string | null {
   if (status === 404 && /NOT_FOUND|function was not found/i.test(body)) {
     return "Yapay zekâ geçidi sunucuda bulunamadı; yöneticinin geçidi yayına alması gerekiyor.";
   }
-
 
   return null;
 }
