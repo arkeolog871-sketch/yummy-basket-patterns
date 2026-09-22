@@ -449,6 +449,43 @@ body {
   overflow-x: clip;
 }
 
+/* ---------------------------------------------------------------------------
+ * iOS kabuğu: SABİT BAŞLIK, düzenle (yapışkanlıkla değil).
+ *
+ * Ölçüldü: iOS uygulamasında başlık sayfayla birlikte kayıp gidiyordu ve
+ * kabuk `contentInset: automatic` ile çalıştığı için sayfa çentik şeridinin
+ * altından akıyordu. Başlığa `position: sticky` vermek çözüm değil: WKWebView
+ * yapışkan öğeyi ayrı katmana alıyor ve tuşları ilk açılışta dokunmaya cevap
+ * vermiyordu (bkz. Header.tsx, ios-header-touch.test.ts).
+ *
+ * Bunun yerine iOS'ta belge HİÇ kaymıyor: html/body ekran yüksekliğinde ve
+ * taşmasız. Başlık akışta en üstte duruyor; kayan tek şey altındaki içerik
+ * alanı ([data-app-scroll]). Çentik şeridinin arkasında kayan içerik
+ * kalmadığı için şerit de sabit görünüyor. overscroll-behavior: none, belgenin
+ * esneyip başlığı aşağı sürüklemesini engelliyor.
+ *
+ * Katmansız: yukarıdaki html/body overflow-x kuralını yeniden tanımlıyor.
+ * ------------------------------------------------------------------------- */
+html[data-ios-shell],
+html[data-ios-shell] body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+html[data-ios-shell] [data-app-shell] {
+  height: 100%;
+  min-height: 0;
+}
+
+html[data-ios-shell] [data-app-scroll] {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Görseller için son güvence: bazı <img>'ler (kapak, ürün, splash) taşıyıcı
  * boyutlarını CSS sınıflarıyla (size-full, object-cover…) alır. Eğer bu
  * sınıflar herhangi bir sebeple (WebView'de CSS yüklenme sırası/önbellek
