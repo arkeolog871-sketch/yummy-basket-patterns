@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import capedS from "@/assets/pelerinli-s.png";
+import { CapeEmblem } from "./CapeEmblem";
 import {
   MicrophoneSession,
   type AudioStreamLike,
@@ -318,14 +319,12 @@ export function VoiceConversation({
               phase === "dinliyor" ? "bg-red-500/25" : "bg-white/5"
             }`}
           />
-          <img
+          <CapeEmblem
             src={capedS}
-            alt=""
-            width={1024}
-            height={1024}
-            loading="lazy"
-            className={`relative w-56 object-contain drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)] ${
-              phase === "hazirlaniyor" ? "opacity-70" : "cape-wave"
+            paused={phase === "hazirlaniyor"}
+            scale={phase === "dinliyor" ? 11 : 7}
+            className={`relative w-56 drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)] ${
+              phase === "hazirlaniyor" ? "opacity-70" : ""
             }`}
           />
           {phase === "yaziya-ceviriyor" || phase === "dusunuyor" ? (
