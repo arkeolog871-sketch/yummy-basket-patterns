@@ -16,6 +16,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import capedS from "@/assets/pelerinli-s.png";
 import { CapeEmblem } from "./CapeEmblem";
+import { RealtimeVoiceStage } from "./RealtimeVoiceStage";
+import { DEFAULT_ASSISTANT_VOICE } from "@/lib/assistant-voices";
 import {
   MicrophoneSession,
   type AudioStreamLike,
@@ -59,16 +61,58 @@ export interface VoiceConversationProps {
   transcript: { role: "user" | "assistant"; content: string }[];
   /** Hata mesajı gösterir. */
   onError: (message: string, detail?: string) => void;
+  /** Seçili ses kategorisi (gerçek zamanlı oturumda kullanılır). */
+  voice?: string;
 }
 
-export function VoiceConversation({
+/**
+ * Sesli sohbet giriş noktası.
+ *
+ * BİRİNCİL YOL gerçek zamanlıdır (tek WebRTC oturumu, sürekli dinleme, araya
+ * girme). Bağlantı hiç kurulamazsa — geçit gerçek zamanlı ucu desteklemiyor,
+ * ağ WebRTC'ye kapalı vb. — gerçek hata görünür biçimde bildirilir ve aynı
+ * geçit üzerinden çalışan klasik tur döngüsüne düşülür. Sağlayıcı
+ * DEĞİŞMEZ; yalnız aktarım biçimi değişir.
+ */
+export function VoiceConversation(props: VoiceConversationProps) {
+  const [classic, setClassic] = useState(false);
+  const [downgradeReason, setDowngradeReason] = useState<string | null>(null);
+
+  if (!classic) {
+    return (
+      <RealtimeVoiceStage
+        voice={props.voice ?? DEFAULT_ASSISTANT_VOICE}
+        transcript={props.transcript}
+        onClose={props.onClose}
+        answerQuestion={props.ask}
+        onUserText={() => {
+          /* döküm üst bileşende tutuluyor; gerçek zamanlı modda anlık metin
+             yalnız ekranda gösterilir */
+        }}
+        onAssistantText={() => {
+          /* aynı sebep */
+        }}
+        onUnavailable={(reason) => {
+          console.warn("[REALTIME] kullanılamıyor:", reason);
+          setDowngradeReason(reason);
+          setClassic(true);
+        }}
+      />
+    );
+  }
+
+  return <ClassicVoiceConversation {...props} downgradeReason={downgradeReason} />;
+}
+
+function ClassicVoiceConversation({
+  downgradeReason,
   transcribe,
   ask,
   speak,
   onClose,
   transcript,
   onError,
-}: VoiceConversationProps) {
+}: VoiceConversationProps & { downgradeReason?: string | null }) {
   const [phase, setPhase] = useState<VoicePhase>("hazirlaniyor");
   const [level, setLevel] = useState(0);
   const micRef = useRef<MicrophoneSession | null>(null);
@@ -93,7 +137,9 @@ export function VoiceConversation({
   /** Kaydedicinin bildirdiği gerçek kap; blob bununla etiketlenir. */
   const recordedTypeRef = useRef<string>("audio/webm");
 
-  const [hint, setHint] = useState<string | null>(null);
+  // Gerçek zamanlı yol kurulamadıysa sebebi gizlemiyoruz: kullanıcı neden
+  // klasik (daha yavaş) moda düşüldüğünü görüyor.
+  const [hint, setHint] = useState<string | null>(downgradeReason ?? null);
 
   const stopMetering = useCallback(() => {
     if (timerRef.current !== null) {
