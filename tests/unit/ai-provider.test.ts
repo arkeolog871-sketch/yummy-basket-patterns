@@ -4,6 +4,7 @@ import {
   aiFailureMessage,
   aiKeyHint,
   aiResponsesOptions,
+  describeAiStreamError,
   resolveAiProvider,
   resolveAiProviderChain,
   voiceGatewayProvider,
@@ -411,5 +412,34 @@ describe("akış hatası yutulmaz", () => {
     expect(assistant).toContain("streamFailure");
     // result.text çıplak çağrılmamalı; hatası yakalanmalı.
     expect(assistant).toMatch(/try\s*\{[\s\S]{0,120}await result\.text/);
+  });
+});
+
+/**
+ * Akış hatası yutulmasın: `streamText` sağlayıcının asıl yanıtını
+ * "No output generated" diye genelleştiriyor. Sebebin kullanıcıya ve loga
+ * taşındığını burada ölçüyoruz.
+ */
+describe("describeAiStreamError", () => {
+  it("bakiye bittiğinde net mesaj verir", () => {
+    const error = Object.assign(new Error("Too Many Requests"), {
+      statusCode: 429,
+      responseBody: '{"error":{"code":"insufficient_quota"}}',
+    });
+    expect(describeAiStreamError(error)).toBe("Yapay zekâ bakiyesi tükendi.");
+  });
+
+  it("bilinmeyen durumda durum kodunu ve gövdeyi taşır", () => {
+    const error = Object.assign(new Error("Not Found"), {
+      statusCode: 404,
+      responseBody: '{"error":{"message":"The model `gpt-6-astra` does not exist"}}',
+    });
+    const detail = describeAiStreamError(error);
+    expect(detail).toContain("HTTP 404");
+    expect(detail).toContain("does not exist");
+  });
+
+  it("düz hatada mesajı korur", () => {
+    expect(describeAiStreamError(new Error("fetch failed"))).toBe("fetch failed");
   });
 });
