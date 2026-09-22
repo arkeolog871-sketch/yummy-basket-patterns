@@ -18,12 +18,12 @@ export interface AssistantVoice {
 }
 
 export const ASSISTANT_VOICES: AssistantVoice[] = [
-  { id: "coral", label: "Mira (kadın)", hint: "Zarif, sıcak" },
-  { id: "sage", label: "Selin (kadın)", hint: "Sakin, güven veren" },
-  { id: "shimmer", label: "Derya (kadın)", hint: "Parlak, canlı" },
-  { id: "verse", label: "Aras (erkek)", hint: "Güçlü, cömert" },
-  { id: "onyx", label: "Demir (erkek)", hint: "Derin, ağırbaşlı" },
-  { id: "ballad", label: "Kerem (erkek)", hint: "Yumuşak, hikâyeci" },
+  { id: "coral", label: "Lidya (kadın)", hint: "Zarif, sıcak" },
+  { id: "sage", label: "Parla (kadın)", hint: "Sakin, güven veren" },
+  { id: "shimmer", label: "Arya (kadın)", hint: "Parlak, canlı" },
+  { id: "verse", label: "Alim (erkek)", hint: "Güçlü, cömert" },
+  { id: "onyx", label: "Polat (erkek)", hint: "Derin, ağırbaşlı" },
+  { id: "ballad", label: "Alperen (erkek)", hint: "Yumuşak, hikâyeci" },
 ];
 
 export const DEFAULT_ASSISTANT_VOICE = "coral";
