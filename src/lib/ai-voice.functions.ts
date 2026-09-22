@@ -14,6 +14,8 @@ const transcribeSchema = z.object({
 
 const speakSchema = z.object({
   text: z.string().trim().min(1).max(900),
+  // Ses kategorisi: geçersiz değer sunucuda varsayılana çekilir.
+  voice: z.string().trim().max(30).optional(),
 });
 
 export const transcribeAssistantAudio = createServerFn({ method: "POST" })
