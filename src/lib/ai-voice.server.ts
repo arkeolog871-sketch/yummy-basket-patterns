@@ -5,7 +5,7 @@
  * dönüştürülür (speech). Anahtar tarayıcıya çıkmaz.
  */
 
-import { aiFailureMessage, aiProvider } from "./ai-provider.server";
+import { aiFailureMessage, aiProviderForUse } from "./ai-provider.server";
 
 /** İzin verilen ses türleri — tarayıcı kaydı webm/mp4/ogg/wav üretir. */
 const ALLOWED_AUDIO = [
@@ -52,11 +52,11 @@ export async function transcribeAudio(base64: string, mimeType: string): Promise
             ? "wav"
             : "webm";
 
+  const provider = await aiProviderForUse();
   const form = new FormData();
-  form.append("model", aiProvider().models.transcribe);
+  form.append("model", provider.models.transcribe);
   form.append("file", new Blob([bytes as unknown as BlobPart], { type }), `kayit.${extension}`);
 
-  const provider = aiProvider();
   const response = await fetch(`${provider.baseUrl}/audio/transcriptions`, {
     method: "POST",
     headers: provider.headers,
@@ -79,7 +79,7 @@ export async function synthesizeSpeech(
   const input = text.trim().slice(0, 900);
   if (!input) throw new Error("Okunacak metin yok.");
 
-  const provider = aiProvider();
+  const provider = await aiProviderForUse();
   const response = await fetch(`${provider.baseUrl}/audio/speech`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...provider.headers },

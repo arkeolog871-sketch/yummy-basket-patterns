@@ -48,7 +48,7 @@ describe("fotoğraftan ürün çıkarma — güvenlik sözleşmesi", () => {
     // Burada elle yazılırsa sağlayıcı değiştiğinde bu dosya eski yerden
     // harcamaya devam eder; varsayılan model kimlikleri orada test ediliyor.
     expect(server).toMatch(/lovable\.responses\(provider\.models\.chat\)/);
-    expect(server).toMatch(/const provider = aiProvider\(\)/);
+    expect(server).toMatch(/const provider = await aiProviderForUse\(\)/);
     expect(server).not.toMatch(/process\.env\["LOVABLE_API_KEY"\]/);
   });
 

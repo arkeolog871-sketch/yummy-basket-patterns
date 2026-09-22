@@ -13,7 +13,7 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { stepCountIs, streamText, tool } from "ai";
 import { z } from "zod";
-import { aiProvider, aiResponsesOptions } from "./ai-provider.server";
+import { aiProviderForUse, aiResponsesOptions } from "./ai-provider.server";
 import { createLovableAiGatewayRunIdFetch } from "./ai-gateway.server";
 import { stripMarkdownForPlainText } from "./assistant-text";
 import { ilikePattern, matchesSearchTerms } from "./catalog-search";
@@ -100,7 +100,7 @@ export async function runAssistant(
   instruction?: string | null,
 ): Promise<{ reply: string; proposal: CartProposal | null }> {
   // Anahtar yoksa burada açık hatayla durur (bkz. ai-provider.server).
-  const provider = aiProvider();
+  const provider = await aiProviderForUse();
 
   const { createPublicClient } = await import("./catalog.server");
   const supabase = createPublicClient();

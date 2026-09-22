@@ -14,7 +14,7 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { Output, NoObjectGeneratedError, streamText } from "ai";
 import { z } from "zod";
-import { aiProvider, aiResponsesOptions } from "./ai-provider.server";
+import { aiProviderForUse, aiResponsesOptions } from "./ai-provider.server";
 import { createLovableAiGatewayRunIdFetch } from "./ai-gateway.server";
 
 export const ExtractedProductSchema = z.object({
@@ -74,7 +74,7 @@ function clampProduct(raw: ExtractedProductModel, index: number): ExtractedProdu
  */
 export async function extractProductsFromImages(images: string[]): Promise<ExtractedProduct[]> {
   // Anahtar yoksa burada açık hatayla durur (bkz. ai-provider.server).
-  const provider = aiProvider();
+  const provider = await aiProviderForUse();
 
   const runIdFetch = createLovableAiGatewayRunIdFetch();
   const lovable = createOpenAI({

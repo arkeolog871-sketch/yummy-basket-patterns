@@ -5,6 +5,7 @@ import {
   aiKeyHint,
   aiResponsesOptions,
   resolveAiProvider,
+  resolveAiProviderChain,
 } from "@/lib/ai-provider.server";
 
 /**
@@ -203,7 +204,7 @@ describe("sağlayıcı tek yerden seçiliyor", () => {
       expect(source, `${file} anahtarı doğrudan okuyor`).not.toContain(
         'process.env["LOVABLE_API_KEY"]',
       );
-      expect(source, `${file} sağlayıcıyı kullanmıyor`).toContain("aiProvider(");
+      expect(source, `${file} sağlayıcıyı kullanmıyor`).toContain("aiProviderForUse(");
     }
   });
 });
@@ -280,7 +281,8 @@ describe("Supabase openai-gateway sağlayıcısı", () => {
 
   it("AI_GATEWAY_URL verilirse o adres kullanılır", () => {
     expect(
-      resolveAiProvider({ ...gatewayEnv, AI_GATEWAY_URL: "https://x.dev/functions/v1/gw/" }).baseUrl,
+      resolveAiProvider({ ...gatewayEnv, AI_GATEWAY_URL: "https://x.dev/functions/v1/gw/" })
+        .baseUrl,
     ).toBe("https://x.dev/functions/v1/gw");
   });
 
@@ -289,8 +291,28 @@ describe("Supabase openai-gateway sağlayıcısı", () => {
   });
 
   it("geçit fonksiyonu yayında değilse anlaşılır Türkçe mesaj döner", () => {
-    expect(aiFailureMessage(404, '{"code":"NOT_FOUND","message":"Requested function was not found"}')).toMatch(
-      /geçidi sunucuda bulunamadı/,
-    );
+    expect(
+      aiFailureMessage(404, '{"code":"NOT_FOUND","message":"Requested function was not found"}'),
+    ).toMatch(/geçidi sunucuda bulunamadı/);
+  });
+});
+
+describe("sağlayıcı sırası (geçit → doğrudan OpenAI)", () => {
+  it("geçit birincil, doğrudan OpenAI yedek sırada durur", () => {
+    const chain = resolveAiProviderChain({
+      SUPABASE_URL: "https://ref.supabase.co",
+      SUPABASE_PUBLISHABLE_KEY: "sb_publishable_x",
+      OPENAI_API_KEY: "sk-test",
+    });
+    expect(chain.map((item) => item.name)).toEqual(["supabase-gateway", "openai"]);
+  });
+
+  it("Lovable yolu izin verilmedikçe sıraya girmez", () => {
+    const chain = resolveAiProviderChain({ LOVABLE_API_KEY: "lov", OPENAI_API_KEY: "sk-test" });
+    expect(chain.map((item) => item.name)).toEqual(["openai"]);
+  });
+
+  it("hiç yapılandırma yoksa sıra boştur", () => {
+    expect(resolveAiProviderChain({})).toHaveLength(0);
   });
 });
