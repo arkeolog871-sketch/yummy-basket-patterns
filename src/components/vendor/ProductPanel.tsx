@@ -423,7 +423,7 @@ export function ProductPanel({
             <div className="space-y-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <Label htmlFor="product-description">Açıklama</Label>
-                {restaurantId ? (
+                {restaurantId && AI_UI_ENABLED ? (
                   <Button
                     type="button"
                     variant="outline"
