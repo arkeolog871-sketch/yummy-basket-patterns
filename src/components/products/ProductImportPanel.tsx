@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PhotoMenuImport } from "@/components/products/PhotoMenuImport";
+import { AI_UI_ENABLED } from "@/lib/ai-features";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { formatPrice } from "@/lib/format";
 import {
