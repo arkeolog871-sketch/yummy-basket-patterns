@@ -14,18 +14,32 @@ import {
  * kuralı ve model adları tek tek ölçülüyor.
  */
 describe("yapay zekâ sağlayıcısı seçimi", () => {
-  it("OPENAI_API_KEY varsa doğrudan OpenAI kullanılır", () => {
+  /** Sıradaki belirli sağlayıcıyı verir; birincil yol artık her zaman geçit. */
+  const byName = (env: Record<string, string | undefined>, name: string) => {
+    const found = resolveAiProviderChain(env).find((item) => item.name === name);
+    expect(found, `sağlayıcı sırada yok: ${name}`).toBeDefined();
+    return found!;
+  };
+
+  it("birincil yol her zaman kullanıcının Supabase geçidi", () => {
     const config = resolveAiProvider({ OPENAI_API_KEY: "sk-test", LOVABLE_API_KEY: "lov" });
-    expect(config.name).toBe("openai");
+    expect(config.name).toBe("supabase-gateway");
+    expect(config.baseUrl).toBe(
+      "https://poxltwuruskxbympriz.supabase.co/functions/v1/openai-gateway",
+    );
+    expect(config.headers["Lovable-API-Key"]).toBeUndefined();
+  });
+
+  it("OPENAI_API_KEY varsa doğrudan OpenAI yolu sırada durur", () => {
+    const config = byName({ OPENAI_API_KEY: "sk-test", LOVABLE_API_KEY: "lov" }, "openai");
     expect(config.baseUrl).toBe("https://api.openai.com/v1");
     expect(config.headers).toEqual({ Authorization: "Bearer sk-test" });
-    // Geçide özel başlık OpenAI'ye GİTMEMELİ.
     expect(config.headers["Lovable-API-Key"]).toBeUndefined();
   });
 
   it("OpenAI'de model adları öneksiz", () => {
     // "openai/gpt-6-astra" geçidin adlandırması; OpenAI bunu tanımaz.
-    const { models } = resolveAiProvider({ OPENAI_API_KEY: "sk-test" });
+    const { models } = byName({ OPENAI_API_KEY: "sk-test" }, "openai");
     expect(models.chat).toBe("gpt-5.6-luna");
     expect(models.speech).toBe("gpt-4o-mini-tts");
     expect(models.image).toBe("gpt-image-1");
@@ -36,68 +50,58 @@ describe("yapay zekâ sağlayıcısı seçimi", () => {
 
   it("Google ses modeli OpenAI karşılığıyla değişir", () => {
     // google/gemini-3.5-transcribe OpenAI'de yok; istek 404 dönerdi.
-    const openai = resolveAiProvider({ OPENAI_API_KEY: "sk-test" });
-    const lovable = resolveAiProvider({
-      LOVABLE_API_KEY: "lov",
-      AI_ALLOW_LOVABLE_FALLBACK: "true",
-    });
+    const openai = byName({ OPENAI_API_KEY: "sk-test" }, "openai");
+    const lovable = byName(
+      { LOVABLE_API_KEY: "lov", AI_ALLOW_LOVABLE_FALLBACK: "true" },
+      "lovable",
+    );
     expect(lovable.models.transcribe).toBe("google/gemini-3.5-transcribe");
     expect(openai.models.transcribe).toBe("gpt-4o-transcribe");
   });
 
-  it("OpenAI anahtarı yoksa ve yedek açıkken Lovable geçidine düşer", () => {
-    const config = resolveAiProvider({
+  it("yedek açıkken Lovable yolu sıranın SONUNDA durur", () => {
+    const chain = resolveAiProviderChain({
       LOVABLE_API_KEY: "lov",
       AI_ALLOW_LOVABLE_FALLBACK: "true",
     });
-    expect(config.name).toBe("lovable");
+    expect(chain.map((item) => item.name)).toEqual(["supabase-gateway", "lovable"]);
+    const config = chain[1]!;
     expect(config.baseUrl).toBe("https://ai.gateway.lovable.dev/v1");
     expect(config.headers["Lovable-API-Key"]).toBe("lov");
     expect(config.models.chat).toBe("openai/gpt-6-astra");
   });
 
   it("boş ve boşluklu anahtar yok sayılır", () => {
-    // Sır alanı boş bırakılırsa OpenAI'ye boş anahtarla gidilmemeli.
+    // Sır alanı boş bırakılırsa OpenAI yolu sıraya hiç girmemeli.
     for (const value of ["", "   "]) {
-      expect(
-        resolveAiProvider({
-          OPENAI_API_KEY: value,
-          LOVABLE_API_KEY: "lov",
-          AI_ALLOW_LOVABLE_FALLBACK: "true",
-        }).name,
-      ).toBe("lovable");
+      const chain = resolveAiProviderChain({
+        OPENAI_API_KEY: value,
+        LOVABLE_API_KEY: "lov",
+        AI_ALLOW_LOVABLE_FALLBACK: "true",
+      });
+      expect(chain.map((item) => item.name)).toEqual(["supabase-gateway", "lovable"]);
     }
   });
 
   it("anahtarlar kırpılır", () => {
-    expect(resolveAiProvider({ OPENAI_API_KEY: "  sk-test\n" }).apiKey).toBe("sk-test");
+    expect(byName({ OPENAI_API_KEY: "  sk-test\n" }, "openai").apiKey).toBe("sk-test");
   });
 
-  it("hiç anahtar yoksa güvenli Türkçe hata verir", () => {
-    expect(() => resolveAiProvider({})).toThrow(/Yapay zekâ şu an yapılandırılmadı/);
-  });
-
-  it("yedek varsayılan KAPALI: OpenAI anahtarı yokken Lovable'a düşmez", () => {
+  it("yedek varsayılan KAPALI: Lovable yolu izin verilmedikçe sıraya girmez", () => {
     // Harcamanın sessizce Lovable kredilerine kayması engelleniyor.
-    expect(() => resolveAiProvider({ LOVABLE_API_KEY: "lov" })).toThrow(
-      /Yapay zekâ şu an yapılandırılmadı/,
-    );
-    for (const flag of ["false", "1", "TRUE ", "yes"]) {
-      const env = { LOVABLE_API_KEY: "lov", AI_ALLOW_LOVABLE_FALLBACK: flag };
-      if (flag === "TRUE ") {
-        expect(resolveAiProvider(env).name).toBe("lovable");
-      } else {
-        expect(() => resolveAiProvider(env)).toThrow();
-      }
+    for (const flag of [undefined, "false", "1", "yes"]) {
+      const chain = resolveAiProviderChain({
+        LOVABLE_API_KEY: "lov",
+        ...(flag ? { AI_ALLOW_LOVABLE_FALLBACK: flag } : {}),
+      });
+      expect(chain.map((item) => item.name)).toEqual(["supabase-gateway"]);
     }
-  });
-
-  it("hata mesajı gerçek anahtarı sızdırmaz", () => {
-    try {
-      resolveAiProvider({});
-    } catch (error) {
-      expect((error as Error).message).not.toContain("sk-");
-    }
+    expect(
+      resolveAiProviderChain({
+        LOVABLE_API_KEY: "lov",
+        AI_ALLOW_LOVABLE_FALLBACK: "TRUE ",
+      }).map((item) => item.name),
+    ).toEqual(["supabase-gateway", "lovable"]);
   });
 
   it("model adları ortamdan ezilebilir", () => {
