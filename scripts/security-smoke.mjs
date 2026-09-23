@@ -3,7 +3,8 @@ const baseUrl = process.env.BASE_URL ?? "http://localhost:5173";
 const checks = [
   ["home", "/", 200],
   ["unknown route", "/security-smoke-404", 404],
-  ["env probe", "/.env", 404],
+  // Canlıda güvenlik duvarı 404 döner; geliştirme sunucusu aynı isteği 403 ile keser.
+  ["env probe", "/.env", [403, 404]],
   ["git probe", "/.git/config", [403, 404]],
   ["php probe", "/wp-admin", 404],
   ["media traversal", "/api/public/media/product-images/../secret.png", 404],
