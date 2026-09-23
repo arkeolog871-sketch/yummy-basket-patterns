@@ -166,8 +166,10 @@ function RestaurantDetail() {
               />
             ) : null}
             <div className="min-w-0">
-              <h1 className="truncate text-3xl text-background sm:text-4xl">{restaurant.name}</h1>
-              <p className="mt-1 text-sm text-background/80">{restaurant.tagline}</p>
+              {/* Fotoğrafın üstündeki karartma (gradient-fade-up) iki temada da koyu;
+                  yazı hep beyaz. text-background koyu temada koyu kalıyordu. */}
+              <h1 className="truncate text-3xl text-white sm:text-4xl">{restaurant.name}</h1>
+              <p className="mt-1 text-sm text-white/85">{restaurant.tagline}</p>
             </div>
           </div>
         </div>
