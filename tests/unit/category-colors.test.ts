@@ -154,7 +154,7 @@ describe("koyu temada çip yazısı", () => {
   it("koyu temada her çip okunaklı ve tonu korunur", () => {
     for (const color of colors) {
       const text = categoryChipText(color, dark);
-      expect(contrastRatio(text, chipTint(color, dark)), color).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(text, chipTint(color, dark)), color).toBeGreaterThanOrEqual(4.6);
       const before = hexToOklch(color).h;
       const after = hexToOklch(text).h;
       expect(Math.abs(((before - after + 540) % 360) - 180), color).toBeLessThan(8);
