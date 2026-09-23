@@ -30,6 +30,8 @@ export type RestaurantSummary = {
   opens_at?: string | null;
   closes_at?: string | null;
   is_open_manual?: boolean | null;
+  /** Aramada ürün adıyla eşleştiyse o ürünler (en çok 3). */
+  matched_products?: string[];
 };
 
 export function RestaurantCard({
@@ -105,6 +107,11 @@ export function RestaurantCard({
               <p className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">
                 {restaurant.tagline}
               </p>
+              {restaurant.matched_products?.length ? (
+                <p className="mt-0.5 line-clamp-1 text-xs font-medium text-primary">
+                  Aradığınız ürün: {restaurant.matched_products.join(", ")}
+                </p>
+              ) : null}
             </div>
           </div>
           <span className="flex shrink-0 items-center gap-1 rounded-full bg-warm px-2 py-1 text-xs font-semibold text-warm-foreground">

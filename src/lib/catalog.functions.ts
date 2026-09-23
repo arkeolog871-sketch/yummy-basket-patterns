@@ -1,6 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { ilikePattern, matchesSearchTerms } from "@/lib/catalog-search";
+import {
+  matchesSearchTerms,
+  productIlikePattern,
+  rankSearchMatch,
+  searchTokens,
+} from "@/lib/catalog-search";
 
 const LIST_COLUMNS =
   "id, slug, name, tagline, category, sector, cuisines, rating, review_count, delivery_fee, delivery_type, delivery_minutes, min_order, cover_image_url, logo_url, address, district, city, latitude, longitude, maps_url, opens_at, closes_at, is_open_manual";
@@ -28,40 +33,77 @@ export const listRestaurants = createServerFn({ method: "GET" })
 
     if (data.category) query = query.eq("category", data.category);
     if (data.sector) query = query.eq("sector", data.sector);
-    if (data.search) {
-      const pattern = ilikePattern(data.search);
-      if (pattern) {
-        query = query.or(
-          `name.ilike.${pattern},tagline.ilike.${pattern},category.ilike.${pattern}`,
-        );
-      }
-    }
 
     const { data: rows, error } = await query;
     if (error) throw new Error(error.message);
-    if (rows && rows.length > 0) return rows;
-    if (!data.search) return rows ?? [];
+    const all: Array<NonNullable<typeof rows>[number] & { matched_products?: string[] }> =
+      rows ?? [];
+    if (!data.search) return all;
 
-    // `ilike` aksana duyarlıdır: "kuafor" yazan kullanıcı "Kuaför"ü bulamıyordu.
-    // Metin filtresi olmadan (en çok 100 satır) çekip Türkçe katlamayla eleriz.
-    let fallback = supabase
-      .from("restaurants")
-      .select(LIST_COLUMNS)
-      .eq("is_active", true)
-      .order("display_order", { ascending: true, nullsFirst: false })
-      .order("rating", { ascending: false })
-      .limit(100);
-    if (data.category) fallback = fallback.eq("category", data.category);
-    if (data.sector) fallback = fallback.eq("sector", data.sector);
+    // Arama bellekte yapılır: `ilike` aksana duyarlı ("kuafor" "Kuaför"ü
+    // bulamıyordu) ve cümle aramasında kelimeler ayrı ayrı aranmalı.
+    const tokens = searchTokens(data.search);
+    if (tokens.length === 0) {
+      return all.filter((row) =>
+        matchesSearchTerms(
+          [row.name, row.tagline, row.category, row.sector, row.district, row.city],
+          data.search as string,
+        ),
+      );
+    }
 
-    const { data: allRows, error: fallbackError } = await fallback;
-    if (fallbackError) throw new Error(fallbackError.message);
-    return (allRows ?? []).filter((row) =>
-      matchesSearchTerms(
-        [row.name, row.tagline, row.category, row.sector, row.district, row.city],
-        data.search as string,
-      ),
-    );
+    // Ürün adları da aranır (kutu "İşletme, mutfak veya ürün ara" diyor;
+    // canlıda "keratin" hiçbir işletme döndürmüyordu). Veritabanı jokerli
+    // desenle daraltır, kesin eşleşme `rankSearchMatch`'te.
+    const productsByRestaurant = new Map<string, string[]>();
+    if (all.length > 0) {
+      const { data: items, error: itemsError } = await supabase
+        .from("menu_items")
+        .select("restaurant_id, name")
+        .eq("is_available", true)
+        .in(
+          "restaurant_id",
+          all.map((row) => row.id),
+        )
+        .or(tokens.map((token) => `name.ilike.${productIlikePattern(token)}`).join(","))
+        .limit(500);
+      if (itemsError) {
+        // Ürün araması düşerse işletme araması yine çalışsın.
+        console.error("[catalog] ürün araması:", itemsError.message);
+      }
+      for (const item of items ?? []) {
+        const list = productsByRestaurant.get(item.restaurant_id) ?? [];
+        list.push(item.name);
+        productsByRestaurant.set(item.restaurant_id, list);
+      }
+    }
+
+    return all
+      .map((row, order) => ({
+        row,
+        order,
+        match: rankSearchMatch(
+          tokens,
+          [
+            { text: row.name, weight: 4 },
+            { text: row.category, weight: 3 },
+            { text: row.sector, weight: 3 },
+            { text: (row.cuisines ?? []).join(" "), weight: 3 },
+            { text: row.tagline, weight: 2 },
+            { text: row.district, weight: 1 },
+            { text: row.city, weight: 1 },
+          ],
+          productsByRestaurant.get(row.id) ?? [],
+        ),
+      }))
+      .filter(({ match }) => match.matched > 0)
+      .sort(
+        (a, b) =>
+          b.match.matched - a.match.matched || b.match.score - a.match.score || a.order - b.order,
+      )
+      .map(({ row, match }) =>
+        match.products.length > 0 ? { ...row, matched_products: match.products.slice(0, 3) } : row,
+      );
   });
 
 export const listCategories = createServerFn({ method: "GET" }).handler(async () => {
