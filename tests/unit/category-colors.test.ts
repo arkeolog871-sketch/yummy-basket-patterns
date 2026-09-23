@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   assignCategoryColors,
+  categoryChipText,
   categoryColorCandidates,
   chipTint,
   contrastRatio,
@@ -10,6 +11,8 @@ import {
   perceptualDistance,
   pickCategoryColor,
 } from "@/lib/category-colors";
+import { hexToOklch } from "@/lib/color-math";
+import { EMBLEM_SEED, themeBackgroundHex } from "@/lib/theme-palette";
 
 /**
  * Kategori renkleri otomatik ("en uzak renk", kullanıcı seçimi).
@@ -131,5 +134,30 @@ describe("elle renk seçme yolu kapalı", () => {
     );
     expect(schema).not.toMatch(/^\s*color:/m);
     expect(source).toContain("pickCategoryColor(");
+  });
+});
+
+/**
+ * ÖLÇÜLDÜ (canlı, koyu tema): 14 kategori çipinin yazısı koyu zeminde
+ * 1.9–3.0:1 kaldı. Koyu temada aynı ton, kendi tonu üstünde ≥ 4.5:1 olana dek
+ * açılır; açık temada renk aynen kalır.
+ */
+describe("koyu temada çip yazısı", () => {
+  const dark = themeBackgroundHex(EMBLEM_SEED, "dark");
+  const light = themeBackgroundHex(EMBLEM_SEED, "light");
+  const colors = assignCategoryColors(14);
+
+  it("açık temada renk değişmez", () => {
+    for (const color of colors) expect(categoryChipText(color, light)).toBe(color);
+  });
+
+  it("koyu temada her çip okunaklı ve tonu korunur", () => {
+    for (const color of colors) {
+      const text = categoryChipText(color, dark);
+      expect(contrastRatio(text, chipTint(color, dark)), color).toBeGreaterThanOrEqual(4.5);
+      const before = hexToOklch(color).h;
+      const after = hexToOklch(text).h;
+      expect(Math.abs(((before - after + 540) % 360) - 180), color).toBeLessThan(8);
+    }
   });
 });

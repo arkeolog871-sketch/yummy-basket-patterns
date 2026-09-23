@@ -19,7 +19,11 @@
 
 import {
   contrastRatio,
+  hexToOklch,
   hexToRgb,
+  luminanceOfHex,
+  maxChroma,
+  oklchToHex,
   oklchToRgb,
   rgbToHex,
   rgbToOklab,
@@ -61,6 +65,27 @@ export function chipTint(color: string, background = CATEGORY_CHIP_BACKGROUND): 
   const fg = hexToRgb(color);
   const bg = hexToRgb(background);
   return rgbToHex(fg.map((c, index) => TINT_ALPHA * c + (1 - TINT_ALPHA) * bg[index]!) as Rgb);
+}
+
+/**
+ * Seçili olmayan çipin yazı (ve çerçeve) rengi, verilen sayfa zemininde.
+ * Açık temada renk zaten okunaklı, aynen döner. Koyu temada (ölçüldü, canlı:
+ * 14 çip 1.9–3.0:1) aynı ton, kendi tonu üstünde ≥ 4.5:1 olana dek açılır.
+ */
+export function categoryChipText(color: string, background: string): string {
+  if (!/^#[0-9a-f]{6}$/i.test(color) || !/^#[0-9a-f]{6}$/i.test(background)) return color;
+  const readable = (value: string) =>
+    contrastRatio(value, chipTint(color, background)) >= MIN_CONTRAST;
+  if (readable(color)) return color;
+  const lighten = luminanceOfHex(background) < 0.18;
+  const { l, c, h } = hexToOklch(color);
+  let lightness = l;
+  let current = color;
+  for (let step = 0; step < 100 && !readable(current); step += 1) {
+    lightness = Math.min(1, Math.max(0, lightness + (lighten ? 0.01 : -0.01)));
+    current = oklchToHex(lightness, Math.min(c, maxChroma(lightness, h, "srgb")), h);
+  }
+  return current;
 }
 
 /** Çipin iki hâlinde de okunaklı mı? */
