@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { FooterContact } from "@/components/layout/FooterContact";
 
 export function Footer() {
   const { settings, footer } = useSiteSettings();
@@ -12,32 +13,11 @@ export function Footer() {
         </div>
         <div className="text-sm">
           <p className="font-semibold">Keşfet</p>
-          <ul className="mt-3 space-y-2 text-muted-foreground">
-            <li>
-              <Link to="/restoranlar" className="transition-colors hover:text-foreground">
-                Tüm restoranlar
-              </Link>
-            </li>
-            <li>
-              <Link to="/sepet" className="transition-colors hover:text-foreground">
-                Sepetim
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/hesabim"
-                search={{ sekme: "siparisler" }}
-                className="transition-colors hover:text-foreground"
-              >
-                Siparişlerim
-              </Link>
-            </li>
-            <li>
-              <Link to="/isletme-basvuru" className="transition-colors hover:text-foreground">
-                İşletme başvurusu
-              </Link>
-            </li>
-          </ul>
+          {/* Keşfet'te yalnız İletişim kalır (kullanıcı isteği); telefon ve
+              e-posta onun içinde açılır. */}
+          <div className="mt-2 text-muted-foreground">
+            <FooterContact />
+          </div>
         </div>
       </div>
       <div className="border-t border-border/70 py-4 text-center text-xs text-muted-foreground">
