@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { SplashScreen } from "@/components/system/SplashScreen";
-import { seedFromHex, themeCssVariables } from "@/lib/theme-palette";
+import { seedFromHex, themeCssVariables, themeTextSurfaces } from "@/lib/theme-palette";
 import {
   applyTypographyCss,
   DEFAULT_TYPOGRAPHY,
@@ -227,8 +227,18 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof document === "undefined") return;
     if (!settings.typographyConfigured) return;
-    applyTypographyCss(settings.typography);
-  }, [settings.typography, settings.typographyConfigured]);
+    // Açık temada yazı renkleri temanın zeminlerinde ≥ 4.5:1'e zorlanır.
+    const surfaces =
+      settings.theme_mode === "dark"
+        ? null
+        : themeTextSurfaces(seedFromHex(settings.primary_color));
+    applyTypographyCss(settings.typography, document.documentElement, surfaces);
+  }, [
+    settings.typography,
+    settings.typographyConfigured,
+    settings.theme_mode,
+    settings.primary_color,
+  ]);
 
   useEffect(() => {
     if (!settings.favicon_url) return;

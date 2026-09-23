@@ -5,6 +5,7 @@ import { hexToOklch } from "@/lib/color-math";
 import {
   EMBLEM_CRIMSON,
   EMBLEM_SEED,
+  ensureReadableHex,
   MIN_TEXT_CONTRAST,
   MIN_UI_CONTRAST,
   seedFromHex,
@@ -12,7 +13,10 @@ import {
   themeContrastReport,
   themeCssVariables,
   themeHexColumns,
+  themeTextSurfaces,
 } from "@/lib/theme-palette";
+import { contrastRatio } from "@/lib/color-math";
+import { DEFAULT_TYPOGRAPHY } from "@/lib/typography";
 
 /**
  * ÖLÇÜLDÜ (canlı, 23 Eylül 2026): 5 serbest renk alanında vurgu, ikincil ve
@@ -151,5 +155,50 @@ describe("yazı rengi ebeveynden miras alınır", () => {
       encoding: "utf8",
     }).trim();
     expect(hits).toBe("");
+  });
+});
+
+/**
+ * ÖLÇÜLDÜ (canlı): yazı ayarlarındaki soluk gri #6b7280 krem zeminde 4.14:1,
+ * alt bilgide 3.84:1'di; tema güvencesi yazı ayarlarıyla atlatılıyordu.
+ */
+describe("yazı ayarlarının renkleri de okunaklı", () => {
+  const surfaces = themeTextSurfaces(EMBLEM_SEED);
+  const weakest = (color: string) => Math.min(...surfaces.map((bg) => contrastRatio(color, bg)));
+
+  it("canlıdaki soluk gri tüm zeminlerde ≥ 4.5:1'e çekilir", () => {
+    expect(weakest("#6b7280")).toBeLessThan(MIN_TEXT_CONTRAST);
+    expect(weakest(ensureReadableHex("#6b7280", surfaces))).toBeGreaterThanOrEqual(
+      MIN_TEXT_CONTRAST,
+    );
+  });
+
+  it("zaten okunaklı renk değişmez", () => {
+    expect(ensureReadableHex("#1a1a1a", surfaces)).toBe("#1a1a1a");
+  });
+
+  it("ton korunur, yalnız parlaklık değişir", () => {
+    const before = hexToOklch("#8b7a9b");
+    const after = hexToOklch(ensureReadableHex("#8b7a9b", surfaces));
+    expect(hueDistance(before.h, after.h)).toBeLessThan(6);
+    expect(after.l).toBeLessThan(before.l);
+  });
+
+  it("varsayılan yazı ayarlarının bütün metin renkleri okunaklı hâle gelir", () => {
+    const t = DEFAULT_TYPOGRAPHY;
+    for (const color of [t.primaryText, t.mutedText, t.headingText, t.accent, t.accentHover]) {
+      expect(weakest(ensureReadableHex(color, surfaces)), color).toBeGreaterThanOrEqual(
+        MIN_TEXT_CONTRAST,
+      );
+    }
+  });
+
+  it("site ve yazı paneli yazı renklerini zeminlerle birlikte uygular", () => {
+    const hook = readFileSync("src/hooks/useSiteSettings.tsx", "utf8");
+    expect(hook).toContain(
+      "applyTypographyCss(settings.typography, document.documentElement, surfaces)",
+    );
+    const panel = readFileSync("src/components/founder/TypographyPanel.tsx", "utf8");
+    expect(panel).toContain("applyTypographyCss(values, document.documentElement, surfaces)");
   });
 });
