@@ -39,10 +39,7 @@ import { groupByCategory } from "@/lib/menu-groups";
 import { EmptyState } from "@/components/vendor/EmptyState";
 import { ImageDropzone, readImageFile, type PickedImage } from "@/components/vendor/ImageDropzone";
 import { formatPrice } from "@/lib/format";
-import {
-  generateProductDescriptionFn,
-  generateProductImageFn,
-} from "@/lib/ai-content.functions";
+import { generateProductDescriptionFn, generateProductImageFn } from "@/lib/ai-content.functions";
 import { AI_UI_ENABLED } from "@/lib/ai-features";
 import {
   createVendorCategory,

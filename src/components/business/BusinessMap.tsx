@@ -1,7 +1,12 @@
 import { useMemo } from "react";
 import { MapPin, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-import { directionsLinkUrl, openDirections, resolveBusinessCoords, type BusinessLocation } from "@/lib/maps";
+import {
+  directionsLinkUrl,
+  openDirections,
+  resolveBusinessCoords,
+  type BusinessLocation,
+} from "@/lib/maps";
 import { LiveMapCanvas } from "@/components/business/LiveMapCanvas";
 
 export function BusinessMap({ business }: { business: BusinessLocation }) {
@@ -41,7 +46,8 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
             onClick={(event) => {
               event.preventDefault();
               try {
-                if (!openDirections(business)) toast.error("Bu işletme için konum bilgisi bulunamadı.");
+                if (!openDirections(business))
+                  toast.error("Bu işletme için konum bilgisi bulunamadı.");
               } catch {
                 toast.error("Harita açılamadı");
               }
@@ -69,7 +75,8 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
           onClick={(event) => {
             event.preventDefault();
             try {
-              if (!openDirections(business)) toast.error("Bu işletme için konum bilgisi bulunamadı.");
+              if (!openDirections(business))
+                toast.error("Bu işletme için konum bilgisi bulunamadı.");
             } catch {
               toast.error("Harita açılamadı");
             }

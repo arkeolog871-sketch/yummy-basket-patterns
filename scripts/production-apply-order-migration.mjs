@@ -18,7 +18,9 @@ const url = process.env.PRODUCTION_DATABASE_URL || "";
 const allowed = process.env.ALLOW_PRODUCTION_ORDER_MIGRATION === "YES";
 
 if (!allowed) {
-  console.error("BLOCKED: set ALLOW_PRODUCTION_ORDER_MIGRATION=YES to apply this file to production.");
+  console.error(
+    "BLOCKED: set ALLOW_PRODUCTION_ORDER_MIGRATION=YES to apply this file to production.",
+  );
   process.exit(3);
 }
 if (!url) {
@@ -47,26 +49,46 @@ function scalar(sql) {
 
 console.log("Preflight: production order schema (no data rewrite).");
 const db = scalar("SELECT current_database();");
-const rlsOrders = scalar("SELECT relrowsecurity FROM pg_class WHERE relname = 'orders' AND relnamespace = 'public'::regnamespace;");
-const rlsItems = scalar("SELECT relrowsecurity FROM pg_class WHERE relname = 'order_items' AND relnamespace = 'public'::regnamespace;");
+const rlsOrders = scalar(
+  "SELECT relrowsecurity FROM pg_class WHERE relname = 'orders' AND relnamespace = 'public'::regnamespace;",
+);
+const rlsItems = scalar(
+  "SELECT relrowsecurity FROM pg_class WHERE relname = 'order_items' AND relnamespace = 'public'::regnamespace;",
+);
 if (rlsOrders !== "t" || rlsItems !== "t") {
-  console.error(`BLOCKED: expected RLS enabled on orders/order_items, got orders=${rlsOrders} items=${rlsItems}`);
+  console.error(
+    `BLOCKED: expected RLS enabled on orders/order_items, got orders=${rlsOrders} items=${rlsItems}`,
+  );
   process.exit(2);
 }
 console.log(`database=${db} rls_orders=${rlsOrders} rls_items=${rlsItems}`);
 
-const beforeKey = scalar("SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='idempotency_key';");
-const beforePay = scalar("SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='payment_method';");
-const beforeRpc = scalar("SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='place_customer_order';");
+const beforeKey = scalar(
+  "SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='idempotency_key';",
+);
+const beforePay = scalar(
+  "SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='payment_method';",
+);
+const beforeRpc = scalar(
+  "SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='place_customer_order';",
+);
 console.log(`before idempotency_key=${beforeKey} payment_method=${beforePay} rpc=${beforeRpc}`);
 
 console.log("Applying 20260826183000_place_order_idempotency_payment.sql");
 psql(["-f", FILE]);
 
-const afterKey = scalar("SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='idempotency_key';");
-const afterPay = scalar("SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='payment_method';");
-const afterRpc = scalar("SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='place_customer_order';");
-const afterRls = scalar("SELECT relrowsecurity FROM pg_class WHERE relname = 'orders' AND relnamespace = 'public'::regnamespace;");
+const afterKey = scalar(
+  "SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='idempotency_key';",
+);
+const afterPay = scalar(
+  "SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='payment_method';",
+);
+const afterRpc = scalar(
+  "SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='place_customer_order';",
+);
+const afterRls = scalar(
+  "SELECT relrowsecurity FROM pg_class WHERE relname = 'orders' AND relnamespace = 'public'::regnamespace;",
+);
 const anonExec = scalar(`
   SELECT has_function_privilege('anon', 'public.place_customer_order(uuid,uuid,jsonb,text,text,text,text,text,text,text,text)', 'EXECUTE');
 `);

@@ -52,7 +52,7 @@ Remaining step to fully activate server-side sending:
    nothing (logs and returns, doesn't throw).
 2. Rebuild the APK, install on a **debug** build first, confirm a test push
    (kurucu paneli → Bildirimler → "Bildirim gönder testi") arrives with the
-   app fully closed, *then* roll it into a release build.
+   app fully closed, _then_ roll it into a release build.
 
 This was validated in CI-style: `:app:compileDebugJavaWithJavac` and
 `:app:assembleDebug` both succeed with and without `google-services.json`

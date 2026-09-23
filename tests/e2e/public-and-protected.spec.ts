@@ -14,7 +14,9 @@ test.describe("public catalog and legal pages", () => {
     await page.goto("/restoranlar");
     await expect(page.locator("body")).toBeVisible();
     await page.goto("/auth");
-    await expect(page.getByRole("heading", { name: /Giriş yap|Hesap oluştur|İşletme girişi/ })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Giriş yap|Hesap oluştur|İşletme girişi/ }),
+    ).toBeVisible();
   });
 
   test("legal documents load", async ({ page }) => {

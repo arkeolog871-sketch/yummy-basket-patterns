@@ -32,9 +32,7 @@ export const DEFAULT_ASSISTANT_VOICE = "coral";
 export function normalizeAssistantVoice(value: unknown): string {
   if (typeof value !== "string") return DEFAULT_ASSISTANT_VOICE;
   const clean = value.trim().toLowerCase();
-  return ASSISTANT_VOICES.some((voice) => voice.id === clean)
-    ? clean
-    : DEFAULT_ASSISTANT_VOICE;
+  return ASSISTANT_VOICES.some((voice) => voice.id === clean) ? clean : DEFAULT_ASSISTANT_VOICE;
 }
 
 export function assistantVoiceLabel(id: string): string {

@@ -39,7 +39,9 @@ function AndroidPreview() {
       <div className="w-full max-w-[393px]">
         <div className="mb-4 text-center text-[#f4ece4]">
           <p className="text-[15px] font-semibold uppercase tracking-[0.08em]">SİLVAN CEBİMDE</p>
-          <p className="mt-1.5 text-[13px] text-[#cbb8a8]">Android mobil uygulama önizlemesi · v{APK_VERSION}</p>
+          <p className="mt-1.5 text-[13px] text-[#cbb8a8]">
+            Android mobil uygulama önizlemesi · v{APK_VERSION}
+          </p>
           <a
             href={APK_URL}
             download={APK_DOWNLOAD}

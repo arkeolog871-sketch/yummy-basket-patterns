@@ -29,7 +29,11 @@ type CartContextValue = CartState & {
   deliveryFee: number;
   total: number;
   meetsMinimum: boolean;
-  addItem: (restaurant: CartRestaurant, line: Omit<CartLine, "quantity">, quantity?: number) => void;
+  addItem: (
+    restaurant: CartRestaurant,
+    line: Omit<CartLine, "quantity">,
+    quantity?: number,
+  ) => void;
   setQuantity: (menuItemId: string, quantity: number) => void;
   removeItem: (menuItemId: string) => void;
   clear: () => void;

@@ -2,14 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  Upload,
-  FileSpreadsheet,
-  TriangleAlert,
-  Check,
-  Download,
-  Trash2,
-} from "lucide-react";
+import { Upload, FileSpreadsheet, TriangleAlert, Check, Download, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PhotoMenuImport } from "@/components/products/PhotoMenuImport";
 import { AI_UI_ENABLED } from "@/lib/ai-features";
@@ -162,9 +155,7 @@ function BulkDeleteSection({ restaurantId }: { restaurantId: string | null }) {
   const withItems = list.filter((category) => category.itemCount > 0);
   if (categories.data && withItems.length === 0) return null;
 
-  const selected = withItems.find(
-    (category) => (category.id ?? UNCATEGORIZED) === choice,
-  );
+  const selected = withItems.find((category) => (category.id ?? UNCATEGORIZED) === choice);
 
   async function remove() {
     if (!selected || !restaurantId) return;
@@ -196,8 +187,8 @@ function BulkDeleteSection({ restaurantId }: { restaurantId: string | null }) {
         <div className="min-w-0">
           <p className="font-semibold">Kategoriye göre toplu silme</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Seçtiğiniz kategorideki <strong>tüm ürünler</strong> silinir; kategori kaydı ve
-            geçmiş siparişler korunur. Bu işlem geri alınamaz.
+            Seçtiğiniz kategorideki <strong>tüm ürünler</strong> silinir; kategori kaydı ve geçmiş
+            siparişler korunur. Bu işlem geri alınamaz.
           </p>
         </div>
       </div>

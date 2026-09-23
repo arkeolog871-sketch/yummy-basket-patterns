@@ -7,6 +7,9 @@ import {
   type RealtimeDeps,
 } from "@/lib/realtime-voice";
 
+// Test, geçit protokolünün ham JSON gövdesini okuyor; gevşek tip kasıtlı.
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 function machine(overrides: Partial<RealtimeDeps> = {}) {
   const sent: any[] = [];
   const phases: string[] = [];

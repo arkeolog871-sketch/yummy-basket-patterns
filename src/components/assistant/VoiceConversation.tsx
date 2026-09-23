@@ -200,7 +200,6 @@ function ClassicVoiceConversation({
           .start(
             (chunk) => chunks.push(chunk as Blob),
             () => resolve(new Blob(chunks, { type: recordedTypeRef.current || "audio/webm" })),
-
           )
           .then(() => {
             if (!liveRef.current) return;

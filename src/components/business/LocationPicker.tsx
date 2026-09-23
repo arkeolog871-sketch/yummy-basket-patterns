@@ -94,8 +94,9 @@ export function LocationPicker({ value, onChange, label = "İşletme konumu" }: 
         (marker as unknown as { on: (name: string, fn: (event: unknown) => void) => void }).on(
           "dragend",
           (event) => {
-            const target = (event as { target?: { getLatLng?: () => { lat: number; lng: number } } })
-              .target;
+            const target = (
+              event as { target?: { getLatLng?: () => { lat: number; lng: number } } }
+            ).target;
             const point = target?.getLatLng?.();
             if (point) changeRef.current({ lat: point.lat, lng: point.lng });
           },

@@ -26,7 +26,8 @@ export const Route = createFileRoute("/api/v1/banners/$id/track")({
         let type: unknown = null;
         try {
           const body: unknown = await request.json();
-          type = body && typeof body === "object" ? (body as Record<string, unknown>)["type"] : null;
+          type =
+            body && typeof body === "object" ? (body as Record<string, unknown>)["type"] : null;
         } catch {
           return json({ error: "Geçersiz gövde" }, 400);
         }

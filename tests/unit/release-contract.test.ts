@@ -63,7 +63,9 @@ describe("production release contract (no secrets)", () => {
     );
     expect(rate).toMatch(/consume_request_rate_limit/);
     expect(
-      existsSync(join(ROOT, "supabase/migrations/20260826183000_place_order_idempotency_payment.sql")),
+      existsSync(
+        join(ROOT, "supabase/migrations/20260826183000_place_order_idempotency_payment.sql"),
+      ),
     ).toBe(true);
     const place = readFileSync(
       join(ROOT, "supabase/migrations/20260826183000_place_order_idempotency_payment.sql"),
@@ -97,6 +99,8 @@ describe("production release contract (no secrets)", () => {
     expect(verifySql).toMatch(/idempotency_key/);
     expect(verifySql).toMatch(/payment_method/);
     expect(verifySql).toMatch(/place_customer_order/);
-    expect(verifySql).not.toMatch(/\b(INSERT INTO|UPDATE |DELETE FROM|ALTER TABLE|DROP TABLE|DROP POLICY|GRANT |REVOKE )\b/i);
+    expect(verifySql).not.toMatch(
+      /\b(INSERT INTO|UPDATE |DELETE FROM|ALTER TABLE|DROP TABLE|DROP POLICY|GRANT |REVOKE )\b/i,
+    );
   });
 });

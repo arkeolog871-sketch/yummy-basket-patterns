@@ -135,10 +135,7 @@ export const FCM_BROADCAST_TOPIC = "tum-cihazlar";
 
 /** Tek bir FCM token'ına bildirim gönderir. VAPID'siz ortamda olduğu gibi,
  * servis hesabı tanımlı değilse sessizce "unconfigured" döner. */
-export async function sendFcmMessage(
-  token: string,
-  payload: FcmPayload,
-): Promise<FcmSendResult> {
+export async function sendFcmMessage(token: string, payload: FcmPayload): Promise<FcmSendResult> {
   return (await sendFcm({ token }, payload)).result;
 }
 

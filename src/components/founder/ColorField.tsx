@@ -61,7 +61,10 @@ export function ColorField({ id, label, hint, value, onChange }: ColorFieldProps
       <div className="mt-3 grid grid-cols-4 gap-2">
         {(["r", "g", "b"] as const).map((channel) => (
           <div key={channel}>
-            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground" htmlFor={`${id}-${channel}`}>
+            <Label
+              className="text-[10px] uppercase tracking-wide text-muted-foreground"
+              htmlFor={`${id}-${channel}`}
+            >
               {channel.toUpperCase()}
             </Label>
             <Input
@@ -86,7 +89,10 @@ export function ColorField({ id, label, hint, value, onChange }: ColorFieldProps
           </div>
         ))}
         <div>
-          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground" htmlFor={`${id}-a`}>
+          <Label
+            className="text-[10px] uppercase tracking-wide text-muted-foreground"
+            htmlFor={`${id}-a`}
+          >
             Alpha
           </Label>
           <Input
@@ -96,7 +102,9 @@ export function ColorField({ id, label, hint, value, onChange }: ColorFieldProps
             max={1}
             step={0.01}
             value={Math.round(parsed.a * 100) / 100}
-            onChange={(event) => onChange(compose(parsed.r, parsed.g, parsed.b, Number(event.target.value)))}
+            onChange={(event) =>
+              onChange(compose(parsed.r, parsed.g, parsed.b, Number(event.target.value)))
+            }
             className="mt-1 h-8 px-2 text-xs"
           />
         </div>
@@ -104,7 +112,10 @@ export function ColorField({ id, label, hint, value, onChange }: ColorFieldProps
 
       <div className="mt-3 grid grid-cols-3 gap-2">
         <div>
-          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground" htmlFor={`${id}-h`}>
+          <Label
+            className="text-[10px] uppercase tracking-wide text-muted-foreground"
+            htmlFor={`${id}-h`}
+          >
             H
           </Label>
           <Input
@@ -121,7 +132,10 @@ export function ColorField({ id, label, hint, value, onChange }: ColorFieldProps
           />
         </div>
         <div>
-          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground" htmlFor={`${id}-s`}>
+          <Label
+            className="text-[10px] uppercase tracking-wide text-muted-foreground"
+            htmlFor={`${id}-s`}
+          >
             S %
           </Label>
           <Input
@@ -138,7 +152,10 @@ export function ColorField({ id, label, hint, value, onChange }: ColorFieldProps
           />
         </div>
         <div>
-          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground" htmlFor={`${id}-l`}>
+          <Label
+            className="text-[10px] uppercase tracking-wide text-muted-foreground"
+            htmlFor={`${id}-l`}
+          >
             L %
           </Label>
           <Input

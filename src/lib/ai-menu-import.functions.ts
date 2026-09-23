@@ -10,22 +10,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { runServerFn } from "./public-error";
-import {
-  assertImportAccess,
-  resolveCategories,
-} from "./product-import.functions";
-import {
-  MAX_PHOTOS,
-  extractProductsFromImages,
-} from "./ai-menu-import.server";
+import { assertImportAccess, resolveCategories } from "./product-import.functions";
+import { MAX_PHOTOS, extractProductsFromImages } from "./ai-menu-import.server";
 
 const photoSchema = z.object({
   restaurantId: z.string().uuid(),
   /** Veri adresli (data:image/…) küçültülmüş fotoğraflar. */
-  images: z
-    .array(z.string().startsWith("data:image/").max(6_000_000))
-    .min(1)
-    .max(MAX_PHOTOS),
+  images: z.array(z.string().startsWith("data:image/").max(6_000_000)).min(1).max(MAX_PHOTOS),
 });
 
 /** Menü fotoğraflarından ürün listesi çıkarır; hiçbir şey kaydetmez. */

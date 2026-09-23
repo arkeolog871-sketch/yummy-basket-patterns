@@ -725,10 +725,7 @@ export function OrderAssistant() {
           {showSettings ? (
             <div className="space-y-3 border-b border-border bg-muted/40 px-4 py-3">
               <div className="space-y-1">
-                <label
-                  htmlFor="asistan-sesi"
-                  className="text-xs font-medium text-muted-foreground"
-                >
+                <label htmlFor="asistan-sesi" className="text-xs font-medium text-muted-foreground">
                   Asistanın sesi
                 </label>
                 <select

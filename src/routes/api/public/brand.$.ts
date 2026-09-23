@@ -4,7 +4,10 @@ import { contentTypeForBrandPath } from "@/lib/upload-limits";
 const SAFE_BRAND_PATH =
   /^(logo|favicon|banner|hero|ads)\/[A-Za-z0-9-]{1,80}\.(png|jpg|jpeg|webp|gif|avif|bmp|svg|ico|mp4|mov|webm)$/i;
 
-function parseByteRange(header: string | null, total: number): { start: number; end: number } | null {
+function parseByteRange(
+  header: string | null,
+  total: number,
+): { start: number; end: number } | null {
   if (!header) return null;
   const unit = header.trim();
   if (!unit.toLowerCase().startsWith("bytes=")) return null;
@@ -21,7 +24,13 @@ function parseByteRange(header: string | null, total: number): { start: number; 
   }
   const start = Number(startRaw);
   const end = endRaw ? Math.min(total - 1, Number(endRaw)) : total - 1;
-  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || start > end || start >= total) {
+  if (
+    !Number.isFinite(start) ||
+    !Number.isFinite(end) ||
+    start < 0 ||
+    start > end ||
+    start >= total
+  ) {
     return null;
   }
   return { start, end };

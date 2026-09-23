@@ -50,7 +50,9 @@ function decodeEntities(value: string): string {
 }
 
 function stripTags(value: string): string {
-  return decodeEntities(value.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
+  return decodeEntities(value.replace(/<[^>]*>/g, " "))
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function unwrapDuckDuckGoLink(href: string): string | null {
@@ -88,7 +90,8 @@ export async function searchWeb(query: string): Promise<WebResult[]> {
   const html = await response.text();
 
   const results: WebResult[] = [];
-  const blockRegex = /<a[^>]+class="[^"]*result__a[^"]*"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>([\s\S]{0,1200}?)(?=<a[^>]+class="[^"]*result__a|$)/g;
+  const blockRegex =
+    /<a[^>]+class="[^"]*result__a[^"]*"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>([\s\S]{0,1200}?)(?=<a[^>]+class="[^"]*result__a|$)/g;
   let match: RegExpExecArray | null;
   while ((match = blockRegex.exec(html)) !== null && results.length < 6) {
     const url = unwrapDuckDuckGoLink(match[1] ?? "");
@@ -103,7 +106,9 @@ export async function searchWeb(query: string): Promise<WebResult[]> {
 }
 
 /** Bir web sayfasının okunabilir metnini döndürür (kısaltılmış). */
-export async function readWebPage(url: string): Promise<{ url: string; text: string } | { error: string }> {
+export async function readWebPage(
+  url: string,
+): Promise<{ url: string; text: string } | { error: string }> {
   let parsed: URL;
   try {
     parsed = new URL(url);

@@ -56,7 +56,9 @@ export function clearPostLoginIntent(): void {
  * Girişten sonra gidilecek yer: sırayla saklanan niyet, OAuth dönüş yolu ve
  * adres çubuğundaki `redirect` parametresi denenir.
  */
-export function resolvePostLoginTarget(candidates: Array<string | null | undefined>): string | null {
+export function resolvePostLoginTarget(
+  candidates: Array<string | null | undefined>,
+): string | null {
   for (const candidate of candidates) {
     const safe = sanitizePostLoginPath(candidate);
     if (safe) return safe;

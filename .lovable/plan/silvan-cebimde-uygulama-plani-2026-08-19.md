@@ -1,16 +1,19 @@
 # SofraKapımda — Yemek Sipariş Uygulaması Planı
 
 ## Marka ve his
+
 - İsim: **SofraKapımda**
 - Ton: sıcak, davetkar, iştah açıcı
 - Renk yönü: krem zemin (`#fff8f0`), turuncu vurgu (`#ff8c42`), koyu metin (`#2d2d2d`), canlı kırmızı aksan (`#e63946`)
 
 ## Altyapı
+
 1. Lovable Cloud aktif hale getirilecek (auth + PostgreSQL + storage).
 2. Tasarım sistemi `src/styles.css` içinde tanımlanacak: warm palette, yuvarlak köşeler, yemek fotoğrafı odaklı kartlar.
 3. Gerekli shadcn/ui bileşenleri eklenecek: button, card, badge, input, dialog, sheet, tabs, separator, sonner.
 
 ## Veritabanı şeması
+
 - `profiles` — kullanıcı profilleri (Lovable Cloud auth ile bağlı).
 - `addresses` — kullanıcı teslimat adresleri (başlık, adres, ilçe/il, varsayılan adres).
 - `restaurants` — restoran bilgileri, kategori, puan, teslimat süresi, minimum sipariş, kapak fotoğrafı.
@@ -23,6 +26,7 @@
 - Örnek restoran ve menü verileri migration ile eklenecek.
 
 ## Sayfalar ve rotalar
+
 - `/` — Ana sayfa: hero arama, kategoriler, öne çıkan restoranlar.
 - `/restaurants` — Restoran listesi: metin arama, kategori filtreleme, sıralama (puan / teslimat süresi / minimum sipariş).
 - `/restaurants/$slug` — Restoran detay ve menü (sepet sheet'i).
@@ -42,17 +46,20 @@
 ## İstenen 4 akış
 
 ### 1. Restoran listeleme, kategori filtreleme, arama
+
 - Kategori çipleri (Kebap, Pizza, Burger, Tatlı, Çiğ Köfte, Ev Yemeği vb.).
 - Canlı metin arama: restoran adı ve mutfak türü.
 - Sıralama ve boş sonuç durumu için tasarlanmış ekran.
 
 ### 2. Ürün seçme, sepet yönetimi, sipariş oluşturma
+
 - Menü kaleminden sepete ekleme, adet artır/azalt, kaldırma.
 - Sepet durumu tek restoranla sınırlı; farklı restoran seçilirse uyarı.
 - Sepet ara toplam, teslimat ücreti, minimum sipariş kontrolü.
 - Sipariş kaydı `createServerFn` üzerinden sunucuda oluşturulur.
 
 ### 3. Stripe ile ödeme ve sipariş onayı
+
 - Lovable'ın yerleşik Stripe ödeme entegrasyonu etkinleştirilecek (kendi Stripe hesabı/anahtarı gerekmez, test ortamı hazır gelir).
 - Ödeme öncesi uygunluk kontrolü çalıştırılacak ve önerilen ayar uygulanacak.
 - Checkout oturumu sunucuda oluşturulur, kullanıcı Stripe'a yönlenir.
@@ -60,11 +67,13 @@
 - Not: Ödeme entegrasyonu Pro plan gerektirir.
 
 ### 4. Kullanıcı kaydı, giriş ve adres yönetimi
+
 - E-posta/şifre ile kayıt ve giriş, oturum durumuna göre değişen header.
 - Profil tablosu otomatik oluşturulur (trigger).
 - Adres CRUD: birden fazla adres, varsayılan adres seçimi, checkout'ta kullanma.
 
 ## İlerleyiş
+
 1. Lovable Cloud aktifleştir, tasarım sistemini ve shadcn bileşenlerini kur.
 2. Şema + RLS + GRANT + örnek restoran/menü verileri.
 3. Ortak layout, header (oturum duyarlı) ve footer.

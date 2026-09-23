@@ -49,7 +49,7 @@ jobs:
           # "Failed to find package 'tools'" ile anında düşüyor. Boş bırakınca
           # eylem yalnızca ANDROID_HOME/PATH'i ayarlıyor; ihtiyacımız olan
           # paketleri bir sonraki adımda açıkça kuruyoruz.
-          packages: ''
+          packages: ""
 
       # compileSdk 36 runner imajında her zaman kurulu değil; açıkça
       # indiriyoruz ki imaj değişince derleme sessizce bozulmasın.

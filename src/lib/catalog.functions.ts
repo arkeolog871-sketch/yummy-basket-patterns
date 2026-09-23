@@ -31,7 +31,9 @@ export const listRestaurants = createServerFn({ method: "GET" })
     if (data.search) {
       const pattern = ilikePattern(data.search);
       if (pattern) {
-        query = query.or(`name.ilike.${pattern},tagline.ilike.${pattern},category.ilike.${pattern}`);
+        query = query.or(
+          `name.ilike.${pattern},tagline.ilike.${pattern},category.ilike.${pattern}`,
+        );
       }
     }
 
@@ -89,16 +91,17 @@ export const getRestaurantBySlug = createServerFn({ method: "GET" })
       "id, slug, name, tagline, category, sector, cuisines, rating, review_count, delivery_fee, delivery_type, delivery_minutes, min_order, cover_image_url, logo_url, is_active, address, district, city, latitude, longitude, maps_url, opens_at, closes_at, is_open_manual, created_at, updated_at";
     const withPhone = `${detailColumns}, contact_phone`;
 
-    let { data: restaurant, error } = await supabase
+    const primary = await supabase
       .from("restaurants")
       .select(withPhone)
       .eq("slug", data.slug)
       .eq("is_active", true)
       .maybeSingle();
+    let restaurant = primary.data;
+    const error = primary.error;
     if (error) {
       const permissionDenied =
-        error.code === "42501" ||
-        /contact_phone|permission denied|42501/i.test(error.message);
+        error.code === "42501" || /contact_phone|permission denied|42501/i.test(error.message);
       if (!permissionDenied) throw new Error(error.message);
       const fallback = await supabase
         .from("restaurants")
@@ -184,10 +187,7 @@ export const getRestaurantBySlug = createServerFn({ method: "GET" })
  * Servis anahtarı yoksa harita boş döner ve çağıran taraf ürünü satılabilir
  * sayar: stok bilgisi eksikken vitrini kapatmak, mevcut davranışı bozar.
  */
-async function readStockFlags(
-  restaurantId: string,
-  ids: string[],
-): Promise<Map<string, boolean>> {
+async function readStockFlags(restaurantId: string, ids: string[]): Promise<Map<string, boolean>> {
   const flags = new Map<string, boolean>();
   if (ids.length === 0) return flags;
   try {

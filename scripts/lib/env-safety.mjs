@@ -18,7 +18,7 @@ export function assertNotProduction(label, value) {
 export function stagingConfigured() {
   return Boolean(
     process.env.STAGING_DATABASE_URL ||
-      process.env.STAGING_SUPABASE_DB_URL ||
-      process.env.STAGING_APP_URL,
+    process.env.STAGING_SUPABASE_DB_URL ||
+    process.env.STAGING_APP_URL,
   );
 }

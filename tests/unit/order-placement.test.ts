@@ -12,7 +12,7 @@ describe("order placement column fallback", () => {
     expect(
       missingColumnName({
         code: "42703",
-        message: 'column orders.idempotency_key does not exist',
+        message: "column orders.idempotency_key does not exist",
       }),
     ).toBe("idempotency_key");
     expect(
@@ -21,12 +21,20 @@ describe("order placement column fallback", () => {
         message: "Could not find the 'payment_method' column of 'orders' in the schema cache",
       }),
     ).toBe("payment_method");
-    expect(isUnknownOrderColumnError({ code: "42703", message: "column orders.idempotency_key does not exist" }, "idempotency_key")).toBe(true);
-    expect(isUnknownOrderColumnError({ code: "23502", message: "null value" }, "idempotency_key")).toBe(false);
+    expect(
+      isUnknownOrderColumnError(
+        { code: "42703", message: "column orders.idempotency_key does not exist" },
+        "idempotency_key",
+      ),
+    ).toBe(true);
+    expect(
+      isUnknownOrderColumnError({ code: "23502", message: "null value" }, "idempotency_key"),
+    ).toBe(false);
     expect(
       missingColumnName({
         code: "23505",
-        message: 'duplicate key value violates unique constraint "orders_user_idempotency_key_uidx"',
+        message:
+          'duplicate key value violates unique constraint "orders_user_idempotency_key_uidx"',
       }),
     ).toBeNull();
   });
@@ -102,7 +110,8 @@ describe("order placement column fallback", () => {
         data: null,
         error: {
           code: "23505",
-          message: 'duplicate key value violates unique constraint "orders_user_idempotency_key_uidx"',
+          message:
+            'duplicate key value violates unique constraint "orders_user_idempotency_key_uidx"',
         },
       }),
       { idempotency_key: "k1", user_id: "u1" },

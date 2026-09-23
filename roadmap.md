@@ -24,8 +24,6 @@
 - [x] Aşama 4 — Ürün açıklaması ve görseli üretme (satıcı ürün formunda "Açıklama üret" / "Görsel üret")
 - [x] Güvenlik: eşleştirme kodu sütunlarında açık REVOKE (vitrin yetkileri korundu)
 
-
-
 ## Yapay zekâ asistanı (genel amaçlı)
 
 - [x] Sesli sohbet: mikrofon kaydı → metin (google/gemini-3.5-transcribe), yanıt → ses (openai/gpt-4o-mini-tts)

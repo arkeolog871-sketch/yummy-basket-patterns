@@ -109,9 +109,7 @@ export function PhotoMenuImport({
           })),
         },
       });
-      toast.success(
-        `${response.created} ürün eklendi, ${response.updated} ürün güncellendi`,
-      );
+      toast.success(`${response.created} ürün eklendi, ${response.updated} ürün güncellendi`);
       setItems(null);
       setPhotos([]);
       void queryClient.invalidateQueries({ queryKey: ["vendor-dashboard"] });
@@ -179,7 +177,11 @@ export function PhotoMenuImport({
               onClick={() => void onExtract()}
               disabled={reading || saving || photos.length === 0}
             >
-              {reading ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
+              {reading ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Camera className="size-4" />
+              )}
               {reading ? "Okunuyor…" : "Ürünleri çıkar"}
             </Button>
             {photos.length > 0 && !reading ? (
@@ -229,7 +231,9 @@ export function PhotoMenuImport({
                 <p className="text-sm font-semibold">
                   Bulunan ürünler ({items.length}) — gözden geçirin
                 </p>
-                <p className="text-xs text-muted-foreground">Fiyatsız bulunanlar 0 olarak kaydedilir</p>
+                <p className="text-xs text-muted-foreground">
+                  Fiyatsız bulunanlar 0 olarak kaydedilir
+                </p>
               </div>
               <div className="mt-2 max-h-96 space-y-1.5 overflow-y-auto pr-1">
                 {items.map((item) => (
@@ -257,7 +261,10 @@ export function PhotoMenuImport({
                       placeholder="Fiyat"
                       onChange={(event) =>
                         updateItem(item.key, {
-                          price: event.target.value === "" ? null : parseImportNumber(event.target.value),
+                          price:
+                            event.target.value === ""
+                              ? null
+                              : parseImportNumber(event.target.value),
                         })
                       }
                       aria-label="Fiyat"
@@ -266,7 +273,9 @@ export function PhotoMenuImport({
                       className="h-9 w-36 shrink-0"
                       value={item.categoryName ?? ""}
                       placeholder="Kategori"
-                      onChange={(event) => updateItem(item.key, { categoryName: event.target.value })}
+                      onChange={(event) =>
+                        updateItem(item.key, { categoryName: event.target.value })
+                      }
                       aria-label="Kategori"
                     />
                     <Button
@@ -276,7 +285,9 @@ export function PhotoMenuImport({
                       className="shrink-0 rounded-full text-muted-foreground"
                       aria-label="Satırı çıkar"
                       onClick={() =>
-                        setItems((prev) => (prev ? prev.filter((row) => row.key !== item.key) : prev))
+                        setItems((prev) =>
+                          prev ? prev.filter((row) => row.key !== item.key) : prev,
+                        )
                       }
                     >
                       <Trash2 className="size-4" />

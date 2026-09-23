@@ -296,7 +296,6 @@ function AuthPage() {
       return;
     }
     navigate({ to: "/", replace: true });
-
   }, [user, access.loading, access.homePath, redirect, navigate]);
 
   const vendorPortal = portal === "vendor";
@@ -336,10 +335,7 @@ function AuthPage() {
       }
     } catch (error) {
       toast.error(
-        humanizeAuthError(
-          error,
-          mode === "signup" ? "Kayıt tamamlanamadı." : "Giriş yapılamadı.",
-        ),
+        humanizeAuthError(error, mode === "signup" ? "Kayıt tamamlanamadı." : "Giriş yapılamadı."),
       );
     } finally {
       setBusy(false);
@@ -358,9 +354,7 @@ function AuthPage() {
       if (!result.ok) toast.error(result.error);
     } catch (error) {
       toast.error(
-        humanizeOAuthError(
-          error instanceof Error ? error.message : "Google girişi başlatılamadı.",
-        ),
+        humanizeOAuthError(error instanceof Error ? error.message : "Google girişi başlatılamadı."),
       );
     }
   }

@@ -19,7 +19,10 @@ function scrub(text: string): string {
   return text
     .replace(/(eyJ[\w-]{10,}\.[\w-]{10,}\.[\w-]{10,})/g, "[TOKEN]")
     .replace(/\b[\w.+-]+@[\w-]+\.[\w.-]+\b/g, "[EPOSTA]")
-    .replace(/(?:password|secret|token|apikey|api_key|code)["'\s:=]+[^\s"'&]+/gi, "$&".slice(0, 0) + "[REDACTED]");
+    .replace(
+      /(?:password|secret|token|apikey|api_key|code)["'\s:=]+[^\s"'&]+/gi,
+      "$&".slice(0, 0) + "[REDACTED]",
+    );
 }
 
 export type ErrorRecordInput = {

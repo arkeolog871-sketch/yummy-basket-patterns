@@ -347,10 +347,10 @@ export function LiveMapCanvas({ markers, label, showUserLocation = true }: LiveM
       swallowMapTeardown(() => host.replaceChildren());
       endMapRuntime();
     };
-  // `markers` dizisinin kimliği her yeniden getirmede değişir; bağımlılığa
-  // eklenirse harita her katalog güncellemesinde yıkılıp yeniden kurulur ve
-  // kullanıcının yakınlaştırması sıfırlanır. İçerik `markerKey` ile izlenir.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // `markers` dizisinin kimliği her yeniden getirmede değişir; bağımlılığa
+    // eklenirse harita her katalog güncellemesinde yıkılıp yeniden kurulur ve
+    // kullanıcının yakınlaştırması sıfırlanır. İçerik `markerKey` ile izlenir.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [markerKey, mapsApiKey, showUserLocation]);
 
   return (

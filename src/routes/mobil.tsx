@@ -55,9 +55,7 @@ function MobilePage() {
           <Smartphone className="size-6" />
         </span>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Telefonuna kur
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Telefonuna kur</h1>
           <p className="text-sm text-muted-foreground">
             SİLVAN CEBİMDE'yi ana ekranına ekle, tam ekran uygulama gibi kullan.
           </p>
@@ -70,7 +68,8 @@ function MobilePage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Telefonuna gerçek uygulama dosyasını kur. Play Store gerekmez. Güncel sürüm: {APK_VERSION}.
+            Telefonuna gerçek uygulama dosyasını kur. Play Store gerekmez. Güncel sürüm:{" "}
+            {APK_VERSION}.
           </p>
           <Button className="w-full" asChild>
             <a href={APK_URL} download={APK_DOWNLOAD}>
@@ -79,7 +78,8 @@ function MobilePage() {
             </a>
           </Button>
           <p className="text-xs text-muted-foreground">
-            Bu dosya otomatik güncellenmez; yeni sürümü indirip mevcut uygulamanın üzerine kurman gerekir.
+            Bu dosya otomatik güncellenmez; yeni sürümü indirip mevcut uygulamanın üzerine kurman
+            gerekir.
           </p>
         </CardContent>
       </Card>
@@ -150,8 +150,8 @@ function MobilePage() {
       </div>
 
       <p className="mt-6 text-xs text-muted-foreground">
-        Not: Kurulum canlı (yayınlanmış) adres üzerinde çalışır; düzenleyici önizlemesinde
-        tarayıcı kurulum menüsü görünmeyebilir.
+        Not: Kurulum canlı (yayınlanmış) adres üzerinde çalışır; düzenleyici önizlemesinde tarayıcı
+        kurulum menüsü görünmeyebilir.
       </p>
     </main>
   );

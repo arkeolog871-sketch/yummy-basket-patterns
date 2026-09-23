@@ -7,7 +7,7 @@ const assistant = readFileSync("src/components/assistant/OrderAssistant.tsx", "u
 describe("mobil sesli asistan", () => {
   it("mikrofon izni ön kontrolle engellenmez (Android WebView 'denied' bildiriyor)", () => {
     expect(assistant).not.toMatch(/permissions[\s\S]{0,200}query\(\{\s*name:\s*"microphone"/);
-    expect(assistant).toContain('navigator.mediaDevices.getUserMedia({ audio: true })');
+    expect(assistant).toContain("navigator.mediaDevices.getUserMedia({ audio: true })");
   });
 
   it("ses kaydı desteklenmeyen cihazda kullanıcı yazarak devam edebilir", () => {

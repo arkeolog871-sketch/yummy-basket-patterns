@@ -48,9 +48,7 @@ export const listAdvertisements = createServerFn({ method: "GET" })
         .order("display_order", { ascending: true })
         .order("created_at", { ascending: true });
       if (error) throw new Error(error.message);
-      const items = (data ?? [])
-        .map((row) => parseAdvertisement(row))
-        .filter((row) => row != null);
+      const items = (data ?? []).map((row) => parseAdvertisement(row)).filter((row) => row != null);
       return { items };
     }),
   );
@@ -84,9 +82,8 @@ export const saveAdvertisement = createServerFn({ method: "POST" })
     runServerFn(async () => {
       const { assertFounder } = await import("./founder.server");
       await assertFounder(context.supabase, context.userId, context.claims as never);
-      const { persistFounderAdvertisement, bytesFromBase64 } = await import(
-        "./advertisements-upload.server"
-      );
+      const { persistFounderAdvertisement, bytesFromBase64 } =
+        await import("./advertisements-upload.server");
       const email = (context.claims as { email?: string } | null)?.email ?? null;
       const file =
         data.base64 && data.fileName
@@ -165,7 +162,10 @@ export const deleteAdvertisement = createServerFn({ method: "POST" })
           entityId: data.id,
         },
         async () => {
-          const { error } = await context.supabase.from("advertisements").delete().eq("id", data.id);
+          const { error } = await context.supabase
+            .from("advertisements")
+            .delete()
+            .eq("id", data.id);
           if (error) throw new Error(error.message);
           return { ok: true };
         },

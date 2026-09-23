@@ -25,8 +25,8 @@ export const EmailChangeEmail = ({
     <EmailShell siteName={siteName}>
       <Title>E-posta değişikliğini onaylayın</Title>
       <p style={styles.text}>
-        Hesabınızın e-posta adresi <strong>{oldEmail}</strong> yerine{" "}
-        <strong>{newEmail}</strong> olarak güncellenecek.
+        Hesabınızın e-posta adresi <strong>{oldEmail}</strong> yerine <strong>{newEmail}</strong>{" "}
+        olarak güncellenecek.
       </p>
       <CodeBox token={token} />
       <p style={styles.text}>Onaylamak için aşağıdaki butona dokunun. Kod 10 dakika geçerlidir.</p>
