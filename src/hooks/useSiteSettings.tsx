@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { SplashScreen } from "@/components/system/SplashScreen";
-import { readableOnWarm } from "@/lib/warm-contrast";
+import { seedFromHex, themeCssVariables } from "@/lib/theme-palette";
 import {
   applyTypographyCss,
   DEFAULT_TYPOGRAPHY,
@@ -52,11 +52,11 @@ export type FooterContent = {
 export const DEFAULT_SETTINGS: SiteSettings = {
   id: "global",
   brand_name: "SİLVAN CEBİMDE",
-  primary_color: "#ff8c42",
-  accent_color: "#e63946",
-  secondary_color: "#ffe9d6",
-  background_color: "#fff8f0",
-  warm_color: "#f3dfc0",
+  primary_color: "#932030",
+  accent_color: "#f0ba66",
+  secondary_color: "#edddc6",
+  background_color: "#f4edda",
+  warm_color: "#f0ba66",
   logo_url: null,
   favicon_url: null,
   banner_url: null,
@@ -198,30 +198,28 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     // ekran splash tarafından örtülür (bkz. SplashScreen).
     if (settingsQuery.isLoading) return;
     const root = document.documentElement;
-    root.style.setProperty("--primary", settings.primary_color);
-    root.style.setProperty("--ring", settings.primary_color);
-    root.style.setProperty("--accent", settings.accent_color);
-    root.style.setProperty("--secondary", settings.secondary_color);
-    root.style.setProperty("--background", settings.background_color);
-    root.style.setProperty("--warm", settings.warm_color);
-    root.style.setProperty("--warm-foreground", readableOnWarm(settings.warm_color));
-    root.style.setProperty(
-      "--gradient-warm",
-      `linear-gradient(120deg, ${settings.warm_color} 0%, ${settings.accent_color} 100%)`,
-    );
-    root.style.setProperty(
-      "--gradient-hero",
-      `linear-gradient(145deg, ${settings.background_color} 0%, ${settings.warm_color} 100%)`,
-    );
+    // Renkler TEK TOHUMDAN türetilir (theme-palette.ts): tohum primary_color'da
+    // saklanır; diğer sütunlar yok sayılır. Eskiden 5 serbest renk doğrudan
+    // yazılıyordu ve canlıda vurgu/ikincil/zemin aynı krem seçildiği için
+    // tuşlar ve simgeler görünmez olmuştu. Üretici her yazı/zemin çiftini
+    // en az 4.5:1'e zorlar.
+    //
+    // Koyu modda açık tema değişkenleri yazılmaz: .dark (styles.css) geçerli
+    // olsun. Koyu tema üreticisi ayrı adım.
+    const gamut =
+      typeof window.matchMedia === "function" && window.matchMedia("(color-gamut: p3)").matches
+        ? "p3"
+        : "srgb";
+    const variables = themeCssVariables(seedFromHex(settings.primary_color), gamut);
+    for (const [name, value] of Object.entries(variables)) {
+      if (settings.theme_mode === "dark") root.style.removeProperty(name);
+      else root.style.setProperty(name, value);
+    }
     root.classList.toggle("dark", settings.theme_mode === "dark");
     root.dataset["layout"] = settings.layout_variant;
   }, [
     settingsQuery.isLoading,
     settings.primary_color,
-    settings.accent_color,
-    settings.secondary_color,
-    settings.background_color,
-    settings.warm_color,
     settings.theme_mode,
     settings.layout_variant,
   ]);

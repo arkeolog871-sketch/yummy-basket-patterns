@@ -68,27 +68,27 @@
 :root {
   --radius: 1rem;
 
-  --background: oklch(0.981 0.015 78);
-  --foreground: oklch(0.301 0.012 62);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.301 0.012 62);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.301 0.012 62);
+  --background: oklch(0.947 0.026 90.1);
+  --foreground: oklch(0.240 0.030 18.7);
+  --card: oklch(1.000 0.000 0.0);
+  --card-foreground: oklch(0.240 0.030 18.7);
+  --popover: oklch(1.000 0.000 0.0);
+  --popover-foreground: oklch(0.240 0.030 18.7);
 
-  --primary: oklch(0.745 0.152 52);
-  --primary-foreground: oklch(0.255 0.035 48);
+  --primary: oklch(0.440 0.150 18.7);
+  --primary-foreground: oklch(1.000 0.000 0.0);
 
-  --secondary: oklch(0.949 0.028 76);
-  --secondary-foreground: oklch(0.345 0.024 58);
+  --secondary: oklch(0.905 0.035 76.7);
+  --secondary-foreground: oklch(0.300 0.050 18.7);
 
-  --muted: oklch(0.956 0.019 78);
-  --muted-foreground: oklch(0.539 0.028 62);
+  --muted: oklch(0.930 0.025 76.7);
+  --muted-foreground: oklch(0.470 0.040 18.7);
 
-  --accent: oklch(0.598 0.213 22);
-  --accent-foreground: oklch(0.99 0.008 80);
+  --accent: oklch(0.820 0.119 76.7);
+  --accent-foreground: oklch(0.270 0.060 18.7);
 
-  --warm: oklch(0.932 0.042 72);
-  --warm-foreground: oklch(0.331 0.038 52);
+  --warm: oklch(0.820 0.119 76.7);
+  --warm-foreground: oklch(0.270 0.060 18.7);
 
   --success: oklch(0.618 0.132 150);
   --success-foreground: oklch(0.99 0.008 150);
@@ -96,9 +96,9 @@
   --destructive: oklch(0.578 0.221 26);
   --destructive-foreground: oklch(0.99 0.008 80);
 
-  --border: oklch(0.906 0.022 76);
-  --input: oklch(0.906 0.022 76);
-  --ring: oklch(0.745 0.152 52);
+  --border: oklch(0.860 0.035 76.7);
+  --input: oklch(0.860 0.035 76.7);
+  --ring: oklch(0.440 0.150 18.7);
 
   --chart-1: oklch(0.745 0.152 52);
   --chart-2: oklch(0.598 0.213 22);
@@ -106,28 +106,23 @@
   --chart-4: oklch(0.812 0.135 84);
   --chart-5: oklch(0.482 0.062 58);
 
-  --sidebar: oklch(0.972 0.021 78);
-  --sidebar-foreground: oklch(0.301 0.012 62);
-  --sidebar-primary: oklch(0.745 0.152 52);
-  --sidebar-primary-foreground: oklch(0.255 0.035 48);
-  --sidebar-accent: oklch(0.932 0.042 72);
-  --sidebar-accent-foreground: oklch(0.331 0.038 52);
-  --sidebar-border: oklch(0.906 0.022 76);
-  --sidebar-ring: oklch(0.745 0.152 52);
+  --sidebar: oklch(0.930 0.025 76.7);
+  --sidebar-foreground: oklch(0.240 0.030 18.7);
+  --sidebar-primary: oklch(0.440 0.150 18.7);
+  --sidebar-primary-foreground: oklch(1.000 0.000 0.0);
+  --sidebar-accent: oklch(0.820 0.119 76.7);
+  --sidebar-accent-foreground: oklch(0.270 0.060 18.7);
+  --sidebar-border: oklch(0.860 0.035 76.7);
+  --sidebar-ring: oklch(0.440 0.150 18.7);
 
   --elevation-card:
     0 1px 2px oklch(0.301 0.012 62 / 0.04), 0 8px 24px -12px oklch(0.301 0.012 62 / 0.14);
   --elevation-lifted:
     0 2px 4px oklch(0.301 0.012 62 / 0.05), 0 20px 44px -20px oklch(0.301 0.012 62 / 0.22);
-  --elevation-glow: 0 12px 32px -12px oklch(0.745 0.152 52 / 0.55);
+  --elevation-glow: 0 12px 32px -12px oklch(0.44 0.15 18.7 / 0.45);
 
-  --gradient-hero: linear-gradient(
-    145deg,
-    oklch(0.988 0.016 80) 0%,
-    oklch(0.955 0.038 72) 48%,
-    oklch(0.928 0.058 62) 100%
-  );
-  --gradient-warm: linear-gradient(120deg, oklch(0.762 0.156 54) 0%, oklch(0.648 0.196 30) 100%);
+  --gradient-hero: linear-gradient(145deg, oklch(0.947 0.026 90.1) 0%, oklch(0.820 0.119 76.7) 100%);
+  --gradient-warm: linear-gradient(120deg, oklch(0.440 0.150 18.7) 0%, oklch(0.550 0.150 30.7) 100%);
   --gradient-fade-up: linear-gradient(
     to top,
     oklch(0.22 0.03 50 / 0.88) 0%,
@@ -236,8 +231,24 @@
   li,
   small,
   label {
-    color: var(--app-text-color, var(--text-primary, inherit));
     font-family: inherit;
+  }
+
+  /*
+   * Yazı rengi yalnızca kullanıcı "yüksek karşıtlık" ya da "özel yazı rengi"
+   * seçtiğinde zorlanır.
+   *
+   * YAŞANDI: bu kural koşulsuzdu (:root'ta --app-text-color hep tanımlı).
+   * Her span ebeveyninin rengini yok sayıp gövde rengini alıyordu; bordo
+   * "Giriş" tuşunun içindeki yazı beyaz yerine koyu kaldı. Eski temada tuş
+   * yazısı zaten koyu olduğu için kusur görünmüyordu.
+   *
+   * Zorlandığında bile tuş, bağlantı ve rozetlerin İÇİNDE zorlanmaz: orada
+   * öğenin kendi yazı rengi zeminine göre okunaklılığı sağlıyor.
+   */
+  html:is([data-app-contrast="high"], [data-app-contrast="custom"])
+    :is(p, span, li, small, label):not(:is(button, a, [role="button"], [data-slot="badge"]) *) {
+    color: var(--app-text-color, var(--text-primary, inherit));
   }
 
   h1,

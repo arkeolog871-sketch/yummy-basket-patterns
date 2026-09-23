@@ -40,7 +40,7 @@ const STATUS_FILTERS = ["all", "success", "error", "denied"] as const;
 
 function statusClass(status: string) {
   if (status === "success") return "bg-warm text-warm-foreground";
-  if (status === "denied") return "bg-accent/15 text-accent";
+  if (status === "denied") return "bg-accent/30 text-accent-foreground";
   return "bg-destructive/15 text-destructive";
 }
 

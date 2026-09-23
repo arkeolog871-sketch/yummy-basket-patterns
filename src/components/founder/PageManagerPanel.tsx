@@ -87,7 +87,7 @@ export function PageManagerPanel({ users }: { users: UserOption[] }) {
     <div className="space-y-8">
       <section className="rounded-3xl border border-border/70 bg-card p-5">
         <div className="flex items-center gap-2">
-          <ShieldCheck className="size-5 text-accent" />
+          <ShieldCheck className="size-5 text-primary" />
           <h2 className="font-display text-lg font-semibold">Bölgesel yetki ver</h2>
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -174,7 +174,7 @@ export function PageManagerPanel({ users }: { users: UserOption[] }) {
                     {row.email ?? row.user_id}
                   </p>
                   <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                    <MapPin className="size-3.5 text-accent" /> {row.district}, {row.city} ·{" "}
+                    <MapPin className="size-3.5 text-primary" /> {row.district}, {row.city} ·{" "}
                     {formatDateTime(row.created_at)}
                   </p>
                 </div>

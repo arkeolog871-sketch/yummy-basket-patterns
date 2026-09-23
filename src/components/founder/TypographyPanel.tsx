@@ -109,7 +109,13 @@ function SizeRow({
           <span className="w-8 text-[11px] text-muted-foreground">{unit}</span>
         </div>
       </div>
-      <Slider min={min} max={max} step={step} value={[value]} onValueChange={([n]) => onChange(n ?? value)} />
+      <Slider
+        min={min}
+        max={max}
+        step={step}
+        value={[value]}
+        onValueChange={([n]) => onChange(n ?? value)}
+      />
     </div>
   );
 }
@@ -152,7 +158,10 @@ export function TypographyPanel() {
   }
 
   const bodyPt = useMemo(() => Math.round(form.bodySizePx * 0.75 * 10) / 10, [form.bodySizePx]);
-  const bodyRem = useMemo(() => Math.round((form.bodySizePx / 16) * 1000) / 1000, [form.bodySizePx]);
+  const bodyRem = useMemo(
+    () => Math.round((form.bodySizePx / 16) * 1000) / 1000,
+    [form.bodySizePx],
+  );
   const bg = settings.background_color || "#fff8f0";
 
   return (
@@ -160,15 +169,16 @@ export function TypographyPanel() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <Type className="size-4 text-accent" />
+            <Type className="size-4 text-primary" />
             <h2 className="text-xl">Global tipografi ve stilleme</h2>
           </div>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Buradaki stiller <code className="rounded bg-muted px-1">site_settings.typography</code> kaydına yazılır ve
-            tüm uygulamada CSS değişkenleri (<code className="rounded bg-muted px-1">--font-main</code>,{" "}
+            Buradaki stiller <code className="rounded bg-muted px-1">site_settings.typography</code>{" "}
+            kaydına yazılır ve tüm uygulamada CSS değişkenleri (
+            <code className="rounded bg-muted px-1">--font-main</code>,{" "}
             <code className="rounded bg-muted px-1">--text-primary</code>,{" "}
-            <code className="rounded bg-muted px-1">--h1-size</code>) üzerinden uygulanır. Metne satır içi stil
-            yazılmaz — hydration güvenlidir.
+            <code className="rounded bg-muted px-1">--h1-size</code>) üzerinden uygulanır. Metne
+            satır içi stil yazılmaz — hydration güvenlidir.
           </p>
         </div>
         <div className="flex gap-2">
@@ -198,7 +208,8 @@ export function TypographyPanel() {
       <section className="rounded-3xl border border-border bg-card p-6">
         <h3 className="text-lg font-semibold">1. Punto ve boyutlandırma</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Gövde 12–24px. Başlıklar bağımsız rem + type scale. Harf aralığı −2px / +5px, satır yüksekliği 1.0–2.5.
+          Gövde 12–24px. Başlıklar bağımsız rem + type scale. Harf aralığı −2px / +5px, satır
+          yüksekliği 1.0–2.5.
         </p>
 
         <div className="mt-5 grid gap-8 lg:grid-cols-2">
@@ -251,8 +262,8 @@ export function TypographyPanel() {
                 ))}
               </select>
               <p className="mt-1 text-xs text-muted-foreground">
-                Oran veya gövde punto değişince H1–H4 yeniden hesaplanır; ardından her başlığı ayrı ince ayar
-                yapabilirsiniz.
+                Oran veya gövde punto değişince H1–H4 yeniden hesaplanır; ardından her başlığı ayrı
+                ince ayar yapabilirsiniz.
               </p>
             </div>
 
@@ -346,7 +357,8 @@ export function TypographyPanel() {
       <section className="rounded-3xl border border-border bg-card p-6">
         <h3 className="text-lg font-semibold">2. Renk paleti ve yelpazesi</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          HEX, RGB, HSL ve Alpha. Kontrast, Görünüm sekmesindeki arka plan rengine göre WCAG AAA skorlanır.
+          HEX, RGB, HSL ve Alpha. Kontrast, Görünüm sekmesindeki arka plan rengine göre WCAG AAA
+          skorlanır.
         </p>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -603,7 +615,9 @@ function FontFamilyPicker({
                     type="button"
                     onClick={() => onChange(key)}
                     className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                      active ? "border-primary bg-warm text-warm-foreground" : "border-border hover:bg-secondary"
+                      active
+                        ? "border-primary bg-warm text-warm-foreground"
+                        : "border-border hover:bg-secondary"
                     }`}
                     style={{ fontFamily: spec.stack }}
                   >
@@ -685,8 +699,10 @@ function TransformGroup({
   );
 }
 
-const LivePreviewCard = forwardRef<HTMLDivElement, { form: TypographySettings; background: string }>(
-  function LivePreviewCard({ form, background }, ref) {
+const LivePreviewCard = forwardRef<
+  HTMLDivElement,
+  { form: TypographySettings; background: string }
+>(function LivePreviewCard({ form, background }, ref) {
   return (
     <section
       ref={ref}
@@ -707,14 +723,15 @@ const LivePreviewCard = forwardRef<HTMLDivElement, { form: TypographySettings; b
           <h3>Öne çıkan kategoriler</h3>
           <h4>Restoran, market ve daha fazlası</h4>
           <p>
-            Gövde metni bu kartta anında güncellenir. Kaydettiğinizde Header, içerik, düğmeler ve kartlar aynı CSS
-            değişkenlerini kullanır.
+            Gövde metni bu kartta anında güncellenir. Kaydettiğinizde Header, içerik, düğmeler ve
+            kartlar aynı CSS değişkenlerini kullanır.
           </p>
           <p className="preview-muted">
             İkincil / soluk metin — teslimat süresi, adres ve yardımcı açıklamalar bu tonda görünür.
           </p>
           <p>
-            Vurgu için bir <a href="#typography-preview">bağlantı örneği</a> ve hover durumunu deneyin.
+            Vurgu için bir <a href="#typography-preview">bağlantı örneği</a> ve hover durumunu
+            deneyin.
           </p>
         </div>
         <div className="preview-card">
@@ -732,5 +749,4 @@ const LivePreviewCard = forwardRef<HTMLDivElement, { form: TypographySettings; b
       </div>
     </section>
   );
-  },
-);
+});

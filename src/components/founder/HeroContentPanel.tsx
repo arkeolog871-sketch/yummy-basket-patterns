@@ -140,7 +140,7 @@ export function HeroContentPanel() {
             8 {form.hero_badge}
           </span>
           <h3 className={`mt-3 leading-tight ${device === "mobile" ? "text-2xl" : "text-4xl"}`}>
-            {form.hero_title} <span className="text-accent">{form.hero_title_accent}</span>
+            {form.hero_title} <span className="text-primary">{form.hero_title_accent}</span>
           </h3>
           <p
             className={`mt-2 text-muted-foreground ${

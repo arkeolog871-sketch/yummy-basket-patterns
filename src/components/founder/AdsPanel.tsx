@@ -285,7 +285,7 @@ export function AdsPanel() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <Megaphone className="size-4 text-accent" />
+              <Megaphone className="size-4 text-primary" />
               <h2 className="text-xl">Kayan reklam / banner</h2>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -528,8 +528,8 @@ function AdForm({
           className="mt-1"
         />
         <p className="mt-1 text-xs text-muted-foreground">
-          Görselin üzerine yazı olarak basılır. Altyazı istemiyorsanız tek bir nokta (.)
-          yazın; anasayfada gösterilmez.
+          Görselin üzerine yazı olarak basılır. Altyazı istemiyorsanız tek bir nokta (.) yazın;
+          anasayfada gösterilmez.
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">

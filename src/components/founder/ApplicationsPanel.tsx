@@ -75,7 +75,9 @@ export function ApplicationsPanel({ onApproved }: { onApproved?: () => void }) {
             type="button"
             onClick={() => setFilter(value)}
             className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
-              filter === value ? "border-transparent bg-primary text-primary-foreground" : "border-border"
+              filter === value
+                ? "border-transparent bg-primary text-primary-foreground"
+                : "border-border"
             }`}
           >
             {value === "pending" ? "Bekleyenler" : "Tümü"}
@@ -100,7 +102,10 @@ export function ApplicationsPanel({ onApproved }: { onApproved?: () => void }) {
       ) : (
         <div className="space-y-4">
           {rows.map((row) => (
-            <article key={row.id} className="space-y-4 rounded-3xl border border-border bg-card p-5">
+            <article
+              key={row.id}
+              className="space-y-4 rounded-3xl border border-border bg-card p-5"
+            >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="font-semibold">{row.name}</p>
@@ -108,7 +113,7 @@ export function ApplicationsPanel({ onApproved }: { onApproved?: () => void }) {
                     /{row.slug} · {formatDateTime(row.created_at)}
                   </p>
                 </div>
-                <span className="rounded-full bg-accent/15 px-3 py-1 text-xs text-accent">
+                <span className="rounded-full bg-accent/30 px-3 py-1 text-xs text-accent-foreground">
                   {STATUS_LABELS[row.status] ?? row.status}
                 </span>
               </div>
@@ -133,7 +138,10 @@ export function ApplicationsPanel({ onApproved }: { onApproved?: () => void }) {
                 <Field label="E-posta" value={row.contact_email ?? ""} />
                 <Field label="Telefon" value={row.contact_phone ?? ""} />
                 <Field label="Yetkili ad soyad" value={row.contact_person ?? ""} />
-                <Field label="Çalışma saatleri" value={`${row.opens_at ?? "—"} - ${row.closes_at ?? "—"}`} />
+                <Field
+                  label="Çalışma saatleri"
+                  value={`${row.opens_at ?? "—"} - ${row.closes_at ?? "—"}`}
+                />
                 <Field label="Sipariş alıyor" value={row.is_open_manual ? "Evet" : "Hayır"} />
               </div>
 
