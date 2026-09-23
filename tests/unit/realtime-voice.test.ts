@@ -7,20 +7,11 @@ import {
   type RealtimeDeps,
 } from "@/lib/realtime-voice";
 
-type PayloadShape = {
-  session: {
-    audio: {
-      input: {
-        turn_detection: { type: string; create_response: boolean; interrupt_response: boolean };
-      };
-      output: { voice: string };
-    };
-    tools: { name: string }[];
-  };
-};
+// Test, geçit protokolünün ham JSON gövdesini okuyor; gevşek tip kasıtlı.
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 function machine(overrides: Partial<RealtimeDeps> = {}) {
-  const sent: Record<string, unknown>[] = [];
+  const sent: any[] = [];
   const phases: string[] = [];
   const errors: string[] = [];
   const logs: string[] = [];
