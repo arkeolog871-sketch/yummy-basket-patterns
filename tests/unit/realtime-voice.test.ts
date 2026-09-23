@@ -8,7 +8,7 @@ import {
 } from "@/lib/realtime-voice";
 
 function machine(overrides: Partial<RealtimeDeps> = {}) {
-  const sent: any[] = [];
+  const sent: Record<string, unknown>[] = [];
   const phases: string[] = [];
   const errors: string[] = [];
   const logs: string[] = [];
@@ -33,7 +33,11 @@ function machine(overrides: Partial<RealtimeDeps> = {}) {
 
 describe("gerçek zamanlı ses oturumu", () => {
   it("sunucu tarafı anlamsal tur algısı ve sürekli dinleme açık", () => {
-    const payload = sessionUpdatePayload("coral", "talimat", "gpt-realtime") as any;
+    const payload = sessionUpdatePayload(
+      "coral",
+      "talimat",
+      "gpt-realtime",
+    ) as unknown as PayloadShape;
     const turn = payload.session.audio.input.turn_detection;
     // Sabit sessizlik süresi değil, cümlenin bitip bitmediğine bakan algı:
     // cümle arası duraklama yeni tur başlatmaz.
