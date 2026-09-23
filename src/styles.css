@@ -466,8 +466,15 @@ body {
  *
  * Katmansız: yukarıdaki html/body overflow-x kuralını yeniden tanımlıyor.
  * ------------------------------------------------------------------------- */
-html[data-native-shell],
-html[data-native-shell] body {
+/* Kilit YALNIZCA sayfada kayan içerik alanı varken uygulanır (:has).
+ * YAŞANDI: kilit koşulsuzdu; ana düzenin (AppChrome) DIŞINDA çizilen
+ * sayfalarda (/kurucu, /kurucu-giris, /sifre-sifirlama, /android, /iphone)
+ * belge kilitlendi ama kayacak iç alan da yoktu: sayfa yöneticisi paneli
+ * aşağı kaymıyor, alttaki bölümlere ulaşılamıyordu. O sayfalarda belge
+ * artık normal kayar. :has desteklenmezse kural tümden düşer ve belge kayar
+ * (güvenli taraf). */
+html[data-native-shell]:has([data-app-scroll]),
+html[data-native-shell]:has([data-app-scroll]) body {
   height: 100%;
   overflow: hidden;
   overscroll-behavior: none;

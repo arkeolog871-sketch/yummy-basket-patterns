@@ -64,7 +64,9 @@ describe("uygulamalarda başlık düzenle sabit", () => {
   it("uygulamada belge kaymıyor, yalnızca içerik alanı kayıyor", () => {
     const css = read("src/styles.css").replace(/\/\*[\s\S]*?\*\//g, "");
     const rootRule =
-      /html\[data-native-shell\],\s*html\[data-native-shell\] body\s*\{([^}]*)\}/.exec(css);
+      /html\[data-native-shell\]:has\(\[data-app-scroll\]\),\s*html\[data-native-shell\]:has\(\[data-app-scroll\]\) body\s*\{([^}]*)\}/.exec(
+        css,
+      );
     expect(rootRule, "html/body kuralı yok").not.toBeNull();
     expect(rootRule![1]).toMatch(/overflow:\s*hidden/);
     expect(rootRule![1]).toMatch(/height:\s*100%/);
@@ -132,5 +134,29 @@ describe("Android'de üstte çift boşluk yok", () => {
     expect(css).toMatch(
       /html\[data-android-shell\] \[data-app-header\]\s*\{\s*padding-top:\s*0;?\s*\}/,
     );
+  });
+});
+
+/**
+ * YAŞANDI: belge kilidi koşulsuzdu. Ana düzenin dışında çizilen sayfalarda
+ * (sayfa yöneticisi paneli vb.) kayacak iç alan olmadığı için sayfa dondu.
+ * Kilit yalnızca kayan içerik alanı varken uygulanmalı.
+ */
+describe("ana düzen dışındaki sayfalar donmuyor", () => {
+  it("belge kilidi yalnız içerik alanı varken uygulanıyor", () => {
+    const css = read("src/styles.css").replace(/\/\*[\s\S]*?\*\//g, "");
+    // Koşulsuz kilit geri gelmesin.
+    expect(css).not.toMatch(/html\[data-native-shell\],\s*html\[data-native-shell\] body/);
+    expect(css).toContain("html[data-native-shell]:has([data-app-scroll])");
+  });
+
+  it("kendi başına çizilen sayfalar içerik alanı taşımıyor, belge kayıyor", () => {
+    const root = read("src/routes/__root.tsx");
+    const standalone = root.slice(
+      root.indexOf("standaloneChrome ? ("),
+      root.indexOf("<AppChrome />"),
+    );
+    expect(standalone).toContain("<Outlet />");
+    expect(standalone).not.toContain("data-app-scroll");
   });
 });
