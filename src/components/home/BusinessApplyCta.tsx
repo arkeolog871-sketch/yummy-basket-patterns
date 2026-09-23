@@ -16,7 +16,7 @@ export function BusinessApplyCta() {
             İşletme başvurusu
           </h2>
           <p className="font-display mt-2 text-2xl font-bold leading-tight sm:text-3xl">
-            İşletmenizi SİLVAN CEBİMDE'ye ekleyin
+            İşletmenizi platforma ekleyin
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
             Menünüzü, ürünlerinizi ve siparişlerinizi tek panelden yönetin; mahallenizdeki
