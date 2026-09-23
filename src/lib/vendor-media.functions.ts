@@ -144,9 +144,7 @@ export const deleteVendorProduct = createServerFn({ method: "POST" })
 /** Ürün kategorisi (menü grubu) oluşturur. */
 export const createVendorCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: unknown) =>
-    z.object({ name: z.string().trim().min(2).max(80) }).parse(input),
-  )
+  .validator((input: unknown) => z.object({ name: z.string().trim().min(2).max(80) }).parse(input))
   .handler(async ({ data, context }) => {
     const { assertVendor } = await import("./vendor.server");
     const restaurantId = await assertVendor(context.supabase, context.userId);
@@ -192,9 +190,7 @@ export const uploadVendorBrandImage = createServerFn({ method: "POST" })
 /** İşletme logosu veya kapak görselini kaldırır. */
 export const removeVendorBrandImage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: unknown) =>
-    z.object({ kind: z.enum(["logo", "cover"]) }).parse(input),
-  )
+  .validator((input: unknown) => z.object({ kind: z.enum(["logo", "cover"]) }).parse(input))
   .handler(async ({ data, context }) => {
     const { assertVendor } = await import("./vendor.server");
     const restaurantId = await assertVendor(context.supabase, context.userId);

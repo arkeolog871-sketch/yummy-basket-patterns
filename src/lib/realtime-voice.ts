@@ -22,11 +22,7 @@
  */
 
 export type RealtimePhase =
-  | "baglaniyor"
-  | "dinliyor"
-  | "kullanici-konusuyor"
-  | "dusunuyor"
-  | "konusuyor";
+  "baglaniyor" | "dinliyor" | "kullanici-konusuyor" | "dusunuyor" | "konusuyor";
 
 /** Bir turun zaman damgaları (ms, monoton saat). */
 export interface TurnMarks {
@@ -67,7 +63,8 @@ export function turnLatency(marks: TurnMarks): TurnLatency {
 /** Debug modunda konsola yazılan tek satırlık ölçüm dökümü. */
 export function formatLatency(marks: TurnMarks, latency: TurnLatency): string {
   const base = marks.speechStart ?? 0;
-  const rel = (value?: number) => (typeof value === "number" ? `${Math.round(value - base)}ms` : "—");
+  const rel = (value?: number) =>
+    typeof value === "number" ? `${Math.round(value - base)}ms` : "—";
   return [
     "[VOICE LATENCY]",
     `speech_start: ${rel(marks.speechStart)}`,

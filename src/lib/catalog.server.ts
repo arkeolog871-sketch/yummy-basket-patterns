@@ -8,7 +8,9 @@ export function createPublicClient() {
     process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
     process.env["VITE_SUPABASE_ANON_KEY"];
   if (!url || !key) {
-    throw new Error("Missing Supabase environment variable(s): SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY.");
+    throw new Error(
+      "Missing Supabase environment variable(s): SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY.",
+    );
   }
 
   return createClient<Database>(url, key, {

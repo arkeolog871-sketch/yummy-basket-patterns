@@ -37,12 +37,20 @@ describe("iOS OTP input and consent", () => {
     const original = globalThis.navigator;
     Object.defineProperty(globalThis, "navigator", {
       configurable: true,
-      value: { userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)", platform: "iPhone", maxTouchPoints: 5 },
+      value: {
+        userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+        platform: "iPhone",
+        maxTouchPoints: 5,
+      },
     });
     expect(isIosDevice()).toBe(true);
     Object.defineProperty(globalThis, "navigator", {
       configurable: true,
-      value: { userAgent: "Mozilla/5.0 (Linux; Android 14; Pixel 7)", platform: "Linux", maxTouchPoints: 5 },
+      value: {
+        userAgent: "Mozilla/5.0 (Linux; Android 14; Pixel 7)",
+        platform: "Linux",
+        maxTouchPoints: 5,
+      },
     });
     expect(isIosDevice()).toBe(false);
     Object.defineProperty(globalThis, "navigator", { configurable: true, value: original });

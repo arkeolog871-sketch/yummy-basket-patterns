@@ -1,5 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
-import { OTP_INVALID_MESSAGE, OTP_LENGTH_MESSAGE, OTP_LOCK_MESSAGE, parseExactOtpCode } from "@/lib/otp";
+import {
+  OTP_INVALID_MESSAGE,
+  OTP_LENGTH_MESSAGE,
+  OTP_LOCK_MESSAGE,
+  parseExactOtpCode,
+} from "@/lib/otp";
 import { otpSendSchema, otpVerifySchema, registerSchema } from "@/lib/otp-schemas";
 
 /**

@@ -38,7 +38,9 @@ export const ADVERTISEMENTS_SQL = `-- advertisements tablosu (SQL Editor'da bir 
 -- Tam şema: supabase/migrations/20260824160000_advertisements.sql
 `;
 
-export function isMissingAdvertisementsSchema(error: { message?: string; code?: string } | null | undefined): boolean {
+export function isMissingAdvertisementsSchema(
+  error: { message?: string; code?: string } | null | undefined,
+): boolean {
   if (!error) return false;
   const msg = `${error.code ?? ""} ${error.message ?? ""}`.toLowerCase();
   return (
@@ -59,7 +61,9 @@ export function isMissingAdvertisementsSchema(error: { message?: string; code?: 
 }
 
 /** Listeleme duvarı: yalnızca tablo yoksa. RPC 404 paneli kilitlemesin. */
-export function isMissingAdvertisementsTable(error: { message?: string; code?: string } | null | undefined): boolean {
+export function isMissingAdvertisementsTable(
+  error: { message?: string; code?: string } | null | undefined,
+): boolean {
   if (!error) return false;
   const msg = `${error.code ?? ""} ${error.message ?? ""}`.toLowerCase();
   return (
@@ -108,7 +112,9 @@ export function sanitizeActionValue(type: AdActionType, raw: string): string {
 }
 
 export function parseActionType(value: unknown): AdActionType {
-  return AD_ACTION_TYPES.includes(value as AdActionType) ? (value as AdActionType) : "internal_route";
+  return AD_ACTION_TYPES.includes(value as AdActionType)
+    ? (value as AdActionType)
+    : "internal_route";
 }
 
 function isoDate(value: unknown, fallback: Date): string {
@@ -200,7 +206,10 @@ export function fromDatetimeLocalValue(value: string): string {
   return d.toISOString();
 }
 
-export function emptyAdvertisementDraft(): Omit<Advertisement, "id" | "created_at" | "updated_at" | "impression_count" | "click_count"> {
+export function emptyAdvertisementDraft(): Omit<
+  Advertisement,
+  "id" | "created_at" | "updated_at" | "impression_count" | "click_count"
+> {
   const dates = defaultAdDates();
   return {
     title: "",
@@ -216,7 +225,10 @@ export function emptyAdvertisementDraft(): Omit<Advertisement, "id" | "created_a
   };
 }
 
-export async function postFounderBanner(form: FormData, accessToken?: string | null): Promise<{
+export async function postFounderBanner(
+  form: FormData,
+  accessToken?: string | null,
+): Promise<{
   url: string;
   publicUrl: string;
   path: string;

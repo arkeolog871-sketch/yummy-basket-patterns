@@ -7,7 +7,8 @@ export const Route = createFileRoute("/indir")({
       { title: "SİLVAN CEBİMDE — Android uygulamasını indir" },
       {
         name: "description",
-        content: "SİLVAN CEBİMDE Android uygulamasını indirin. Yemek siparişini telefonunuzdan verin.",
+        content:
+          "SİLVAN CEBİMDE Android uygulamasını indirin. Yemek siparişini telefonunuzdan verin.",
       },
       { name: "theme-color", content: "#ff8c42" },
     ],
@@ -35,7 +36,10 @@ function IndirPage() {
         APK dosyasını indir
       </a>
       <p className="mt-3 text-xs text-muted-foreground">{APK_DOWNLOAD} · ücretsiz</p>
-      <Link to="/" className="mt-10 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+      <Link
+        to="/"
+        className="mt-10 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+      >
         Siteye dön
       </Link>
     </div>

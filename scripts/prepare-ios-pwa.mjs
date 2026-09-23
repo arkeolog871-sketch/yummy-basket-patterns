@@ -39,7 +39,7 @@ mustContain("src/components/auth/OtpCodeInput.tsx", [
   "[0-9]*",
 ]);
 mustContain("src/components/legal/LegalConsentCheckbox.tsx", [
-  "type=\"checkbox\"",
+  'type="checkbox"',
   "okudum, kabul ediyorum",
 ]);
 mustContain("src/components/business/CallButton.tsx", ["openTelHref", "tel:${telefonNumarasi}"]);
@@ -72,7 +72,11 @@ if (config) {
   }
 }
 
-for (const asset of ["public/apple-touch-icon.png", "public/app-icon-192.png", "public/app-icon-512.png"]) {
+for (const asset of [
+  "public/apple-touch-icon.png",
+  "public/app-icon-192.png",
+  "public/app-icon-512.png",
+]) {
   if (!existsSync(resolve(root, asset))) failures.push(`missing asset: ${asset}`);
 }
 

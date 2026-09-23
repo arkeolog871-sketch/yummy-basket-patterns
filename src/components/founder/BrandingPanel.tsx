@@ -11,9 +11,19 @@ import { Button } from "@/components/ui/button";
 type Kind = "logo" | "favicon" | "banner";
 
 const SLOTS: { kind: Kind; title: string; hint: string; box: string }[] = [
-  { kind: "logo", title: "Logo", hint: "Kare, en az 128×128 px (PNG/SVG)", box: "size-20 rounded-2xl" },
+  {
+    kind: "logo",
+    title: "Logo",
+    hint: "Kare, en az 128×128 px (PNG/SVG)",
+    box: "size-20 rounded-2xl",
+  },
   { kind: "favicon", title: "Favicon", hint: "32×32 px, PNG veya ICO", box: "size-10 rounded-lg" },
-  { kind: "banner", title: "Banner / afiş", hint: "Ana sayfa görseli, 1200×900 px", box: "h-24 w-40 rounded-2xl" },
+  {
+    kind: "banner",
+    title: "Banner / afiş",
+    hint: "Ana sayfa görseli, 1200×900 px",
+    box: "h-24 w-40 rounded-2xl",
+  },
 ];
 
 const MAX_BYTES = 2 * 1024 * 1024;
@@ -89,7 +99,11 @@ export function BrandingPanel() {
                 className={`flex shrink-0 items-center justify-center overflow-hidden border border-border/70 bg-muted ${slot.box}`}
               >
                 {url ? (
-                  <img src={url} alt={`${slot.title} önizleme`} className="size-full object-cover" />
+                  <img
+                    src={url}
+                    alt={`${slot.title} önizleme`}
+                    className="size-full object-cover"
+                  />
                 ) : (
                   <ImageUp className="size-4 text-muted-foreground" />
                 )}

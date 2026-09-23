@@ -14,11 +14,19 @@ const CATALOG_KEYS = [
   ["admin-data"],
 ] as const;
 
-const MEMBERSHIP_KEYS = [["access-context"], ["my-roles"], ["admin-users"], ["admin-data"]] as const;
+const MEMBERSHIP_KEYS = [
+  ["access-context"],
+  ["my-roles"],
+  ["admin-users"],
+  ["admin-data"],
+] as const;
 
 const ORDER_KEYS = [["orders"], ["order"], ["vendor-dashboard"], ["admin-data"]] as const;
 
-function invalidateAll(queryClient: ReturnType<typeof useQueryClient>, keys: readonly (readonly string[])[]) {
+function invalidateAll(
+  queryClient: ReturnType<typeof useQueryClient>,
+  keys: readonly (readonly string[])[],
+) {
   for (const queryKey of keys) {
     void queryClient.invalidateQueries({ queryKey: [...queryKey] });
   }
@@ -48,19 +56,27 @@ export function AppRealtimeBridge() {
         .on("postgres_changes", { event: "*", schema: "public", table: "user_roles" }, () => {
           invalidateAll(queryClient, MEMBERSHIP_KEYS);
         })
-        .on("postgres_changes", { event: "*", schema: "public", table: "vendor_assignments" }, () => {
-          invalidateAll(queryClient, MEMBERSHIP_KEYS);
-          invalidateAll(queryClient, CATALOG_KEYS);
-        })
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "vendor_assignments" },
+          () => {
+            invalidateAll(queryClient, MEMBERSHIP_KEYS);
+            invalidateAll(queryClient, CATALOG_KEYS);
+          },
+        )
         .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
           invalidateAll(queryClient, ORDER_KEYS);
         })
         .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, () => {
           invalidateAll(queryClient, ORDER_KEYS);
         })
-        .on("postgres_changes", { event: "*", schema: "public", table: "order_vendor_alerts" }, () => {
-          invalidateAll(queryClient, ORDER_KEYS);
-        })
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "order_vendor_alerts" },
+          () => {
+            invalidateAll(queryClient, ORDER_KEYS);
+          },
+        )
         .on("postgres_changes", { event: "*", schema: "public", table: "addresses" }, () => {
           void queryClient.invalidateQueries({ queryKey: ["addresses"] });
         })

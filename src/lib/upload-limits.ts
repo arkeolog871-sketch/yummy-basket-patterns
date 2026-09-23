@@ -100,7 +100,10 @@ export function isAdImageFile(file: File): boolean {
   return isAdMediaFile(file);
 }
 
-export function contentTypeForBrandPath(path: string, fallback = "application/octet-stream"): string {
+export function contentTypeForBrandPath(
+  path: string,
+  fallback = "application/octet-stream",
+): string {
   const clean = path.split("?")[0]?.split("#")[0] ?? path;
   const slash = clean.lastIndexOf("/");
   const file = slash === -1 ? clean : clean.slice(slash + 1);

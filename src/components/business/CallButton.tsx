@@ -43,7 +43,11 @@ export function CallButton({
           {display}
         </p>
       </a>
-      <Button asChild size="lg" className="h-12 min-h-12 shrink-0 rounded-full px-6 text-base shadow-glow">
+      <Button
+        asChild
+        size="lg"
+        className="h-12 min-h-12 shrink-0 rounded-full px-6 text-base shadow-glow"
+      >
         <a
           href={telHref}
           onClick={handleCall}

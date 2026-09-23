@@ -33,6 +33,7 @@ Lovable tarafında Android release imzalama diye bir yönetim yoktur: Lovable we
 ## 3. Doğrulamayı tamamlamak için yapılması gerekenler (sizin tarafınızda, manuel)
 
 Seçenek A — Play App Signing zaten aktifse (parmak izi bunu gösteriyor):
+
 1. Play Console → App integrity → App signing ekranında **Upload key certificate** parmak izine bakın.
 2. Elinizde o upload key varsa onunla imzalayın; yoksa Play Console'dan **upload key sıfırlama** talebi açıp yeni bir keystore üretin:
    `keytool -genkeypair -v -keystore silvan-cebimde-upload.keystore -alias upload -keyalg RSA -keysize 2048 -validity 10000`

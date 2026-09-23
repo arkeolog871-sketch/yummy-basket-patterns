@@ -33,7 +33,9 @@ export async function fillFullNameFromProvider(fallbackName?: string): Promise<v
     if (existing.error) return;
     if (existing.data && (existing.data.full_name ?? "").trim()) return;
 
-    await supabase.from("profiles").upsert({ id: user.id, full_name: fullName }, { onConflict: "id" });
+    await supabase
+      .from("profiles")
+      .upsert({ id: user.id, full_name: fullName }, { onConflict: "id" });
   } catch {
     // Profil adı doldurma girişin başarısına engel olmamalı.
   }

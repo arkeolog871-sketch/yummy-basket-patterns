@@ -16,7 +16,10 @@ export const Route = createFileRoute("/odeme")({
   head: () => ({
     meta: [
       { title: "Ödeme ve sipariş onayı — SİLVAN CEBİMDE" },
-      { name: "description", content: "Teslimat adresinizi seçin, sipariş notunuzu ekleyin ve siparişinizi onaylayın." },
+      {
+        name: "description",
+        content: "Teslimat adresinizi seçin, sipariş notunuzu ekleyin ve siparişinizi onaylayın.",
+      },
       { property: "og:title", content: "Ödeme ve sipariş onayı — SİLVAN CEBİMDE" },
       { property: "og:description", content: "Adresinizi seçin ve siparişinizi tamamlayın." },
       { property: "og:type", content: "website" },
@@ -42,7 +45,11 @@ function CheckoutPage() {
     typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}`,
   );
 
-  const { data: addresses = [], isLoading, isError } = useQuery({
+  const {
+    data: addresses = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["addresses"],
     queryFn: () => fetchAddresses(),
   });
@@ -78,7 +85,9 @@ function CheckoutPage() {
     },
     onSuccess: (result) => {
       idempotencyKeyRef.current =
-        typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}`;
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}`;
       cart.clear();
       toast.success("Siparişiniz alındı!");
       navigate({ to: "/siparis/$id", params: { id: result.id } });
@@ -112,7 +121,9 @@ function CheckoutPage() {
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Yükleniyor…</p>
         ) : isError ? (
-          <p className="text-sm text-muted-foreground">Adresler yüklenemedi. Sayfayı yenileyip tekrar deneyin.</p>
+          <p className="text-sm text-muted-foreground">
+            Adresler yüklenemedi. Sayfayı yenileyip tekrar deneyin.
+          </p>
         ) : addresses.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-border bg-card p-8 text-center">
             <p className="text-sm text-muted-foreground">Önce bir teslimat adresi ekleyin.</p>
@@ -166,8 +177,8 @@ function CheckoutPage() {
           <span className="text-sm">
             <span className="block font-semibold">Kapıda ödeme</span>
             <span className="block text-muted-foreground">
-              Siparişinizi kurye teslim ederken nakit veya kredi kartıyla ödeyebilirsiniz. Şu an tek ödeme
-              yöntemimiz kapıda ödemedir.
+              Siparişinizi kurye teslim ederken nakit veya kredi kartıyla ödeyebilirsiniz. Şu an tek
+              ödeme yöntemimiz kapıda ödemedir.
             </span>
           </span>
         </div>

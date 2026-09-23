@@ -14,7 +14,9 @@ function pass(message) {
   console.log(`PASS ${message}`);
 }
 
-const html = await fetch(ORIGIN, { headers: { "user-agent": "Mozilla/5.0" } }).then((r) => r.text());
+const html = await fetch(ORIGIN, { headers: { "user-agent": "Mozilla/5.0" } }).then((r) =>
+  r.text(),
+);
 const envMatch = html.match(/window\.__PUBLIC_ENV__=(\{.*?\});/);
 if (!envMatch) {
   fail("production HTML missing __PUBLIC_ENV__");
@@ -30,7 +32,9 @@ if (!supabaseUrl || !key) {
 console.log(`origin ${ORIGIN}`);
 console.log(`supabase ${supabaseUrl}`);
 console.log(`apk ${env.VITE_APK_REV || "unknown"}`);
-console.log(`index ${[...html.matchAll(/\/assets\/(index-[A-Za-z0-9_-]+\.js)/g)].map((m) => m[1]).join(",") || "none"}`);
+console.log(
+  `index ${[...html.matchAll(/\/assets\/(index-[A-Za-z0-9_-]+\.js)/g)].map((m) => m[1]).join(",") || "none"}`,
+);
 
 async function rest(path, { method = "GET", body } = {}) {
   const response = await fetch(`${supabaseUrl}${path}`, {
@@ -152,8 +156,8 @@ const rls = await rest("/rest/v1/orders", {
 if (rls.json?.code === "42501") pass("anon INSERT still blocked by RLS (42501)");
 else fail(`anon INSERT unexpected ${rls.status} ${String(rls.text).slice(0, 160)}`);
 
-const odeme = await fetch(`${ORIGIN}/odeme`, { headers: { "user-agent": "Mozilla/5.0" } }).then((r) =>
-  r.text(),
+const odeme = await fetch(`${ORIGIN}/odeme`, { headers: { "user-agent": "Mozilla/5.0" } }).then(
+  (r) => r.text(),
 );
 const odemeAsset = (odeme.match(/\/assets\/(odeme-[A-Za-z0-9_-]+\.js)/) || [])[1] || "none";
 const ordersAsset =

@@ -59,8 +59,8 @@ function IphonePage() {
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Ana ekrana ekle</h1>
         <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-[#cbb8a8]">
           iPhone APK veya profil dosyası yüklemez. Uygulama, Safari’den ana ekrana eklenerek
-          kurulur. Kurulumdan sonra 6 haneli e-posta kodu, KVKK onayı ve işletme Ara
-          düğmesi (tel:) Safari veya ana ekran uygulamasında çalışır.
+          kurulur. Kurulumdan sonra 6 haneli e-posta kodu, KVKK onayı ve işletme Ara düğmesi (tel:)
+          Safari veya ana ekran uygulamasında çalışır.
         </p>
 
         {kind === "unknown" || kind === "safari" ? (

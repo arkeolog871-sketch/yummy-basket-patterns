@@ -94,9 +94,7 @@ export async function findVendorUser(
     .in("id", vendorIds);
   if (profileError) throw new Error(profileError.message);
 
-  const match = (profiles ?? []).find(
-    (row) => row.phone && normalizePhone(row.phone) === target,
-  );
+  const match = (profiles ?? []).find((row) => row.phone && normalizePhone(row.phone) === target);
   if (!match) return findByBusinessContact(supabaseAdmin, assignments ?? [], target, false);
 
   const { data: user, error: userError } = await supabaseAdmin.auth.admin.getUserById(match.id);
@@ -112,9 +110,7 @@ export async function findVendorUser(
  * (contact_email / contact_phone) atanmış işletme kullanıcısını bulur.
  */
 async function findByBusinessContact(
-  supabaseAdmin: Awaited<
-    typeof import("@/integrations/supabase/client.server")
-  >["supabaseAdmin"],
+  supabaseAdmin: Awaited<typeof import("@/integrations/supabase/client.server")>["supabaseAdmin"],
   assignments: { user_id: string; restaurant_id: string }[],
   target: string,
   byEmail: boolean,

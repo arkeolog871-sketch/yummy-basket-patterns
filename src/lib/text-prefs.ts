@@ -104,7 +104,7 @@ function fontToCss(font: TextFont): string {
   if (font === "serif") return 'var(--font-display, "Georgia", serif)';
   if (font === "mono") return "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
   if (font === "system") return 'system-ui, -apple-system, "Segoe UI", sans-serif';
-  return 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)';
+  return "var(--font-sans, ui-sans-serif, system-ui, sans-serif)";
 }
 
 function headingToCss(font: TextFont): string {

@@ -31,7 +31,9 @@ export const listRestaurants = createServerFn({ method: "GET" })
     if (data.search) {
       const pattern = ilikePattern(data.search);
       if (pattern) {
-        query = query.or(`name.ilike.${pattern},tagline.ilike.${pattern},category.ilike.${pattern}`);
+        query = query.or(
+          `name.ilike.${pattern},tagline.ilike.${pattern},category.ilike.${pattern}`,
+        );
       }
     }
 
@@ -97,8 +99,7 @@ export const getRestaurantBySlug = createServerFn({ method: "GET" })
       .maybeSingle();
     if (error) {
       const permissionDenied =
-        error.code === "42501" ||
-        /contact_phone|permission denied|42501/i.test(error.message);
+        error.code === "42501" || /contact_phone|permission denied|42501/i.test(error.message);
       if (!permissionDenied) throw new Error(error.message);
       const fallback = await supabase
         .from("restaurants")
@@ -184,10 +185,7 @@ export const getRestaurantBySlug = createServerFn({ method: "GET" })
  * Servis anahtarı yoksa harita boş döner ve çağıran taraf ürünü satılabilir
  * sayar: stok bilgisi eksikken vitrini kapatmak, mevcut davranışı bozar.
  */
-async function readStockFlags(
-  restaurantId: string,
-  ids: string[],
-): Promise<Map<string, boolean>> {
+async function readStockFlags(restaurantId: string, ids: string[]): Promise<Map<string, boolean>> {
   const flags = new Map<string, boolean>();
   if (ids.length === 0) return flags;
   try {

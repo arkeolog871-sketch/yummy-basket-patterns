@@ -43,8 +43,8 @@ export function RequireAuth({
       <div className="mx-auto max-w-lg px-4 py-24 text-center">
         <h1 className="text-3xl">E-posta doğrulama gerekli</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Bu işlem için e-posta adresinizi 6 haneli kod ile doğrulamanız gerekir. Hesap doğrulanmadan
-          sipariş, adres veya korumalı işlemler açılamaz.
+          Bu işlem için e-posta adresinizi 6 haneli kod ile doğrulamanız gerekir. Hesap
+          doğrulanmadan sipariş, adres veya korumalı işlemler açılamaz.
         </p>
         <Button asChild className="mt-6 rounded-full">
           <Link to="/auth">Doğrulama kodunu gir</Link>

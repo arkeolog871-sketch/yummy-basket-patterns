@@ -16,7 +16,9 @@ test.describe("staging OTP and order E2E", () => {
 
   test("OTP field rejects 5 digits, 7 digits, and letters before verify", async ({ page }) => {
     await openCustomerCodeLogin(page);
-    await page.locator("#user-otp-email").fill(process.env["STAGING_TEST_EMAIL"] || "staging-otp@example.com");
+    await page
+      .locator("#user-otp-email")
+      .fill(process.env["STAGING_TEST_EMAIL"] || "staging-otp@example.com");
     await page.getByRole("button", { name: "Doğrulama kodu gönder" }).click();
     const code = page.getByLabel("6 haneli e-posta doğrulama kodu");
     await expect(code).toBeVisible({ timeout: 20_000 });
@@ -30,7 +32,10 @@ test.describe("staging OTP and order E2E", () => {
   });
 
   test("mailbox signup/login path runs only with operator-supplied OTP", async ({ page }) => {
-    test.skip(!stagingMailboxEnabled() || !process.env["STAGING_OTP_CODE"], "Mailbox operator code not supplied");
+    test.skip(
+      !stagingMailboxEnabled() || !process.env["STAGING_OTP_CODE"],
+      "Mailbox operator code not supplied",
+    );
     test.setTimeout(180_000);
     const email = process.env["STAGING_TEST_EMAIL"]!;
     const password = process.env["STAGING_TEST_PASSWORD"] || "";
@@ -57,7 +62,9 @@ async function openCustomerCodeLogin(page: Page) {
   await page.getByTestId("auth-portal-customer").click({ force: true });
   await expect(async () => {
     await page.getByTestId("auth-method-code").click({ force: true });
-    await expect(page.getByRole("button", { name: "Doğrulama kodu gönder" })).toBeVisible({ timeout: 500 });
+    await expect(page.getByRole("button", { name: "Doğrulama kodu gönder" })).toBeVisible({
+      timeout: 500,
+    });
   }).toPass({ timeout: 15_000, intervals: [150, 300, 500] });
 }
 

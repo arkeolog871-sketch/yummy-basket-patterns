@@ -1,7 +1,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { normalizePhone, maskEmail, isEmailIdentifier, GENERIC_VENDOR_MASKED_EMAIL } from "@/lib/vendor-auth.server";
+import {
+  normalizePhone,
+  maskEmail,
+  isEmailIdentifier,
+  GENERIC_VENDOR_MASKED_EMAIL,
+} from "@/lib/vendor-auth.server";
 import { isBusinessOpen } from "@/lib/hours";
 
 const ROOT = join(import.meta.dirname, "../..");
@@ -34,6 +39,8 @@ describe("vendor identifier helpers", () => {
 
 describe("business hours", () => {
   it("honors manual close regardless of clock", () => {
-    expect(isBusinessOpen({ opens_at: "00:00", closes_at: "23:59", is_open_manual: false })).toBe(false);
+    expect(isBusinessOpen({ opens_at: "00:00", closes_at: "23:59", is_open_manual: false })).toBe(
+      false,
+    );
   });
 });

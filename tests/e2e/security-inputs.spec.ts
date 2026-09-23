@@ -10,8 +10,15 @@ test.describe("client-side abuse inputs", () => {
       void dialog.dismiss();
     });
     await page.goto("/");
-    const search = page.getByRole("searchbox").or(page.locator("input[type=search], input[name=search]"));
-    if (await search.first().isVisible().catch(() => false)) {
+    const search = page
+      .getByRole("searchbox")
+      .or(page.locator("input[type=search], input[name=search]"));
+    if (
+      await search
+        .first()
+        .isVisible()
+        .catch(() => false)
+    ) {
       await search.first().fill(XSS);
       await search.first().press("Enter");
     }

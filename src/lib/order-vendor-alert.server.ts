@@ -29,7 +29,10 @@ function isUniqueViolation(error: { code?: string; message?: string } | null): b
 }
 
 function joinAddress(parts: Array<string | null | undefined>): string {
-  return parts.map((part) => (part ?? "").trim()).filter(Boolean).join(", ");
+  return parts
+    .map((part) => (part ?? "").trim())
+    .filter(Boolean)
+    .join(", ");
 }
 
 /** Sipariş kaydından sonra işletmeye in-app + e-posta. Hata siparişi geri almaz. */

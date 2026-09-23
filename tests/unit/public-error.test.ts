@@ -77,9 +77,9 @@ describe("RPC rollout fallback", () => {
         message: "permission denied for function place_customer_order",
       }),
     ).toBe(true);
-    expect(isRpcExecuteDeniedError({ code: "PGRST202", message: "Could not find the function" })).toBe(
-      false,
-    );
+    expect(
+      isRpcExecuteDeniedError({ code: "PGRST202", message: "Could not find the function" }),
+    ).toBe(false);
     expect(
       shouldRetryPlaceOrderRpcWithServiceRole({
         code: "42501",

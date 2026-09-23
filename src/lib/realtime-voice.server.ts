@@ -26,7 +26,11 @@ function safeDetail(body: string): string | null {
       typeof payload.error?.message === "string" ? payload.error.message : payload.message;
     if (typeof value !== "string") return null;
     const clean = value.replace(/[\r\n]+/g, " ").trim();
-    if (!clean || clean.length > 180 || /sk-[A-Za-z0-9_-]+|bearer\s+|OPENAI_API_KEY|secret/i.test(clean))
+    if (
+      !clean ||
+      clean.length > 180 ||
+      /sk-[A-Za-z0-9_-]+|bearer\s+|OPENAI_API_KEY|secret/i.test(clean)
+    )
       return null;
     return clean;
   } catch {

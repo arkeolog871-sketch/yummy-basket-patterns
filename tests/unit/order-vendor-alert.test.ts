@@ -5,10 +5,7 @@ import * as React from "react";
 import { render } from "@react-email/render";
 import { getRequest } from "@tanstack/react-start/server";
 import { NewOrderEmail } from "@/lib/email-templates/new-order";
-import {
-  __orderVendorAlertTest,
-  finishPlacedOrder,
-} from "@/lib/order-vendor-alert.server";
+import { __orderVendorAlertTest, finishPlacedOrder } from "@/lib/order-vendor-alert.server";
 
 vi.mock("@tanstack/react-start/server", () => ({
   getRequest: vi.fn(() => {
@@ -96,9 +93,9 @@ describe("vendor new-order alerts", () => {
   it("does not claim a second in_app or email alert for the same order", () => {
     const { decideClaimAfterInsert } = __orderVendorAlertTest;
     expect(decideClaimAfterInsert({ insertError: null, markSent: true })).toBe("already_sent");
-    expect(
-      decideClaimAfterInsert({ insertError: { code: "23505" }, markSent: true }),
-    ).toBe("check_existing");
+    expect(decideClaimAfterInsert({ insertError: { code: "23505" }, markSent: true })).toBe(
+      "check_existing",
+    );
     expect(
       decideClaimAfterInsert({
         insertError: { code: "23505" },
@@ -121,7 +118,6 @@ describe("vendor new-order alerts", () => {
       }),
     ).toBe("claimed");
   });
-
 
   it("loads restaurant email and order rows from the database, not the client payload", () => {
     const text = readFileSync(join(ROOT, "src/lib/order-vendor-alert.server.ts"), "utf8");
@@ -200,7 +196,9 @@ describe("vendor new-order alerts", () => {
     );
     expect(sql).toMatch(/CREATE TABLE IF NOT EXISTS public\.order_vendor_alerts/);
     expect(sql).toMatch(/UNIQUE \(order_id, channel\)/);
-    expect(sql).toMatch(/REVOKE ALL ON TABLE public\.order_vendor_alerts FROM PUBLIC, anon, authenticated/);
+    expect(sql).toMatch(
+      /REVOKE ALL ON TABLE public\.order_vendor_alerts FROM PUBLIC, anon, authenticated/,
+    );
     expect(sql).toMatch(/GRANT SELECT, UPDATE \(read_at\)/);
     expect(sql).toMatch(/GRANT ALL ON TABLE public\.order_vendor_alerts TO service_role/);
     expect(sql).toMatch(/is_vendor_of\(auth\.uid\(\), restaurant_id\)/);
@@ -217,9 +215,13 @@ describe("vendor new-order alerts", () => {
     expect(sql).toMatch(/CREATE TRIGGER order_vendor_alerts_on_order_insert/);
     expect(sql).toMatch(/AFTER INSERT ON public\.orders/);
     expect(sql).toMatch(/ON CONFLICT \(order_id, channel\) DO NOTHING/);
-    expect(sql).toMatch(/ALTER PUBLICATION supabase_realtime ADD TABLE public\.order_vendor_alerts/);
+    expect(sql).toMatch(
+      /ALTER PUBLICATION supabase_realtime ADD TABLE public\.order_vendor_alerts/,
+    );
     expect(sql).toMatch(/REPLICA IDENTITY FULL/);
-    expect(sql).toMatch(/GRANT SELECT, UPDATE \(read_at\) ON TABLE public\.order_vendor_alerts TO authenticated/);
+    expect(sql).toMatch(
+      /GRANT SELECT, UPDATE \(read_at\) ON TABLE public\.order_vendor_alerts TO authenticated/,
+    );
     expect(sql).not.toMatch(/GRANT INSERT/);
     expect(sql).not.toMatch(/TO anon;/);
     expect(sql).not.toMatch(/DISABLE ROW LEVEL SECURITY/);

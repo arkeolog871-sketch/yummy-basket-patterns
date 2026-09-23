@@ -76,7 +76,7 @@ jobs:
           # "Failed to find package 'tools'" ile anında düşüyor. Boş bırakınca
           # eylem yalnızca ANDROID_HOME/PATH'i ayarlıyor; ihtiyacımız olan
           # paketleri bir sonraki adımda açıkça kuruyoruz.
-          packages: ''
+          packages: ""
 
       - name: android-36 platformunu indir
         run: |

@@ -89,8 +89,8 @@ export const EmailShell = ({
         </div>
         <Hr style={styles.hr} />
         <Text style={styles.footer}>
-          Bu e-posta {siteName} tarafından gönderildi. Bu isteği siz yapmadıysanız e-postayı
-          yok sayabilirsiniz.
+          Bu e-posta {siteName} tarafından gönderildi. Bu isteği siz yapmadıysanız e-postayı yok
+          sayabilirsiniz.
         </Text>
       </Container>
     </Body>

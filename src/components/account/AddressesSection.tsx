@@ -57,8 +57,7 @@ export function AddressesSection() {
       setForm(emptyForm);
       void queryClient.invalidateQueries({ queryKey: ["addresses"] });
     },
-    onError: (error) =>
-      toast.error(toPublicErrorMessage(error, "Adres kaydedilemedi.")),
+    onError: (error) => toast.error(toPublicErrorMessage(error, "Adres kaydedilemedi.")),
   });
 
   const remove = useMutation({

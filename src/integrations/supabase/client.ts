@@ -29,7 +29,10 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
     }
 
     // New Supabase API keys are opaque strings, not bearer JWTs.
-    if (isNewSupabaseApiKey(supabaseKey) && headers.get("Authorization") === `Bearer ${supabaseKey}`) {
+    if (
+      isNewSupabaseApiKey(supabaseKey) &&
+      headers.get("Authorization") === `Bearer ${supabaseKey}`
+    ) {
       headers.delete("Authorization");
     }
 
@@ -52,8 +55,10 @@ function chainableQuery() {
   const builder: Record<string, unknown> = {};
   const get = (_: unknown, prop: string | symbol) => {
     if (prop === "then") {
-      return (onFulfilled?: (value: unknown) => unknown, onRejected?: (reason: unknown) => unknown) =>
-        unavailableResult(null).then(onFulfilled, onRejected);
+      return (
+        onFulfilled?: (value: unknown) => unknown,
+        onRejected?: (reason: unknown) => unknown,
+      ) => unavailableResult(null).then(onFulfilled, onRejected);
     }
     if (prop === "maybeSingle" || prop === "single" || prop === "throwOnError") {
       return () => unavailableResult(null);
@@ -106,8 +111,10 @@ function createUnavailableClient(): SupabaseClient<Database> {
 }
 
 function createSupabaseClient(): SupabaseClient<Database> {
-  const { VITE_SUPABASE_URL: SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY: SUPABASE_PUBLISHABLE_KEY } =
-    getPublicSupabaseEnv();
+  const {
+    VITE_SUPABASE_URL: SUPABASE_URL,
+    VITE_SUPABASE_PUBLISHABLE_KEY: SUPABASE_PUBLISHABLE_KEY,
+  } = getPublicSupabaseEnv();
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     console.error(

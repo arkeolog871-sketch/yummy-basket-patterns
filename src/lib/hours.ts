@@ -61,7 +61,5 @@ export function hoursLabel(business: BusinessHours): string | null {
 export function closedReason(business: BusinessHours, now?: Date): string {
   if (business.is_open_manual === false) return "İşletme siparişleri geçici olarak durdurdu.";
   const label = hoursLabel(business);
-  return label
-    ? `Şu an kapalı. Çalışma saatleri: ${label}.`
-    : "İşletme şu anda sipariş almıyor.";
+  return label ? `Şu an kapalı. Çalışma saatleri: ${label}.` : "İşletme şu anda sipariş almıyor.";
 }

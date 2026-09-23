@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   applyTextPrefs,
   DEFAULT_TEXT_PREFS,
@@ -47,10 +55,7 @@ export function TextPrefsProvider({ children }: { children: ReactNode }) {
     persistTextPrefs(DEFAULT_TEXT_PREFS);
   }, []);
 
-  const value = useMemo(
-    () => ({ prefs, ready, update, reset }),
-    [prefs, ready, update, reset],
-  );
+  const value = useMemo(() => ({ prefs, ready, update, reset }), [prefs, ready, update, reset]);
 
   return <TextPrefsContext.Provider value={value}>{children}</TextPrefsContext.Provider>;
 }

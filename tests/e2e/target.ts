@@ -7,9 +7,9 @@ export function isProductionTarget(url = process.env["BASE_URL"] || "") {
 export function stagingMailboxEnabled() {
   return Boolean(
     process.env["STAGING_APP_URL"] &&
-      process.env["STAGING_TEST_EMAIL"] &&
-      process.env["STAGING_MAILBOX_IMAP_HOST"] &&
-      process.env["STAGING_MAILBOX_USER"] &&
-      process.env["STAGING_MAILBOX_PASSWORD"],
+    process.env["STAGING_TEST_EMAIL"] &&
+    process.env["STAGING_MAILBOX_IMAP_HOST"] &&
+    process.env["STAGING_MAILBOX_USER"] &&
+    process.env["STAGING_MAILBOX_PASSWORD"],
   );
 }

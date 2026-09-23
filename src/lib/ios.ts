@@ -4,7 +4,8 @@ export function isIosDevice(): boolean {
   if (typeof navigator === "undefined") return false;
   const nav = navigator as Navigator & { standalone?: boolean };
   return (
-    /iPad|iPhone|iPod/i.test(nav.userAgent) || (nav.platform === "MacIntel" && nav.maxTouchPoints > 1)
+    /iPad|iPhone|iPod/i.test(nav.userAgent) ||
+    (nav.platform === "MacIntel" && nav.maxTouchPoints > 1)
   );
 }
 
