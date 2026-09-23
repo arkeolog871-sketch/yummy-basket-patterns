@@ -323,6 +323,10 @@ export function CategoryPanel({ businesses }: { businesses: { sector: string | n
         <p className="text-sm font-semibold">
           {editingId ? "Kategoriyi düzenle" : "Yeni kategori ekle"}
         </p>
+        <p className="text-xs text-muted-foreground">
+          Renk otomatik atanır: yeni kategori, mevcut kategorilerden gözle en ayrışan ve okunaklı
+          rengi alır. Var olan kategorilerin rengi değişmez.
+        </p>
         <div>
           <Label htmlFor="cat-label">Görünen ad</Label>
           <Input
