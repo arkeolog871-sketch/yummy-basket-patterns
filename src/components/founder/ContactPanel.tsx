@@ -47,8 +47,8 @@ export function ContactPanel() {
     <div className="rounded-3xl border border-border bg-card p-6">
       <h2 className="text-xl">Sayfa yöneticisi iletişim bilgileri</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Ana sayfadaki "Sayfa yöneticisi ile iletişim" bölümünde gösterilen telefon ve e-posta
-        adresini buradan güncelleyin.
+        Sayfanın altındaki Keşfet → İletişim bölümünde gösterilen telefon ve e-posta adresini
+        buradan güncelleyin.
       </p>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">

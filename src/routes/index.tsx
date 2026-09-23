@@ -10,7 +10,7 @@ import { categoryChipText } from "@/lib/category-colors";
 import { seedFromHex, themeBackgroundHex } from "@/lib/theme-palette";
 import { fetchPublicBanners } from "@/lib/advertisements";
 import { HeroBannerSlider, legacySlidesToBanners } from "@/components/home/HeroBannerSlider";
-import { FounderContact } from "@/components/home/FounderContact";
+import { BusinessApplyCta } from "@/components/home/BusinessApplyCta";
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { interpretSmartSearch } from "@/lib/ai-search.functions";
 import { AI_UI_ENABLED } from "@/lib/ai-features";
@@ -373,7 +373,7 @@ function Index() {
         </section>
       ) : null}
 
-      <FounderContact />
+      <BusinessApplyCta />
     </div>
   );
 }
