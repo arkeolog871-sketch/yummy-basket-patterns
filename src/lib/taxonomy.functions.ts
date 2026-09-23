@@ -12,12 +12,9 @@ const categorySchema = z.object({
     .regex(/^[a-z0-9-]+$/, "Sadece küçük harf, rakam ve tire"),
   label: z.string().trim().min(2).max(40),
   icon: z.string().trim().min(2).max(40),
-  color: z
-    .string()
-    .trim()
-    .regex(/^#[0-9a-fA-F]{6}$/, "Geçerli hex renk girin (#rrggbb)")
-    .nullable()
-    .optional(),
+  // Renk bilerek YOK: kategori rengi elle seçilmez, sunucu otomatik atar
+  // (category-colors.ts → "en uzak renk"). İstemci renk gönderse de zod
+  // bilinmeyen alanı atar.
   position: z.number().int().min(0).max(999),
   is_active: z.boolean(),
 });
@@ -37,8 +34,31 @@ export const saveCategory = createServerFn({ method: "POST" })
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
     await assertFounder(context.supabase, context.userId, context.claims as never);
-    const { id, color, ...rest } = data;
-    const values = { ...rest, ...(color !== undefined ? { color } : {}) };
+    const { pickCategoryColor } = await import("./category-colors");
+    const { id, ...values } = data;
+
+    // Yeni kategori (veya rengi hiç atanmamış eski kayıt): mevcut bütün
+    // kategori renklerinden gözle en uzak renk. Var olan renk ASLA
+    // değiştirilmez; sıra/ad güncellemesi rengi etkilemez.
+    let assignedColor: string | null = null;
+    const needsColor = id
+      ? await context.supabase
+          .from("app_categories")
+          .select("color")
+          .eq("id", id)
+          .maybeSingle()
+          .then(({ data: row }) => !row?.color)
+      : true;
+    if (needsColor) {
+      const { data: rows, error: colorError } = await context.supabase
+        .from("app_categories")
+        .select("id, color");
+      if (colorError) throw new Error(colorError.message);
+      assignedColor = pickCategoryColor(
+        (rows ?? []).filter((row) => row.id !== id).map((row) => row.color),
+      );
+    }
+    const record = { ...values, ...(assignedColor ? { color: assignedColor } : {}) };
     return audited(
       {
         actorId: context.userId,
@@ -46,12 +66,12 @@ export const saveCategory = createServerFn({ method: "POST" })
         action: id ? "category.update" : "category.create",
         entity: "app_categories",
         entityId: id ?? null,
-        detail: { slug: values.slug, label: values.label },
+        detail: { slug: values.slug, label: values.label, color: assignedColor },
       },
       async () => {
         const { error } = id
-          ? await context.supabase.from("app_categories").update(values).eq("id", id)
-          : await context.supabase.from("app_categories").insert(values);
+          ? await context.supabase.from("app_categories").update(record).eq("id", id)
+          : await context.supabase.from("app_categories").insert(record);
         if (error) throw new Error(error.message);
         return { ok: true };
       },
@@ -74,10 +94,7 @@ export const deleteCategory = createServerFn({ method: "POST" })
         entityId: data.id,
       },
       async () => {
-        const { error } = await context.supabase
-          .from("app_categories")
-          .delete()
-          .eq("id", data.id);
+        const { error } = await context.supabase.from("app_categories").delete().eq("id", data.id);
         if (error) throw new Error(error.message);
         return { ok: true };
       },
@@ -87,9 +104,7 @@ export const deleteCategory = createServerFn({ method: "POST" })
 export const moveCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) =>
-    z
-      .object({ id: z.string().uuid(), direction: z.enum(["up", "down"]) })
-      .parse(input),
+    z.object({ id: z.string().uuid(), direction: z.enum(["up", "down"]) }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
@@ -189,10 +204,7 @@ export const deleteServiceArea = createServerFn({ method: "POST" })
         entityId: data.id,
       },
       async () => {
-        const { error } = await context.supabase
-          .from("service_areas")
-          .delete()
-          .eq("id", data.id);
+        const { error } = await context.supabase.from("service_areas").delete().eq("id", data.id);
         if (error) throw new Error(error.message);
         return { ok: true };
       },
