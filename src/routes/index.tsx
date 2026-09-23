@@ -111,9 +111,12 @@ function Index() {
   const interpret = useServerFn(interpretSmartSearch);
   const activeSector = search.kategori;
   const liveBanners = bannersQuery.data && bannersQuery.data.length > 0 ? bannersQuery.data : [];
+  // Eski tek banner yalnız reklam listesi GELDİKTEN sonra ve boşsa yedek.
+  // Yüklenirken yedeğe düşülüyordu: 2 MB'lık eski banner her açılışta
+  // indirilip hemen reklamlarla değiştiriliyordu (ölçüldü, canlı).
   const bannerSlides = liveBanners.length
     ? liveBanners
-    : settings.banner_url
+    : !bannersQuery.isPending && settings.banner_url
       ? legacySlidesToBanners([
           { id: "banner", title: "", imageUrl: settings.banner_url, href: "/" },
         ])

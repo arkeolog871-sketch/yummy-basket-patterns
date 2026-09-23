@@ -208,7 +208,7 @@ export function ProductPanel({
     const file = files[0];
     if (!file) return;
     try {
-      setPicked(await readImageFile(file));
+      setPicked(await readImageFile(file, "product"));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Görsel okunamadı");
     }

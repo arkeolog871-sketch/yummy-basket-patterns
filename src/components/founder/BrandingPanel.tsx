@@ -7,6 +7,7 @@ import { Camera, ImageUp, Trash2 } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { uploadBrandAsset, removeBrandAsset } from "@/lib/branding.functions";
 import { Button } from "@/components/ui/button";
+import { shrinkFileForUse } from "@/lib/image-resize";
 
 type Kind = "logo" | "favicon" | "banner";
 
@@ -49,7 +50,13 @@ export function BrandingPanel() {
   const cameraInputs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const uploadMutation = useMutation({
-    mutationFn: async ({ kind, file }: { kind: Kind; file: File }) => {
+    mutationFn: async ({ kind, file: picked }: { kind: Kind; file: File }) => {
+      // Site logosu ve banner gösterildiği boyuta küçültülür (canlıdaki eski
+      // banner 2 MB PNG idi). Favicon olduğu gibi kalır.
+      const file =
+        kind === "favicon"
+          ? picked
+          : await shrinkFileForUse(picked, kind === "logo" ? "logo" : "banner");
       if (file.size > MAX_BYTES) throw new Error("Dosya 2 MB sınırını aşıyor");
       const base64 = await toBase64(file);
       return upload({

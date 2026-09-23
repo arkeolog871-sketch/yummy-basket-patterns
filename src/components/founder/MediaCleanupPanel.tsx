@@ -14,6 +14,15 @@ import { Button } from "@/components/ui/button";
 
 type LogLine = { path: string; status: "ok" | "skip" | "error"; detail: string };
 
+const USE_LABELS: Record<ResizableMediaFile["use"], string> = {
+  logo: "logo",
+  product: "ürün",
+  cover: "kapak",
+  banner: "reklam",
+  gallery: "galeri",
+  bilinmiyor: "kullanılmıyor",
+};
+
 function formatKb(bytes: number) {
   return `${(bytes / 1024).toFixed(0)} KB`;
 }
@@ -39,7 +48,7 @@ export function MediaCleanupPanel() {
       if (!response.ok) return { path: file.path, status: "error", detail: "indirilemedi" };
       const blob = await response.blob();
       const contentType = blob.type || "image/jpeg";
-      const shrunk = await shrinkImage(blob, contentType);
+      const shrunk = await shrinkImage(blob, contentType, file.maxDimension);
       if (!shrunk) return { path: file.path, status: "skip", detail: "zaten küçük" };
 
       const base64 = await blobToBase64(shrunk.blob);
@@ -50,7 +59,7 @@ export function MediaCleanupPanel() {
       return {
         path: file.path,
         status: "ok",
-        detail: `${formatKb(file.size)} → ${formatKb(shrunk.blob.size)} (-%${pct})`,
+        detail: `${USE_LABELS[file.use]}: ${formatKb(file.size)} → ${formatKb(shrunk.blob.size)} (-%${pct})`,
       };
     } catch (error) {
       return { path: file.path, status: "error", detail: toPublicErrorMessage(error) };
@@ -78,9 +87,9 @@ export function MediaCleanupPanel() {
         <h2 className="text-xl">Mevcut görselleri küçült</h2>
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
-        Yeni yüklenen görseller artık otomatik küçültülüyor. Bu araç, bu değişiklikten önce
-        yüklenmiş dosyaları (işletme/ürün görselleri, reklam banner'ları) taşımadan aynı adreste
-        küçültür — hiçbir kayıt güncellenmesi gerekmez.
+        Yeni yüklenen görseller gösterildiği yere göre otomatik küçültülüyor (logo 320, ürün 1000,
+        kapak ve reklam 1200, galeri 1600 piksel). Bu araç daha önce yüklenmiş dosyaları aynı
+        sınırlarla, taşımadan aynı adreste küçültür; hiçbir kayıt güncellenmesi gerekmez.
       </p>
 
       {list.isLoading ? (

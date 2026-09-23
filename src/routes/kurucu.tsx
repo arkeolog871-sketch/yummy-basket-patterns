@@ -76,6 +76,7 @@ import { SyncTokenPanel } from "@/components/products/SyncTokenPanel";
 import { VendorPairingPanel } from "@/components/founder/VendorPairingPanel";
 import { AuditLogPanel } from "@/components/founder/AuditLogPanel";
 import { DeletionRequestsPanel } from "@/components/founder/DeletionRequestsPanel";
+import { shrinkFileForUse, type MediaUse } from "@/lib/image-resize";
 
 export const Route = createFileRoute("/kurucu")({
   head: () => ({
@@ -1005,7 +1006,7 @@ function BusinessPanel({
                 const file = event.target.files?.[0];
                 event.target.value = "";
                 if (!file) return;
-                readUploadImageFile(file)
+                readUploadImageFile(file, "cover")
                   .then((picked) => setPickedCover(picked))
                   .catch((error: Error) => toast.error(error.message));
               }}
@@ -1526,16 +1527,18 @@ const UPLOAD_IMAGE_MAX_BYTES = 4 * 1024 * 1024;
 
 type PickedImage = { fileName: string; contentType: string; base64: string; previewUrl: string };
 
-function readUploadImageFile(file: File): Promise<PickedImage> {
+/** Görsel gösterileceği yere göre küçültülüp okunur (kapak 1200, ürün 1000
+ * piksel; bkz. MEDIA_MAX_DIMENSION). Boyut sınırı küçültmeden SONRA
+ * denetlenir: telefonun büyük fotoğrafı da küçülünce sığar. */
+async function readUploadImageFile(picked: File, use: MediaUse): Promise<PickedImage> {
+  if (!UPLOAD_IMAGE_TYPES.includes(picked.type)) {
+    throw new Error("Yalnızca PNG, JPG, WEBP veya AVIF yükleyebilirsiniz.");
+  }
+  const file = await shrinkFileForUse(picked, use);
+  if (file.size > UPLOAD_IMAGE_MAX_BYTES) {
+    throw new Error("Görsel 4 MB'tan küçük olmalı.");
+  }
   return new Promise((resolve, reject) => {
-    if (!UPLOAD_IMAGE_TYPES.includes(file.type)) {
-      reject(new Error("Yalnızca PNG, JPG, WEBP veya AVIF yükleyebilirsiniz."));
-      return;
-    }
-    if (file.size > UPLOAD_IMAGE_MAX_BYTES) {
-      reject(new Error("Görsel 4 MB'tan küçük olmalı."));
-      return;
-    }
     const reader = new FileReader();
     reader.onload = () => {
       const result = String(reader.result);
@@ -1698,7 +1701,7 @@ function MenuItemPanel({ businesses, onDone }: { businesses: BusinessRow[]; onDo
                 const file = event.target.files?.[0];
                 event.target.value = "";
                 if (!file) return;
-                readUploadImageFile(file)
+                readUploadImageFile(file, "product")
                   .then((picked) => setPickedImage(picked))
                   .catch((error: Error) => toast.error(error.message));
               }}

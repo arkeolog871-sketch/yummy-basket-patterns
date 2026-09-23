@@ -1,13 +1,25 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { MEDIA_MAX_DIMENSION, MAX_DIMENSION, type MediaUse } from "./image-resize";
 
 export type ResizableMediaFile = {
   bucket: "business-images" | "product-images" | "banners";
   path: string;
   size: number;
   url: string;
+  /** Görselin kullanıldığı yere göre en uzun kenar (bkz. MEDIA_MAX_DIMENSION). */
+  maxDimension: number;
+  use: MediaUse | "bilinmiyor";
 };
+
+const MEDIA_PREFIX = "/api/public/media/";
+
+/** "/api/public/media/<kova>/<yol>" → "<kova>/<yol>"; başka adres → null. */
+function mediaKey(url: string | null | undefined): string | null {
+  if (!url || !url.startsWith(MEDIA_PREFIX)) return null;
+  return url.slice(MEDIA_PREFIX.length).split("?")[0] ?? null;
+}
 
 /** Görsel küçültme yalnızca yeni yüklemelerde devreye girdiği için (bkz.
  * ImageDropzone.tsx), daha önce yüklenmiş dosyaları listeler — kurucu paneli
@@ -19,6 +31,32 @@ export const listResizableMedia = createServerFn({ method: "GET" })
     await assertFounder(context.supabase, context.userId, context.claims as never);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { ALLOWED_MEDIA_BUCKETS } = await import("./vendor-media.server");
+
+    // Her dosyanın nerede kullanıldığı: logo 40 piksel gösterilirken 1600
+    // piksel saklanıyordu. Aynı dosya birden çok yerde kullanılıyorsa en
+    // büyük sınır geçerli.
+    const usage = new Map<string, MediaUse>();
+    const note = (url: string | null | undefined, use: MediaUse) => {
+      const key = mediaKey(url);
+      if (!key) return;
+      const previous = usage.get(key);
+      if (!previous || MEDIA_MAX_DIMENSION[use] > MEDIA_MAX_DIMENSION[previous]) {
+        usage.set(key, use);
+      }
+    };
+    const [restaurants, items, media, ads] = await Promise.all([
+      supabaseAdmin.from("restaurants").select("logo_url, cover_image_url"),
+      supabaseAdmin.from("menu_items").select("image_url").like("image_url", `${MEDIA_PREFIX}%`),
+      supabaseAdmin.from("business_media").select("url"),
+      supabaseAdmin.from("advertisements").select("image_url"),
+    ]);
+    for (const row of restaurants.data ?? []) {
+      note(row.logo_url, "logo");
+      note(row.cover_image_url, "cover");
+    }
+    for (const row of items.data ?? []) note(row.image_url, "product");
+    for (const row of media.data ?? []) note(row.url, "gallery");
+    for (const row of ads.data ?? []) note(row.image_url, "banner");
 
     async function listAll(
       bucket: ResizableMediaFile["bucket"],
@@ -34,11 +72,14 @@ export const listResizableMedia = createServerFn({ method: "GET" })
         if (entry.id === null) {
           out = out.concat(await listAll(bucket, path));
         } else {
+          const use = usage.get(`${bucket}/${path}`);
           out.push({
             bucket,
             path,
             size: entry.metadata?.size ?? 0,
-            url: `/api/public/media/${bucket}/${path}`,
+            url: `${MEDIA_PREFIX}${bucket}/${path}`,
+            use: use ?? "bilinmiyor",
+            maxDimension: use ? MEDIA_MAX_DIMENSION[use] : MAX_DIMENSION,
           });
         }
       }
