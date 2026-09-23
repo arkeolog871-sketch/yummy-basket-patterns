@@ -74,10 +74,12 @@ export function chipTint(color: string, background = CATEGORY_CHIP_BACKGROUND): 
  */
 export function categoryChipText(color: string, background: string): string {
   if (!/^#[0-9a-f]{6}$/i.test(color) || !/^#[0-9a-f]{6}$/i.test(background)) return color;
-  const readable = (value: string) =>
-    contrastRatio(value, chipTint(color, background)) >= MIN_CONTRAST;
-  if (readable(color)) return color;
   const lighten = luminanceOfHex(background) < 0.18;
+  // Koyu zeminde pay: tarayıcı saydam tonu 8 bitte yuvarlıyor; canlıda
+  // Market 4.49:1 ölçüldü (hesap 4.5). Açık temada renkler olduğu gibi kalır.
+  const target = lighten ? MIN_CONTRAST + 0.1 : MIN_CONTRAST;
+  const readable = (value: string) => contrastRatio(value, chipTint(color, background)) >= target;
+  if (readable(color)) return color;
   const { l, c, h } = hexToOklch(color);
   let lightness = l;
   let current = color;
