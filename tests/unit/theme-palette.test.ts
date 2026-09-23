@@ -15,7 +15,7 @@ import {
   themeHexColumns,
   themeTextSurfaces,
 } from "@/lib/theme-palette";
-import { contrastRatio } from "@/lib/color-math";
+import { contrastRatio, hexToRgb, oklchToHex, rgbToHex } from "@/lib/color-math";
 import { DEFAULT_TYPOGRAPHY } from "@/lib/typography";
 
 /**
@@ -200,5 +200,43 @@ describe("yazı ayarlarının renkleri de okunaklı", () => {
     );
     const panel = readFileSync("src/components/founder/TypographyPanel.tsx", "utf8");
     expect(panel).toContain("applyTypographyCss(values, document.documentElement, surfaces)");
+  });
+});
+
+/**
+ * ÖLÇÜLDÜ (canlı, 23 Eylül 2026, #219 sonrası): 265 yazıdan kalan tek kusur
+ * kartlardaki "Ücretsiz teslimat" rozetiydi: beyaz yazı yeşil --success
+ * üzerinde 3.38:1. Kırmızı --destructive de krem zeminde 4.07:1 kalıyordu.
+ * Durum renkleri hem dolgu (beyaz yazı) hem yazı (krem ve %15 tonu) olarak
+ * ≥ 4.5:1 olmalı.
+ */
+describe("durum renkleri okunaklı", () => {
+  const LOGO_CREAM = "#f4edda";
+  const css = readFileSync("src/styles.css", "utf8");
+  const root = css.slice(css.indexOf(":root {"), css.indexOf(".dark {"));
+  const token = (name: string) => {
+    const match = root.match(new RegExp(`  ${name}: oklch\\(([\\d.]+) ([\\d.]+) ([\\d.]+)\\);`));
+    expect(match, name).not.toBeNull();
+    const [l, c, h] = match!.slice(1, 4).map(Number) as [number, number, number];
+    return oklchToHex(l, c, h);
+  };
+  const tint = (color: string, alpha: number) => {
+    const fg = hexToRgb(color);
+    const bg = hexToRgb(LOGO_CREAM);
+    return rgbToHex(fg.map((v, i) => v * alpha + bg[i]! * (1 - alpha)) as typeof fg);
+  };
+
+  for (const name of ["--success", "--destructive"]) {
+    it(`${name}: beyaz yazı taşır, kremde ve %15 tonunda yazı olur`, () => {
+      const color = token(name);
+      expect(contrastRatio("#ffffff", color)).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
+      expect(contrastRatio(color, LOGO_CREAM)).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
+      expect(contrastRatio(color, tint(color, 0.15))).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
+    });
+  }
+
+  it("açık zemin üstünde dolgu yazı rengi kullanılmaz", () => {
+    const panel = readFileSync("src/components/founder/TypographyPanel.tsx", "utf8");
+    expect(panel).not.toMatch(/bg-success\/10 text-success-foreground/);
   });
 });
