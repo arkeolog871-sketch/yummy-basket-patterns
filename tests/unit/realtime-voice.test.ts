@@ -7,6 +7,18 @@ import {
   type RealtimeDeps,
 } from "@/lib/realtime-voice";
 
+type PayloadShape = {
+  session: {
+    audio: {
+      input: {
+        turn_detection: { type: string; create_response: boolean; interrupt_response: boolean };
+      };
+      output: { voice: string };
+    };
+    tools: { name: string }[];
+  };
+};
+
 function machine(overrides: Partial<RealtimeDeps> = {}) {
   const sent: Record<string, unknown>[] = [];
   const phases: string[] = [];
