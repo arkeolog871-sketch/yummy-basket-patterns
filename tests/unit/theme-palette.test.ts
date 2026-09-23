@@ -370,3 +370,12 @@ describe("amblem", () => {
     expect(png[25]).toBe(6);
   });
 });
+
+describe("koyu temada fotoğraf üstü yazı", () => {
+  /** YAŞANDI (canlı, koyu tema): işletme adı text-background idi, koyu kaldı. */
+  it("işletme sayfasında ad ve slogan fotoğraf karartması üstünde beyaz", () => {
+    const page = readFileSync("src/routes/restoran.$slug.tsx", "utf8");
+    expect(page).not.toMatch(/<h1[^>]*text-background/);
+    expect(page).toContain('className="truncate text-3xl text-white sm:text-4xl"');
+  });
+});
