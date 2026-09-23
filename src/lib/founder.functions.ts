@@ -20,7 +20,7 @@ const settingsSchema = z.object({
   secondary_color: hexColor,
   background_color: hexColor,
   warm_color: hexColor,
-  theme_mode: z.enum(["light", "dark"]),
+  theme_mode: z.enum(["light", "dark", "system"]),
   layout_variant: z.enum(["classic", "compact", "spotlight"]),
 });
 

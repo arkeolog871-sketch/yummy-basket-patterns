@@ -8,8 +8,8 @@
   "orientation": "portrait",
   "lang": "tr",
   "dir": "ltr",
-  "theme_color": "#c8341f",
-  "background_color": "#ffffff",
+  "theme_color": "#f4edda",
+  "background_color": "#f4edda",
   "icons": [
     {
       "src": "/app-icon-192.png",

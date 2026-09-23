@@ -103,7 +103,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         name: "description",
         content: "Mahallenin en iyi ustalarından sıcak yemekler, dakikalar içinde kapınızda.",
       },
-      { name: "theme-color", content: "#c8341f" },
+      // Sayfa zemini (krem); tema yüklenince useSiteSettings koyu/açık zemine çeker.
+      { name: "theme-color", content: "#f4edda" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },

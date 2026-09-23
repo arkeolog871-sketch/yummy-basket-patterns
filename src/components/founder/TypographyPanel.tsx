@@ -122,7 +122,7 @@ function SizeRow({
 }
 
 export function TypographyPanel() {
-  const { settings, refresh } = useSiteSettings();
+  const { settings, isDark, refresh } = useSiteSettings();
   const save = useServerFn(updateTypography);
   const [form, setForm] = useState<TypographySettings>(() => parseTypography(settings.typography));
   const previewRef = useRef<HTMLDivElement>(null);
@@ -131,23 +131,23 @@ export function TypographyPanel() {
     setForm(parseTypography(settings.typography));
   }, [settings.typography]);
 
-  // Önizleme de canlıdaki gibi: yazı renkleri temanın zeminlerinde ≥ 4.5:1.
-  const surfaces =
-    settings.theme_mode === "dark" ? null : themeTextSurfaces(seedFromHex(settings.primary_color));
+  // Önizleme de canlıdaki gibi: açık temada yazı renkleri temanın
+  // zeminlerinde ≥ 4.5:1; koyu temada renkler temadan gelir.
+  const readability = isDark ? "dark" : themeTextSurfaces(seedFromHex(settings.primary_color));
 
   useEffect(() => {
     if (!previewRef.current) return;
-    applyTypographyCss(form, previewRef.current, surfaces);
-    // surfaces tohumdan türetilir; tohum değişince yeniden hesaplanır.
+    applyTypographyCss(form, previewRef.current, readability);
+    // readability tohumdan ve temadan türetilir; onlar değişince yeniden hesaplanır.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form, settings.primary_color, settings.theme_mode]);
+  }, [form, settings.primary_color, isDark]);
 
   const mutation = useMutation({
     mutationFn: (values: TypographySettings) => save({ data: values }),
     onSuccess: (_data, values) => {
       toast.success("Global tipografi kaydedildi");
       if (typeof document !== "undefined") {
-        applyTypographyCss(values, document.documentElement, surfaces);
+        applyTypographyCss(values, document.documentElement, readability);
       }
       refresh();
     },

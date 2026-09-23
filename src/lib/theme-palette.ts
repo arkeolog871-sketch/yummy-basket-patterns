@@ -16,6 +16,10 @@
  * Her yazı/zemin çifti en az 4.5:1'e ZORLANIR: yetmezse yazı ya da zemin
  * koyulaştırılır/açılır. Yani hangi tohum seçilirse seçilsin tema okunaklı.
  *
+ * KOYU TEMA ("Gece Çarşısı"): aynı tohumdan. Zemin bordo-siyah, yazı logonun
+ * kremi; roller yer değiştirir: ANA renk altın (koyu yazı taşır), VURGU
+ * derin bordo (beyaz yazı taşır). Aynı ≥ 4.5:1 güvencesi geçerli.
+ *
  * GENİŞ RENK: ekran Display P3 destekliyorsa ana renk ve vurgu aynı
  * parlaklıkta daha doygun üretilir (okunaklılık değişmez, renk canlanır).
  */
@@ -168,10 +172,79 @@ export function buildThemeRoles(seed: BrandSeed, gamut: Gamut = "srgb"): ThemeRo
   };
 }
 
+export type ThemeScheme = "light" | "dark";
+
+const DARK_BACKGROUND_L = 0.18;
+const DARK_PRIMARY_L = 0.8;
+
+/** Gece Çarşısı: bordo-siyah zemin, krem yazı, altın ana tuş, bordo vurgu. */
+export function buildDarkThemeRoles(seed: BrandSeed, gamut: Gamut = "srgb"): ThemeRoles {
+  const hue = wrapHue(seed.hue);
+  const accentHue = wrapHue(hue + ACCENT_HUE_SHIFT);
+  const boldness = clampBoldness(seed.boldness);
+  const white: Oklch = { l: 1, c: 0, h: 0 };
+
+  const background: Oklch = { l: DARK_BACKGROUND_L, c: 0.03, h: hue };
+  const card: Oklch = { l: 0.225, c: 0.034, h: hue };
+  const muted: Oklch = { l: 0.255, c: 0.034, h: hue };
+  const secondary: Oklch = { l: 0.29, c: 0.04, h: hue };
+  const surfaces = [background, card, muted, secondary];
+
+  let foreground: Oklch = { l: 0.94, c: 0.025, h: accentHue };
+  for (const surface of surfaces) foreground = ensureText(foreground, surface);
+
+  // Ana renk altın: koyu zeminde parlar, üstünde koyu yazı.
+  const primaryChroma = boldness * maxChroma(DARK_PRIMARY_L, accentHue, gamut, ACCENT_CHROMA_CAP);
+  const primary: Oklch = { l: DARK_PRIMARY_L, c: primaryChroma, h: accentHue };
+  const primaryForeground = ensureText({ l: 0.2, c: 0.04, h: hue }, primary);
+
+  // Vurgu derin bordo: rozet, üzerine gelme zemini; beyaz yazı taşır.
+  const accentChroma = boldness * maxChroma(PRIMARY_L, hue, gamut, PRIMARY_CHROMA_CAP);
+  const accent = ensureSurface({ l: PRIMARY_L, c: accentChroma, h: hue }, white);
+  const accentForeground = white;
+
+  const secondaryForeground = ensureText({ l: 0.9, c: 0.03, h: accentHue }, secondary);
+
+  let mutedForeground: Oklch = { l: 0.76, c: 0.03, h: accentHue };
+  for (const surface of surfaces) mutedForeground = ensureText(mutedForeground, surface);
+
+  const border: Oklch = { l: 0.34, c: 0.035, h: hue };
+
+  return {
+    background,
+    foreground,
+    card,
+    primary,
+    primaryForeground,
+    secondary,
+    secondaryForeground,
+    muted,
+    mutedForeground,
+    accent,
+    accentForeground,
+    border,
+  };
+}
+
+const rolesFor = (seed: BrandSeed, gamut: Gamut, scheme: ThemeScheme) =>
+  scheme === "dark" ? buildDarkThemeRoles(seed, gamut) : buildThemeRoles(seed, gamut);
+
 /** CSS değişkenleri (useSiteSettings sayfanın köküne yazar). */
-export function themeCssVariables(seed: BrandSeed, gamut: Gamut = "srgb"): Record<string, string> {
-  const r = buildThemeRoles(seed, gamut);
-  const primaryGlow: Oklch = { l: 0.55, c: r.primary.c, h: wrapHue(r.primary.h + 12) };
+export function themeCssVariables(
+  seed: BrandSeed,
+  gamut: Gamut = "srgb",
+  scheme: ThemeScheme = "light",
+): Record<string, string> {
+  const r = rolesFor(seed, gamut, scheme);
+  // Gradyanlar ana rengin yazısını taşır: açıkta bordo→kırmızı (beyaz yazı),
+  // koyuda altın→kehribar (koyu yazı). Hero açıkta krem→altın, koyuda
+  // zemin→derin bordo.
+  const primaryGlow: Oklch =
+    scheme === "dark"
+      ? { l: 0.74, c: r.primary.c, h: wrapHue(r.primary.h - 12) }
+      : { l: 0.55, c: r.primary.c, h: wrapHue(r.primary.h + 12) };
+  const heroEnd: Oklch =
+    scheme === "dark" ? { l: 0.3, c: Math.min(r.accent.c, 0.1), h: r.accent.h } : r.accent;
   return {
     "--background": css(r.background),
     "--foreground": css(r.foreground),
@@ -201,8 +274,13 @@ export function themeCssVariables(seed: BrandSeed, gamut: Gamut = "srgb"): Recor
     "--sidebar-border": css(r.border),
     "--sidebar-ring": css(r.primary),
     "--gradient-warm": `linear-gradient(120deg, ${css(r.primary)} 0%, ${css(primaryGlow)} 100%)`,
-    "--gradient-hero": `linear-gradient(145deg, ${css(r.background)} 0%, ${css(r.accent)} 100%)`,
+    "--gradient-hero": `linear-gradient(145deg, ${css(r.background)} 0%, ${css(heroEnd)} 100%)`,
   };
+}
+
+/** Sayfa zemininin sRGB karşılığı (tarayıcı çubuğu rengi, theme-color). */
+export function themeBackgroundHex(seed: BrandSeed, scheme: ThemeScheme = "light"): string {
+  return hex(rolesFor(seed, "srgb", scheme).background);
 }
 
 /**
@@ -222,8 +300,12 @@ export function themeHexColumns(seed: BrandSeed) {
 }
 
 /** Test ve panel önizlemesi için: denetlenen bütün yazı/zemin çiftleri. */
-export function themeContrastReport(seed: BrandSeed, gamut: Gamut = "srgb") {
-  const r = buildThemeRoles(seed, gamut);
+export function themeContrastReport(
+  seed: BrandSeed,
+  gamut: Gamut = "srgb",
+  scheme: ThemeScheme = "light",
+) {
+  const r = rolesFor(seed, gamut, scheme);
   const text: Array<[string, Oklch, Oklch]> = [
     ["gövde yazısı / zemin", r.foreground, r.background],
     ["gövde yazısı / kart", r.foreground, r.card],
@@ -233,6 +315,7 @@ export function themeContrastReport(seed: BrandSeed, gamut: Gamut = "srgb") {
     ["ana tuş yazısı", r.primaryForeground, r.primary],
     ["ikincil tuş yazısı", r.secondaryForeground, r.secondary],
     ["vurgu yazısı", r.accentForeground, r.accent],
+    ["gövde yazısı / ikincil zemin", r.foreground, r.secondary],
   ];
   const ui: Array<[string, Oklch, Oklch]> = [["ana renk simgesi / zemin", r.primary, r.background]];
   return {

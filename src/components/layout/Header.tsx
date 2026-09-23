@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccess } from "@/hooks/useAccess";
 import { isIosNativeShell } from "@/lib/native-shell";
+import { brandLogoSrc } from "@/lib/brand-logo";
 import { useCart } from "@/hooks/useCart";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useServiceAreas, areaLabel } from "@/hooks/useTaxonomy";
@@ -158,8 +159,10 @@ export function Header() {
             // Yatay kutu + object-cover o boş şeritleri kırpar, amblem satır
             // yüksekliğini değiştirmeden neredeyse iki kat büyür. Zemin
             // başlıkla aynı krem olduğu için köşe yuvarlatmasına gerek yok.
+            // Varsayılan amblemin zemini saydam sürümü kullanılır: koyu
+            // temada krem kutu olarak görünmesin (bkz. brandLogoSrc).
             <img
-              src={settings.logo_url}
+              src={brandLogoSrc(settings.logo_url)}
               alt={`${settings.brand_name} logosu`}
               className="h-9 w-[3.25rem] object-cover min-[380px]:w-[3.5rem] sm:h-10 sm:w-16"
             />

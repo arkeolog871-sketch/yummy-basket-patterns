@@ -8,7 +8,6 @@ import { updateSiteSettings } from "@/lib/founder.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import {
   EMBLEM_SEED,
   seedFromHex,
@@ -17,7 +16,13 @@ import {
   type BrandSeed,
 } from "@/lib/theme-palette";
 
-type ThemeMode = "light" | "dark";
+type ThemeMode = "light" | "dark" | "system";
+
+const THEME_MODES: { value: ThemeMode; label: string }[] = [
+  { value: "system", label: "Otomatik" },
+  { value: "light", label: "Açık" },
+  { value: "dark", label: "Koyu" },
+];
 type LayoutVariant = "classic" | "compact" | "spotlight";
 
 const LAYOUTS: { value: LayoutVariant; label: string; hint: string }[] = [
@@ -39,7 +44,9 @@ export function AppearancePanel() {
   const [seed, setSeed] = useState<BrandSeed>(() => seedFromHex(settings.primary_color));
   const [form, setForm] = useState({
     brand_name: settings.brand_name,
-    theme_mode: settings.theme_mode as ThemeMode,
+    theme_mode: (THEME_MODES.some((mode) => mode.value === settings.theme_mode)
+      ? settings.theme_mode
+      : "light") as ThemeMode,
     layout_variant: settings.layout_variant as LayoutVariant,
   });
 
@@ -68,17 +75,32 @@ export function AppearancePanel() {
 
           <ThemeSeedControls seed={seed} onChange={setSeed} />
 
-          <div className="flex items-center justify-between rounded-2xl border border-border p-4">
+          <div className="space-y-2 rounded-2xl border border-border p-4">
             <div>
-              <p className="text-sm font-medium">Karanlık mod</p>
-              <p className="text-xs text-muted-foreground">Tüm kullanıcılar için varsayılan tema</p>
+              <p className="text-sm font-medium">Tema</p>
+              <p className="text-xs text-muted-foreground">
+                Otomatik: ziyaretçinin cihazı koyu moddaysa koyu tema. Uygulamalar şimdilik hep açık
+                temada kalır (cihaz ayarını iletmiyorlar).
+              </p>
             </div>
-            <Switch
-              checked={form.theme_mode === "dark"}
-              onCheckedChange={(checked) =>
-                setForm({ ...form, theme_mode: checked ? "dark" : "light" })
-              }
-            />
+            <div role="radiogroup" aria-label="Tema" className="grid grid-cols-3 gap-2">
+              {THEME_MODES.map((mode) => (
+                <button
+                  key={mode.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={form.theme_mode === mode.value}
+                  onClick={() => setForm({ ...form, theme_mode: mode.value })}
+                  className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                    form.theme_mode === mode.value
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border hover:bg-secondary"
+                  }`}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

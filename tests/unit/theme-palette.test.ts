@@ -2,7 +2,10 @@ import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { hexToOklch } from "@/lib/color-math";
+import { applyTypographyCss } from "@/lib/typography";
+import { brandLogoSrc } from "@/lib/brand-logo";
 import {
+  buildDarkThemeRoles,
   EMBLEM_CRIMSON,
   EMBLEM_SEED,
   ensureReadableHex,
@@ -113,7 +116,8 @@ describe("serbest renk alanları kapalı", () => {
 
   it("site renkleri tohumdan türetiliyor, eski sütunlar doğrudan yazılmıyor", () => {
     const hook = readFileSync("src/hooks/useSiteSettings.tsx", "utf8");
-    expect(hook).toContain("themeCssVariables(seedFromHex(settings.primary_color)");
+    expect(hook).toContain("const seed = seedFromHex(settings.primary_color);");
+    expect(hook).toContain("themeCssVariables(seed, gamut, scheme)");
     expect(hook).not.toContain('setProperty("--accent", settings.accent_color)');
   });
 
@@ -196,10 +200,10 @@ describe("yazı ayarlarının renkleri de okunaklı", () => {
   it("site ve yazı paneli yazı renklerini zeminlerle birlikte uygular", () => {
     const hook = readFileSync("src/hooks/useSiteSettings.tsx", "utf8");
     expect(hook).toContain(
-      "applyTypographyCss(settings.typography, document.documentElement, surfaces)",
+      "applyTypographyCss(settings.typography, document.documentElement, readability)",
     );
     const panel = readFileSync("src/components/founder/TypographyPanel.tsx", "utf8");
-    expect(panel).toContain("applyTypographyCss(values, document.documentElement, surfaces)");
+    expect(panel).toContain("applyTypographyCss(values, document.documentElement, readability)");
   });
 });
 
@@ -238,5 +242,131 @@ describe("durum renkleri okunaklı", () => {
   it("açık zemin üstünde dolgu yazı rengi kullanılmaz", () => {
     const panel = readFileSync("src/components/founder/TypographyPanel.tsx", "utf8");
     expect(panel).not.toMatch(/bg-success\/10 text-success-foreground/);
+  });
+});
+
+/**
+ * 2. adım: koyu tema "Gece Çarşısı", aynı tohumdan. Bordo-siyah zemin, krem
+ * yazı, altın ana tuş, bordo vurgu. Açık temadaki güvence burada da geçerli.
+ */
+describe("koyu tema: hangi tohum seçilirse seçilsin okunaklı", () => {
+  for (const gamut of ["srgb", "p3"] as const) {
+    it(`bütün tonlar ve cesaretler (${gamut})`, () => {
+      for (let hue = 0; hue < 360; hue += 15) {
+        for (const boldness of [0.25, 0.6, 1]) {
+          const report = themeContrastReport({ hue, boldness }, gamut, "dark");
+          for (const row of report.text) {
+            expect(row.ratio, `${hue}/${boldness} ${row.name}`).toBeGreaterThanOrEqual(
+              MIN_TEXT_CONTRAST,
+            );
+          }
+          for (const row of report.ui) {
+            expect(row.ratio, `${hue}/${boldness} ${row.name}`).toBeGreaterThanOrEqual(
+              MIN_UI_CONTRAST,
+            );
+          }
+        }
+      }
+    });
+  }
+
+  it("zemin koyu, ana renk altın (vurgu tonunda), vurgu bordo", () => {
+    const roles = buildDarkThemeRoles(EMBLEM_SEED);
+    expect(roles.background.l).toBeLessThan(0.25);
+    expect(roles.foreground.l).toBeGreaterThan(0.85);
+    expect(hueDistance(roles.primary.h, EMBLEM_SEED.hue + 58)).toBeLessThan(1);
+    expect(hueDistance(roles.accent.h, EMBLEM_SEED.hue)).toBeLessThan(1);
+  });
+
+  it("styles.css .dark bloğu üreticiyle aynı", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    const dark = css.slice(css.indexOf(".dark {"));
+    const vars = themeCssVariables(EMBLEM_SEED, "srgb", "dark");
+    for (const name of [
+      "--background",
+      "--foreground",
+      "--card",
+      "--primary",
+      "--primary-foreground",
+      "--accent",
+      "--secondary",
+      "--muted-foreground",
+      "--border",
+    ]) {
+      expect(dark, name).toContain(`  ${name}: ${vars[name]};`);
+    }
+  });
+
+  it("koyu temada durum renkleri okunaklı", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    const dark = css.slice(css.indexOf(".dark {"));
+    const token = (name: string) => {
+      const match = dark.match(new RegExp(`  ${name}: oklch\\(([\\d.]+) ([\\d.]+) ([\\d.]+)\\);`));
+      expect(match, name).not.toBeNull();
+      const [l, c, h] = match!.slice(1, 4).map(Number) as [number, number, number];
+      return oklchToHex(l, c, h);
+    };
+    const background = token("--background");
+    for (const name of ["--success", "--destructive"]) {
+      const color = token(name);
+      const bg = hexToRgb(background);
+      const tint = rgbToHex(hexToRgb(color).map((v, i) => v * 0.15 + bg[i]! * 0.85) as typeof bg);
+      expect(contrastRatio(token(`${name}-foreground`), color), name).toBeGreaterThanOrEqual(
+        MIN_TEXT_CONTRAST,
+      );
+      expect(contrastRatio(color, background), name).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
+      expect(contrastRatio(color, tint), name).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
+    }
+  });
+
+  /**
+   * YAŞANMASIN: yazı ayarları --foreground'u #1a1a1a yapıyor; koyu zeminde
+   * bu siyah üstüne siyah olurdu. Koyu temada renkler temadan gelir.
+   */
+  it("koyu temada yazı ayarlarının renkleri temadan gelir, --foreground ezilmez", () => {
+    const written = new Map<string, string>();
+    const target = {
+      style: { setProperty: (name: string, value: string) => written.set(name, value) },
+    } as unknown as HTMLElement;
+    applyTypographyCss(DEFAULT_TYPOGRAPHY, target, "dark");
+    expect(written.get("--text-primary")).toBe("var(--foreground)");
+    expect(written.get("--text-muted")).toBe("var(--muted-foreground)");
+    expect(written.get("--text-heading")).toBe("var(--foreground)");
+    expect(written.get("--text-accent")).toBe("var(--primary)");
+    expect(written.has("--foreground")).toBe(false);
+    expect(written.get("--font-main")).toContain("Plus Jakarta Sans");
+  });
+
+  it("Otomatik: cihaz koyuysa koyu; kurucu seçimi kaydedilebilir", () => {
+    const hook = readFileSync("src/hooks/useSiteSettings.tsx", "utf8");
+    expect(hook).toContain('settings.theme_mode === "system" && prefersDark');
+    expect(hook).toContain("(prefers-color-scheme: dark)");
+    const server = readFileSync("src/lib/founder.functions.ts", "utf8");
+    expect(server).toContain('z.enum(["light", "dark", "system"])');
+    const panel = readFileSync("src/components/founder/AppearancePanel.tsx", "utf8");
+    expect(panel).toContain('value: "system"');
+  });
+
+  /**
+   * ÖLÇÜLDÜ (kaynak kod, 23 Eylül 2026): iki uygulama kabuğu da cihazdan
+   * bağımsız AÇIK bildiriyor. "Otomatik" bu yüzden uygulamalarda açık kalır
+   * ve durum çubuğuyla çelişmez. Kabuklar cihazı izlemeye başlarsa bu test
+   * kırılır: o sürümde durum çubuğu renkleri de koyu temaya uydurulmalı.
+   */
+  it("uygulama kabukları hep açık tema bildiriyor", () => {
+    const plist = readFileSync("ios/App/App/Info.plist", "utf8");
+    expect(plist).toMatch(/<key>UIUserInterfaceStyle<\/key>\s*<string>Light<\/string>/);
+    const themes = readFileSync("android-wrapper/app/src/main/res/values/themes.xml", "utf8");
+    expect(themes).toContain('parent="@android:style/Theme.Material.Light.NoActionBar"');
+  });
+});
+
+describe("amblem", () => {
+  it("varsayılan amblem başlıkta zemini saydam sürümüyle gösterilir", () => {
+    expect(brandLogoSrc("/logo-mark.png")).toBe("/logo-mark-transparent.png");
+    expect(brandLogoSrc("/api/public/brand/logo/x.png")).toBe("/api/public/brand/logo/x.png");
+    const png = readFileSync("public/logo-mark-transparent.png");
+    // PNG IHDR: renk türü 6 = RGBA (saydamlık kanalı var).
+    expect(png[25]).toBe(6);
   });
 });
