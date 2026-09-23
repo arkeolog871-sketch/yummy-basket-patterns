@@ -11,7 +11,7 @@
  * YÖNTEM: kurucu yalnızca bir TOHUM seçer: ton (0–360) ve cesaret
  * (doygunluk, 0.25–1). Bütün roller bundan OKLCH'de üretilir:
  *  - ana renk: tohum tonu, derin (L≈0.44), beyaz yazı taşır;
- *  - vurgu (altın): tohum tonu + 58°, açık (L≈0.82), koyu yazı taşır;
+ *  - vurgu (altın): tohum tonu + 66° (gerçek altın), açık (L≈0.79), koyu yazı taşır;
  *  - nötrler: vurgu tonuna çekilmiş kremler; zemin logonun kremi.
  * Her yazı/zemin çifti en az 4.5:1'e ZORLANIR: yetmezse yazı ya da zemin
  * koyulaştırılır/açılır. Yani hangi tohum seçilirse seçilsin tema okunaklı.
@@ -44,10 +44,10 @@ const LOGO_CREAM = "#f4edda";
 export const EMBLEM_CRIMSON = "#8f1129";
 
 const PRIMARY_L = 0.44;
-const ACCENT_L = 0.82;
-const ACCENT_HUE_SHIFT = 58;
+const ACCENT_L = 0.79;
+const ACCENT_HUE_SHIFT = 66;
 const PRIMARY_CHROMA_CAP = 0.22;
-const ACCENT_CHROMA_CAP = 0.14;
+const ACCENT_CHROMA_CAP = 0.16;
 const BOLDNESS_MIN = 0.25;
 
 const wrapHue = (hue: number) => ((hue % 360) + 360) % 360;
