@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Camera, ImagePlus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { shrinkImage, blobToBase64 } from "@/lib/image-resize";
+import { shrinkImage, blobToBase64, MEDIA_MAX_DIMENSION, type MediaUse } from "@/lib/image-resize";
 
 export type PickedImage = {
   fileName: string;
@@ -26,7 +26,8 @@ function mimeOf(file: File): string {
   return type;
 }
 
-export async function readImageFile(file: File): Promise<PickedImage> {
+/** `use`: görselin gösterileceği yer; en uzun kenar ona göre küçültülür. */
+export async function readImageFile(file: File, use: MediaUse = "gallery"): Promise<PickedImage> {
   const contentType = mimeOf(file);
   if (!ALLOWED.includes(contentType)) {
     throw new Error("Yalnızca PNG, JPG, WEBP veya AVIF görseller yüklenebilir.");
@@ -35,7 +36,7 @@ export async function readImageFile(file: File): Promise<PickedImage> {
     throw new Error("Görsel boyutu en fazla 4 MB olabilir.");
   }
 
-  const shrunk = await shrinkImage(file, contentType).catch(() => null);
+  const shrunk = await shrinkImage(file, contentType, MEDIA_MAX_DIMENSION[use]).catch(() => null);
   const source = shrunk?.blob ?? file;
   const finalContentType = shrunk?.contentType ?? contentType;
   const base64 = await blobToBase64(source);

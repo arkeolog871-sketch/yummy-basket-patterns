@@ -35,7 +35,7 @@ export function MediaPanel({
 
   const brandMutation = useMutation({
     mutationFn: async (input: { kind: "logo" | "cover"; file: File }) => {
-      const image = await readImageFile(input.file);
+      const image = await readImageFile(input.file, input.kind);
       return uploadBrand({
         data: {
           kind: input.kind,
@@ -64,7 +64,9 @@ export function MediaPanel({
 
   const galleryMutation = useMutation({
     mutationFn: async (files: File[]) => {
-      const images = await Promise.all(files.slice(0, 10).map((file) => readImageFile(file)));
+      const images = await Promise.all(
+        files.slice(0, 10).map((file) => readImageFile(file, "gallery")),
+      );
       return addGallery({
         data: {
           images: images.map((image) => ({

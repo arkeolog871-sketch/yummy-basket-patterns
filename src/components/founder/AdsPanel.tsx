@@ -35,6 +35,7 @@ import {
   MAX_AD_IMAGE_MB,
   MAX_AD_MEDIA_BYTES,
 } from "@/lib/upload-limits";
+import { shrinkFileForUse } from "@/lib/image-resize";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -157,7 +158,10 @@ export function AdsPanel() {
     clearLocalPreview();
   }
 
-  function onPickFile(next: File) {
+  async function onPickFile(picked: File) {
+    // Reklam kartta ~300–550 piksel gösteriliyor; 1600×900 yüklenen görseller
+    // küçültülür (video ve desteklenmeyen biçimler aynen kalır).
+    const next = await shrinkFileForUse(picked, "banner");
     if (!isAdMediaFile(next)) {
       toast.error(adImageTypeRejectedMessage());
       return;
@@ -200,7 +204,7 @@ export function AdsPanel() {
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const next = event.target.files?.[0];
     event.target.value = "";
-    if (next) onPickFile(next);
+    if (next) void onPickFile(next);
   }
 
   const handleUpload = async (e: FormEvent) => {

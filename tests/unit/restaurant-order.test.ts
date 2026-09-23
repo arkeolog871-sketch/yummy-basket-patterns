@@ -49,8 +49,10 @@ describe("işletme listeleme sırası", () => {
     const occurrences = catalog.match(
       /display_order",\s*\{ ascending: true, nullsFirst: false \}/g,
     );
-    // Ana sorgu + aksana duyarsız yedek sorgu: iki yerde de.
-    expect(occurrences?.length).toBe(2);
+    // Tek sorgu: arama artık bu sorgunun sonucunda bellekte yapılıyor (eski
+    // aksana duyarsız yedek sorgu kalktı). Eşit puanda katalog sırası korunur.
+    expect(occurrences?.length).toBe(1);
+    expect(catalog).toContain("a.order - b.order");
   });
 
   it("panel de aynı etkin sırayı gösteriyor", () => {
