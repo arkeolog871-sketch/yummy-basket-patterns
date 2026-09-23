@@ -133,7 +133,11 @@ export function useRealtimeVoice({
           stopPlayback: () => {
             // Araya girme: çalan ses DERHAL susar, kalan parçalar atılır.
             element.pause();
-            element.currentTime = element.duration || 0;
+            // Canlı WebRTC akışında duration = Infinity; currentTime'a sonsuz
+            // yazmak "Failed to set the 'currentTime' property" atıyordu
+            // (canlı hata kaydı). Canlı akış play()'de zaten canlı noktadan
+            // sürer; atlama yalnız sonlu süreli kayıtta gerekir.
+            if (Number.isFinite(element.duration)) element.currentTime = element.duration;
           },
           answerQuestion: (question) => cbRef.current.answerQuestion(question),
           onPhase: (next) => {

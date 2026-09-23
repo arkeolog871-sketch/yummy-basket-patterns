@@ -30,11 +30,17 @@ export const Route = createFileRoute("/")({
   loaderDeps: ({ search }) => search,
   loader: async ({ context, deps }) => {
     try {
-      await context.queryClient.ensureQueryData(homeQuery(deps));
+      // Sonuç DÖNDÜRÜLÜR: yükleyici verisi sunucudan istemciye taşınır, sorgu
+      // önbelleği taşınmaz. Döndürülmezse istemci hidrasyonda listeyi
+      // "yükleniyor" sanıyor, sunucu "N işletme listeleniyor" basmış oluyor:
+      // React #418 (ölçüldü, canlı: ana sayfada her açılışta).
+      const businesses = await context.queryClient.ensureQueryData(homeQuery(deps));
+      return { businesses, loadedAt: Date.now() };
     } catch {
       // Hatada boş liste yazma: istemci "boş ama taze" sanıp yeniden denemez.
       // Önbelleği boş bırak, bileşen hata kartını gösterip yeniden dener.
       console.error("[catalog] ana sayfa yüklenemedi");
+      return { businesses: undefined, loadedAt: 0 };
     }
   },
   errorComponent: () => (
@@ -77,8 +83,12 @@ function Index() {
     isDark ? "dark" : "light",
   );
   const { categories } = useAppCategories();
+  const loaderData = Route.useLoaderData();
   const homeQueryResult = useQuery({
     ...homeQuery(search),
+    // Sunucunun yüklediği liste hidrasyonda hazır olsun (bkz. loader).
+    initialData: () => loaderData?.businesses,
+    initialDataUpdatedAt: () => loaderData?.loadedAt,
     // Yükleme başarısızsa sessizce boş liste gösterme: birkaç kez otomatik dene,
     // olmazsa kullanıcıya hata kartı + "Tekrar dene" göster.
     retry: 2,
