@@ -1,9 +1,14 @@
-import { createContext, useContext, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { SplashScreen } from "@/components/system/SplashScreen";
-import { seedFromHex, themeCssVariables, themeTextSurfaces } from "@/lib/theme-palette";
+import {
+  seedFromHex,
+  themeBackgroundHex,
+  themeCssVariables,
+  themeTextSurfaces,
+} from "@/lib/theme-palette";
 import {
   applyTypographyCss,
   DEFAULT_TYPOGRAPHY,
@@ -91,6 +96,8 @@ type SiteSettingsContextValue = {
   footer: FooterContent;
   isFounder: boolean;
   founderExists: boolean;
+  /** Şu an koyu tema mı (kurucu "Koyu" seçtiyse ya da "Otomatik" + cihaz koyu). */
+  isDark: boolean;
   refresh: () => void;
 };
 
@@ -101,8 +108,35 @@ const SiteSettingsContext = createContext<SiteSettingsContextValue>({
   footer: DEFAULT_FOOTER,
   isFounder: false,
   founderExists: true,
+  isDark: false,
   refresh: () => {},
 });
+
+const DARK_QUERY = "(prefers-color-scheme: dark)";
+
+function subscribeToColorScheme(onChange: () => void) {
+  if (typeof window.matchMedia !== "function") return () => {};
+  const query = window.matchMedia(DARK_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+
+/**
+ * Cihaz koyu modda mı. Sunucuda ve eski tarayıcıda açık varsayılır.
+ *
+ * ÖLÇÜLDÜ (kaynak kod): uygulama kabukları cihazdan bağımsız hep AÇIK
+ * bildiriyor: iOS Info.plist'te UIUserInterfaceStyle = Light, Android
+ * teması Theme.Material.Light. Yani "Otomatik" yalnızca tarayıcıda ve
+ * ana ekrana eklenen sürümde koyuya geçer; uygulamalar açık kalır ve
+ * durum çubuklarıyla uyumsuzluk oluşmaz.
+ */
+function usePrefersDark(): boolean {
+  return useSyncExternalStore(
+    subscribeToColorScheme,
+    () => typeof window.matchMedia === "function" && window.matchMedia(DARK_QUERY).matches,
+    () => false,
+  );
+}
 
 function mergeSettings(
   row: Record<string, unknown> | null | undefined,
@@ -189,6 +223,9 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
 
   const merged = settingsQuery.data ?? mergeSettings(null);
   const settings: SiteSettings = merged;
+  const prefersDark = usePrefersDark();
+  const isDark =
+    settings.theme_mode === "dark" || (settings.theme_mode === "system" && prefersDark);
 
   useEffect(() => {
     // Ayarlar henüz gelmeden DEFAULT_SETTINGS'i (eski/varsayılan renk şeması)
@@ -202,43 +239,34 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     // saklanır; diğer sütunlar yok sayılır. Eskiden 5 serbest renk doğrudan
     // yazılıyordu ve canlıda vurgu/ikincil/zemin aynı krem seçildiği için
     // tuşlar ve simgeler görünmez olmuştu. Üretici her yazı/zemin çiftini
-    // en az 4.5:1'e zorlar.
-    //
-    // Koyu modda açık tema değişkenleri yazılmaz: .dark (styles.css) geçerli
-    // olsun. Koyu tema üreticisi ayrı adım.
+    // en az 4.5:1'e zorlar. Koyu tema ("Gece Çarşısı") aynı tohumdan.
     const gamut =
       typeof window.matchMedia === "function" && window.matchMedia("(color-gamut: p3)").matches
         ? "p3"
         : "srgb";
-    const variables = themeCssVariables(seedFromHex(settings.primary_color), gamut);
-    for (const [name, value] of Object.entries(variables)) {
-      if (settings.theme_mode === "dark") root.style.removeProperty(name);
-      else root.style.setProperty(name, value);
+    const seed = seedFromHex(settings.primary_color);
+    const scheme = isDark ? "dark" : "light";
+    const variables = themeCssVariables(seed, gamut, scheme);
+    for (const [name, value] of Object.entries(variables)) root.style.setProperty(name, value);
+    root.classList.toggle("dark", isDark);
+    // Kaydırma çubuğu, form denetimleri gibi tarayıcı parçaları da temaya uysun.
+    root.style.colorScheme = scheme;
+    // Tarayıcı çubuğu (Android Chrome, Safari sekme çubuğu) sayfa zeminiyle aynı.
+    const background = themeBackgroundHex(seed, scheme);
+    for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
+      meta.content = background;
     }
-    root.classList.toggle("dark", settings.theme_mode === "dark");
     root.dataset["layout"] = settings.layout_variant;
-  }, [
-    settingsQuery.isLoading,
-    settings.primary_color,
-    settings.theme_mode,
-    settings.layout_variant,
-  ]);
+  }, [settingsQuery.isLoading, settings.primary_color, isDark, settings.layout_variant]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
     if (!settings.typographyConfigured) return;
-    // Açık temada yazı renkleri temanın zeminlerinde ≥ 4.5:1'e zorlanır.
-    const surfaces =
-      settings.theme_mode === "dark"
-        ? null
-        : themeTextSurfaces(seedFromHex(settings.primary_color));
-    applyTypographyCss(settings.typography, document.documentElement, surfaces);
-  }, [
-    settings.typography,
-    settings.typographyConfigured,
-    settings.theme_mode,
-    settings.primary_color,
-  ]);
+    // Açık temada yazı renkleri temanın zeminlerinde ≥ 4.5:1'e zorlanır;
+    // koyu temada renkler temadan gelir (kurucunun renkleri açık zemin için).
+    const readability = isDark ? "dark" : themeTextSurfaces(seedFromHex(settings.primary_color));
+    applyTypographyCss(settings.typography, document.documentElement, readability);
+  }, [settings.typography, settings.typographyConfigured, isDark, settings.primary_color]);
 
   useEffect(() => {
     if (!settings.favicon_url) return;
@@ -274,6 +302,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
         },
         isFounder: rolesQuery.data?.isFounder ?? false,
         founderExists: rolesQuery.data?.founderExists ?? true,
+        isDark,
         refresh: () => {
           void queryClient.invalidateQueries({ queryKey: ["site-settings"] });
           void queryClient.invalidateQueries({ queryKey: ["my-roles"] });

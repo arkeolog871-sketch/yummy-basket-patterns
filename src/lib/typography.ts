@@ -397,24 +397,38 @@ export function typographyToCssVars(t: TypographySettings): Record<string, strin
 export function applyTypographyCss(
   input: TypographySettings,
   target: HTMLElement = document.documentElement,
-  surfaces?: string[] | null,
+  readability?: string[] | "dark" | null,
 ): void {
-  const t = surfaces
+  // Açık tema: yazı renkleri verilen zeminlerde ≥ 4.5:1'e zorlanır.
+  // Koyu tema: kurucunun yazı renkleri açık zemin için seçildi (#1a1a1a gibi);
+  // koyu zeminde okunmaz. Renkler temadan gelir, yazı tipi ve ölçüler kalır.
+  const dark = readability === "dark";
+  const t = dark
     ? {
         ...input,
-        primaryText: ensureReadableHex(input.primaryText, surfaces),
-        mutedText: ensureReadableHex(input.mutedText, surfaces),
-        headingText: ensureReadableHex(input.headingText, surfaces),
-        accent: ensureReadableHex(input.accent, surfaces),
-        accentHover: ensureReadableHex(input.accentHover, surfaces),
+        primaryText: "var(--foreground)",
+        mutedText: "var(--muted-foreground)",
+        headingText: "var(--foreground)",
+        accent: "var(--primary)",
+        accentHover: "var(--primary)",
       }
-    : input;
+    : readability
+      ? {
+          ...input,
+          primaryText: ensureReadableHex(input.primaryText, readability),
+          mutedText: ensureReadableHex(input.mutedText, readability),
+          headingText: ensureReadableHex(input.headingText, readability),
+          accent: ensureReadableHex(input.accent, readability),
+          accentHover: ensureReadableHex(input.accentHover, readability),
+        }
+      : input;
   const vars = typographyToCssVars(t);
   for (const key of Object.keys(vars)) {
     target.style.setProperty(key, vars[key] as string);
   }
   // Tailwind semantik tokenları da metin paletini izlesin; düğme zemin renklerine dokunulmaz.
-  if (target === document.documentElement) {
+  // Koyu temada bu tokenları tema yazar (useSiteSettings), burada ezilmez.
+  if (!dark && target === document.documentElement) {
     target.style.setProperty("--foreground", t.primaryText);
     target.style.setProperty("--card-foreground", t.primaryText);
     target.style.setProperty("--popover-foreground", t.primaryText);
