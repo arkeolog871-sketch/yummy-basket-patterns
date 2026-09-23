@@ -44,10 +44,10 @@ const LOGO_CREAM = "#f4edda";
 export const EMBLEM_CRIMSON = "#8f1129";
 
 const PRIMARY_L = 0.44;
-const ACCENT_L = 0.82;
-const ACCENT_HUE_SHIFT = 58;
+const ACCENT_L = 0.79;
+const ACCENT_HUE_SHIFT = 66;
 const PRIMARY_CHROMA_CAP = 0.22;
-const ACCENT_CHROMA_CAP = 0.14;
+const ACCENT_CHROMA_CAP = 0.16;
 const BOLDNESS_MIN = 0.25;
 
 const wrapHue = (hue: number) => ((hue % 360) + 360) % 360;
