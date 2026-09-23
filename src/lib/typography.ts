@@ -4,6 +4,8 @@
  * and the client hydrate the same markup.
  */
 
+import { ensureReadableHex } from "./theme-palette";
+
 export type TypeScaleRatioKey =
   | "minorSecond"
   | "majorSecond"
@@ -385,10 +387,28 @@ export function typographyToCssVars(t: TypographySettings): Record<string, strin
   };
 }
 
+/**
+ * `surfaces` verilirse (açık temada sayfa, kart, soluk ve ikincil zemin)
+ * yazı renkleri o zeminlerin hepsinde en az 4.5:1 okunaklı olacak şekilde
+ * koyulaştırılır; ton kurucunun seçtiği gibi kalır. Bkz. theme-palette.ts →
+ * ensureReadableHex. (Ölçüldü: varsayılan soluk gri #6b7280 krem zeminde
+ * 4.14:1'di.)
+ */
 export function applyTypographyCss(
-  t: TypographySettings,
+  input: TypographySettings,
   target: HTMLElement = document.documentElement,
+  surfaces?: string[] | null,
 ): void {
+  const t = surfaces
+    ? {
+        ...input,
+        primaryText: ensureReadableHex(input.primaryText, surfaces),
+        mutedText: ensureReadableHex(input.mutedText, surfaces),
+        headingText: ensureReadableHex(input.headingText, surfaces),
+        accent: ensureReadableHex(input.accent, surfaces),
+        accentHover: ensureReadableHex(input.accentHover, surfaces),
+      }
+    : input;
   const vars = typographyToCssVars(t);
   for (const key of Object.keys(vars)) {
     target.style.setProperty(key, vars[key] as string);

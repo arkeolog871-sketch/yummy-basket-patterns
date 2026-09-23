@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { seedFromHex, themeTextSurfaces } from "@/lib/theme-palette";
 import { updateTypography } from "@/lib/founder.functions";
 import { ColorField } from "@/components/founder/ColorField";
 import { Button } from "@/components/ui/button";
@@ -130,16 +131,24 @@ export function TypographyPanel() {
     setForm(parseTypography(settings.typography));
   }, [settings.typography]);
 
+  // Önizleme de canlıdaki gibi: yazı renkleri temanın zeminlerinde ≥ 4.5:1.
+  const surfaces =
+    settings.theme_mode === "dark" ? null : themeTextSurfaces(seedFromHex(settings.primary_color));
+
   useEffect(() => {
     if (!previewRef.current) return;
-    applyTypographyCss(form, previewRef.current);
-  }, [form]);
+    applyTypographyCss(form, previewRef.current, surfaces);
+    // surfaces tohumdan türetilir; tohum değişince yeniden hesaplanır.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, settings.primary_color, settings.theme_mode]);
 
   const mutation = useMutation({
     mutationFn: (values: TypographySettings) => save({ data: values }),
     onSuccess: (_data, values) => {
       toast.success("Global tipografi kaydedildi");
-      if (typeof document !== "undefined") applyTypographyCss(values);
+      if (typeof document !== "undefined") {
+        applyTypographyCss(values, document.documentElement, surfaces);
+      }
       refresh();
     },
     onError: (error: Error) => toast.error(toPublicErrorMessage(error)),

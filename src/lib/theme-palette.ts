@@ -240,3 +240,44 @@ export function themeContrastReport(seed: BrandSeed, gamut: Gamut = "srgb") {
     ui: ui.map(([name, fg, bg]) => ({ name, ratio: contrastOf(fg, bg) })),
   };
 }
+
+/**
+ * Yazının okunacağı açık zeminler (sRGB hex): sayfa zemini, kart, soluk
+ * zemin ve ikincil zemin.
+ */
+export function themeTextSurfaces(seed: BrandSeed): string[] {
+  const r = buildThemeRoles(seed, "srgb");
+  return [hex(r.background), hex(r.card), hex(r.muted), hex(r.secondary)];
+}
+
+/**
+ * Seçilen yazı rengini (tonuna dokunmadan) bütün zeminlerde en az `min`
+ * okunaklılığa ulaşana dek koyulaştırır.
+ *
+ * NEDEN (ölçüldü, canlı): kurucu panelindeki yazı ayarları soluk yazıyı
+ * nötr gri #6b7280 yapıyordu; krem zeminde 4.14:1, alt bilgide 3.84:1.
+ * Tema üreticisinin "her yazı ≥ 4.5:1" güvencesi yazı ayarlarıyla
+ * atlatılabiliyordu. Kurucunun seçimi korunur, yalnız parlaklık ayarlanır.
+ */
+export function ensureReadableHex(
+  color: string,
+  surfaces: string[],
+  min = MIN_TEXT_CONTRAST,
+): string {
+  if (!/^#[0-9a-f]{6}$/i.test(color)) return color;
+  const start = hexToOklch(color);
+  let current: Oklch = { l: start.l, c: start.c, h: start.h };
+  const surfaceColors = surfaces
+    .filter((value) => /^#[0-9a-f]{6}$/i.test(value))
+    .map((value) => {
+      const { l, c, h } = hexToOklch(value);
+      return { l, c, h };
+    });
+  const weakest = () => Math.min(...surfaceColors.map((surface) => contrastOf(current, surface)));
+  if (surfaceColors.length === 0 || weakest() >= min) return color;
+  for (let step = 0; step < 100 && weakest() < min; step += 1) {
+    const l = Math.max(0, current.l - 0.01);
+    current = { ...current, l, c: Math.min(current.c, maxChroma(l, current.h, "srgb")) };
+  }
+  return hex(current);
+}
