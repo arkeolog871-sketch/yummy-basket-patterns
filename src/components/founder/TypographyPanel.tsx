@@ -57,7 +57,7 @@ function ContrastBadge({ fg, bg, large }: { fg: string; bg: string; large?: bool
     <span
       className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
         ok
-          ? "border-success/30 bg-success/10 text-success-foreground"
+          ? "border-success/30 bg-success/10 text-success"
           : grade === "AA"
             ? "border-primary/30 bg-primary/10"
             : "border-destructive/30 bg-destructive/10 text-destructive"

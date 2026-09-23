@@ -90,10 +90,10 @@
   --warm: oklch(0.820 0.119 76.7);
   --warm-foreground: oklch(0.270 0.060 18.7);
 
-  --success: oklch(0.618 0.132 150);
+  --success: oklch(0.460 0.130 150);
   --success-foreground: oklch(0.99 0.008 150);
 
-  --destructive: oklch(0.578 0.221 26);
+  --destructive: oklch(0.470 0.185 26);
   --destructive-foreground: oklch(0.99 0.008 80);
 
   --border: oklch(0.860 0.035 76.7);
