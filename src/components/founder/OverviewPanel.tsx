@@ -30,15 +30,72 @@ function Stat({
       type="button"
       onClick={onOpen}
       aria-label={`${label} ayrıntısını aç`}
-      className="group min-w-0 rounded-2xl border border-border/60 bg-background/60 p-4 text-left transition-colors hover:border-accent/60 hover:bg-accent/5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      className="group flex min-w-0 flex-col justify-start rounded-xl border border-border/60 bg-background/60 p-2.5 text-left transition-colors hover:border-accent/60 hover:bg-accent/5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:p-3"
     >
-      <p className="flex items-center gap-1 text-xs text-muted-foreground">
+      <p className="flex items-start gap-0.5 text-[11px] leading-tight text-muted-foreground">
         <span className="min-w-0 [overflow-wrap:anywhere]">{label}</span>
-        <ChevronRight className="size-3 shrink-0 opacity-60 transition-transform group-hover:translate-x-0.5" />
+        <ChevronRight className="mt-px size-3 shrink-0 opacity-60 transition-transform group-hover:translate-x-0.5" />
       </p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
-      {hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null}
+      <p className="mt-1 text-lg font-semibold leading-none tabular-nums sm:text-xl">{value}</p>
+      {hint ? (
+        <p className="mt-1 text-[10px] leading-tight text-muted-foreground [overflow-wrap:anywhere]">
+          {hint}
+        </p>
+      ) : null}
     </button>
+  );
+}
+
+type OverviewData = Awaited<ReturnType<typeof getFounderOverview>>;
+
+/**
+ * Genel durum kartları. Her ekranda 3 sütun (5 kart → 3 + 2).
+ *
+ * NEDEN: telefonda 2 sütundu ve kartlar büyük (16px iç boşluk, 24px sayı)
+ * olduğu için beş kart ekranın büyük kısmını kaplıyordu; kullanıcı
+ * küçültülüp 3 sütun dizilmesini istedi. Ayrı bileşen, örnek veriyle
+ * ölçülebilsin diye.
+ */
+export function OverviewStatGrid({
+  users,
+  businesses,
+  orders,
+  onOpen,
+}: Pick<OverviewData, "users" | "businesses" | "orders"> & {
+  onOpen: (metric: OverviewMetric) => void;
+}) {
+  return (
+    <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+      <Stat
+        label="Kayıtlı kullanıcı"
+        value={String(users.total)}
+        hint={`son 7 günde +${users.recent}`}
+        onOpen={() => onOpen("users")}
+      />
+      <Stat
+        label="Bildirim alan cihaz"
+        value={String(users.devices)}
+        hint={`${users.total} kullanıcıdan`}
+        onOpen={() => onOpen("devices")}
+      />
+      <Stat
+        label="Aktif işletme"
+        value={String(businesses.active)}
+        onOpen={() => onOpen("businesses")}
+      />
+      <Stat
+        label="Açık sipariş"
+        value={String(orders.open)}
+        hint={`son 7 günde ${orders.recent} sipariş`}
+        onOpen={() => onOpen("openOrders")}
+      />
+      <Stat
+        label="Toplam sipariş"
+        value={String(orders.total)}
+        hint={orders.lastAt ? `son: ${formatDateTime(orders.lastAt)}` : "henüz sipariş yok"}
+        onOpen={() => onOpen("orders")}
+      />
+    </div>
   );
 }
 
@@ -62,7 +119,7 @@ function Warning({
   if (names.length === 0) return null;
   return (
     <div className="flex gap-3 rounded-2xl border border-accent/40 bg-accent/10 p-4">
-      <span className="mt-0.5 shrink-0 text-accent">{icon}</span>
+      <span className="mt-0.5 shrink-0 text-primary">{icon}</span>
       <div className="min-w-0">
         <p className="text-sm font-semibold">
           {title} ({names.length})
@@ -106,41 +163,11 @@ export function OverviewPanel() {
   return (
     <section className="mt-8 rounded-3xl border border-border/70 bg-card p-5 shadow-card">
       <div className="flex items-center gap-2">
-        <Users className="size-4 text-accent" />
+        <Users className="size-4 text-primary" />
         <h2 className="text-lg font-semibold">Genel durum</h2>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <Stat
-          label="Kayıtlı kullanıcı"
-          value={String(users.total)}
-          hint={`son 7 günde +${users.recent}`}
-          onOpen={() => setDetail("users")}
-        />
-        <Stat
-          label="Bildirim alan cihaz"
-          value={String(users.devices)}
-          hint={`${users.total} kullanıcıdan`}
-          onOpen={() => setDetail("devices")}
-        />
-        <Stat
-          label="Aktif işletme"
-          value={String(businesses.active)}
-          onOpen={() => setDetail("businesses")}
-        />
-        <Stat
-          label="Açık sipariş"
-          value={String(orders.open)}
-          hint={`son 7 günde ${orders.recent} sipariş`}
-          onOpen={() => setDetail("openOrders")}
-        />
-        <Stat
-          label="Toplam sipariş"
-          value={String(orders.total)}
-          hint={orders.lastAt ? `son: ${formatDateTime(orders.lastAt)}` : "henüz sipariş yok"}
-          onOpen={() => setDetail("orders")}
-        />
-      </div>
+      <OverviewStatGrid users={users} businesses={businesses} orders={orders} onOpen={setDetail} />
 
       <OverviewDetailDialog metric={detail} onClose={() => setDetail(null)} />
 
