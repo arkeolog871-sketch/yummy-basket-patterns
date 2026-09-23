@@ -274,7 +274,7 @@ describe("koyu tema: hangi tohum seçilirse seçilsin okunaklı", () => {
     const roles = buildDarkThemeRoles(EMBLEM_SEED);
     expect(roles.background.l).toBeLessThan(0.25);
     expect(roles.foreground.l).toBeGreaterThan(0.85);
-    expect(hueDistance(roles.primary.h, EMBLEM_SEED.hue + 58)).toBeLessThan(1);
+    expect(hueDistance(roles.primary.h, EMBLEM_SEED.hue + 66)).toBeLessThan(1);
     expect(hueDistance(roles.accent.h, EMBLEM_SEED.hue)).toBeLessThan(1);
   });
 
