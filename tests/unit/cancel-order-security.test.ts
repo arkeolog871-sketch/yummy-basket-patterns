@@ -10,7 +10,9 @@ describe("sipariş iptali oturum ister", () => {
   const sql = readFileSync(
     "supabase/migrations/20260923170000_cancel_order_require_session.sql",
     "utf8",
-  );
+  )
+    // Açıklama satırları eski denetimi alıntılıyor; yalnız SQL denetlenir.
+    .replace(/^--.*$/gm, "");
 
   it("oturumsuz çağrı reddedilir", () => {
     expect(sql).toContain("IF auth.uid() IS NULL OR auth.uid() IS DISTINCT FROM p_user_id THEN");
