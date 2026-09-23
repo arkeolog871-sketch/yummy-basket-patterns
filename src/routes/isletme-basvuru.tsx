@@ -146,7 +146,7 @@ function BusinessApplicationGate() {
     return (
       <div className="mx-auto max-w-md px-4 py-10">
         <header className="mb-6 text-center">
-          <p className="inline-flex items-center gap-2 rounded-full bg-accent/15 px-3 py-1 text-xs font-medium text-accent">
+          <p className="inline-flex items-center gap-2 rounded-full bg-accent/30 px-3 py-1 text-xs font-medium text-accent-foreground">
             <Store className="size-4" /> İşletme başvurusu
           </p>
           <h1 className="mt-3 text-2xl font-semibold">Önce kimliğinizi doğrulayın</h1>
@@ -347,7 +347,7 @@ function BusinessApplicationPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
       <header className="mb-8">
-        <p className="inline-flex items-center gap-2 rounded-full bg-accent/15 px-3 py-1 text-xs font-medium text-accent">
+        <p className="inline-flex items-center gap-2 rounded-full bg-accent/30 px-3 py-1 text-xs font-medium text-accent-foreground">
           <Store className="size-4" /> İşletme başvurusu
         </p>
         <h1 className="mt-3 text-3xl font-semibold">İşletmenizi platforma ekleyin</h1>
@@ -614,7 +614,7 @@ function BusinessApplicationPage() {
               <div key={row.id} className="rounded-2xl border border-border bg-card p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-medium">{row.name}</p>
-                  <span className="rounded-full bg-accent/15 px-3 py-1 text-xs text-accent">
+                  <span className="rounded-full bg-accent/30 px-3 py-1 text-xs text-accent-foreground">
                     {STATUS_LABELS[row.status] ?? row.status}
                   </span>
                 </div>

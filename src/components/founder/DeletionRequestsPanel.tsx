@@ -18,7 +18,7 @@ const STATUS_LABELS: Record<string, string> = {
 function statusClass(status: string) {
   if (status === "rejected") return "bg-destructive/15 text-destructive";
   if (status === "approved") return "bg-warm text-warm-foreground";
-  return "bg-accent/15 text-accent";
+  return "bg-accent/30 text-accent-foreground";
 }
 
 const FILTERS = ["pending", "all"] as const;

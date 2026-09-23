@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -9,6 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  EMBLEM_SEED,
+  seedFromHex,
+  themeContrastReport,
+  themeHexColumns,
+  type BrandSeed,
+} from "@/lib/theme-palette";
 
 type ThemeMode = "light" | "dark";
 type LayoutVariant = "classic" | "compact" | "spotlight";
@@ -19,30 +26,25 @@ const LAYOUTS: { value: LayoutVariant; label: string; hint: string }[] = [
   { value: "spotlight", label: "Yedek: Vitrin", hint: "Büyük kartlar, tek odak" },
 ];
 
-const COLOR_FIELDS = [
-  { key: "primary_color", label: "Ana renk (primary)" },
-  { key: "secondary_color", label: "İkincil renk (secondary)" },
-  { key: "accent_color", label: "Vurgu rengi (accent)" },
-  { key: "background_color", label: "Arka plan rengi" },
-  { key: "warm_color", label: "Sıcak ton (rozet, logo, ana sayfa üst alanı)" },
-] as const;
+/**
+ * Renkler artık 5 serbest alan değil, TEK TOHUM: ton + cesaret
+ * (theme-palette.ts). Serbest alanlarla canlıda vurgu, ikincil ve arka plan
+ * aynı krem seçilmişti; tuşlar ve simgeler görünmez olmuştu. Tohumdan
+ * türetilen tema her durumda okunaklıdır.
+ */
 
 export function AppearancePanel() {
   const { settings, refresh } = useSiteSettings();
   const save = useServerFn(updateSiteSettings);
+  const [seed, setSeed] = useState<BrandSeed>(() => seedFromHex(settings.primary_color));
   const [form, setForm] = useState({
     brand_name: settings.brand_name,
-    primary_color: settings.primary_color,
-    accent_color: settings.accent_color,
-    secondary_color: settings.secondary_color,
-    background_color: settings.background_color,
-    warm_color: settings.warm_color,
     theme_mode: settings.theme_mode as ThemeMode,
     layout_variant: settings.layout_variant as LayoutVariant,
   });
 
   const mutation = useMutation({
-    mutationFn: (values: typeof form) => save({ data: values }),
+    mutationFn: (values: typeof form) => save({ data: { ...values, ...themeHexColumns(seed) } }),
     onSuccess: () => {
       toast.success("Tema ayarları kaydedildi");
       refresh();
@@ -64,26 +66,7 @@ export function AppearancePanel() {
             />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            {COLOR_FIELDS.map((field) => (
-              <div key={field.key}>
-                <Label htmlFor={field.key}>{field.label}</Label>
-                <div className="mt-1.5 flex items-center gap-2">
-                  <input
-                    id={field.key}
-                    type="color"
-                    value={form[field.key]}
-                    onChange={(event) => setForm({ ...form, [field.key]: event.target.value })}
-                    className="size-10 shrink-0 cursor-pointer rounded-xl border border-border bg-transparent"
-                  />
-                  <Input
-                    value={form[field.key]}
-                    onChange={(event) => setForm({ ...form, [field.key]: event.target.value })}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+          <ThemeSeedControls seed={seed} onChange={setSeed} />
 
           <div className="flex items-center justify-between rounded-2xl border border-border p-4">
             <div>
@@ -113,7 +96,15 @@ export function AppearancePanel() {
               }`}
             >
               <p className="text-sm font-semibold">{layout.label}</p>
-              <p className="text-xs text-muted-foreground">{layout.hint}</p>
+              <p
+                className={`text-xs ${
+                  form.layout_variant === layout.value
+                    ? "text-warm-foreground/80"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {layout.hint}
+              </p>
             </button>
           ))}
 
@@ -125,6 +116,98 @@ export function AppearancePanel() {
             Ayarları kaydet
           </Button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** Ton + cesaret seçimi, canlı önizleme ve okunaklılık raporu. */
+function ThemeSeedControls({
+  seed,
+  onChange,
+}: {
+  seed: BrandSeed;
+  onChange: (seed: BrandSeed) => void;
+}) {
+  const colors = useMemo(() => themeHexColumns(seed), [seed]);
+  const report = useMemo(() => themeContrastReport(seed), [seed]);
+  const weakest = Math.min(...report.text.map((row) => row.ratio));
+  const swatches = [
+    { label: "Ana renk", color: colors.primary_color },
+    { label: "Vurgu", color: colors.accent_color },
+    { label: "İkincil", color: colors.secondary_color },
+    { label: "Zemin", color: colors.background_color },
+  ];
+
+  return (
+    <div className="space-y-4 rounded-2xl border border-border p-4">
+      <div>
+        <p className="text-sm font-medium">Marka renkleri</p>
+        <p className="text-xs text-muted-foreground">
+          Bütün renkler tek bir marka tonundan otomatik türetilir; her yazı zemininden en az 4.5:1
+          okunaklı kalır.
+        </p>
+      </div>
+
+      <div>
+        <Label htmlFor="seed-hue">Marka tonu</Label>
+        <input
+          id="seed-hue"
+          type="range"
+          min={0}
+          max={359}
+          step={1}
+          value={Math.round(seed.hue)}
+          onChange={(event) => onChange({ ...seed, hue: Number(event.target.value) })}
+          className="mt-2 h-3 w-full cursor-pointer appearance-none rounded-full"
+          style={{
+            background:
+              "linear-gradient(90deg, oklch(0.55 0.15 0), oklch(0.55 0.15 60), oklch(0.55 0.15 120), oklch(0.55 0.15 180), oklch(0.55 0.15 240), oklch(0.55 0.15 300), oklch(0.55 0.15 360))",
+          }}
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="seed-boldness">
+          Cesaret (doygunluk) — %{Math.round(seed.boldness * 100)}
+        </Label>
+        <input
+          id="seed-boldness"
+          type="range"
+          min={25}
+          max={100}
+          step={1}
+          value={Math.round(seed.boldness * 100)}
+          onChange={(event) => onChange({ ...seed, boldness: Number(event.target.value) / 100 })}
+          className="mt-2 w-full cursor-pointer"
+        />
+      </div>
+
+      <div className="grid grid-cols-4 gap-2">
+        {swatches.map((swatch) => (
+          <div key={swatch.label} className="text-center">
+            <span
+              className="block h-10 rounded-xl border border-border"
+              style={{ backgroundColor: swatch.color }}
+            />
+            <span className="mt-1 block text-[11px] text-muted-foreground">{swatch.label}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          En zayıf yazı okunaklılığı: <strong>{weakest.toFixed(1)}:1</strong>
+        </p>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="rounded-full"
+          onClick={() => onChange(EMBLEM_SEED)}
+        >
+          Amblemin bordosuna dön
+        </Button>
       </div>
     </div>
   );

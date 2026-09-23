@@ -83,7 +83,7 @@ function NotificationsPage() {
     <div className="mx-auto w-full max-w-3xl px-4 py-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="flex items-center gap-2 text-3xl">
-          <Bell className="size-7 text-accent" /> Bildirimler
+          <Bell className="size-7 text-primary" /> Bildirimler
         </h1>
         <div className="flex items-center gap-2">
           {notifications.length > 0 ? (

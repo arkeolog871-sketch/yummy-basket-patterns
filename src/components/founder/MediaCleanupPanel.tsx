@@ -74,7 +74,7 @@ export function MediaCleanupPanel() {
   return (
     <div className="rounded-3xl border border-border bg-card p-6">
       <div className="flex items-center gap-2">
-        <ImageDown className="size-4 text-accent" />
+        <ImageDown className="size-4 text-primary" />
         <h2 className="text-xl">Mevcut görselleri küçült</h2>
       </div>
       <p className="mt-1 text-sm text-muted-foreground">

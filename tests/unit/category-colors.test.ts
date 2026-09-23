@@ -83,6 +83,27 @@ describe("en uzak renk seçimi", () => {
     expect(nearest).toBeGreaterThan(0.06);
   });
 
+  it("canlıdaki 14 kategori rengi birebir yeniden üretilir (renk kayması yok)", () => {
+    // 23 Eylül 2026'da veritabanına yazılan değerler. Hesap kodu yeniden
+    // düzenlense de mevcut kategorilerin rengi DEĞİŞMEMELİ.
+    expect(assignCategoryColors(14)).toEqual([
+      "#ac262a",
+      "#0541a4",
+      "#105b00",
+      "#88379c",
+      "#006d78",
+      "#7c5a00",
+      "#870155",
+      "#7b3000",
+      "#572999",
+      "#504ebd",
+      "#005074",
+      "#564a00",
+      "#0063a9",
+      "#00584a",
+    ]);
+  });
+
   it("boş veya bozuk mevcut renkler yok sayılır", () => {
     expect(pickCategoryColor([null, undefined, "", "mavi", "#12"])).toBe(pickCategoryColor([]));
   });
