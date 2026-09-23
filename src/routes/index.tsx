@@ -6,6 +6,8 @@ import { Search, Sparkles } from "lucide-react";
 import { RestaurantCard } from "@/components/restaurant/RestaurantCard";
 import { homeQuery, type HomeSearch } from "@/lib/catalog.queries";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { categoryChipText } from "@/lib/category-colors";
+import { seedFromHex, themeBackgroundHex } from "@/lib/theme-palette";
 import { fetchPublicBanners } from "@/lib/advertisements";
 import { HeroBannerSlider, legacySlidesToBanners } from "@/components/home/HeroBannerSlider";
 import { FounderContact } from "@/components/home/FounderContact";
@@ -14,7 +16,6 @@ import { interpretSmartSearch } from "@/lib/ai-search.functions";
 import { AI_UI_ENABLED } from "@/lib/ai-features";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
 
 const AllBusinessesMap = lazy(() => import("@/components/business/AllBusinessesMap"));
 
@@ -70,7 +71,11 @@ export const Route = createFileRoute("/")({
 function Index() {
   const search = Route.useSearch();
   const navigate = useNavigate();
-  const { settings } = useSiteSettings();
+  const { settings, isDark } = useSiteSettings();
+  const pageBackground = themeBackgroundHex(
+    seedFromHex(settings.primary_color),
+    isDark ? "dark" : "light",
+  );
   const { categories } = useAppCategories();
   const homeQueryResult = useQuery({
     ...homeQuery(search),
@@ -159,7 +164,6 @@ function Index() {
     }
     apply({ kategori: activeSector, q: raw });
   }
-
 
   return (
     <div>
@@ -251,6 +255,8 @@ function Index() {
           {categories.map((sector) => {
             const active = activeSector === sector.slug;
             const color = sector.color;
+            // Koyu temada kategori rengi koyu zeminde okunmaz; aynı ton açılır.
+            const text = color ? categoryChipText(color, pageBackground) : undefined;
             return (
               <button
                 key={sector.slug}
@@ -267,7 +273,7 @@ function Index() {
                   color
                     ? active
                       ? { backgroundColor: color, borderColor: color, color: "#fff" }
-                      : { backgroundColor: `${color}1a`, borderColor: `${color}55`, color }
+                      : { backgroundColor: `${color}1a`, borderColor: `${text}55`, color: text }
                     : undefined
                 }
               >
@@ -337,7 +343,9 @@ function Index() {
                 <RestaurantCard
                   key={business.id}
                   restaurant={business}
-                  categoryColor={categories.find((sector) => sector.slug === business.sector)?.color}
+                  categoryColor={
+                    categories.find((sector) => sector.slug === business.sector)?.color
+                  }
                 />
               ))}
             </div>
