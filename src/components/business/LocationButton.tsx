@@ -1,6 +1,6 @@
 import { MapPin, Navigation } from "lucide-react";
 import { toast } from "sonner";
-import { locationLabel, openDirections, type BusinessLocation } from "@/lib/maps";
+import { hasDirections, locationLabel, openDirections, type BusinessLocation } from "@/lib/maps";
 
 export function LocationButton({
   business,
@@ -15,6 +15,17 @@ export function LocationButton({
 }) {
   const label = locationLabel(business) ?? fallbackLabel ?? null;
   if (!label) return null;
+
+  // Kesin konum (koordinat / işletmenin harita bağlantısı) yoksa ilçe-şehir
+  // yalnız yazı olarak kalır; dokununca tahmini bir yere yol tarifi açılmaz.
+  if (!hasDirections(business)) {
+    return (
+      <span className={`inline-flex items-center gap-1 ${className}`}>
+        {showIcon ? <MapPin className="size-3.5 shrink-0" /> : null}
+        <span className="truncate">{label}</span>
+      </span>
+    );
+  }
 
   return (
     <button
