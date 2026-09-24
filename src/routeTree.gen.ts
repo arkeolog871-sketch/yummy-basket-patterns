@@ -39,6 +39,8 @@ import { Route as AdminSplatRouteImport } from './routes/admin.$'
 import { Route as RestoranSlugRouteImport } from './routes/restoran.$slug'
 import { Route as SiparisIdRouteImport } from './routes/siparis.$id'
 import { Route as VendorDashboardRouteImport } from './routes/vendor.dashboard'
+import { Route as YasalIndexRouteImport } from './routes/yasal.index'
+import { Route as YasalSlugRouteImport } from './routes/yasal.$slug'
 import { Route as ApiSyncProductsRouteImport } from './routes/api/sync/products'
 import { Route as ApiV1BannersRouteImport } from './routes/api/v1/banners'
 import { Route as ApiPublicBrandSplatRouteImport } from './routes/api/public/brand.$'
@@ -199,6 +201,16 @@ const VendorDashboardRoute = VendorDashboardRouteImport.update({
   path: '/vendor/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const YasalIndexRoute = YasalIndexRouteImport.update({
+  id: '/yasal/',
+  path: '/yasal/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const YasalSlugRoute = YasalSlugRouteImport.update({
+  id: '/yasal/$slug',
+  path: '/yasal/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSyncProductsRoute = ApiSyncProductsRouteImport.update({
   id: '/api/sync/products',
   path: '/api/sync/products',
@@ -265,7 +277,9 @@ export interface FileRoutesByFullPath {
   '/restoran/$slug': typeof RestoranSlugRoute
   '/siparis/$id': typeof SiparisIdRoute
   '/vendor/dashboard': typeof VendorDashboardRoute
+  '/yasal/$slug': typeof YasalSlugRoute
   '/admin/': typeof AdminIndexRoute
+  '/yasal/': typeof YasalIndexRoute
   '/api/sync/products': typeof ApiSyncProductsRoute
   '/api/v1/banners': typeof ApiV1BannersRouteWithChildren
   '/api/public/brand/$': typeof ApiPublicBrandSplatRoute
@@ -304,7 +318,9 @@ export interface FileRoutesByTo {
   '/restoran/$slug': typeof RestoranSlugRoute
   '/siparis/$id': typeof SiparisIdRoute
   '/vendor/dashboard': typeof VendorDashboardRoute
+  '/yasal/$slug': typeof YasalSlugRoute
   '/admin': typeof AdminIndexRoute
+  '/yasal': typeof YasalIndexRoute
   '/api/sync/products': typeof ApiSyncProductsRoute
   '/api/v1/banners': typeof ApiV1BannersRouteWithChildren
   '/api/public/brand/$': typeof ApiPublicBrandSplatRoute
@@ -344,7 +360,9 @@ export interface FileRoutesById {
   '/restoran/$slug': typeof RestoranSlugRoute
   '/siparis/$id': typeof SiparisIdRoute
   '/vendor/dashboard': typeof VendorDashboardRoute
+  '/yasal/$slug': typeof YasalSlugRoute
   '/admin/': typeof AdminIndexRoute
+  '/yasal/': typeof YasalIndexRoute
   '/api/sync/products': typeof ApiSyncProductsRoute
   '/api/v1/banners': typeof ApiV1BannersRouteWithChildren
   '/api/public/brand/$': typeof ApiPublicBrandSplatRoute
@@ -385,7 +403,9 @@ export interface FileRouteTypes {
     | '/restoran/$slug'
     | '/siparis/$id'
     | '/vendor/dashboard'
+    | '/yasal/$slug'
     | '/admin/'
+    | '/yasal/'
     | '/api/sync/products'
     | '/api/v1/banners'
     | '/api/public/brand/$'
@@ -424,7 +444,9 @@ export interface FileRouteTypes {
     | '/restoran/$slug'
     | '/siparis/$id'
     | '/vendor/dashboard'
+    | '/yasal/$slug'
     | '/admin'
+    | '/yasal'
     | '/api/sync/products'
     | '/api/v1/banners'
     | '/api/public/brand/$'
@@ -463,7 +485,9 @@ export interface FileRouteTypes {
     | '/restoran/$slug'
     | '/siparis/$id'
     | '/vendor/dashboard'
+    | '/yasal/$slug'
     | '/admin/'
+    | '/yasal/'
     | '/api/sync/products'
     | '/api/v1/banners'
     | '/api/public/brand/$'
@@ -503,7 +527,9 @@ export interface RootRouteChildren {
   RestoranSlugRoute: typeof RestoranSlugRoute
   SiparisIdRoute: typeof SiparisIdRoute
   VendorDashboardRoute: typeof VendorDashboardRoute
+  YasalSlugRoute: typeof YasalSlugRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  YasalIndexRoute: typeof YasalIndexRoute
   ApiSyncProductsRoute: typeof ApiSyncProductsRoute
   ApiV1BannersRoute: typeof ApiV1BannersRouteWithChildren
   ApiPublicBrandSplatRoute: typeof ApiPublicBrandSplatRoute
@@ -724,6 +750,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VendorDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/yasal/': {
+      id: '/yasal/'
+      path: '/yasal'
+      fullPath: '/yasal/'
+      preLoaderRoute: typeof YasalIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/yasal/$slug': {
+      id: '/yasal/$slug'
+      path: '/yasal/$slug'
+      fullPath: '/yasal/$slug'
+      preLoaderRoute: typeof YasalSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/sync/products': {
       id: '/api/sync/products'
       path: '/api/sync/products'
@@ -818,7 +858,9 @@ const rootRouteChildren: RootRouteChildren = {
   RestoranSlugRoute: RestoranSlugRoute,
   SiparisIdRoute: SiparisIdRoute,
   VendorDashboardRoute: VendorDashboardRoute,
+  YasalSlugRoute: YasalSlugRoute,
   AdminIndexRoute: AdminIndexRoute,
+  YasalIndexRoute: YasalIndexRoute,
   ApiSyncProductsRoute: ApiSyncProductsRoute,
   ApiV1BannersRoute: ApiV1BannersRouteWithChildren,
   ApiPublicBrandSplatRoute: ApiPublicBrandSplatRoute,
