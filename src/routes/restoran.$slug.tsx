@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { restaurantDetailQuery } from "@/lib/catalog.queries";
 import { getMyReview, submitReview, deleteMyReview } from "@/lib/reviews.functions";
+import { reportContent } from "@/lib/compliance.functions";
 import { LocationButton } from "@/components/business/LocationButton";
 import { CallButton } from "@/components/business/CallButton";
 import { BusinessMap } from "@/components/business/BusinessMap";
@@ -438,6 +439,8 @@ type RestaurantReview = {
   comment: string | null;
   author_name: string;
   created_at: string;
+  verified_order_id?: string | null;
+  seller_reply?: string | null;
 };
 
 function ReviewsSection({
@@ -591,7 +594,14 @@ function ReviewsSection({
               className="rounded-3xl border border-border/70 bg-card p-4 shadow-card"
             >
               <div className="flex items-center justify-between gap-3">
-                <span className="font-semibold">{review.author_name}</span>
+                <span className="font-semibold">
+                  {review.author_name}
+                  {review.verified_order_id ? (
+                    <span className="ml-2 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+                      Doğrulanmış sipariş
+                    </span>
+                  ) : null}
+                </span>
                 <span className="flex items-center gap-1 text-sm">
                   <Star className="size-4 fill-primary text-primary" />
                   {review.rating}
@@ -600,13 +610,68 @@ function ReviewsSection({
               {review.comment ? (
                 <p className="mt-2 text-sm text-muted-foreground">{review.comment}</p>
               ) : null}
-              <p className="mt-2 text-xs text-muted-foreground">
-                {formatDateTime(review.created_at)}
-              </p>
+              {review.seller_reply ? (
+                <p className="mt-2 rounded-2xl bg-muted p-3 text-sm">
+                  <span className="font-semibold">İşletmenin cevabı: </span>
+                  {review.seller_reply}
+                </p>
+              ) : null}
+              <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span>{formatDateTime(review.created_at)}</span>
+                {user ? <ReportReviewButton reviewId={review.id} /> : null}
+              </div>
             </li>
           ))}
         </ul>
       )}
     </div>
+  );
+}
+
+const REPORT_REASONS = [
+  ["insult", "Hakaret"],
+  ["personal_data", "Kişisel veri içeriyor"],
+  ["threat", "Tehdit"],
+  ["misleading", "Yanıltıcı"],
+  ["illegal", "Hukuka aykırı"],
+  ["spam", "Spam"],
+  ["other", "Diğer"],
+] as const;
+
+function ReportReviewButton({ reviewId }: { reviewId: string }) {
+  const report = useServerFn(reportContent);
+  const [open, setOpen] = useState(false);
+  const [sent, setSent] = useState(false);
+  if (sent) return <span>Bildirildi</span>;
+  if (!open)
+    return (
+      <button type="button" className="underline" onClick={() => setOpen(true)}>
+        Bildir
+      </button>
+    );
+  return (
+    <select
+      aria-label="Bildirim nedeni"
+      className="rounded-lg border border-input bg-background px-2 py-1"
+      defaultValue=""
+      onChange={async (e) => {
+        const reason = e.target.value as (typeof REPORT_REASONS)[number][0];
+        if (!reason) return;
+        try {
+          await report({ data: { targetType: "review", targetId: reviewId, reason, details: null } });
+          setSent(true);
+          toast.success("Bildiriminiz incelemeye alındı.");
+        } catch (err) {
+          toast.error(toPublicErrorMessage(err));
+        }
+      }}
+    >
+      <option value="">Neden seçin…</option>
+      {REPORT_REASONS.map(([v, l]) => (
+        <option key={v} value={v}>
+          {l}
+        </option>
+      ))}
+    </select>
   );
 }
