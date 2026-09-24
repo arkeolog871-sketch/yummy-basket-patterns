@@ -1356,6 +1356,7 @@ export type Database = {
           pre_information: Json | null
           recipient_name: string
           restaurant_id: string
+          seller_snapshot: Json | null
           status: Database["public"]["Enums"]["order_status"]
           street: string
           subtotal: number
@@ -1380,6 +1381,7 @@ export type Database = {
           pre_information?: Json | null
           recipient_name: string
           restaurant_id: string
+          seller_snapshot?: Json | null
           status?: Database["public"]["Enums"]["order_status"]
           street: string
           subtotal: number
@@ -1404,6 +1406,7 @@ export type Database = {
           pre_information?: Json | null
           recipient_name?: string
           restaurant_id?: string
+          seller_snapshot?: Json | null
           status?: Database["public"]["Enums"]["order_status"]
           street?: string
           subtotal?: number
