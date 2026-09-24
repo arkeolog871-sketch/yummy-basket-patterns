@@ -151,7 +151,9 @@ describe("yazı rengi ebeveynden miras alınır", () => {
   });
 
   it("zorlandığında bile tuş, bağlantı ve rozet içinde zorlanmaz", () => {
-    expect(css).toContain(':not(:is(button, a, [role="button"], [data-slot="badge"]) *)');
+    expect(css).toContain(
+      ':not(:is(button, a, [role="button"], [data-slot="badge"], .gm-style) *)',
+    );
   });
 
   it("vurgu rengi (açık altın) yazı rengi olarak kullanılmıyor", () => {
