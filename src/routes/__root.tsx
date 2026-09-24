@@ -30,6 +30,7 @@ import { ErrorCollector } from "@/components/system/ErrorCollector";
 import { AppErrorBoundary } from "@/components/system/AppErrorBoundary";
 import { fcmTokenCatcherInlineScript, publicEnvInlineScript } from "@/lib/public-env";
 import { markNativeShell, nativeShellMarkerInlineScript } from "@/lib/native-shell";
+import { installIosFullScreen, iosShellMarkerInlineScript } from "@/lib/ios-full-screen";
 import { APP_SCROLL_ID } from "@/lib/app-scroll";
 import { TextPrefsProvider } from "@/hooks/useTextPrefs";
 import { installMapsSchemeGuard } from "@/lib/maps";
@@ -153,6 +154,12 @@ function RootShell({ children }: { children: ReactNode }) {
           dangerouslySetInnerHTML={{ __html: nativeShellMarkerInlineScript() }}
           suppressHydrationWarning
         />
+        {/* iPhone kabuğu işareti: AYRI betik, yukarıdaki işaretlemeye dokunmaz.
+            Alt boşluk düzeltmesi yalnız bu işaretle çalışır (ios-full-screen.ts). */}
+        <script
+          dangerouslySetInnerHTML={{ __html: iosShellMarkerInlineScript() }}
+          suppressHydrationWarning
+        />
         <script
           dangerouslySetInnerHTML={{ __html: publicEnvInlineScript() }}
           suppressHydrationWarning
@@ -179,6 +186,10 @@ function AppChrome() {
     setFramed(window.self !== window.top);
     markNativeShell();
   }, []);
+
+  // iPhone uygulamasında sayfa ekranın altına kadar insin; başka her yerde
+  // (tarayıcı, Android) hiçbir şey yapmaz. Bkz. ios-full-screen.ts.
+  useEffect(() => installIosFullScreen(), []);
 
   return (
     <div
