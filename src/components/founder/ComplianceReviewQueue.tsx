@@ -64,7 +64,7 @@ export function ComplianceReviewQueue() {
   const critical = (label: string, fn: () => Promise<unknown>) => {
     if (window.confirm(`${label} Bu karar kayda geçer. Emin misiniz?`)) run.mutate(fn);
   };
-  const NoteInput = ({ id }: { id: string }) => (
+  const noteInput = (id: string) => (
     <Input
       className="mt-2"
       placeholder="Gerekçe (zorunlu)"
@@ -91,7 +91,7 @@ export function ComplianceReviewQueue() {
               <p className="text-xs text-muted-foreground">
                 No: {d.document_no ?? "—"} · Geçerlilik: {d.expires_at ?? "belirtilmedi"}
               </p>
-              <NoteInput id={d.id} />
+              {noteInput(d.id)}
               <div className="mt-2 flex flex-wrap gap-2">
                 <Button
                   size="sm"
@@ -144,7 +144,7 @@ export function ComplianceReviewQueue() {
                 {c.subject} · {restaurantName(c.restaurants)} · {c.status}
               </p>
               <p className="mt-1 whitespace-pre-line text-muted-foreground">{c.body}</p>
-              <NoteInput id={c.id} />
+              {noteInput(c.id)}
               <div className="mt-2 flex flex-wrap gap-2">
                 {(
                   [
@@ -195,7 +195,7 @@ export function ComplianceReviewQueue() {
                 {r.requested_amount ? ` · ${r.requested_amount} TL` : ""}
               </p>
               <p className="mt-1 text-muted-foreground">{r.reason}</p>
-              <NoteInput id={r.id} />
+              {noteInput(r.id)}
               <div className="mt-2 flex flex-wrap gap-2">
                 <Button
                   size="sm"
@@ -247,7 +247,7 @@ export function ComplianceReviewQueue() {
                 {r.target_type} · {REPORT_REASON[r.reason] ?? r.reason}
               </p>
               {r.details ? <p className="mt-1 text-muted-foreground">{r.details}</p> : null}
-              <NoteInput id={r.id} />
+              {noteInput(r.id)}
               <div className="mt-2 flex flex-wrap gap-2">
                 <Button
                   size="sm"

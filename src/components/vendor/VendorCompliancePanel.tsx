@@ -1,3 +1,4 @@
+import { VendorDocumentsSection } from "./VendorDocumentsSection";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -84,6 +85,7 @@ export function VendorCompliancePanel() {
           </ul>
         )}
       </div>
+      <VendorDocumentsSection />
     </div>
   );
 }
