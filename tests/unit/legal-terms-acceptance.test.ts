@@ -40,11 +40,13 @@ describe("KVKK aydınlatma ve eksik kimlik", () => {
     expect(read("src/components/legal/LegalDocument.tsx")).not.toMatch(/type="checkbox"/);
   });
   it("eksik alan uydurulmaz, açık etiketle gösterilir", () => {
-    const out = fillLegalText("{{mersis_no}}", {} as never);
+    const out = fillLegalText("{{PLATFORM_MERSIS}}", {} as never);
     expect(out).toContain(LEGAL_MISSING_LABEL);
   });
   it("yayın eksik zorunlu kimlikte engellenir", () => {
-    expect(read("src/lib/compliance.functions.ts")).toMatch(/Yayın yapılamaz: eksik platform kimliği/);
+    expect(read("src/lib/compliance.functions.ts")).toMatch(
+      /Yayın yapılamaz: eksik platform kimliği/,
+    );
   });
   it("eksik kimlik sipariş düğmesini kilitlemez", () => {
     const line = read("src/routes/odeme.tsx").match(/disabled=\{!selectedId[^}]*\}/)?.[0] ?? "";

@@ -506,7 +506,8 @@ export async function recordTermsAcceptance(
     context,
     ...meta,
   });
-  if (noticeError) console.error("[legal] aydınlatma gösterimi yazılamadı", { message: noticeError.message });
+  if (noticeError)
+    console.error("[legal] aydınlatma gösterimi yazılamadı", { message: noticeError.message });
   const { logAudit } = await import("./audit.server");
   await logAudit({
     actorId: userId,
