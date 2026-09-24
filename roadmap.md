@@ -40,9 +40,9 @@
 - [x] Ödeme: satıcı kimliği kutusu, ön bilgilendirme onayı, siparişe kalıcı kopya
 - [x] İşletme: sözleşme sürüm onayı, doğrulama durumu, bedel dökümü; belge/doğrulama olmadan yayın engeli (veritabanı)
 - [x] Kurucu: Platform Kimliği + Hukuk ve Uyum Merkezi listeleri
-- [ ] İşletme belge yükleme ekranı ve kurucu belge onay/red düğmeleri
-- [ ] Kurucu için şikâyet/iade/rapor karar ekranları, ihlal kaydı formu, ikinci onay akışı
-- [ ] Yorumda "doğrulanmış sipariş" etiketi ve "Bildir" düğmesi, satıcı cevabı
-- [ ] Hesap silmede anonimleştirme işlemi
+- [x] İşletme belge yükleme ekranı ve kurucu belge onay/red düğmeleri
+- [x] Kurucu için şikâyet/iade/rapor karar ekranları, ihlal kaydı formu, ikinci onay akışı
+- [x] Yorumda "doğrulanmış sipariş" etiketi ve "Bildir" düğmesi, satıcı cevabı
+- [x] Hesap silmede anonimleştirme işlemi
 - [ ] Gerçek ödeme kuruluşu webhook'u (kuruluş seçilince)
 - [ ] Tarayıcı üzerinden uçtan uca senaryolar (A–S)
