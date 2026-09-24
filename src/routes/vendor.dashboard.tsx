@@ -60,6 +60,7 @@ import { Label } from "@/components/ui/label";
 import { changeVendorPassword } from "@/lib/vendor-auth.functions";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { VendorCompliancePanel } from "@/components/vendor/VendorCompliancePanel";
 
 export const Route = createFileRoute("/vendor/dashboard")({
   head: () => ({
@@ -560,6 +561,7 @@ function VendorDashboard() {
             <TabsTrigger value="guvenlik">
               <KeyRound className="size-4" /> Şifre
             </TabsTrigger>
+            <TabsTrigger value="sozlesme">Sözleşme ve bedeller</TabsTrigger>
           </TabsList>
 
           <TabsContent value="bildirimler" className="mt-6 space-y-3">
@@ -819,6 +821,9 @@ function VendorDashboard() {
 
           <TabsContent value="guvenlik" className="mt-6">
             <PasswordPanel />
+          </TabsContent>
+          <TabsContent value="sozlesme" className="mt-6">
+            <VendorCompliancePanel />
           </TabsContent>
         </Tabs>
       </div>
