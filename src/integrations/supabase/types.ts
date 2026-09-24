@@ -460,6 +460,39 @@ export type Database = {
         }
         Relationships: []
       }
+      business_category_catalog: {
+        Row: {
+          group_name: string
+          is_active: boolean
+          name: string
+          position: number
+          sector_slug: string | null
+          slug: string
+          synonyms: string[]
+          updated_at: string
+        }
+        Insert: {
+          group_name: string
+          is_active?: boolean
+          name: string
+          position?: number
+          sector_slug?: string | null
+          slug: string
+          synonyms?: string[]
+          updated_at?: string
+        }
+        Update: {
+          group_name?: string
+          is_active?: boolean
+          name?: string
+          position?: number
+          sector_slug?: string | null
+          slug?: string
+          synonyms?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       business_documents: {
         Row: {
           created_at: string

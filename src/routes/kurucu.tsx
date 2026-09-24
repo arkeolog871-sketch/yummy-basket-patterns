@@ -44,7 +44,9 @@ import { CategoryPanel } from "@/components/founder/CategoryPanel";
 import { ServiceAreaPanel } from "@/components/founder/ServiceAreaPanel";
 import { ApplicationsPanel } from "@/components/founder/ApplicationsPanel";
 import { PageManagerPanel } from "@/components/founder/PageManagerPanel";
-import { useAppCategories } from "@/hooks/useTaxonomy";
+import { useAppCategories, useBusinessCategoryCatalog } from "@/hooks/useTaxonomy";
+import { resolveCatalogSector } from "@/lib/business-category-catalog";
+import { CategorySearchField } from "@/components/business/CategorySearchField";
 import { SECTORS } from "@/lib/sectors";
 import { formatPrice, formatDateTime, ORDER_STATUS_LABELS, slugify } from "@/lib/format";
 import { formatPhoneDisplay } from "@/lib/phone";
@@ -785,6 +787,7 @@ function BusinessPanel({
   const remove = useServerFn(deleteBusiness);
   const move = useServerFn(moveRestaurant);
   const { categories } = useAppCategories();
+  const { catalog } = useBusinessCategoryCatalog();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(blankBusiness);
   const [pickedCover, setPickedCover] = useState<PickedImage | null>(null);
@@ -940,11 +943,37 @@ function BusinessPanel({
             ))}
           </div>
         </div>
-        <Input
-          placeholder="Alt tür (Kebap, Pizza, Manav…)"
-          value={form.category}
-          onChange={(event) => setForm({ ...form, category: event.target.value })}
-        />
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">
+            İşletme türü (Alt tür) — yazın, listeden seçin
+          </p>
+          <CategorySearchField
+            catalog={catalog}
+            value={form.category}
+            suggestSector={activeSector}
+            placeholder="Alt tür ara: kasap, kuaför, oto yıkama…"
+            onChange={(category) => setForm((current) => ({ ...current, category }))}
+            onPick={(entry) =>
+              setForm((current) => ({
+                ...current,
+                category: entry.name,
+                // Eşleşen ana kategori varsa o da seçilir; yoksa seçim aynen kalır.
+                sector:
+                  resolveCatalogSector(
+                    entry,
+                    categories.map((item) => item.slug),
+                  ) ?? current.sector,
+              }))
+            }
+            sectorLabel={(entry) => {
+              const slug = resolveCatalogSector(
+                entry,
+                categories.map((item) => item.slug),
+              );
+              return categories.find((item) => item.slug === slug)?.label ?? null;
+            }}
+          />
+        </div>
         <Input
           placeholder="Etiketler (virgülle)"
           value={form.cuisines}

@@ -16,7 +16,9 @@ import {
 } from "@/lib/ios-native-auth";
 import { useNativeGoogleSignIn } from "@/hooks/useNativeGoogleSignIn";
 
-import { useAppCategories } from "@/hooks/useTaxonomy";
+import { useAppCategories, useBusinessCategoryCatalog } from "@/hooks/useTaxonomy";
+import { resolveCatalogSector } from "@/lib/business-category-catalog";
+import { CategorySearchField } from "@/components/business/CategorySearchField";
 import { slugify, formatDateTime } from "@/lib/format";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { parseDecimalInput } from "@/lib/decimal-input";
@@ -246,6 +248,7 @@ function BusinessApplicationPage() {
   const fetchMine = useServerFn(listMyBusinessApplications);
   const queryClient = useQueryClient();
   const { categories } = useAppCategories();
+  const { catalog } = useBusinessCategoryCatalog();
   const { user } = useAuth();
   const [form, setForm] = useState(emptyForm);
   // Haritaya verilen değer de ham Number() ile değil parseDecimalInput ile
@@ -440,12 +443,38 @@ function BusinessApplicationPage() {
         </div>
 
         <div className="space-y-1">
-          <Label>Alt tür (Kebap, Pizza, Manav…)</Label>
-          <Input
+          <Label htmlFor="business-category-search">İşletme türü (Alt tür)</Label>
+          <CategorySearchField
+            inputId="business-category-search"
+            catalog={catalog}
             value={form.category}
-            onChange={(event) => setForm({ ...form, category: event.target.value })}
             required
+            suggestSector={activeSector}
+            onChange={(category) => setForm((current) => ({ ...current, category }))}
+            onPick={(entry) =>
+              setForm((current) => ({
+                ...current,
+                category: entry.name,
+                // Eşleşen ana kategori varsa o da seçilir; yoksa seçim aynen kalır.
+                sector:
+                  resolveCatalogSector(
+                    entry,
+                    categories.map((item) => item.slug),
+                  ) ?? current.sector,
+              }))
+            }
+            sectorLabel={(entry) => {
+              const slug = resolveCatalogSector(
+                entry,
+                categories.map((item) => item.slug),
+              );
+              return categories.find((item) => item.slug === slug)?.label ?? null;
+            }}
           />
+          <p className="text-xs text-muted-foreground">
+            Yazmaya başlayın: 400'ü aşkın işletme türü arasından seçin. Listede yoksa yazdığınız ad
+            kullanılır.
+          </p>
         </div>
         <div className="space-y-1">
           <Label>Etiketler (virgülle, isteğe bağlı)</Label>

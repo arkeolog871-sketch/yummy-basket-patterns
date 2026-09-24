@@ -1,0 +1,671 @@
+import { slugify } from "./format";
+
+/**
+ * İşletme kategori kataloğu (işletme başvurusu ve Sayfa Yöneticisi Paneli'ndeki
+ * "Alt tür" arama motoru).
+ *
+ * Mevcut 14 ana kategori (app_categories: Kafe, Market, Berber…) aynen
+ * duruyor; ana sayfadaki düğmeler onlardan geliyor. Bu katalog onların
+ * ALTINDA, işletmenin ne iş yaptığını anlatan ayrıntılı adları tutar.
+ * Seçilen ad `restaurants.category` alanına yazılır (bugünkü "Alt tür"
+ * alanıyla aynı yer); eşleşen ana kategori varsa o da seçilir.
+ *
+ * Kaynak: Ticaret Bakanlığı esnaf ve sanatkâr meslek kolları listesi ile
+ * Google İşletme Profili'nin kategori yapısı (bir ana, en çok 9 ek kategori)
+ * esas alındı; birbirinin tekrarı olan adlar birleştirildi, eski adlar
+ * eş anlamlı olarak aranabilir bırakıldı.
+ *
+ * Veritabanındaki `business_category_catalog` tablosu bu listeden
+ * üretilir (supabase/migrations/20260924150000_business_category_catalog.sql);
+ * tests/unit/business-category-catalog.test.ts ikisinin aynı olduğunu
+ * denetler. Tablo okunamazsa (ör. göç henüz uygulanmadıysa) bu liste
+ * kullanılır; arama hiçbir durumda boş kalmaz.
+ *
+ * Satır biçimi: [ad, "eş anlamlılar, virgülle", ana kategori slug'ı?]
+ * Ana kategori verilmezse grubun ana kategorisi kullanılır; o da yoksa
+ * seçim işletmeye bırakılır (mevcut 14 kategoriden biri seçilir).
+ */
+
+type Row = readonly [name: string, synonyms?: string, sector?: string | null];
+
+type Group = { group: string; sector: string | null; rows: readonly Row[] };
+
+const GROUPS: readonly Group[] = [
+  {
+    group: "Yeme-İçme",
+    sector: "restoran",
+    rows: [
+      ["Restoran", "lokanta, bistro, aile restoranı, yemek salonu"],
+      ["Ev yemekleri", "esnaf lokantası, sulu yemek, tabldot, hazır yemek", "yemek"],
+      ["Kebapçı", "kebap, ocakbaşı, mangal, adana, urfa, cağ kebabı"],
+      ["Dönerci", "döner, et döner, tavuk döner, iskender", "yemek"],
+      ["Pide ve lahmacun", "pideci, lahmacun, etli ekmek, kıymalı pide", "yemek"],
+      ["Pizzacı", "pizza, pizzeria, italyan pizza", "yemek"],
+      ["Hamburgerci", "burger, hamburger, cheeseburger", "yemek"],
+      ["Köfteci", "köfte, ızgara köfte, piyaz", "yemek"],
+      ["Tavukçu", "tavuk, piliç çevirme, kanat, tavuk şiş", "yemek"],
+      ["Balık restoranı", "balık, deniz ürünleri, balık ekmek, kalamar"],
+      ["Çiğ köfteci", "çiğköfte, çiğ köfte dürüm", "yemek"],
+      ["Kokoreççi", "kokoreç, uykuluk", "yemek"],
+      ["Tantuni", "tantunici, tantuni dürüm", "yemek"],
+      ["Dürümcü", "dürüm, wrap, lavaş", "yemek"],
+      ["Ciğerci", "ciğer, ciğer şiş, arnavut ciğeri", "yemek"],
+      ["Tandır ve kuzu çevirme", "tandır, kuzu çevirme, büryan"],
+      ["Et restoranı", "steakhouse, biftek, antrikot, et lokantası"],
+      ["Mantı evi", "mantı, kayseri mantısı", "yemek"],
+      ["Gözlemeci", "gözleme, sac böreği, bazlama", "yemek"],
+      ["Çorbacı", "çorba, işkembe, kelle paça, mercimek çorbası", "yemek"],
+      ["Pilavcı", "nohutlu pilav, pilav üstü, tavuklu pilav", "yemek"],
+      ["Kahvaltı salonu", "kahvaltıcı, serpme kahvaltı, brunch", "kafe"],
+      ["Büfe ve tostçu", "büfe, tost, sandviç, ayvalık tostu, sucuk ekmek", "yemek"],
+      ["Midyeci", "midye dolma, midye tava", "yemek"],
+      ["Yöresel mutfak", "yöresel yemek, kaburga dolması, meftune, yöre yemekleri"],
+      ["Uzak Doğu mutfağı", "sushi, çin yemeği, japon, noodle, wok"],
+      ["Dünya mutfağı", "italyan, meksika, makarna, fusion"],
+      ["Vegan ve vejetaryen", "vegan, vejetaryen, bitkisel yemek"],
+      ["Sağlıklı ve fit yemek", "diyet yemek, fit menü, salata bar, bowl", "yemek"],
+      ["Catering ve toplu yemek", "yemek firması, tabldot servisi, organizasyon yemeği", "yemek"],
+      ["Meyhane", "rakı, meze, fasıl"],
+      ["Bar ve pub", "bar, pub, bira, kokteyl", "eglence"],
+      ["Kafe", "kafeterya, cafe, kafe restoran", "kafe"],
+      ["Kahveci", "kahve, kahve dükkanı, espresso, türk kahvesi, 3. nesil kahve", "kafe"],
+      ["Çay bahçesi", "çay ocağı, çaycı, semaver", "kafe"],
+      ["Kahvehane", "kıraathane, okey salonu, kahve ocağı", "kafe"],
+      ["Nargile kafe", "nargile, nargileci", "kafe"],
+      ["Meyve suyu ve smoothie", "taze sıkma, smoothie, bubble tea, milkshake", "kafe"],
+      ["Waffle ve kumpir", "waffle, kumpir, krep", "kafe"],
+    ],
+  },
+  {
+    group: "Fırın, Pastane ve Tatlı",
+    sector: "kafe",
+    rows: [
+      ["Fırın", "ekmek fırını, ekmekçi, somun, taş fırın", "market"],
+      ["Simitçi", "simit, açma, çatal, çörek", "market"],
+      ["Börekçi", "börek, su böreği, kol böreği, poğaça", "market"],
+      ["Pastane", "pasta, yaş pasta, kek, kurabiye, pastacı"],
+      ["Butik pasta", "doğum günü pastası, özel tasarım pasta, cupcake, pasta siparişi"],
+      ["Baklavacı", "baklava, şöbiyet, antep baklavası, fıstıklı"],
+      ["Künefeci", "künefe, katmer, hatay künefesi"],
+      ["Sütlü tatlıcı", "muhallebici, sütlaç, kazandibi, tavuk göğsü"],
+      ["Tatlıcı", "şerbetli tatlı, lokma, tulumba, kadayıf"],
+      ["Dondurmacı", "dondurma, maraş dondurması, gelato"],
+      ["Çikolatacı", "çikolata, pralin, çikolata butiği"],
+      ["Lokumcu ve şekerci", "lokum, akide, pişmaniye, şekerleme, cezerye", "market"],
+    ],
+  },
+  {
+    group: "Market ve Gıda",
+    sector: "market",
+    rows: [
+      ["Market", "mini market, gıda market, şarküteri market"],
+      ["Süpermarket", "zincir market, hipermarket, büyük market"],
+      ["Bakkal", "mahalle bakkalı, bakkaliye"],
+      ["Tekel bayi", "tekel, sigara, içki, alkol"],
+      ["Şarküteri", "peynir, zeytin, sucuk, pastırma, peynirci"],
+      ["Kasap", "et, kıyma, dana eti, kuzu eti, kasap dükkanı"],
+      ["Tavuk eti satışı", "piliç, beyaz et, tavuk göğsü, but"],
+      ["Balıkçı", "taze balık, balık hali, deniz ürünleri satışı"],
+      ["Manav", "meyve, sebze, yeşillik, meyve sebze"],
+      ["Kuruyemişçi", "kuruyemiş, çekirdek, fındık, fıstık, leblebi"],
+      ["Aktar", "baharat, baharatçı, bitki çayı, şifalı bitki"],
+      ["Kahve ve çay dükkanı", "çekirdek kahve, türk kahvesi satışı, çay satışı"],
+      ["Süt ürünleri", "süt, yoğurt, ayran, tereyağı, mandıra ürünleri"],
+      ["Doğal ve köy ürünleri", "organik, köy yumurtası, yöresel ürünler, doğal ürün"],
+      ["Ev yapımı ürünler", "el emeği, tarhana, erişte, salça, reçel"],
+      ["Bal ve arı ürünleri", "bal, polen, propolis, arı sütü, petek bal"],
+      ["Zeytin ve zeytinyağı", "zeytinyağı, sızma, zeytin satışı"],
+      ["Bakliyat ve kuru gıda", "bakliyat, bulgur, mercimek, pirinç, nohut"],
+      ["Turşucu", "turşu, turşu suyu"],
+      ["Mezeci", "meze, hazır meze, zeytinyağlılar"],
+      ["Yumurtacı", "yumurta, yumurta satışı"],
+      ["Dondurulmuş gıda", "frozen, donuk ürün, dondurulmuş sebze"],
+      ["Glutensiz ve diyet ürünler", "glutensiz, diyabetik, şekersiz, çölyak"],
+      ["Su bayii", "damacana, içme suyu, su servisi, pet su"],
+      ["İçecek bayii", "meşrubat, soda, maden suyu, gazlı içecek"],
+      ["Toptan gıda", "gıda toptancısı, toptancı, toptan satış"],
+      ["Temizlik ürünleri", "deterjan, temizlik malzemesi, hijyen ürünleri, kâğıt ürünler"],
+    ],
+  },
+  {
+    group: "Giyim ve Moda",
+    sector: "giyim",
+    rows: [
+      ["Kadın giyim", "bayan giyim, elbise, bluz, etek"],
+      ["Erkek giyim", "gömlek, pantolon, takım elbise, damatlık"],
+      ["Çocuk ve bebek giyim", "çocuk kıyafeti, bebek kıyafeti, zıbın"],
+      ["Tesettür giyim", "tesettür, eşarp, şal, ferace, pardesü"],
+      ["Abiye ve gece elbisesi", "abiye, nişan elbisesi, kına elbisesi"],
+      ["Spor giyim", "eşofman, spor kıyafet, tayt"],
+      ["İç giyim", "iç çamaşırı, pijama, gecelik, çamaşır"],
+      ["Kot ve jean", "kot pantolon, denim, jean"],
+      ["Büyük beden giyim", "battal beden, büyük beden"],
+      ["İkinci el giyim", "vintage, spot giyim, ikinci el kıyafet"],
+      ["Toptan giyim", "tekstil toptan, konfeksiyon toptan"],
+      ["İş elbisesi ve üniforma", "iş kıyafeti, üniforma, önlük, okul forması"],
+      ["Deri ve kürk", "deri ceket, deri mont, kürk"],
+      ["Mont ve dış giyim", "mont, kaban, parka, yağmurluk"],
+      ["Butik", "butik mağaza, tasarım kıyafet"],
+      ["Çorap ve aksesuar", "çorap, kemer, cüzdan, şapka, eldiven"],
+      ["Kumaşçı", "kumaş, metraj kumaş, perdelik kumaş"],
+      ["Tuhafiye", "düğme, fermuar, dantel, iplik, tuhafiyeci"],
+      ["Terzi", "tadilat, paça, dikiş, elbise dikimi, terzihane"],
+      ["Tekstil baskı ve nakış", "nakış, tişört baskı, logo baskı, transfer baskı"],
+    ],
+  },
+  {
+    group: "Ayakkabı, Çanta ve Takı",
+    sector: "giyim",
+    rows: [
+      ["Ayakkabıcı", "ayakkabı, bot, çizme, terlik"],
+      ["Spor ayakkabı", "sneaker, koşu ayakkabısı"],
+      ["Çanta ve valiz", "çantacı, sırt çantası, valiz, bavul"],
+      ["Ayakkabı tamiri", "kunduracı, ayakkabı boyacısı, pençe"],
+      ["Kuyumcu", "altın, gümüş, pırlanta, bilezik, gümüşçü"],
+      ["Bijuteri", "takı, küpe, kolye, bileklik"],
+      ["Saatçi", "saat, saat tamiri, kol saati, pil değişimi"],
+    ],
+  },
+  {
+    group: "Güzellik ve Kişisel Bakım",
+    sector: "kisisel-bakim",
+    rows: [
+      [
+        "Kadın kuaförü",
+        "kuaför, bayan kuaför, fön, röfle, saç boyama, keratin, ombre, gelin başı",
+        "sac-bakimi",
+      ],
+      ["Berber", "erkek kuaförü, tıraş, sakal, saç kesimi, jilet", "berber"],
+      ["Çocuk kuaförü", "çocuk saç kesimi", "sac-bakimi"],
+      ["Güzellik salonu", "cilt bakımı, estetik salonu, güzellik merkezi"],
+      ["Lazer epilasyon", "epilasyon, ağda, ipl, tüy alma"],
+      ["Manikür ve pedikür", "tırnak, protez tırnak, kalıcı oje, nail art"],
+      ["Kirpik ve kaş", "ipek kirpik, kaş laminasyonu, kaş dizaynı, lifting"],
+      ["Kalıcı makyaj", "microblading, dudak renklendirme, dipliner"],
+      ["Makyaj artisti", "gelin makyajı, profesyonel makyaj, makyöz"],
+      ["Spa ve masaj", "masaj, spa, sauna, buhar odası"],
+      ["Hamam", "türk hamamı, kese köpük"],
+      ["Solaryum", "bronzlaşma, sprey bronz"],
+      ["Dövme ve piercing", "tattoo, dövme, piercing, hızma"],
+      ["Protez saç ve peruk", "peruk, saç protezi, postiş", "sac-bakimi"],
+      ["Kozmetik ve parfümeri", "kozmetik, parfüm, makyaj malzemesi, cilt bakım ürünleri"],
+      ["Zayıflama merkezi", "bölgesel incelme, selülit, vücut şekillendirme"],
+    ],
+  },
+  {
+    group: "Sağlık",
+    sector: null,
+    rows: [
+      ["Diş kliniği", "dişçi, diş hekimi, implant, diş beyazlatma, ortodonti"],
+      ["Poliklinik", "tıp merkezi, muayenehane, sağlık merkezi"],
+      ["Özel hastane", "hastane, acil servis"],
+      ["Aile hekimi", "aile sağlığı merkezi, asm"],
+      ["Fizik tedavi", "fizyoterapi, rehabilitasyon, fizyoterapist"],
+      ["Psikolog", "psikolojik danışmanlık, terapi, psikoterapi, aile danışmanı"],
+      ["Diyetisyen", "beslenme uzmanı, diyet, kilo verme"],
+      ["Göz doktoru", "göz kliniği, göz muayenesi, katarakt"],
+      ["Kadın doğum", "jinekolog, gebelik takibi, kadın hastalıkları"],
+      ["Çocuk doktoru", "pediatri, pediatrist, çocuk hastalıkları"],
+      ["Cildiye", "dermatolog, cilt doktoru, dermatoloji"],
+      ["Kulak burun boğaz", "kbb, kulak burun boğaz doktoru"],
+      ["Ortopedi", "ortopedist, kemik doktoru"],
+      ["Tahlil laboratuvarı", "laboratuvar, kan tahlili, test merkezi"],
+      ["Görüntüleme merkezi", "röntgen, mr, tomografi, ultrason"],
+      ["Evde sağlık hizmeti", "evde bakım, hemşire, evde serum, pansuman"],
+      ["Huzurevi ve bakım merkezi", "yaşlı bakımevi, bakım evi, huzurevi"],
+      ["Özel ambulans", "ambulans, hasta nakil"],
+      ["İşitme cihazı merkezi", "işitme cihazı, kulak cihazı, odyometri"],
+      ["Estetik klinik", "estetik cerrahi, botoks, dolgu, plastik cerrahi"],
+      ["Saç ekim merkezi", "saç ekimi, fue, saç ekim kliniği"],
+      ["Tamamlayıcı tıp", "akupunktur, hacamat, kupa, ozon terapi"],
+      ["Dil ve konuşma terapisti", "konuşma terapisi, logoped, kekemelik"],
+    ],
+  },
+  {
+    group: "Eczane ve Medikal",
+    sector: null,
+    rows: [
+      ["Eczane", "nöbetçi eczane, ilaç, eczacı"],
+      ["Medikal malzeme", "tıbbi cihaz, tansiyon aleti, hasta bezi, oksijen tüpü"],
+      ["Optik", "gözlükçü, gözlük, lens, güneş gözlüğü"],
+      ["Ortopedik ürünler", "ortopedik ayakkabı, korse, ortez, protez"],
+      ["Sporcu besini ve takviye", "vitamin, gıda takviyesi, protein tozu, supplement"],
+    ],
+  },
+  {
+    group: "Otomotiv",
+    sector: null,
+    rows: [
+      ["Oto tamir servisi", "oto tamirci, sanayi, mekanik, motor tamiri, araba tamiri"],
+      ["Oto elektrikçi", "akü, marş motoru, şarj dinamosu, akücü"],
+      ["Oto kaporta ve boya", "kaportacı, oto boyacı, göçük düzeltme, boyasız göçük"],
+      ["Lastikçi", "lastik, rot balans, jant, lastik tamiri"],
+      ["Oto yıkama", "araç yıkama, araba yıkama, iç temizlik, detaylı temizlik"],
+      ["Oto kuaför", "pasta cila, seramik kaplama, ppf, oto detaylandırma"],
+      ["Oto yedek parça", "yedek parça, parçacı, oto parça"],
+      ["Oto aksesuar", "araç aksesuarı, paspas, oto multimedya, oto teyp"],
+      ["Oto cam", "cam değişimi, cam filmi, ön cam"],
+      ["Oto döşeme", "koltuk kılıfı, tavan döşeme, araç döşeme"],
+      ["Egzozcu", "egzoz, katalitik konvertör, dpf"],
+      ["Oto ekspertiz", "ekspertiz, araç ekspertizi, hasar tespiti"],
+      ["Oto galeri", "ikinci el araba, araba alım satım, galerici"],
+      ["Yetkili servis", "marka servisi, garantili servis"],
+      ["Motosiklet satış ve servis", "motorcu, motosiklet tamiri, scooter"],
+      ["Oto çekici", "çekici, yol yardım, oto kurtarma"],
+      ["LPG dönüşüm", "otogaz montajı, lpg montaj, tüp muayene"],
+      ["Oto klima", "araç kliması, klima gazı dolumu"],
+      ["Dizel pompa ve enjektör", "enjektörcü, dizel pompa, mazot pompası"],
+      ["Şanzıman tamiri", "şanzımancı, vites kutusu, otomatik şanzıman"],
+      ["Oto radyatör", "radyatörcü, radyatör tamiri"],
+      ["Oto anahtar ve kilit", "araç anahtarı kopyalama, immobilizer, kumanda"],
+      ["Ağır vasıta servisi", "kamyon tamiri, tır servisi, otobüs tamiri"],
+      ["Otopark", "kapalı otopark, açık otopark, vale"],
+    ],
+  },
+  {
+    group: "Teknik Servis ve Onarım",
+    sector: null,
+    rows: [
+      ["Beyaz eşya servisi", "buzdolabı tamiri, çamaşır makinesi tamiri, bulaşık makinesi tamiri"],
+      ["Kombi servisi", "kombi bakımı, petek temizliği, kombi tamiri", "tesisat"],
+      ["Klima servisi", "klima montajı, klima bakımı, klima tamiri", "tesisat"],
+      [
+        "Telefon tamiri",
+        "ekran değişimi, cep telefonu tamiri, batarya değişimi",
+        "bilisim-ve-teknoloji",
+      ],
+      ["Bilgisayar tamiri", "laptop tamiri, format, bilgisayar servisi", "bilisim-ve-teknoloji"],
+      [
+        "Elektronik tamiri",
+        "televizyon tamiri, tv tamiri, ses sistemi tamiri",
+        "bilisim-ve-teknoloji",
+      ],
+      ["Küçük ev aletleri tamiri", "süpürge tamiri, ütü tamiri, blender tamiri"],
+      ["Uydu ve anten", "çanak anten, uydu kurulumu, anten montajı", "bilisim-ve-teknoloji"],
+      ["Güvenlik kamerası ve alarm", "kamera sistemi, alarm, kartlı geçiş", "bilisim-ve-teknoloji"],
+      ["Asansör servisi", "asansör bakımı, asansör montajı"],
+      ["Jeneratör servisi", "jeneratör, jeneratör bakımı, kesintisiz güç, ups"],
+      [
+        "Yazıcı ve toner",
+        "toner dolumu, kartuş, fotokopi makinesi servisi",
+        "bilisim-ve-teknoloji",
+      ],
+      ["Su arıtma servisi", "arıtma cihazı, filtre değişimi, su arıtma", "tesisat"],
+      ["Bıçak bileme", "bileyici, makas bileme, bıçakçı"],
+    ],
+  },
+  {
+    group: "Bilişim ve Elektronik",
+    sector: "bilisim-ve-teknoloji",
+    rows: [
+      ["Bilgisayar mağazası", "bilgisayar, laptop, donanım, oyun bilgisayarı"],
+      ["Cep telefonu mağazası", "telefoncu, telefon aksesuarı, kılıf, ekran koruyucu"],
+      ["Elektronik mağazası", "elektronik, televizyon, ses sistemi, kulaklık"],
+      ["Mobil hat ve operatör bayii", "hat, fatura, operatör, numara taşıma"],
+      ["Yazılım firması", "yazılım, uygulama geliştirme, mobil uygulama"],
+      ["Web tasarım", "web sitesi, e-ticaret sitesi, seo, internet sitesi"],
+      ["Reklam ve dijital ajans", "sosyal medya ajansı, dijital pazarlama, reklam ajansı"],
+      ["İnternet kafe", "oyun kafe, ps kafe, playstation kafe, net kafe"],
+      ["İnternet servis sağlayıcı", "internet bağlantısı, fiber, modem, wifi"],
+      ["Ağ ve kablolama", "network, sunucu, bilgi işlem, kablolama"],
+      ["Veri kurtarma", "hard disk, silinen dosya, bozuk disk"],
+      ["POS ve barkod sistemleri", "yazar kasa, pos cihazı, barkod, adisyon"],
+      ["Oyun ve konsol", "playstation, oyun satışı, konsol, xbox"],
+    ],
+  },
+  {
+    group: "Usta ve Yapı Hizmetleri",
+    sector: "tesisat",
+    rows: [
+      ["Elektrikçi", "elektrik tesisatı, elektrik ustası, sigorta, priz"],
+      ["Su tesisatçısı", "tesisatçı, sıhhi tesisat, su kaçağı, musluk tamiri"],
+      ["Doğalgaz tesisatı", "doğalgaz projesi, gaz tesisatı, doğalgaz ustası"],
+      ["Tıkanıklık açma", "kanal açma, lavabo açma, logar, vidanjör, septik"],
+      ["Kaynakçı ve demir doğrama", "kaynak, demir doğrama, ferforje, korkuluk", "kaynak-ustasi"],
+      ["Boya badana", "boyacı, badana, duvar kağıdı, iç cephe boya", null],
+      ["Alçı ve sıva", "alçıpan, asma tavan, sıva ustası, kartonpiyer", null],
+      ["Fayans ve seramik ustası", "fayansçı, seramik döşeme, derz", null],
+      ["Parke ustası", "parke, laminat, parke cilası", null],
+      ["Marangoz", "ahşap işleri, mobilya tamiri, doğramacı ahşap", null],
+      ["PVC ve alüminyum doğrama", "pvc pencere, alüminyum doğrama, cam balkon, sineklik", null],
+      ["Camcı", "cam kesimi, ayna, cam montajı", null],
+      ["Çatı ustası", "çatı tamiri, oluk, kiremit, çatı aktarma", null],
+      ["Yalıtım", "ısı yalıtımı, mantolama, su yalıtımı, izolasyon", null],
+      ["İnşaat firması", "müteahhit, yapı firması, inşaat", null],
+      ["Tadilat ve dekorasyon", "tadilat, anahtar teslim, renovasyon, ev tamiri", null],
+      ["İç mimar", "iç mimarlık, dekorasyon tasarımı", null],
+      ["Mimarlık ofisi", "mimar, proje çizimi, ruhsat projesi", null],
+      ["Mühendislik bürosu", "statik proje, harita mühendisi, elektrik projesi", null],
+      ["Çilingir", "kapı açma, kilit değişimi, anahtar kopyalama, anahtarcı", null],
+      ["Mermerci", "mermer, granit, mezar taşı, mutfak tezgâhı", null],
+      ["Tente ve pergola", "tente, gölgelik, pergola, branda", null],
+      ["Kepenk ve otomatik kapı", "kepenk, otomatik kapı, bariyer, garaj kapısı", null],
+      ["Havuz yapım ve bakım", "havuz, havuz bakımı, havuz temizliği", null],
+      ["Su kuyusu ve sondaj", "sondaj, su kuyusu, kuyu açma", null],
+      ["Mobilya montajı", "mobilya kurulumu, tv askı, montaj ustası", null],
+    ],
+  },
+  {
+    group: "Yapı Malzemesi ve Hırdavat",
+    sector: null,
+    rows: [
+      ["Hırdavat", "nalbur, vida, el aleti, hırdavatçı"],
+      ["Yapı market", "yapı malzemesi, bahçe malzemesi, dekorasyon market"],
+      ["Boya bayii", "boya satışı, boyacı dükkanı"],
+      ["İnşaat malzemesi", "çimento, tuğla, kum, inşaat demiri, briket"],
+      ["Elektrik malzemesi", "kablo, anahtar priz, sigorta kutusu"],
+      ["Aydınlatma", "avize, lamba, led, aplik"],
+      ["Sıhhi tesisat malzemesi", "musluk, batarya, boru, vana"],
+      ["Banyo ve seramik mağazası", "vitrifiye, klozet, lavabo, duşakabin, seramik"],
+      ["Kereste ve ahşap", "kereste, sunta, mdf, kontrplak"],
+      ["Kapı satışı", "çelik kapı, iç kapı, amerikan kapı"],
+      ["İş güvenliği malzemesi", "iş ayakkabısı, baret, eldiven, reflektif yelek"],
+      ["Ambalaj malzemesi", "koli, poşet, ambalaj, streç film"],
+    ],
+  },
+  {
+    group: "Mobilya ve Ev Eşyası",
+    sector: null,
+    rows: [
+      ["Mobilya mağazası", "koltuk takımı, yatak odası, yemek odası, mobilyacı"],
+      ["Yatak ve baza", "yatak, baza, başlık, ortopedik yatak"],
+      ["Halı mağazası", "halı, kilim, yolluk, halıcı"],
+      ["Perdeci", "perde, stor, jaluzi, tül, zebra perde"],
+      ["Ev tekstili ve çeyiz", "nevresim, havlu, çeyiz, pike, battaniye"],
+      ["Züccaciye", "tabak, bardak, mutfak eşyası, tencere, plastik ürünler"],
+      ["Beyaz eşya mağazası", "buzdolabı, çamaşır makinesi, ankastre fırın, bulaşık makinesi"],
+      ["Küçük ev aletleri", "süpürge, kahve makinesi, blender, ütü, airfryer"],
+      ["Mutfak ve dolap imalatı", "mutfak dolabı, gardırop, vestiyer, banyo dolabı"],
+      ["Ofis mobilyası", "büro mobilyası, ofis koltuğu, çalışma masası"],
+      ["Bahçe mobilyası", "bahçe takımı, hamak, şezlong, salıncak"],
+      ["Ev dekorasyonu", "dekoratif ürünler, tablo, vazo, ayna"],
+      ["İkinci el eşya", "spotçu, ikinci el mobilya, eşya alım satım"],
+      ["Antikacı", "antika, eski eşya, koleksiyon"],
+      ["Çerçeveci", "çerçeve, kanvas tablo, poster"],
+      ["Soba ve ısıtıcı", "soba, ısıtıcı, şömine, elektrikli ısıtıcı"],
+      ["Döşemeci", "koltuk döşeme, kanepe yenileme, sandalye kaplama"],
+      ["Bakırcı ve kalaycı", "bakır, kalay, bakır eşya"],
+    ],
+  },
+  {
+    group: "Temizlik",
+    sector: null,
+    rows: [
+      ["Ev temizliği", "temizlikçi, gündelikçi, ev temizlik hizmeti"],
+      ["Temizlik şirketi", "ofis temizliği, bina temizliği, inşaat sonrası temizlik"],
+      ["Halı yıkama", "halı yıkama fabrikası, kilim yıkama"],
+      ["Koltuk ve yatak yıkama", "koltuk yıkama, yatak yıkama, yerinde yıkama"],
+      ["Kuru temizleme", "kuru temizlemeci, ütü hizmeti"],
+      ["Çamaşırhane", "çamaşır yıkama, self servis çamaşır, laundry"],
+      ["İlaçlama", "böcek ilaçlama, haşere, fare, dezenfeksiyon"],
+      ["Dış cephe ve cam temizliği", "cephe yıkama, cam silme, yüksek cam"],
+      ["Baca temizliği", "baca, soba borusu temizliği"],
+    ],
+  },
+  {
+    group: "Nakliye ve Taşımacılık",
+    sector: "nakliye",
+    rows: [
+      ["Evden eve nakliyat", "ev taşıma, asansörlü taşıma, ofis taşıma, nakliyeci"],
+      ["Şehir içi nakliye", "kamyonet, yük taşıma, parça eşya taşıma"],
+      ["Şehirlerarası nakliye", "parsiyel, ambar, şehirlerarası taşıma"],
+      ["Kurye", "moto kurye, acil kurye, paket teslimat"],
+      ["Kargo şubesi", "kargo, gönderi, paket gönderme"],
+      ["Depolama", "eşya depolama, depo, antrepo, lojistik"],
+      ["Vinç ve platform kiralama", "vinç, sepetli platform, forklift"],
+      ["Hafriyat ve iş makinesi", "kazı, hafriyat, kepçe, iş makinesi kiralama"],
+      ["Hayvan nakliyesi", "hayvan taşıma, canlı hayvan nakliye"],
+    ],
+  },
+  {
+    group: "Ulaşım ve Seyahat",
+    sector: null,
+    rows: [
+      ["Taksi durağı", "taksi, taksi çağır"],
+      ["Servis ve transfer", "personel servisi, okul servisi, havalimanı transferi, vip transfer"],
+      ["Otobüs firması", "şehirlerarası otobüs, otobüs bileti, yazıhane"],
+      ["Seyahat acentesi", "tur, uçak bileti, otel rezervasyonu, turizm"],
+      ["Hac ve umre", "umre turu, hac organizasyonu"],
+      ["Araç kiralama", "rent a car, oto kiralama, kiralık araba"],
+    ],
+  },
+  {
+    group: "Konaklama",
+    sector: null,
+    rows: [
+      ["Otel", "butik otel, konaklama, oda"],
+      ["Pansiyon", "misafirhane, öğretmenevi, ev pansiyonu"],
+      ["Apart ve günlük kiralık", "apart daire, günlük kiralık ev, apart otel"],
+      ["Bungalov ve kamp", "bungalov, kamp alanı, glamping, karavan"],
+      ["Öğrenci yurdu", "yurt, kız yurdu, erkek yurdu, öğrenci evi"],
+      ["Termal otel", "kaplıca, termal, ılıca"],
+    ],
+  },
+  {
+    group: "Eğitim",
+    sector: null,
+    rows: [
+      ["Etüt ve kurs merkezi", "dershane, etüt, lgs, yks, kpss kursu"],
+      ["Özel ders", "birebir ders, öğretmen, matematik dersi"],
+      ["Yabancı dil kursu", "ingilizce, almanca, arapça, dil okulu"],
+      ["Sürücü kursu", "ehliyet, direksiyon dersi, sürücü okulu"],
+      ["Anaokulu ve kreş", "kreş, gündüz bakımevi, oyun grubu"],
+      ["Özel okul", "kolej, ilkokul, ortaokul, lise"],
+      ["Müzik kursu", "gitar dersi, piyano, bağlama kursu, keman"],
+      ["Dans kursu", "dans okulu, salsa, halk oyunları, bale"],
+      ["Sanat ve hobi atölyesi", "resim kursu, seramik atölyesi, el sanatları kursu"],
+      ["Kodlama ve robotik kursu", "bilgisayar kursu, yazılım kursu, robotik kodlama"],
+      ["Özel eğitim merkezi", "rehabilitasyon merkezi, otizm, özel gereksinim"],
+      ["Meslek kursu", "aşçılık kursu, kuaförlük kursu, sertifika programı"],
+      ["Kuran kursu", "hafızlık, kuran, tecvit"],
+      ["Eğitim danışmanlığı", "yurt dışı eğitim, üniversite danışmanlığı"],
+    ],
+  },
+  {
+    group: "Eğlence ve Etkinlik",
+    sector: "eglence",
+    rows: [
+      ["Çocuk oyun alanı", "oyun parkı, top havuzu, oyun evi"],
+      ["Doğum günü organizasyonu", "çocuk partisi, animatör, palyaço, parti"],
+      ["Organizasyon firması", "etkinlik organizasyonu, açılış organizasyonu, lansman"],
+      ["Sinema", "film, sinema salonu"],
+      ["Tiyatro ve gösteri", "tiyatro, gösteri, stand up"],
+      ["Konser ve canlı müzik mekânı", "canlı müzik, sahne, konser salonu"],
+      ["Gece kulübü", "kulüp, disko, gece hayatı"],
+      ["Bilardo salonu", "bilardo, bilardo kafe"],
+      ["Bowling", "bowling salonu"],
+      ["Kaçış oyunu", "escape room, kaçış odası"],
+      ["Paintball ve airsoft", "paintball, airsoft"],
+      ["Lunapark", "eğlence parkı, luna park"],
+      ["Karaoke", "karaoke bar"],
+      ["Oyun salonu", "atari salonu, oyun makineleri"],
+      ["Piknik ve mesire alanı", "mesire yeri, piknik alanı, kır bahçesi"],
+      ["Müzisyen ve orkestra", "düğün orkestrası, dj, davul zurna, müzik grubu"],
+      ["Ses ve sahne kiralama", "ses sistemi kiralama, sahne kiralama, ışık sistemi"],
+      ["Balon ve parti süsleme", "balon süsleme, parti malzemeleri, konsept süsleme"],
+    ],
+  },
+  {
+    group: "Düğün ve Özel Gün",
+    sector: "eglence",
+    rows: [
+      ["Düğün salonu", "düğün, nikah salonu, kır düğünü mekânı"],
+      ["Düğün organizasyonu", "kına organizasyonu, nişan organizasyonu, söz organizasyonu"],
+      ["Gelinlik", "gelinlikçi, gelinlik kiralama", "giyim"],
+      ["Davetiye ve nikah şekeri", "davetiye, nikah şekeri, söz çikolatası"],
+      ["Sünnet organizasyonu", "sünnet düğünü, sünnet kıyafeti"],
+      ["Çiçekçi", "çiçek, buket, çelenk, saksı çiçeği, gelin arabası süsleme", null],
+    ],
+  },
+  {
+    group: "Fotoğraf ve Video",
+    sector: null,
+    rows: [
+      ["Fotoğrafçı", "fotoğraf stüdyosu, vesikalık, düğün fotoğrafçısı"],
+      ["Video çekimi", "kameraman, drone çekimi, klip çekimi"],
+      ["Fotoğraf baskı", "fotoğraf tab, albüm, fotoğraf basımı"],
+    ],
+  },
+  {
+    group: "Spor ve Hobi",
+    sector: null,
+    rows: [
+      ["Spor salonu", "fitness, gym, vücut geliştirme, spor merkezi"],
+      ["Pilates ve yoga", "pilates, yoga, reformer pilates"],
+      ["Dövüş sporları", "boks, kick boks, karate, tekvando, muay thai"],
+      ["Yüzme havuzu", "yüzme kursu, havuz, kapalı havuz"],
+      ["Halı saha", "futbol sahası, maç, halısaha", "eglence"],
+      ["Tenis kortu", "tenis, tenis kulübü, padel"],
+      ["Futbol okulu", "futbol akademisi, çocuk futbolu"],
+      ["Kişisel antrenör", "personal trainer, pt, özel antrenör"],
+      ["Binicilik", "at binme, binicilik kulübü, pony"],
+      ["Spor malzemeleri", "spor mağazası, forma, top, fitness ekipmanı"],
+      ["Bisikletçi", "bisiklet, bisiklet tamiri, elektrikli bisiklet"],
+      ["Av ve balıkçılık malzemeleri", "avcılık, olta, av tüfeği, balıkçılık"],
+      ["Kamp ve outdoor", "çadır, kamp ekipmanı, uyku tulumu"],
+      ["Müzik aleti mağazası", "enstrüman, gitar, bağlama, saz, müzik market"],
+      ["Hobi malzemeleri", "maket, boncuk, el işi, örgü ipi"],
+    ],
+  },
+  {
+    group: "Evcil Hayvan ve Hayvancılık",
+    sector: "hayvancilik",
+    rows: [
+      ["Veteriner", "veteriner kliniği, hayvan hastanesi, veteriner hekim"],
+      ["Pet shop", "petshop, mama, kedi maması, köpek maması, evcil hayvan"],
+      ["Hayvan kuaförü", "pet kuaför, köpek tıraşı, kedi tıraşı"],
+      ["Hayvan oteli", "pet otel, köpek pansiyonu, kedi oteli"],
+      ["Köpek eğitimi", "köpek eğitmeni, köpek okulu"],
+      ["Akvaryumcu", "akvaryum, süs balığı, balık yemi"],
+      ["Kuşçu", "muhabbet kuşu, kanarya, güvercin, kuş yemi"],
+      ["Yem bayii", "yem, saman, küspe, hayvan yemi"],
+      ["Besicilik ve canlı hayvan", "besi çiftliği, büyükbaş, küçükbaş, dana, koyun"],
+      ["Kurbanlık satışı", "kurbanlık, kurban kesimi, adak"],
+      ["Kanatlı çiftliği", "tavuk çiftliği, hindi, kaz, ördek, yumurta tavuğu"],
+      ["Süt çiftliği", "inek, süt sığırı, süt üretimi"],
+      ["Arıcılık", "arıcı, kovan, ana arı"],
+      ["Veteriner ilaç ve malzeme", "veteriner ecza, hayvan ilacı, aşı"],
+    ],
+  },
+  {
+    group: "Tarım ve Bahçe",
+    sector: null,
+    rows: [
+      ["Zirai ilaç, gübre ve tohum", "zirai ilaç, gübre, tohum, tarım ilaçları"],
+      ["Fidanlık", "fidan, fide, çiçek fidesi, saksı, toprak"],
+      ["Peyzaj ve bahçe bakımı", "bahçıvan, çim, ağaç budama, peyzaj"],
+      ["Tarım makineleri", "traktör, pulluk, tarım aletleri, biçerdöver"],
+      ["Sulama sistemleri", "damla sulama, dalgıç pompa, sulama"],
+      ["Seracılık", "sera, sera malzemesi, sera naylonu"],
+      ["Hububat tüccarı", "tahıl, buğday alımı, arpa, mısır"],
+    ],
+  },
+  {
+    group: "Kırtasiye, Kitap ve Hediye",
+    sector: null,
+    rows: [
+      ["Kırtasiye", "kalem, defter, okul malzemesi, kırtasiyeci"],
+      ["Kitabevi", "kitap, kitapçı, test kitabı"],
+      ["Fotokopi ve baskı merkezi", "fotokopi, çıktı, ciltleme, tarama"],
+      ["Matbaa", "kartvizit, broşür, afiş, el ilanı, basım"],
+      ["Reklam tabela", "tabela, totem, kutu harf, dijital baskı, branda baskı"],
+      ["Hediyelik eşya", "hediye, hediyelik, kişiye özel hediye"],
+      ["El sanatları", "el emeği, örgü, dantel, yöresel el sanatları"],
+      ["Oyuncakçı", "oyuncak, çocuk oyuncağı, puzzle"],
+      ["Kupa ve plaket", "ödül, madalya, plaket, kupa"],
+      ["Gazete bayii", "gazete, dergi, bayi"],
+      ["Kaşe ve mühür", "kaşe, mühür, ıslak imza kaşesi"],
+      ["Dini ürünler", "tespih, seccade, dini yayın, takke"],
+    ],
+  },
+  {
+    group: "Mesleki Hizmetler",
+    sector: null,
+    rows: [
+      ["Avukat", "hukuk bürosu, dava, hukuki danışmanlık, avukatlık"],
+      ["Mali müşavir", "muhasebe, muhasebeci, vergi, smmm"],
+      ["Noter", "noterlik, noter onayı"],
+      ["Tercüme bürosu", "çeviri, yeminli tercüman, tercüman"],
+      ["İşletme danışmanlığı", "danışmanlık firması, kurumsal danışmanlık"],
+      ["İnsan kaynakları", "iş bulma, personel temini, eleman"],
+      ["Gümrük müşaviri", "gümrük, ithalat, ihracat"],
+      ["Vize danışmanlığı", "vize, pasaport işlemleri"],
+      ["İş sağlığı ve güvenliği", "isg, iş güvenliği uzmanı, osgb"],
+      ["Marka ve patent tescil", "marka tescili, patent"],
+      ["Arzuhalci", "dilekçe yazımı, e-devlet işlemleri"],
+      ["Özel güvenlik", "güvenlik görevlisi, koruma"],
+      ["Cenaze hizmetleri", "cenaze, cenaze nakil, mezar yapımı"],
+      ["Bakıcı hizmeti", "çocuk bakıcısı, yaşlı bakıcısı, dadı, hasta bakıcı"],
+    ],
+  },
+  {
+    group: "Emlak, Finans ve Sigorta",
+    sector: null,
+    rows: [
+      ["Emlakçı", "emlak ofisi, kiralık ev, satılık ev, gayrimenkul"],
+      ["Gayrimenkul değerleme", "değerleme, gayrimenkul ekspertizi"],
+      ["Site ve apartman yönetimi", "apartman yönetimi, bina yönetimi, site yönetimi"],
+      ["Sigorta acentesi", "kasko, trafik sigortası, sağlık sigortası, dask"],
+      ["Döviz bürosu", "döviz, altın alım satım, kambiyo"],
+      ["Banka şubesi", "banka, atm"],
+      ["Fatura ödeme merkezi", "fatura ödeme, tl yükleme, ödeme noktası"],
+    ],
+  },
+  {
+    group: "Enerji ve Yakıt",
+    sector: null,
+    rows: [
+      ["Akaryakıt istasyonu", "benzinlik, petrol, mazot, benzin"],
+      ["Tüp bayii", "lpg tüp, mutfak tüpü, piknik tüpü, tüpçü"],
+      ["Odun ve kömür", "kömürcü, odun, pelet, yakacak"],
+      ["Güneş enerjisi", "güneş paneli, solar panel, ges, güneş enerjisi sistemi"],
+      ["Elektrikli araç şarj", "şarj istasyonu, elektrikli araç"],
+    ],
+  },
+];
+
+export type BusinessCategoryEntry = {
+  slug: string;
+  name: string;
+  group_name: string;
+  /** Eşleşen ana kategori (app_categories.slug); yoksa null. */
+  sector_slug: string | null;
+  synonyms: string[];
+  position: number;
+};
+
+function splitSynonyms(value: string | undefined): string[] {
+  return (value ?? "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+/** Kataloğun tamamı, ekrandaki sırasıyla. */
+export const BUSINESS_CATEGORY_CATALOG: readonly BusinessCategoryEntry[] = GROUPS.flatMap((group) =>
+  group.rows.map(([name, synonyms, sector]) => ({
+    slug: slugify(name),
+    name,
+    group_name: group.group,
+    sector_slug: sector === undefined ? group.sector : sector,
+    synonyms: splitSynonyms(synonyms),
+    position: 0,
+  })),
+).map((entry, index) => ({ ...entry, position: index + 1 }));
+
+export const BUSINESS_CATEGORY_GROUPS: readonly string[] = GROUPS.map((group) => group.group);
+
+/**
+ * Seçilen kategorinin ana kategorisi (mevcut, etkin app_categories içinden).
+ * Önce kayıttaki eşleşme, yoksa grup adının slug'ı ("Otomotiv" → "otomotiv"):
+ * kurucu ileride "Otomotiv" ana kategorisini eklerse kendiliğinden bağlanır.
+ * Hiçbiri yoksa null: seçim işletmeye kalır, mevcut seçim değişmez.
+ */
+export function resolveCatalogSector(
+  entry: Pick<BusinessCategoryEntry, "sector_slug" | "group_name">,
+  availableSlugs: readonly string[],
+): string | null {
+  if (entry.sector_slug && availableSlugs.includes(entry.sector_slug)) return entry.sector_slug;
+  const groupSlug = slugify(entry.group_name);
+  return availableSlugs.includes(groupSlug) ? groupSlug : null;
+}
