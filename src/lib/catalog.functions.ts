@@ -195,7 +195,9 @@ export const getRestaurantBySlug = createServerFn({ method: "GET" })
           .order("position"),
         supabase
           .from("reviews")
-          .select("id, rating, comment, author_name, created_at")
+          .select(
+            "id, rating, comment, author_name, created_at, verified_order_id, seller_reply, seller_reply_at",
+          )
           .eq("restaurant_id", restaurant.id)
           .order("created_at", { ascending: false })
           .limit(50),
