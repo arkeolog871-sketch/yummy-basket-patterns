@@ -225,6 +225,14 @@ export function directionsLinkUrl(business: BusinessLocation) {
 /**
  * Builds a Google Maps directions URL. WhatsApp konum paylaşımlarındaki
  * Google Maps / geo linklerinden koordinat çıkarılır; ham wa.me açılmaz.
+ *
+ * YALNIZ KESİN KONUMLA: kayıtlı koordinat ya da işletmenin kendi Google
+ * Maps bağlantısı. İkisi de yoksa null (yol tarifi gösterilmez).
+ *
+ * YAŞANDI: eskiden ad + ilçe + şehir metni Google'a aratılıyordu
+ * ("Şeçkin Nakliyat, Silvan, Diyarbakır"). Konum girmemiş iki işletmede
+ * Google metni tahminle başka bir yere eşleştirdi; müşteri alakasız,
+ * uzak bir konuma yönlendirildi. Yanlış yere götürmektense hiç götürmemek.
  */
 export function buildMapsUrl(business: BusinessLocation) {
   const coords = resolveBusinessCoords(business);
@@ -237,15 +245,12 @@ export function buildMapsUrl(business: BusinessLocation) {
     return toSafeHttpsMapsUrl(share) ?? share;
   }
 
-  const destination = destinationQuery(business);
-  if (!destination) return null;
+  return null;
+}
 
-  const hasAddress = Boolean(
-    business.address?.trim() || business.district?.trim() || business.city?.trim(),
-  );
-  return hasAddress
-    ? googleMapsDirUrl(destination)
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destination)}`;
+/** Yol tarifi verilebilir mi (kesin konum var mı)? */
+export function hasDirections(business: BusinessLocation) {
+  return buildMapsUrl(business) !== null;
 }
 
 function matchCoords(source: string): { lat: number; lng: number } | null {
