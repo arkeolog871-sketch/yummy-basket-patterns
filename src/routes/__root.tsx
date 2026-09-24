@@ -31,6 +31,7 @@ import { AppErrorBoundary } from "@/components/system/AppErrorBoundary";
 import { fcmTokenCatcherInlineScript, publicEnvInlineScript } from "@/lib/public-env";
 import { markNativeShell, nativeShellMarkerInlineScript } from "@/lib/native-shell";
 import { installIosFullScreen, iosShellMarkerInlineScript } from "@/lib/ios-full-screen";
+import { textPrefsInlineScript } from "@/lib/text-prefs";
 import { APP_SCROLL_ID } from "@/lib/app-scroll";
 import { TextPrefsProvider } from "@/hooks/useTextPrefs";
 import { installMapsSchemeGuard } from "@/lib/maps";
@@ -158,6 +159,11 @@ function RootShell({ children }: { children: ReactNode }) {
             Alt boşluk düzeltmesi yalnız bu işaretle çalışır (ios-full-screen.ts). */}
         <script
           dangerouslySetInnerHTML={{ __html: iosShellMarkerInlineScript() }}
+          suppressHydrationWarning
+        />
+        {/* Yazı ayarı (boyut, yazı tipi, karşıtlık) ilk boyamadan önce. */}
+        <script
+          dangerouslySetInnerHTML={{ __html: textPrefsInlineScript() }}
           suppressHydrationWarning
         />
         <script

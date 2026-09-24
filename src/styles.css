@@ -263,9 +263,12 @@
    *
    * Zorlandığında bile tuş, bağlantı ve rozetlerin İÇİNDE zorlanmaz: orada
    * öğenin kendi yazı rengi zeminine göre okunaklılığı sağlıyor.
+   *
+   * Harita (.gm-style) da hariç: Google'ın açık zeminli künye yazısı koyu
+   * temada açık renge zorlanınca okunmuyordu ("Map data ©2026", 1.07:1).
    */
   html:is([data-app-contrast="high"], [data-app-contrast="custom"])
-    :is(p, span, li, small, label):not(:is(button, a, [role="button"], [data-slot="badge"]) *) {
+    :is(p, span, li, small, label):not(:is(button, a, [role="button"], [data-slot="badge"], .gm-style) *) {
     color: var(--app-text-color, var(--text-primary, inherit));
   }
 

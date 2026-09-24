@@ -15,10 +15,15 @@ export type TextPrefs = {
   customColor: string;
 };
 
+/**
+ * Kaydı olmayan herkes için: Küçük yazı, Sistem yazı tipi, Yüksek karşıtlık
+ * (kurucunun seçtiği ana sayfa görünümü). Ayarı kaydetmiş kullanıcı kendi
+ * seçimini korur; "Varsayılana dön" buraya döner.
+ */
 export const DEFAULT_TEXT_PREFS: TextPrefs = {
-  size: "md",
-  font: "sans",
-  contrast: "default",
+  size: "sm",
+  font: "system",
+  contrast: "high",
   customColor: "#2a241c",
 };
 
@@ -92,6 +97,21 @@ export function applyTextPrefs(prefs: TextPrefs) {
   root.dataset["appFontSize"] = next.size;
   root.dataset["appFont"] = next.font;
   root.dataset["appContrast"] = next.contrast;
+}
+
+/**
+ * <head>'de React'ten önce çalışır: kayıtlı ya da varsayılan ayarı ilk
+ * boyamadan önce uygular. Yoksa sayfa bir an Normal boyutta görünüp sonra
+ * küçülür (varsayılan artık Küçük olduğu için herkeste olurdu).
+ * Mantık readTextPrefs + applyTextPrefs ile aynı; hata olursa sessizce
+ * geçer ve React tarafındaki uygulama yine çalışır.
+ */
+export function textPrefsInlineScript(): string {
+  const sizes = Object.fromEntries(TEXT_SIZES.map((size) => [size, sizeToCss(size)]));
+  const fonts = Object.fromEntries(
+    TEXT_FONTS.map((font) => [font, [fontToCss(font), headingToCss(font)]]),
+  );
+  return `try{var d=${JSON.stringify(DEFAULT_TEXT_PREFS)},S=${JSON.stringify(sizes)},F=${JSON.stringify(fonts)},C=${JSON.stringify(TEXT_CONTRASTS)},p={size:d.size,font:d.font,contrast:d.contrast,customColor:d.customColor},r=null;try{r=localStorage.getItem(${JSON.stringify(TEXT_PREFS_STORAGE_KEY)})}catch(e){}var o=null;try{o=r?JSON.parse(r):null}catch(e){}if(o&&typeof o==="object"){if(S.hasOwnProperty(o.size))p.size=o.size;if(F.hasOwnProperty(o.font))p.font=o.font;if(C.indexOf(o.contrast)>=0)p.contrast=o.contrast;if(typeof o.customColor==="string"&&/^#[0-9a-fA-F]{6}$/.test(o.customColor))p.customColor=o.customColor}else if(window.matchMedia&&window.matchMedia("(prefers-contrast: more)").matches)p.contrast="high";var h=document.documentElement,st=h.style;st.setProperty("--app-font-size",S[p.size]);st.setProperty("--app-font-family",F[p.font][0]);st.setProperty("--app-heading-family",F[p.font][1]);st.setProperty("--app-custom-text-color",p.customColor);h.setAttribute("data-app-font-size",p.size);h.setAttribute("data-app-font",p.font);h.setAttribute("data-app-contrast",p.contrast)}catch(e){}`;
 }
 
 function sizeToCss(size: TextSize): string {
