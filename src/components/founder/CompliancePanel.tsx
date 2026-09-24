@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import {
   getComplianceOverview,
   getPlatformIdentity,
+  publishLegalPackage,
   updatePlatformIdentity,
 } from "@/lib/compliance.functions";
 import { IDENTITY_LABELS, type PlatformIdentity } from "@/lib/compliance";
@@ -27,6 +28,7 @@ export function CompliancePanel() {
   const fetchOverview = useServerFn(getComplianceOverview);
   const fetchIdentity = useServerFn(getPlatformIdentity);
   const saveIdentity = useServerFn(updatePlatformIdentity);
+  const publishLegal = useServerFn(publishLegalPackage);
   const qc = useQueryClient();
   const overview = useQuery({ queryKey: ["compliance-overview"], queryFn: () => fetchOverview() });
   const identity = useQuery({ queryKey: ["platform-identity"], queryFn: () => fetchIdentity() });
