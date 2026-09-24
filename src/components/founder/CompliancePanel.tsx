@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import {
   getComplianceOverview,
   getPlatformIdentity,
+  publishLegalPackage,
   updatePlatformIdentity,
 } from "@/lib/compliance.functions";
 import { IDENTITY_LABELS, type PlatformIdentity } from "@/lib/compliance";
@@ -27,6 +28,7 @@ export function CompliancePanel() {
   const fetchOverview = useServerFn(getComplianceOverview);
   const fetchIdentity = useServerFn(getPlatformIdentity);
   const saveIdentity = useServerFn(updatePlatformIdentity);
+  const publishLegal = useServerFn(publishLegalPackage);
   const qc = useQueryClient();
   const overview = useQuery({ queryKey: ["compliance-overview"], queryFn: () => fetchOverview() });
   const identity = useQuery({ queryKey: ["platform-identity"], queryFn: () => fetchIdentity() });
@@ -51,6 +53,14 @@ export function CompliancePanel() {
     },
     onError: (e) => toast.error(toPublicErrorMessage(e, "Kaydedilemedi.")),
   });
+
+  const publish = useMutation({
+    mutationFn: () => publishLegal(),
+    onSuccess: (r) => toast.success(`Yasal metinler yayına alındı (${r.published} belge).`),
+    onError: (e) => toast.error(toPublicErrorMessage(e, "Yayınlanamadı.")),
+  });
+
+
 
   const o = overview.data;
   const lists: [string, number, string[]][] = o
@@ -114,7 +124,8 @@ export function CompliancePanel() {
         <h2 className="text-lg font-semibold">Platform Kimliği</h2>
         {identity.data?.missing.length ? (
           <p className="mt-2 rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
-            Yasal sayfalar yayına hazır değil. Eksik: {identity.data.missing.join(", ")}
+            Eksik kimlik alanları: {identity.data.missing.join(", ")}. Belgeler kullanıcılar
+            tarafından okunabilir; yalnız yayına alma bu alanlar tamamlanana kadar kapalıdır.
           </p>
         ) : (
           <p className="mt-2 text-sm text-muted-foreground">Zorunlu kimlik alanları tamam.</p>
@@ -130,13 +141,19 @@ export function CompliancePanel() {
             </label>
           ))}
         </div>
-        <Button
-          className="mt-4 rounded-full"
-          disabled={save.isPending}
-          onClick={() => save.mutate()}
-        >
-          Kaydet
-        </Button>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button className="rounded-full" disabled={save.isPending} onClick={() => save.mutate()}>
+            Kaydet
+          </Button>
+          <Button
+            variant="outline"
+            className="rounded-full"
+            disabled={publish.isPending || Boolean(identity.data?.missing.length)}
+            onClick={() => publish.mutate()}
+          >
+            {publish.isPending ? "Yayınlanıyor…" : "Yasal metinleri yayına al"}
+          </Button>
+        </div>
       </section>
 
       <section>
