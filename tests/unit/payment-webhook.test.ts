@@ -29,13 +29,19 @@ describe("ödeme bildirimi", () => {
     ).toBe(false);
   });
   it("tutar uyuşmazsa sipariş ödendi sayılmaz", () => {
-    expect(nextPaymentStatus({ kind: "charge", status: "succeeded", amount: 100 }, 100)).toBe("paid");
+    expect(nextPaymentStatus({ kind: "charge", status: "succeeded", amount: 100 }, 100)).toBe(
+      "paid",
+    );
     expect(nextPaymentStatus({ kind: "charge", status: "succeeded", amount: 90 }, 100)).toBeNull();
-    expect(nextPaymentStatus({ kind: "charge", status: "failed", amount: 100 }, 100)).toBe("failed");
+    expect(nextPaymentStatus({ kind: "charge", status: "failed", amount: 100 }, 100)).toBe(
+      "failed",
+    );
     expect(nextPaymentStatus({ kind: "refund", status: "succeeded", amount: 100 }, 100)).toBe(
       "refunded",
     );
-    expect(nextPaymentStatus({ kind: "partial_refund", status: "succeeded", amount: 30 }, 100)).toBeNull();
+    expect(
+      nextPaymentStatus({ kind: "partial_refund", status: "succeeded", amount: 30 }, 100),
+    ).toBeNull();
     expect(nextPaymentStatus({ kind: "refund", status: "succeeded", amount: 150 }, 100)).toBeNull();
   });
 });
