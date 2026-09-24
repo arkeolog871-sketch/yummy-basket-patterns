@@ -2,7 +2,10 @@ import { createHash } from "crypto";
 import { getRequestHeader } from "@tanstack/react-start/server";
 
 /** IP düz metin saklanmaz; tuzlu özet ve kısaltılmış tarayıcı bilgisi. */
-export async function hashedRequestIp(): Promise<{ ip_hash: string | null; user_agent: string | null }> {
+export async function hashedRequestIp(): Promise<{
+  ip_hash: string | null;
+  user_agent: string | null;
+}> {
   try {
     const ip = getRequestHeader("cf-connecting-ip") ?? getRequestHeader("x-forwarded-for") ?? "";
     const salt = process.env["LOVABLE_CRON_SECRET"] ?? "silvan";

@@ -1,4 +1,9 @@
-import { LEGAL_DOCUMENTS, LEGAL_EFFECTIVE_LABEL, LEGAL_VERSIONS, type LegalDocId } from "@/lib/legal";
+import {
+  LEGAL_DOCUMENTS,
+  LEGAL_EFFECTIVE_LABEL,
+  LEGAL_VERSIONS,
+  type LegalDocId,
+} from "@/lib/legal";
 
 export function LegalDocumentBody({ docId }: { docId: LegalDocId }) {
   const doc = LEGAL_DOCUMENTS[docId];

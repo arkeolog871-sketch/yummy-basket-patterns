@@ -24,7 +24,11 @@ export const getPlatformIdentity = createServerFn({ method: "GET" }).handler(asy
         },
       },
     });
-    const { data } = await client.from("platform_identity").select("*").eq("id", "default").maybeSingle();
+    const { data } = await client
+      .from("platform_identity")
+      .select("*")
+      .eq("id", "default")
+      .maybeSingle();
     const identity = (data ?? {}) as PlatformIdentity;
     return { identity, missing: identityMissingFields(identity) };
   }),
@@ -95,7 +99,9 @@ export const getMyMarketingConsents = createServerFn({ method: "GET" })
 export const setMarketingConsent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ channel, granted: z.boolean(), source: z.string().max(40).default("account") }).parse(input),
+    z
+      .object({ channel, granted: z.boolean(), source: z.string().max(40).default("account") })
+      .parse(input),
   )
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
@@ -160,14 +166,23 @@ export const createComplaint = createServerFn({ method: "POST" })
           restaurant_id: restaurantId,
           subject: data.subject,
           body: data.body,
-          seller_due_at: new Date(now + hours("complaint_seller_hours", 48) * 3600_000).toISOString(),
-          platform_due_at: new Date(now + hours("complaint_platform_hours", 72) * 3600_000).toISOString(),
+          seller_due_at: new Date(
+            now + hours("complaint_seller_hours", 48) * 3600_000,
+          ).toISOString(),
+          platform_due_at: new Date(
+            now + hours("complaint_platform_hours", 72) * 3600_000,
+          ).toISOString(),
         })
         .select("id")
         .single();
       if (error) throw new Error(error.message);
       const { logAudit } = await import("./audit.server");
-      await logAudit({ actorId: context.userId, action: "complaint.create", entity: "complaints", entityId: row.id });
+      await logAudit({
+        actorId: context.userId,
+        action: "complaint.create",
+        entity: "complaints",
+        entityId: row.id,
+      });
       return { id: row.id };
     }),
   );
@@ -208,7 +223,8 @@ export const createRefundRequest = createServerFn({ method: "POST" })
         .eq("user_id", context.userId)
         .maybeSingle();
       if (!order) throw new Error("Sipariş bulunamadı.");
-      if (data.amount && data.amount > Number(order.total)) throw new Error("İade tutarı sipariş toplamını aşamaz.");
+      if (data.amount && data.amount > Number(order.total))
+        throw new Error("İade tutarı sipariş toplamını aşamaz.");
       const { data: row, error } = await context.supabase
         .from("refund_requests")
         .insert({
@@ -223,7 +239,13 @@ export const createRefundRequest = createServerFn({ method: "POST" })
         .single();
       if (error) throw new Error(error.message);
       const { logAudit } = await import("./audit.server");
-      await logAudit({ actorId: context.userId, action: "refund.request", entity: "refund_requests", entityId: row.id, detail: { partial: Boolean(data.orderItemId || data.amount) } });
+      await logAudit({
+        actorId: context.userId,
+        action: "refund.request",
+        entity: "refund_requests",
+        entityId: row.id,
+        detail: { partial: Boolean(data.orderItemId || data.amount) },
+      });
       return { id: row.id };
     }),
   );
@@ -235,7 +257,15 @@ export const reportContent = createServerFn({ method: "POST" })
       .object({
         targetType: z.enum(["review", "menu_item", "restaurant", "advertisement"]),
         targetId: z.string().uuid(),
-        reason: z.enum(["insult", "personal_data", "threat", "misleading", "illegal", "spam", "other"]),
+        reason: z.enum([
+          "insult",
+          "personal_data",
+          "threat",
+          "misleading",
+          "illegal",
+          "spam",
+          "other",
+        ]),
         details: z.string().trim().max(500).nullable(),
       })
       .parse(input),
@@ -258,7 +288,11 @@ const preInfoSchema = z.object({
   orderId: z.string().uuid(),
   snapshot: z.object({
     seller: z.record(z.string(), z.unknown()),
-    items: z.array(z.object({ name: z.string().max(200), quantity: z.number().int(), unit_price: z.number() })).max(40),
+    items: z
+      .array(
+        z.object({ name: z.string().max(200), quantity: z.number().int(), unit_price: z.number() }),
+      )
+      .max(40),
     total: z.number(),
     delivery_fee: z.number(),
     payment_method: z.string().max(40),
@@ -321,7 +355,13 @@ export const acceptVendorAgreement = createServerFn({ method: "POST" })
         ...(await hashedRequestIp()),
       });
       const { logAudit } = await import("./audit.server");
-      await logAudit({ actorId: context.userId, action: "vendor.agreement.accept", entity: "restaurants", entityId: restaurantId, detail: { version: LEGAL_VERSIONS.vendor_agreement } });
+      await logAudit({
+        actorId: context.userId,
+        action: "vendor.agreement.accept",
+        entity: "restaurants",
+        entityId: restaurantId,
+        detail: { version: LEGAL_VERSIONS.vendor_agreement },
+      });
       return { ok: true, version: LEGAL_VERSIONS.vendor_agreement };
     }),
   );
@@ -339,7 +379,10 @@ export const getVendorCompliance = createServerFn({ method: "GET" })
           .select("agreement_version, verification_status, verification_note, suspended_reason")
           .eq("id", restaurantId)
           .maybeSingle(),
-        context.supabase.from("business_documents").select("doc_kind, status, expires_at").eq("restaurant_id", restaurantId),
+        context.supabase
+          .from("business_documents")
+          .select("doc_kind, status, expires_at")
+          .eq("restaurant_id", restaurantId),
         context.supabase
           .from("order_fee_lines")
           .select("fee_type, amount, created_at")
@@ -367,20 +410,52 @@ export const getComplianceOverview = createServerFn({ method: "GET" })
       await assertFounder(context.supabase, context.userId, context.claims as never);
       const s = context.supabase;
       const today = new Date().toISOString().slice(0, 10);
-      const [pendingVendors, docs, expired, complaints, refunds, reports, incidents, deletions, processors, restaurants, identity] =
-        await Promise.all([
-          s.from("restaurants").select("id, name, verification_status").neq("verification_status", "verified"),
-          s.from("business_documents").select("id, restaurant_id, doc_kind, status").eq("status", "submitted"),
-          s.from("business_documents").select("id, restaurant_id, doc_kind, expires_at").lt("expires_at", today),
-          s.from("complaints").select("id, subject, status, seller_due_at").not("status", "in", "(RESOLVED,REJECTED,REFUNDED)"),
-          s.from("refund_requests").select("id, status, requested_amount, restaurant_id").in("status", ["open", "seller_review", "platform_review"]),
-          s.from("content_reports").select("id, target_type, reason").eq("status", "open"),
-          s.from("security_incidents").select("id, affected_system, status").neq("status", "closed"),
-          s.from("account_deletion_requests").select("id, status, created_at").eq("status", "pending"),
-          s.from("data_processors").select("id, name, transfer_status").eq("transfer_status", "pending"),
-          s.from("restaurants").select("id, name, agreement_version"),
-          s.from("platform_identity").select("*").eq("id", "default").maybeSingle(),
-        ]);
+      const [
+        pendingVendors,
+        docs,
+        expired,
+        complaints,
+        refunds,
+        reports,
+        incidents,
+        deletions,
+        processors,
+        restaurants,
+        identity,
+      ] = await Promise.all([
+        s
+          .from("restaurants")
+          .select("id, name, verification_status")
+          .neq("verification_status", "verified"),
+        s
+          .from("business_documents")
+          .select("id, restaurant_id, doc_kind, status")
+          .eq("status", "submitted"),
+        s
+          .from("business_documents")
+          .select("id, restaurant_id, doc_kind, expires_at")
+          .lt("expires_at", today),
+        s
+          .from("complaints")
+          .select("id, subject, status, seller_due_at")
+          .not("status", "in", "(RESOLVED,REJECTED,REFUNDED)"),
+        s
+          .from("refund_requests")
+          .select("id, status, requested_amount, restaurant_id")
+          .in("status", ["open", "seller_review", "platform_review"]),
+        s.from("content_reports").select("id, target_type, reason").eq("status", "open"),
+        s.from("security_incidents").select("id, affected_system, status").neq("status", "closed"),
+        s
+          .from("account_deletion_requests")
+          .select("id, status, created_at")
+          .eq("status", "pending"),
+        s
+          .from("data_processors")
+          .select("id, name, transfer_status")
+          .eq("transfer_status", "pending"),
+        s.from("restaurants").select("id, name, agreement_version"),
+        s.from("platform_identity").select("*").eq("id", "default").maybeSingle(),
+      ]);
       const outdatedAgreements = (restaurants.data ?? []).filter(
         (r) => (r.agreement_version ?? 0) < LEGAL_VERSIONS.vendor_agreement,
       );

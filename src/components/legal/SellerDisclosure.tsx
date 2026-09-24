@@ -27,7 +27,9 @@ export function SellerDisclosure({ restaurantId }: { restaurantId: string }) {
       ) : null}
       <p>Teslimat: {data.delivery_type === "gel_al" ? "Gel-al" : "İşletme teslim eder"}</p>
       {!data.legal_name ? (
-        <p className="mt-1 text-foreground">Satıcının resmi unvan bilgisi doğrulama sürecindedir.</p>
+        <p className="mt-1 text-foreground">
+          Satıcının resmi unvan bilgisi doğrulama sürecindedir.
+        </p>
       ) : null}
       <p className="mt-2">
         Bu siparişte satıcı yukarıdaki işletmedir. SİLVAN CEBİMDE aracı hizmet sağlayıcıdır;

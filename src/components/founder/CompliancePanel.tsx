@@ -28,7 +28,8 @@ export function CompliancePanel() {
   );
   useEffect(() => {
     const id = identity.data?.identity;
-    if (id) setForm(Object.fromEntries(KEYS.map((k) => [k, String(id[k] ?? "")])) as Record<Key, string>);
+    if (id)
+      setForm(Object.fromEntries(KEYS.map((k) => [k, String(id[k] ?? "")])) as Record<Key, string>);
   }, [identity.data]);
 
   const save = useMutation({
@@ -47,16 +48,56 @@ export function CompliancePanel() {
   const o = overview.data;
   const lists: [string, number, string[]][] = o
     ? [
-        ["Bekleyen satıcı doğrulamaları", o.pendingVendors.length, o.pendingVendors.map((r) => r.name)],
-        ["İncelenmeyi bekleyen belgeler", o.pendingDocuments.length, o.pendingDocuments.map((d) => d.doc_kind)],
-        ["Süresi dolan belgeler", o.expiredDocuments.length, o.expiredDocuments.map((d) => `${d.doc_kind} · ${d.expires_at}`)],
-        ["Güncel sözleşmeyi onaylamayan işletmeler", o.outdatedAgreements.length, o.outdatedAgreements.map((r) => r.name)],
-        ["Açık şikâyetler", o.openComplaints.length, o.openComplaints.map((c) => `${c.subject} · ${c.status}`)],
-        ["Bekleyen iade talepleri", o.openRefunds.length, o.openRefunds.map((r) => `${r.status} · ${r.requested_amount ?? "tam"}`)],
-        ["Raporlanan içerikler", o.openReports.length, o.openReports.map((r) => `${r.target_type} · ${r.reason}`)],
-        ["Açık veri ihlali olayları", o.openIncidents.length, o.openIncidents.map((i) => i.affected_system)],
-        ["Veri silme talepleri", o.pendingDeletions.length, o.pendingDeletions.map((d) => d.created_at.slice(0, 10))],
-        ["Yurt dışı aktarım dayanağı bekleyen hizmetler", o.pendingTransfers.length, o.pendingTransfers.map((p) => p.name)],
+        [
+          "Bekleyen satıcı doğrulamaları",
+          o.pendingVendors.length,
+          o.pendingVendors.map((r) => r.name),
+        ],
+        [
+          "İncelenmeyi bekleyen belgeler",
+          o.pendingDocuments.length,
+          o.pendingDocuments.map((d) => d.doc_kind),
+        ],
+        [
+          "Süresi dolan belgeler",
+          o.expiredDocuments.length,
+          o.expiredDocuments.map((d) => `${d.doc_kind} · ${d.expires_at}`),
+        ],
+        [
+          "Güncel sözleşmeyi onaylamayan işletmeler",
+          o.outdatedAgreements.length,
+          o.outdatedAgreements.map((r) => r.name),
+        ],
+        [
+          "Açık şikâyetler",
+          o.openComplaints.length,
+          o.openComplaints.map((c) => `${c.subject} · ${c.status}`),
+        ],
+        [
+          "Bekleyen iade talepleri",
+          o.openRefunds.length,
+          o.openRefunds.map((r) => `${r.status} · ${r.requested_amount ?? "tam"}`),
+        ],
+        [
+          "Raporlanan içerikler",
+          o.openReports.length,
+          o.openReports.map((r) => `${r.target_type} · ${r.reason}`),
+        ],
+        [
+          "Açık veri ihlali olayları",
+          o.openIncidents.length,
+          o.openIncidents.map((i) => i.affected_system),
+        ],
+        [
+          "Veri silme talepleri",
+          o.pendingDeletions.length,
+          o.pendingDeletions.map((d) => d.created_at.slice(0, 10)),
+        ],
+        [
+          "Yurt dışı aktarım dayanağı bekleyen hizmetler",
+          o.pendingTransfers.length,
+          o.pendingTransfers.map((p) => p.name),
+        ],
       ]
     : [];
 
@@ -82,7 +123,11 @@ export function CompliancePanel() {
             </label>
           ))}
         </div>
-        <Button className="mt-4 rounded-full" disabled={save.isPending} onClick={() => save.mutate()}>
+        <Button
+          className="mt-4 rounded-full"
+          disabled={save.isPending}
+          onClick={() => save.mutate()}
+        >
           Kaydet
         </Button>
       </section>

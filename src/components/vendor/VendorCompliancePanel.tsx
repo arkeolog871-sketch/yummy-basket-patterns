@@ -30,25 +30,43 @@ export function VendorCompliancePanel() {
     <div className="space-y-4">
       {outdated ? (
         <div className="rounded-3xl border border-primary/40 bg-card p-4">
-          <p className="font-semibold">{LEGAL_DOCUMENTS.vendor_agreement.title} — sürüm {data.currentAgreementVersion}</p>
+          <p className="font-semibold">
+            {LEGAL_DOCUMENTS.vendor_agreement.title} — sürüm {data.currentAgreementVersion}
+          </p>
           <p className="mt-1 text-sm text-muted-foreground">
             Güncel sözleşmeyi okuyup onaylamanız gerekiyor.{" "}
-            <a href={LEGAL_DOCUMENTS.vendor_agreement.path} target="_blank" rel="noreferrer" className="underline">
+            <a
+              href={LEGAL_DOCUMENTS.vendor_agreement.path}
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
               Sözleşmeyi oku
             </a>
           </p>
-          <Button className="mt-3 rounded-full" disabled={mutate.isPending} onClick={() => mutate.mutate()}>
+          <Button
+            className="mt-3 rounded-full"
+            disabled={mutate.isPending}
+            onClick={() => mutate.mutate()}
+          >
             Okudum, onaylıyorum
           </Button>
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">Sözleşme sürüm {data.acceptedVersion} onaylı.</p>
+        <p className="text-sm text-muted-foreground">
+          Sözleşme sürüm {data.acceptedVersion} onaylı.
+        </p>
       )}
       <div className="rounded-3xl border border-border bg-card p-4 text-sm">
         <p className="font-semibold">Doğrulama durumu: {data.verificationStatus}</p>
-        {data.verificationNote ? <p className="text-muted-foreground">{data.verificationNote}</p> : null}
+        {data.verificationNote ? (
+          <p className="text-muted-foreground">{data.verificationNote}</p>
+        ) : null}
         <p className="mt-2 text-muted-foreground">
-          Belgeler: {data.documents.length ? data.documents.map((d) => `${d.doc_kind} (${d.status})`).join(", ") : "henüz yok"}
+          Belgeler:{" "}
+          {data.documents.length
+            ? data.documents.map((d) => `${d.doc_kind} (${d.status})`).join(", ")
+            : "henüz yok"}
         </p>
       </div>
       <div className="rounded-3xl border border-border bg-card p-4 text-sm">

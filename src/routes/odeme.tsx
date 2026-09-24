@@ -237,10 +237,10 @@ function CheckoutPage() {
             Ön bilgilendirme
           </summary>
           <p className="mt-2">
-            Ürünler: {cart.lines.map((l) => `${l.quantity} × ${l.name}`).join(", ")}. Toplam
-            (KDV dahil): {formatPrice(cart.total)}; teslimat ücreti dahildir, başka ücret alınmaz.
-            Ödeme: teslimatta satıcıya kapıda ödeme. Yemek ve çabuk bozulan ürünlerde cayma hakkı
-            yoktur (Mesafeli Sözleşmeler Yönetmeliği m. 15); ayıplı ürün haklarınız saklıdır.
+            Ürünler: {cart.lines.map((l) => `${l.quantity} × ${l.name}`).join(", ")}. Toplam (KDV
+            dahil): {formatPrice(cart.total)}; teslimat ücreti dahildir, başka ücret alınmaz. Ödeme:
+            teslimatta satıcıya kapıda ödeme. Yemek ve çabuk bozulan ürünlerde cayma hakkı yoktur
+            (Mesafeli Sözleşmeler Yönetmeliği m. 15); ayıplı ürün haklarınız saklıdır.
             Şikâyetlerinizi sipariş sayfasından iletebilir, Tüketici Hakem Heyeti ve tüketici
             mahkemesine başvurabilirsiniz. Bu metin siparişinizle birlikte saklanır.{" "}
             <a href="/yasal/mesafeli-satis" className="underline underline-offset-4">

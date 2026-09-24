@@ -152,7 +152,8 @@ export const LEGAL_DOCUMENTS: Record<LegalDocId, LegalDocument> = {
     audience: "İşletme",
     title: "KVKK Aydınlatma Metni – İşletme ve Yetkililer",
     path: "/yasal/kvkk-isletme",
-    description: "İşletme başvurusu ve paneli kullanan yetkililerin kişisel verileri hakkında bilgilendirme.",
+    description:
+      "İşletme başvurusu ve paneli kullanan yetkililerin kişisel verileri hakkında bilgilendirme.",
     updatedLabel: "Son güncelleme: 24 Eylül 2026",
     paragraphs: [
       "Veri sorumlusu, Platform Kimliği kaydında yayımlanan platform işletmecisidir. Bu metin bilgilendirme amaçlıdır; onay veya açık rıza metni değildir.",
@@ -186,7 +187,7 @@ export const LEGAL_DOCUMENTS: Record<LegalDocId, LegalDocument> = {
     paragraphs: [
       "Mesafeli sözleşme, müşteri ile siparişteki işletme (satıcı) arasında kurulur. Platform, aracı hizmet sağlayıcıdır ve satıcı değildir.",
       "Siparişi onaylamadan önce ödeme sayfasında şunlar gösterilir: satıcının unvanı, adresi ve iletişim bilgisi; platformun kimlik bilgisi; ürünlerin temel nitelikleri ve adetleri; vergiler dahil toplam fiyat; teslimat ücreti; ödeme yöntemi (kapıda ödeme); teslim bilgisi; cayma hakkı ve istisnaları; şikâyet ve başvuru yolları.",
-      "\"Siparişi onayla\" düğmesine basılmasıyla ödeme yükümlülüğü doğar. Onay anındaki ön bilgilendirme ve sözleşme metni siparişle birlikte saklanır ve sipariş detay sayfasından her zaman görüntülenip yazdırılabilir.",
+      '"Siparişi onayla" düğmesine basılmasıyla ödeme yükümlülüğü doğar. Onay anındaki ön bilgilendirme ve sözleşme metni siparişle birlikte saklanır ve sipariş detay sayfasından her zaman görüntülenip yazdırılabilir.',
       "Cayma hakkı, istisnaları ve iade süreci İptal, İade ve Cayma Politikası'nda açıklanmıştır. Yemek ve çabuk bozulan ürünler, Mesafeli Sözleşmeler Yönetmeliği m. 15 uyarınca cayma hakkı kapsamı dışındadır; ayıplı ürün hakları saklıdır.",
     ],
   },
@@ -230,9 +231,9 @@ export const LEGAL_DOCUMENTS: Record<LegalDocId, LegalDocument> = {
     description: "Yorum ve içerik paylaşım kuralları.",
     updatedLabel: "Son güncelleme: 24 Eylül 2026",
     paragraphs: [
-      "Yorumlar gerçek deneyime dayanmalıdır. Teslim edilmiş bir siparişe bağlı yorumlar \"Doğrulanmış sipariş\" olarak işaretlenir.",
+      'Yorumlar gerçek deneyime dayanmalıdır. Teslim edilmiş bir siparişe bağlı yorumlar "Doğrulanmış sipariş" olarak işaretlenir.',
       "Hakaret, tehdit, kişisel veri paylaşımı (telefon, adres, kimlik), reklam/spam ve yanıltıcı içerik yasaktır. Her kullanıcı işletme başına tek yorum yazabilir.",
-      "Her içerik \"Bildir\" düğmesiyle raporlanabilir. Platform raporları inceler; kaldırma kararı gerekçesiyle kayda geçirilir. İşletmenin yoruma cevap hakkı vardır.",
+      'Her içerik "Bildir" düğmesiyle raporlanabilir. Platform raporları inceler; kaldırma kararı gerekçesiyle kayda geçirilir. İşletmenin yoruma cevap hakkı vardır.',
       "Puan ortalaması yalnızca yayındaki yorumlardan hesaplanır; işletmeler puanı satın alamaz veya değiştiremez.",
     ],
   },

@@ -54,7 +54,10 @@ export function businessPublishBlockers(
   return required.filter(
     (kind) =>
       !documents.some(
-        (doc) => doc.doc_kind === kind && doc.status === "approved" && (!doc.expires_at || doc.expires_at >= today),
+        (doc) =>
+          doc.doc_kind === kind &&
+          doc.status === "approved" &&
+          (!doc.expires_at || doc.expires_at >= today),
       ),
   );
 }

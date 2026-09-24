@@ -20,8 +20,10 @@ export const Route = createFileRoute("/yasal/$slug")({
   }),
   notFoundComponent: () => <p className="p-10 text-center">Belge bulunamadı.</p>,
   errorComponent: () => <p className="p-10 text-center">Belge yüklenemedi.</p>,
-  component: () => {
-    const { id } = Route.useLoaderData();
-    return <LegalDocumentPage docId={id} />;
-  },
+  component: LegalSlugPage,
 });
+
+function LegalSlugPage() {
+  const { id } = Route.useLoaderData();
+  return <LegalDocumentPage docId={id} />;
+}

@@ -20,7 +20,9 @@ describe("yasal belgeler", () => {
   });
   it("son kullanıcıya yer tutucu ve mutlak sorumsuzluk hükmü bırakmıyor", () => {
     expect(allText).not.toMatch(/DOLDURULACAK/);
-    expect(allText).not.toMatch(/hiçbir durumda platform sorumlu değildir|tüm sorumluluk işletmeye aittir/i);
+    expect(allText).not.toMatch(
+      /hiçbir durumda platform sorumlu değildir|tüm sorumluluk işletmeye aittir/i,
+    );
     expect(allText).not.toMatch(/işletmeyle birlikte belirlenir/);
   });
   it("aydınlatma metni rıza/onay olarak sunulmuyor", () => {
