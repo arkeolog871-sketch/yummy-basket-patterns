@@ -32,10 +32,18 @@ export function LegalDocumentBody({ docId }: { docId: LegalDocId }) {
         {doc.updatedLabel} · Hedef kitle: {doc.audience}
       </p>
       {!isLoading && missing.length ? (
-        <p className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-destructive">
-          Bu belge yayına hazır değil: platform kimlik bilgileri henüz tamamlanmadı. Eksik bilgiler
-          tamamlanana kadar “—” ile gösterilen alanlar geçerli değildir.
-        </p>
+        <div
+          role="note"
+          className="rounded-xl border border-border bg-muted/50 p-3 text-foreground"
+        >
+          <p className="font-semibold">Bu belge yayına hazır değil</p>
+          <p className="mt-1 text-muted-foreground">
+            Nedeni: platform kimlik bilgilerinin bir kısmı ({missing.length} alan) yönetici
+            tarafından henüz girilmedi. Bu alanlar metinde “Eksik — yönetici tarafından
+            tamamlanmalı” olarak gösterilir. Belgeyi okuyabilir, yazdırabilir ve uygulamayı
+            kullanmaya devam edebilirsiniz.
+          </p>
+        </div>
       ) : null}
       {doc.paragraphs.map((paragraph, index) =>
         paragraph.startsWith("## ") ? (

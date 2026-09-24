@@ -446,10 +446,13 @@ export function missingTokensForDoc(docId: LegalDocId, identity: IdentityLike): 
 }
 
 /** Değişkenleri platform kimliğiyle doldurur; boş alan "—" olur (uydurulmaz). */
+/** Eksik kimlik alanı için açık etiket (değer uydurulmaz). */
+export const LEGAL_MISSING_LABEL = "Eksik — yönetici tarafından tamamlanmalı";
+
 export function fillLegalText(text: string, identity: IdentityLike): string {
   return text.replace(/\{\{([A-Z_]+)\}\}/g, (_, key: string) => {
     if (key === "PLATFORM_BRAND") return String(identity.brand_name ?? "").trim() || BRAND;
     const col = LEGAL_TOKENS[key as LegalToken];
-    return (col && String(identity[col] ?? "").trim()) || "—";
+    return (col && String(identity[col] ?? "").trim()) || LEGAL_MISSING_LABEL;
   });
 }

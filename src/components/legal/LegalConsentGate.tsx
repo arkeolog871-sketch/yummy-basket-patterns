@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useRouterState } from "@tanstack/react-router";
+import { LEGAL_DOCUMENTS } from "@/lib/legal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -28,6 +30,12 @@ export function LegalConsentGate() {
   const accept = useServerFn(acceptLegalTerms);
   const queryClient = useQueryClient();
   const [checked, setChecked] = useState(false);
+  const [later, setLater] = useState(false);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // Yasal belge sayfalarında onay kartı gösterilmez: belge okunabilmeli.
+  const onLegalPage =
+    pathname.startsWith("/yasal") ||
+    Object.values(LEGAL_DOCUMENTS).some((doc) => doc.path === pathname);
 
   const { data } = useQuery({
     queryKey: ["legal-consent", user?.id ?? "anon"],
@@ -51,15 +59,15 @@ export function LegalConsentGate() {
     onError: () => toast.error("Onay kaydedilemedi. Lütfen tekrar deneyin."),
   });
 
-  if (!required) return null;
+  if (!required || later || onLegalPage) return null;
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 p-4">
-      <div className="w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-lifted">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="pointer-events-auto max-h-[70dvh] w-full max-w-md overflow-y-auto rounded-3xl border border-border bg-card p-5 shadow-lifted">
         <h2 className="text-xl font-semibold">Son bir adım</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Hesabınızı kullanmaya başlamadan önce aşağıdaki metinleri onaylamanız gerekiyor.
-          Başlıklara dokunarak tamamını okuyabilirsiniz.
+          Kullanım Koşulları güncellendi (sürüm 3). Onayınız hesap ve sipariş işlemleri için
+          gereklidir; KVKK Aydınlatma Metni yalnızca bilgilendirmedir.
         </p>
 
         <LegalConsentCheckbox
@@ -93,6 +101,13 @@ export function LegalConsentGate() {
           className="mt-3 w-full text-center text-xs text-muted-foreground underline-offset-4 hover:underline"
         >
           Vazgeç ve çıkış yap
+        </button>
+        <button
+          type="button"
+          onClick={() => setLater(true)}
+          className="mt-2 w-full text-center text-xs text-muted-foreground underline-offset-4 hover:underline"
+        >
+          Daha sonra
         </button>
       </div>
     </div>
