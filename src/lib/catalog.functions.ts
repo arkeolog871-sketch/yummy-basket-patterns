@@ -8,7 +8,7 @@ import {
 } from "@/lib/catalog-search";
 
 const LIST_COLUMNS =
-  "id, slug, name, tagline, category, sector, cuisines, rating, review_count, delivery_fee, delivery_type, delivery_minutes, min_order, cover_image_url, logo_url, address, district, city, latitude, longitude, maps_url, opens_at, closes_at, is_open_manual";
+  "id, slug, name, tagline, category, sector, cuisines, rating, review_count, delivery_fee, delivery_type, delivery_minutes, min_order, cover_image_url, logo_url, address, district, city, latitude, longitude, maps_url, mobile_service, opens_at, closes_at, is_open_manual";
 
 const listSchema = z.object({
   search: z.string().trim().max(80).optional(),
@@ -130,7 +130,7 @@ export const getRestaurantBySlug = createServerFn({ method: "GET" })
     const supabase = createPublicClient();
 
     const detailColumns =
-      "id, slug, name, tagline, category, sector, cuisines, rating, review_count, delivery_fee, delivery_type, delivery_minutes, min_order, cover_image_url, logo_url, is_active, address, district, city, latitude, longitude, maps_url, opens_at, closes_at, is_open_manual, created_at, updated_at";
+      "id, slug, name, tagline, category, sector, cuisines, rating, review_count, delivery_fee, delivery_type, delivery_minutes, min_order, cover_image_url, logo_url, is_active, address, district, city, latitude, longitude, maps_url, mobile_service, opens_at, closes_at, is_open_manual, created_at, updated_at";
     const withPhone = `${detailColumns}, contact_phone`;
 
     const primary = await supabase

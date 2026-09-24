@@ -363,7 +363,7 @@ export type Database = {
       }
       business_applications: {
         Row: {
-          address: string
+          address: string | null
           applicant_user_id: string
           category: string
           city: string
@@ -380,10 +380,11 @@ export type Database = {
           founder_note: string | null
           id: string
           is_open_manual: boolean
-          latitude: number
-          longitude: number
+          latitude: number | null
+          longitude: number | null
           maps_url: string | null
           min_order: number
+          mobile_service: boolean
           name: string
           opens_at: string | null
           reviewed_at: string | null
@@ -395,7 +396,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          address: string
+          address?: string | null
           applicant_user_id: string
           category: string
           city: string
@@ -412,10 +413,11 @@ export type Database = {
           founder_note?: string | null
           id?: string
           is_open_manual?: boolean
-          latitude: number
-          longitude: number
+          latitude?: number | null
+          longitude?: number | null
           maps_url?: string | null
           min_order?: number
+          mobile_service?: boolean
           name: string
           opens_at?: string | null
           reviewed_at?: string | null
@@ -427,7 +429,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          address?: string
+          address?: string | null
           applicant_user_id?: string
           category?: string
           city?: string
@@ -444,10 +446,11 @@ export type Database = {
           founder_note?: string | null
           id?: string
           is_open_manual?: boolean
-          latitude?: number
-          longitude?: number
+          latitude?: number | null
+          longitude?: number | null
           maps_url?: string | null
           min_order?: number
+          mobile_service?: boolean
           name?: string
           opens_at?: string | null
           reviewed_at?: string | null
@@ -1913,6 +1916,7 @@ export type Database = {
           maps_url: string | null
           mersis_no: string | null
           min_order: number
+          mobile_service: boolean
           name: string
           opens_at: string | null
           pairing_code: string | null
@@ -1958,6 +1962,7 @@ export type Database = {
           maps_url?: string | null
           mersis_no?: string | null
           min_order?: number
+          mobile_service?: boolean
           name: string
           opens_at?: string | null
           pairing_code?: string | null
@@ -2003,6 +2008,7 @@ export type Database = {
           maps_url?: string | null
           mersis_no?: string | null
           min_order?: number
+          mobile_service?: boolean
           name?: string
           opens_at?: string | null
           pairing_code?: string | null

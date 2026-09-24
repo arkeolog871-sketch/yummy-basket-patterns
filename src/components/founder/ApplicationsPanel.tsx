@@ -127,6 +127,14 @@ export function ApplicationsPanel({ onApproved }: { onApproved?: () => void }) {
                 <Field label="Teslimat ücreti" value={formatPrice(Number(row.delivery_fee))} />
                 <Field label="Min. sepet" value={formatPrice(Number(row.min_order))} />
                 <Field label="Görsel adresi" value={row.cover_image_url ?? ""} />
+                <Field
+                  label="İş yeri"
+                  value={
+                    row.mobile_service
+                      ? "Yok — adrese giderek hizmet veriyor (konum istenmedi)"
+                      : "Var"
+                  }
+                />
                 <Field label="Açık adres" value={row.address ?? ""} />
                 <Field label="İlçe" value={row.district ?? ""} />
                 <Field label="Şehir" value={row.city ?? ""} />

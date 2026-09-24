@@ -229,6 +229,8 @@ const businessSchema = z.object({
   // Telefondan/galeriden yüklenen kapak görseli (opsiyonel). Varsa yüklenip
   // cover_image_url onunla değiştirilir; yoksa metin alanı kullanılır.
   coverImage: uploadedImageSchema.nullable().optional(),
+  // İş yeri yok (gezici hizmet): kaydederken konum alanları temizlenir.
+  mobile_service: z.boolean().default(false),
   address: z.string().trim().max(240).nullable().default(null),
   district: z.string().trim().max(80).nullable().default(null),
   city: z.string().trim().max(80).nullable().default(null),
@@ -576,6 +578,14 @@ export const saveBusiness = createServerFn({ method: "POST" })
         context.claims as never,
       );
       const { id, coverImage, ...values } = data;
+      // İş yeri olmayan işletmede eski bir nokta kalmasın: müşteriyi yanlış
+      // yere götürürdü. İlçe/şehir (hizmet bölgesi) korunur.
+      if (values.mobile_service) {
+        values.address = null;
+        values.latitude = null;
+        values.longitude = null;
+        values.maps_url = null;
+      }
       // Bölge yöneticisi yalnızca kendi bölgesindeki işletmeyi düzenleyebilir ve
       // yeni işletmeyi de yalnızca kendi bölgesine ekleyebilir.
       if (id) await assertRestaurantInScope(access, id);

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { MapPin, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import {
+  locationLabel,
   directionsLinkUrl,
   openDirections,
   resolveBusinessCoords,
@@ -36,9 +37,13 @@ export function BusinessMap({ business }: { business: BusinessLocation }) {
           <MapPin className="size-4 text-primary" /> Konum
         </h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          {directionsUrl
-            ? "Bu işletme için kayıtlı koordinat yok. İşletmenin harita bağlantısından yol tarifi alabilirsiniz."
-            : "Bu işletme henüz haritada konumunu eklemedi."}
+          {business.mobile_service
+            ? `Bu işletmenin sabit bir iş yeri yok; müşterinin adresine giderek hizmet veriyor.${
+                locationLabel(business) ? ` Hizmet bölgesi: ${locationLabel(business)}.` : ""
+              }`
+            : directionsUrl
+              ? "Bu işletme için kayıtlı koordinat yok. İşletmenin harita bağlantısından yol tarifi alabilirsiniz."
+              : "Bu işletme henüz haritada konumunu eklemedi."}
         </p>
         {directionsUrl ? (
           <a

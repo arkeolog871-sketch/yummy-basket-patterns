@@ -667,6 +667,7 @@ type BusinessRow = {
   latitude?: number | string | null;
   longitude?: number | string | null;
   maps_url?: string | null;
+  mobile_service?: boolean | null;
   contact_email?: string | null;
   contact_phone?: string | null;
   contact_person?: string | null;
@@ -730,6 +731,8 @@ const emptyBusiness = {
   latitude: "",
   longitude: "",
   maps_url: "",
+  /** İş yeri yok: adrese giderek hizmet (konum alanları kaydedilmez). */
+  mobile_service: false,
   contact_email: "",
   contact_phone: "",
   contact_person: "",
@@ -831,14 +834,16 @@ function BusinessPanel({
                 base64: pickedCover.base64,
               }
             : null,
-          address: form.address.trim() || null,
+          mobile_service: form.mobile_service,
+          // İş yeri yoksa konum gönderilmez; sunucu da ayrıca temizler.
+          address: form.mobile_service ? null : form.address.trim() || null,
           district: form.district.trim() || null,
           city: form.city.trim() || null,
           // Virgüllü yazılan koordinat burada NaN olmuyordu ama sessizce
           // atılıyordu: işletme konumsuz kaydediliyor, haritada çıkmıyordu.
-          latitude: parseDecimalInput(form.latitude),
-          longitude: parseDecimalInput(form.longitude),
-          maps_url: form.maps_url.trim() || null,
+          latitude: form.mobile_service ? null : parseDecimalInput(form.latitude),
+          longitude: form.mobile_service ? null : parseDecimalInput(form.longitude),
+          maps_url: form.mobile_service ? null : form.maps_url.trim() || null,
           contact_email: form.contact_email.trim(),
           contact_phone: form.contact_phone.trim(),
           contact_person: form.contact_person.trim(),
@@ -1062,11 +1067,30 @@ function BusinessPanel({
               ? "Konum (isteğe bağlı) — WhatsApp konum linki yol tarifinde Google Haritalar ile açılır"
               : "Konum — bölge zorunludur, diğer alanlar isteğe bağlı. WhatsApp konum linki yol tarifinde Google Haritalar ile açılır"}
           </p>
-          <Input
-            placeholder="Açık adres (Mahalle, sokak, no)"
-            value={form.address}
-            onChange={(event) => setForm({ ...form, address: event.target.value })}
-          />
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-muted/40 px-3 py-2.5">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-4 shrink-0 accent-primary"
+              checked={form.mobile_service}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, mobile_service: event.target.checked }))
+              }
+            />
+            <span className="text-sm">
+              <span className="font-medium">İş yeri yok</span>
+              <span className="block text-xs text-muted-foreground">
+                Adrese giderek hizmet veriyor (tesisatçı, usta, nakliye vb.). Konum ve açık adres
+                kaydedilmez; müşterilere “Adrese gelir” ve ilçe-şehir gösterilir, yol tarifi çıkmaz.
+              </span>
+            </span>
+          </label>
+          {form.mobile_service ? null : (
+            <Input
+              placeholder="Açık adres (Mahalle, sokak, no)"
+              value={form.address}
+              onChange={(event) => setForm({ ...form, address: event.target.value })}
+            />
+          )}
           {isOwner ? (
             <div className="grid grid-cols-2 gap-2">
               <Input
@@ -1107,23 +1131,27 @@ function BusinessPanel({
               </p>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-2">
-            <Input
-              placeholder={LATITUDE_FIELD_PLACEHOLDER}
-              value={form.latitude}
-              onChange={(event) => setForm({ ...form, latitude: event.target.value })}
-            />
-            <Input
-              placeholder={LONGITUDE_FIELD_PLACEHOLDER}
-              value={form.longitude}
-              onChange={(event) => setForm({ ...form, longitude: event.target.value })}
-            />
-          </div>
-          <Input
-            placeholder="WhatsApp konum veya Google Maps bağlantısı (https://maps…)"
-            value={form.maps_url}
-            onChange={(event) => setForm({ ...form, maps_url: event.target.value })}
-          />
+          {form.mobile_service ? null : (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  placeholder={LATITUDE_FIELD_PLACEHOLDER}
+                  value={form.latitude}
+                  onChange={(event) => setForm({ ...form, latitude: event.target.value })}
+                />
+                <Input
+                  placeholder={LONGITUDE_FIELD_PLACEHOLDER}
+                  value={form.longitude}
+                  onChange={(event) => setForm({ ...form, longitude: event.target.value })}
+                />
+              </div>
+              <Input
+                placeholder="WhatsApp konum veya Google Maps bağlantısı (https://maps…)"
+                value={form.maps_url}
+                onChange={(event) => setForm({ ...form, maps_url: event.target.value })}
+              />
+            </>
+          )}
         </div>
         <div className="space-y-2 rounded-2xl border border-border p-3">
           <p className="text-xs font-medium text-muted-foreground">
@@ -1271,6 +1299,7 @@ function BusinessPanel({
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {business.category} · /{business.slug}
+                      {business.mobile_service ? " · Adrese gelir (iş yeri yok)" : ""}
                     </p>
                   </div>
                 </div>
@@ -1306,6 +1335,7 @@ function BusinessPanel({
                             ? ""
                             : String(business.longitude),
                         maps_url: business.maps_url ?? "",
+                        mobile_service: Boolean(business.mobile_service),
                         contact_email: business.contact_email ?? "",
                         contact_phone: business.contact_phone ?? "",
                         contact_person: business.contact_person ?? "",
