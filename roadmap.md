@@ -44,5 +44,5 @@
 - [x] Kurucu için şikâyet/iade/rapor karar ekranları, ihlal kaydı formu, ikinci onay akışı
 - [x] Yorumda "doğrulanmış sipariş" etiketi ve "Bildir" düğmesi, satıcı cevabı
 - [x] Hesap silmede anonimleştirme işlemi
-- [ ] Gerçek ödeme kuruluşu webhook'u (kuruluş seçilince)
+- [x] Sağlayıcıdan bağımsız, imzalı ödeme bildirimi ucu (kuruluş seçilince bağlanacak; PAYMENT_WEBHOOK_SECRET bekliyor)
 - [ ] Tarayıcı üzerinden uçtan uca senaryolar (A–S)
