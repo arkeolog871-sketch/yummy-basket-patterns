@@ -60,8 +60,6 @@ export function CompliancePanel() {
     onError: (e) => toast.error(toPublicErrorMessage(e, "Yayınlanamadı.")),
   });
 
-
-
   const o = overview.data;
   const lists: [string, number, string[]][] = o
     ? [

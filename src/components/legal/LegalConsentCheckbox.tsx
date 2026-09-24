@@ -30,28 +30,33 @@ export function LegalConsentCheckbox({ id, checked, disabled, onCheckedChange }:
         Chromium çoğu zaman üretmez. Satır bir div; kutu kendi onChange'i
         ile tek kez güncellenir.
       */}
-      <div
-        className="flex min-h-11 cursor-pointer items-start gap-3 touch-manipulation"
-        onClick={() => {
-          if (disabled) return;
-          onCheckedChange(!checked);
-        }}
-      >
+      {/*
+        Tek doğruluk kaynağı: `checked` prop'u. Kutu yalnız kendi onChange'i
+        ile değişir; metin satırı ayrı bir onClick ile değiştirir; belge
+        bağlantısı olayı durdurur ve kutuya dokunmaz. etiket sarmalı
+        kullanılmaz (iOS WebKit çifte toggle üretiyordu).
+      */}
+      <div className="flex min-h-11 items-start gap-3 touch-manipulation">
         <input
           id={id}
           name="termsAccepted"
           type="checkbox"
           required
+          aria-required="true"
+          aria-describedby={`${id}-desc`}
           checked={checked}
           disabled={disabled}
-          onClick={(event) => event.stopPropagation()}
-          onChange={(event) => {
-            event.stopPropagation();
-            onCheckedChange(event.target.checked);
-          }}
-          className="mt-0.5 size-6 min-h-6 min-w-6 shrink-0 accent-primary"
+          autoComplete="off"
+          onChange={(event) => onCheckedChange(event.currentTarget.checked)}
+          className="mt-0.5 size-6 min-h-6 min-w-6 shrink-0 cursor-pointer accent-primary"
         />
-        <span className="text-[16px] leading-6 text-foreground">
+        <span
+          id={`${id}-desc`}
+          className="cursor-pointer select-none text-[16px] leading-6 text-foreground"
+          onClick={() => {
+            if (!disabled) onCheckedChange(!checked);
+          }}
+        >
           <LegalDocButton docId="terms" onOpen={setOpenDoc} />
           {"'nı okudum, kabul ediyorum."}
         </span>

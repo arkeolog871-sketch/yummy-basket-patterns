@@ -470,43 +470,44 @@ export async function recordTermsAcceptance(
   context = "signup",
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const acceptedAt = new Date().toISOString();
-  const { error } = await supabaseAdmin.from("profiles").upsert(
-    {
-      id: userId,
-      terms_accepted: true,
-      terms_accepted_at: acceptedAt,
-    },
-    { onConflict: "id" },
-  );
-  if (error) {
-    console.error("[legal] yasal onay kaydedilemedi", { message: error.message });
-    return { ok: false, error: "Yasal onay kaydedilemedi. Lütfen tekrar deneyin." };
-  }
-  // Sürümlü, değiştirilemez onay kaydı: sözleşme kabulü ile aydınlatma
-  // gösterimi ayrı satırlardır (aydınlatma bir rıza değildir).
+  // Önce sürümlü, değiştirilemez kabul kaydı (tarih sunucu varsayılanı);
+  // yazılamazsa "kabul edildi" denmez. Aydınlatma ayrı bir bilgilendirme
+  // satırıdır, rıza değildir ve başarısızlığı kabulü engellemez.
   const { LEGAL_VERSIONS } = await import("./legal");
   const { hashedRequestIp } = await import("./legal-audit.server");
   const meta = await hashedRequestIp();
-  const { error: logError } = await supabaseAdmin.from("legal_acceptances").insert([
-    {
-      user_id: userId,
-      doc_type: "terms",
-      version: LEGAL_VERSIONS.terms,
-      acceptance_type: "contract_accept",
-      context,
-      ...meta,
-    },
-    {
-      user_id: userId,
-      doc_type: "kvkk",
-      version: LEGAL_VERSIONS.kvkk,
-      acceptance_type: "notice_read",
-      context,
-      ...meta,
-    },
-  ]);
-  if (logError) console.error("[legal] onay geçmişi yazılamadı", { message: logError.message });
+  const { error: termsError } = await supabaseAdmin.from("legal_acceptances").insert({
+    user_id: userId,
+    doc_type: "terms",
+    version: LEGAL_VERSIONS.terms,
+    acceptance_type: "contract_accept",
+    context,
+    ...meta,
+  });
+  if (termsError) {
+    console.error("[legal] kabul kaydı yazılamadı", { message: termsError.message });
+    return { ok: false, error: "Yasal onay kaydedilemedi. Lütfen tekrar deneyin." };
+  }
+  const { error } = await supabaseAdmin
+    .from("profiles")
+    .upsert(
+      { id: userId, terms_accepted: true, terms_accepted_at: new Date().toISOString() },
+      { onConflict: "id" },
+    );
+  if (error) {
+    console.error("[legal] profil onayı güncellenemedi", { message: error.message });
+    return { ok: false, error: "Yasal onay kaydedilemedi. Lütfen tekrar deneyin." };
+  }
+  const { error: noticeError } = await supabaseAdmin.from("legal_acceptances").insert({
+    user_id: userId,
+    doc_type: "kvkk",
+    version: LEGAL_VERSIONS.kvkk,
+    acceptance_type: "notice_read",
+    context,
+    ...meta,
+  });
+  if (noticeError)
+    console.error("[legal] aydınlatma gösterimi yazılamadı", { message: noticeError.message });
   const { logAudit } = await import("./audit.server");
   await logAudit({
     actorId: userId,
