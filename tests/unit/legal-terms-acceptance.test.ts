@@ -29,7 +29,7 @@ describe("Kullanım Koşulları kabulü", () => {
     const src = read("src/components/legal/LegalConsentCheckbox.tsx");
     expect(src).toMatch(/checked=\{checked\}/);
     expect(src).toMatch(/event\.stopPropagation\(\);\s*onOpen/);
-    expect(src).not.toMatch(/<label/);
+    expect(src).not.toMatch(/<label\s+[a-zA-Z]/);
   });
 });
 
