@@ -10,23 +10,14 @@ const channel = z.enum(["sms", "email", "push", "call"]);
 /** Herkese açık platform kimliği + yayına hazırlık durumu. */
 export const getPlatformIdentity = createServerFn({ method: "GET" }).handler(async () =>
   runServerFn(async () => {
-    const { createClient } = await import("@supabase/supabase-js");
-    const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
-    const client = createClient(process.env["SUPABASE_URL"]!, key, {
-      auth: { persistSession: false },
-      global: {
-        fetch: (input, init) => {
-          const h = new Headers(init?.headers);
-          if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`)
-            h.delete("Authorization");
-          h.set("apikey", key);
-          return fetch(input, { ...init, headers: h });
-        },
-      },
-    });
-    const { data } = await client
+    // Yasal olarak herkese açık olması gereken kimlik alanları; tablo doğrudan
+    // okunamaz, yalnız bu sabit sütun listesi sunucudan döner.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
       .from("platform_identity")
-      .select("*")
+      .select(
+        "legal_name, brand_name, mersis_no, tax_office, tax_no, address, phone, email, kep_address, kvkk_contact, authorized_person",
+      )
       .eq("id", "default")
       .maybeSingle();
     const identity = (data ?? {}) as PlatformIdentity;
@@ -151,7 +142,10 @@ export const createComplaint = createServerFn({ method: "POST" })
         if (!order) throw new Error("Sipariş bulunamadı.");
         restaurantId = order.restaurant_id;
       }
-      const { data: settings } = await context.supabase
+      const { supabaseAdmin: settingsAdmin } = await import(
+        "@/integrations/supabase/client.server"
+      );
+      const { data: settings } = await settingsAdmin
         .from("compliance_settings")
         .select("key, value")
         .in("key", ["complaint_seller_hours", "complaint_platform_hours"]);
@@ -310,20 +304,44 @@ export const attachPreInformation = createServerFn({ method: "POST" })
     runServerFn(async () => {
       const { data: order } = await context.supabase
         .from("orders")
-        .select("id")
+        .select("id, restaurant_id")
         .eq("id", data.orderId)
         .eq("user_id", context.userId)
         .maybeSingle();
       if (!order) throw new Error("Sipariş bulunamadı.");
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      // Satıcı ve platform bilgisi istemciden değil sunucudan alınır; işletme
+      // profili sonradan değişse de bu kopya değişmez.
+      const [{ data: seller }, { data: platform }] = await Promise.all([
+        supabaseAdmin
+          .from("restaurants")
+          .select(
+            "id, name, legal_name, legal_entity_type, tax_office, tax_no, mersis_no, address, district, city, contact_phone, contact_email",
+          )
+          .eq("id", order.restaurant_id)
+          .maybeSingle(),
+        supabaseAdmin
+          .from("platform_identity")
+          .select("legal_name, brand_name, address, phone, email, kep_address, mersis_no")
+          .eq("id", "default")
+          .maybeSingle(),
+      ]);
       const { error: snapError } = await supabaseAdmin
         .from("orders")
         .update({
-          pre_information: { ...data.snapshot, captured_at: new Date().toISOString() } as never,
+          pre_information: {
+            ...data.snapshot,
+            seller: seller ?? data.snapshot.seller,
+            platform: platform ?? null,
+            captured_at: new Date().toISOString(),
+          } as never,
+          seller_snapshot: (seller ?? null) as never,
           legal_versions: {
             terms: LEGAL_VERSIONS.terms,
             distance_sales: LEGAL_VERSIONS.distance_sales,
             cancellation: LEGAL_VERSIONS.cancellation,
+            kvkk: LEGAL_VERSIONS.kvkk,
+            package: "3.0",
           },
         })
         .eq("id", data.orderId)
