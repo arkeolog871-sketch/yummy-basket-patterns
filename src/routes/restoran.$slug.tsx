@@ -37,7 +37,11 @@ export const Route = createFileRoute("/restoran/$slug")({
   loader: async ({ context, params }) => {
     const data = await context.queryClient.ensureQueryData(restaurantDetailQuery(params.slug));
     if (!data) throw notFound();
-    return { name: data.restaurant.name, tagline: data.restaurant.tagline };
+    // Verinin TAMAMI döndürülür: yükleyici verisi sunucudan istemciye taşınır,
+    // sorgu önbelleği taşınmaz. Yalnız ad/slogan dönerken telefon açılışta
+    // aynı işletme verisini ikinci kez istiyordu (canlı, 4G: 0,6–1,3 sn) ve
+    // o sürede "sepete ekle" düğmeleri çalışmıyordu. Ana sayfayla aynı yöntem.
+    return { detail: data, loadedAt: Date.now() };
   },
   head: ({ loaderData }) => {
     if (!loaderData) {
@@ -48,8 +52,9 @@ export const Route = createFileRoute("/restoran/$slug")({
         ],
       };
     }
-    const title = `${loaderData.name} — SİLVAN CEBİMDE`;
-    const description = loaderData.tagline ?? `${loaderData.name} menüsünden sipariş verin.`;
+    const { name, tagline } = loaderData.detail.restaurant;
+    const title = `${name} — SİLVAN CEBİMDE`;
+    const description = tagline ?? `${name} menüsünden sipariş verin.`;
     return {
       meta: [
         { title },
@@ -87,7 +92,13 @@ function RestaurantNotFound() {
 
 function RestaurantDetail() {
   const { slug } = Route.useParams();
-  const { data } = useSuspenseQuery(restaurantDetailQuery(slug));
+  const loaderData = Route.useLoaderData();
+  const { data } = useSuspenseQuery({
+    ...restaurantDetailQuery(slug),
+    initialData: () =>
+      loaderData?.detail.restaurant.slug === slug ? loaderData.detail : undefined,
+    initialDataUpdatedAt: () => loaderData?.loadedAt,
+  });
   const cart = useCart();
   const { categories: sectors } = useAppCategories();
   const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
@@ -144,6 +155,9 @@ function RestaurantDetail() {
             alt={`${restaurant.name} mutfağı`}
             width={1024}
             height={640}
+            // Sayfanın en büyük öğesi. Öncelik verilmeyince tarayıcı isteği
+            // betikler bitene kadar bekletiyordu (canlı, 4G: 1,5–2 sn).
+            fetchPriority="high"
             className="size-full object-cover"
           />
         ) : (
@@ -239,6 +253,9 @@ function RestaurantDetail() {
                     src={photo.url}
                     alt={`${restaurant.name} işletme fotoğrafı`}
                     loading="lazy"
+                    // İlk ekrana yakın oldukları için hemen iniyor ve kapak
+                    // fotoğrafıyla bant genişliği için yarışıyorlardı.
+                    fetchPriority="low"
                     width={160}
                     height={160}
                     className="size-32 object-cover sm:size-40"
