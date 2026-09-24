@@ -33,7 +33,7 @@ export function LegalConsentCheckbox({ id, checked, disabled, onCheckedChange }:
       {/*
         Tek doğruluk kaynağı: `checked` prop'u. Kutu yalnız kendi onChange'i
         ile değişir; metin satırı ayrı bir onClick ile değiştirir; belge
-        bağlantısı olayı durdurur ve kutuya dokunmaz. <label> sarmalı
+        bağlantısı olayı durdurur ve kutuya dokunmaz. etiket sarmalı
         kullanılmaz (iOS WebKit çifte toggle üretiyordu).
       */}
       <div className="flex min-h-11 items-start gap-3 touch-manipulation">

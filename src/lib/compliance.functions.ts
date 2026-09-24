@@ -142,9 +142,8 @@ export const createComplaint = createServerFn({ method: "POST" })
         if (!order) throw new Error("Sipariş bulunamadı.");
         restaurantId = order.restaurant_id;
       }
-      const { supabaseAdmin: settingsAdmin } = await import(
-        "@/integrations/supabase/client.server"
-      );
+      const { supabaseAdmin: settingsAdmin } =
+        await import("@/integrations/supabase/client.server");
       const { data: settings } = await settingsAdmin
         .from("compliance_settings")
         .select("key, value")
@@ -537,9 +536,7 @@ export const publishLegalPackage = createServerFn({ method: "POST" })
         .maybeSingle();
       const missing = identityMissingFields((identityRow ?? {}) as PlatformIdentity);
       if (missing.length) {
-        throw new Error(
-          `Yayın yapılamaz: eksik platform kimliği alanları — ${missing.join(", ")}`,
-        );
+        throw new Error(`Yayın yapılamaz: eksik platform kimliği alanları — ${missing.join(", ")}`);
       }
       const { LEGAL_CENTER_ORDER, LEGAL_DOCUMENTS } = await import("./legal");
       const rows = LEGAL_CENTER_ORDER.map((id) => {
