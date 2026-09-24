@@ -31,8 +31,6 @@ export const IDENTITY_LABELS: Record<keyof PlatformIdentity, string> = {
 /** Yasal sayfaların "yayına hazır" sayılması için zorunlu alanlar (MERSİS isteğe bağlı). */
 export const REQUIRED_IDENTITY_FIELDS: (keyof PlatformIdentity)[] = [
   "legal_name",
-  "tax_office",
-  "tax_no",
   "address",
   "phone",
   "email",
@@ -40,7 +38,8 @@ export const REQUIRED_IDENTITY_FIELDS: (keyof PlatformIdentity)[] = [
 ];
 
 export function identityMissingFields(identity: PlatformIdentity): string[] {
-  return REQUIRED_IDENTITY_FIELDS.filter((key) => !String(identity[key] ?? "").trim()).map(
+  const id = { ...identity, kvkk_contact: identity.kvkk_contact || identity.email };
+  return REQUIRED_IDENTITY_FIELDS.filter((key) => !String(id[key] ?? "").trim()).map(
     (key) => IDENTITY_LABELS[key],
   );
 }

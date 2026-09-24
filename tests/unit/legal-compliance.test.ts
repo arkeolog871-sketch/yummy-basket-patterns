@@ -36,7 +36,7 @@ describe("yasal belgeler", () => {
 
 describe("uyum kuralları", () => {
   it("S: platform kimliği eksikse yayına hazır değil", () => {
-    expect(identityMissingFields({ legal_name: "X" })).toContain("Vergi / TC kimlik no");
+    expect(identityMissingFields({ legal_name: "X" })).toContain("E-posta");
   });
   it("C: belge eksik/süresi dolmuşsa yayın engeli", () => {
     const req = ["tax_certificate", "food_registration"];
