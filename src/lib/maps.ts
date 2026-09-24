@@ -7,7 +7,12 @@ export type BusinessLocation = {
   latitude?: number | string | null;
   longitude?: number | string | null;
   maps_url?: string | null;
+  /** İş yeri yok; müşterinin adresine giderek hizmet veriyor. */
+  mobile_service?: boolean | null;
 };
+
+/** Konum yazısının başına eklenen ifade (iş yeri olmayan işletmelerde). */
+export const MOBILE_SERVICE_LABEL = "Adrese gelir";
 
 export function toCoord(value: number | string | null | undefined) {
   if (value === null || value === undefined || value === "") return null;
@@ -235,6 +240,8 @@ export function directionsLinkUrl(business: BusinessLocation) {
  * uzak bir konuma yönlendirildi. Yanlış yere götürmektense hiç götürmemek.
  */
 export function buildMapsUrl(business: BusinessLocation) {
+  // İş yeri olmayan işletmeye yol tarifi olmaz (eski bir koordinat kalmış olsa bile).
+  if (business.mobile_service) return null;
   const coords = resolveBusinessCoords(business);
   if (coords) return googleMapsDirUrl(`${coords.lat},${coords.lng}`);
 
@@ -288,6 +295,8 @@ export function coordsFromMapsUrl(url: string | null | undefined) {
 
 /** İşletme kaydından harita noktası. Koordinat yoksa maps_url içinden okunur. */
 export function resolveBusinessCoords(business: BusinessLocation) {
+  // Gezici işletme haritada nokta olarak gösterilmez.
+  if (business.mobile_service) return null;
   const lat = toCoord(business.latitude);
   const lng = toCoord(business.longitude);
   if (lat !== null && lng !== null) return { lat, lng };

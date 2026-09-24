@@ -7,107 +7,142 @@ import { runServerFn } from "./public-error";
  * Başvuru formunda kurucu panelindeki işletme alanlarının TÜMÜ zorunludur:
  * kurucu incelemesi eksik bilgiyle yapılmasın diye nullable alanlar da istenir.
  */
-const applicationSchema = z.object({
-  slug: z
-    .string()
-    .trim()
-    .min(2, "Bağlantı adı en az 2 karakter olmalı")
-    .max(60, "Bağlantı adı en fazla 60 karakter olabilir")
-    .regex(/^[a-z0-9-]+$/, "Sadece küçük harf, rakam ve tire"),
-  name: z
-    .string()
-    .trim()
-    .min(2, "İşletme adı en az 2 karakter olmalı")
-    .max(80, "İşletme adı en fazla 80 karakter olabilir"),
-  tagline: z
-    .string()
-    .trim()
-    .min(2, "Kısa tanıtım girin")
-    .max(160, "Kısa tanıtım en fazla 160 karakter olabilir"),
-  category: z
-    .string()
-    .trim()
-    .min(2, "Alt tür girin")
-    .max(40, "Alt tür en fazla 40 karakter olabilir"),
-  sector: z
-    .string()
-    .trim()
-    .min(2, "Kategori seçin")
-    .max(40, "Kategori değeri en fazla 40 karakter olabilir")
-    .regex(/^[a-z0-9-]+$/, "Sadece küçük harf, rakam ve tire"),
-  cuisines: z.array(z.string().trim().max(30)).max(8).default([]),
-  // Sayı alanlarında tip hatası mesajı açıkça yazılıyor: Zod'un varsayılanı
-  // "Expected number, received nan" — İngilizce ve hangi alandan bahsettiğini
-  // söylemiyor. İstemci zaten önceden doğruluyor; bu, o doğrulama atlanırsa
-  // kullanıcının gördüğü son savunma.
-  delivery_minutes: z
-    .number({ invalid_type_error: "Teslimat süresini sayı olarak girin" })
-    .int()
-    .min(0)
-    .max(600),
-  delivery_fee: z
-    .number({ invalid_type_error: "Teslimat ücretini sayı olarak girin" })
-    .min(0)
-    .max(10000),
-  min_order: z
-    .number({ invalid_type_error: "Min. sepet tutarını sayı olarak girin" })
-    .min(0)
-    .max(100000),
-  cover_image_url: z
-    .string()
-    .trim()
-    .max(500)
-    .nullable()
-    .default(null)
-    .refine(
-      (value) => !value || /^https?:\/\//i.test(value),
-      "Geçerli bir görsel bağlantısı girin",
-    ),
-  address: z
-    .string()
-    .trim()
-    .min(5, "Açık adres girin")
-    .max(240, "Adres en fazla 240 karakter olabilir"),
-  district: z.string().trim().min(2, "İlçe girin").max(80, "İlçe en fazla 80 karakter olabilir"),
-  city: z.string().trim().min(2, "Şehir girin").max(80, "Şehir en fazla 80 karakter olabilir"),
-  latitude: z.number({ invalid_type_error: "Enlemi sayı olarak girin" }).min(-90).max(90),
-  longitude: z.number({ invalid_type_error: "Boylamı sayı olarak girin" }).min(-180).max(180),
-  maps_url: z
-    .string()
-    .trim()
-    .max(500)
-    .nullable()
-    .default(null)
-    .refine((value) => !value || /^https?:\/\//i.test(value), "Geçerli bir bağlantı girin"),
-  contact_email: z
-    .string()
-    .trim()
-    .max(160, "E-posta en fazla 160 karakter olabilir")
-    .email("Geçerli bir e-posta girin")
-    .transform((value) => value.toLowerCase()),
-  contact_phone: z
-    .string()
-    .trim()
-    .max(30, "Telefon numarası en fazla 30 karakter olabilir")
-    .regex(/^[0-9+()\s-]{10,30}$/, "Geçerli bir telefon numarası girin"),
-  contact_person: z
-    .string()
-    .trim()
-    .min(2, "Yetkili ad soyad girin")
-    .max(120, "Yetkili adı en fazla 120 karakter olabilir"),
-  opens_at: z
-    .string()
-    .trim()
-    .regex(/^\d{2}:\d{2}$/, "Açılış saatini SS:DD biçiminde girin"),
-  closes_at: z
-    .string()
-    .trim()
-    .regex(/^\d{2}:\d{2}$/, "Kapanış saatini SS:DD biçiminde girin"),
-  is_open_manual: z.boolean(),
-});
+export const applicationSchema = z
+  .object({
+    slug: z
+      .string()
+      .trim()
+      .min(2, "Bağlantı adı en az 2 karakter olmalı")
+      .max(60, "Bağlantı adı en fazla 60 karakter olabilir")
+      .regex(/^[a-z0-9-]+$/, "Sadece küçük harf, rakam ve tire"),
+    name: z
+      .string()
+      .trim()
+      .min(2, "İşletme adı en az 2 karakter olmalı")
+      .max(80, "İşletme adı en fazla 80 karakter olabilir"),
+    tagline: z
+      .string()
+      .trim()
+      .min(2, "Kısa tanıtım girin")
+      .max(160, "Kısa tanıtım en fazla 160 karakter olabilir"),
+    category: z
+      .string()
+      .trim()
+      .min(2, "Alt tür girin")
+      .max(40, "Alt tür en fazla 40 karakter olabilir"),
+    sector: z
+      .string()
+      .trim()
+      .min(2, "Kategori seçin")
+      .max(40, "Kategori değeri en fazla 40 karakter olabilir")
+      .regex(/^[a-z0-9-]+$/, "Sadece küçük harf, rakam ve tire"),
+    cuisines: z.array(z.string().trim().max(30)).max(8).default([]),
+    // Sayı alanlarında tip hatası mesajı açıkça yazılıyor: Zod'un varsayılanı
+    // "Expected number, received nan" — İngilizce ve hangi alandan bahsettiğini
+    // söylemiyor. İstemci zaten önceden doğruluyor; bu, o doğrulama atlanırsa
+    // kullanıcının gördüğü son savunma.
+    delivery_minutes: z
+      .number({ invalid_type_error: "Teslimat süresini sayı olarak girin" })
+      .int()
+      .min(0)
+      .max(600),
+    delivery_fee: z
+      .number({ invalid_type_error: "Teslimat ücretini sayı olarak girin" })
+      .min(0)
+      .max(10000),
+    min_order: z
+      .number({ invalid_type_error: "Min. sepet tutarını sayı olarak girin" })
+      .min(0)
+      .max(100000),
+    cover_image_url: z
+      .string()
+      .trim()
+      .max(500)
+      .nullable()
+      .default(null)
+      .refine(
+        (value) => !value || /^https?:\/\//i.test(value),
+        "Geçerli bir görsel bağlantısı girin",
+      ),
+    // "İş yerim yok" (gezici hizmet): açık adres ve harita konumu istenmez.
+    // Aşağıdaki superRefine iş yeri olan başvuruda ikisini de zorunlu tutar.
+    mobile_service: z.boolean().default(false),
+    address: z
+      .string()
+      .trim()
+      .max(240, "Adres en fazla 240 karakter olabilir")
+      .nullable()
+      .default(null),
+    district: z.string().trim().min(2, "İlçe girin").max(80, "İlçe en fazla 80 karakter olabilir"),
+    city: z.string().trim().min(2, "Şehir girin").max(80, "Şehir en fazla 80 karakter olabilir"),
+    latitude: z
+      .number({ invalid_type_error: "Enlemi sayı olarak girin" })
+      .min(-90)
+      .max(90)
+      .nullable()
+      .default(null),
+    longitude: z
+      .number({ invalid_type_error: "Boylamı sayı olarak girin" })
+      .min(-180)
+      .max(180)
+      .nullable()
+      .default(null),
+    maps_url: z
+      .string()
+      .trim()
+      .max(500)
+      .nullable()
+      .default(null)
+      .refine((value) => !value || /^https?:\/\//i.test(value), "Geçerli bir bağlantı girin"),
+    contact_email: z
+      .string()
+      .trim()
+      .max(160, "E-posta en fazla 160 karakter olabilir")
+      .email("Geçerli bir e-posta girin")
+      .transform((value) => value.toLowerCase()),
+    contact_phone: z
+      .string()
+      .trim()
+      .max(30, "Telefon numarası en fazla 30 karakter olabilir")
+      .regex(/^[0-9+()\s-]{10,30}$/, "Geçerli bir telefon numarası girin"),
+    contact_person: z
+      .string()
+      .trim()
+      .min(2, "Yetkili ad soyad girin")
+      .max(120, "Yetkili adı en fazla 120 karakter olabilir"),
+    opens_at: z
+      .string()
+      .trim()
+      .regex(/^\d{2}:\d{2}$/, "Açılış saatini SS:DD biçiminde girin"),
+    closes_at: z
+      .string()
+      .trim()
+      .regex(/^\d{2}:\d{2}$/, "Kapanış saatini SS:DD biçiminde girin"),
+    is_open_manual: z.boolean(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.mobile_service) return;
+    if (!value.address || value.address.length < 5) {
+      ctx.addIssue({ code: "custom", path: ["address"], message: "Açık adres girin" });
+    }
+    if (value.latitude === null || value.longitude === null) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["latitude"],
+        message: "Haritadan işletmenizin konumunu işaretleyin",
+      });
+    }
+  })
+  // İş yeri yoksa konum bilgisi hiç kaydedilmez: yanlış bir nokta müşteriyi
+  // alakasız yere götürürdü.
+  .transform((value) =>
+    value.mobile_service
+      ? { ...value, address: null, latitude: null, longitude: null, maps_url: null }
+      : value,
+  );
 
 const APPLICATION_COLUMNS =
-  "id, applicant_user_id, status, founder_note, reviewed_at, created_at, slug, name, tagline, category, sector, cuisines, delivery_minutes, delivery_fee, min_order, cover_image_url, address, district, city, latitude, longitude, maps_url, contact_email, contact_phone, contact_person, opens_at, closes_at, is_open_manual";
+  "id, applicant_user_id, status, founder_note, reviewed_at, created_at, slug, name, tagline, category, sector, cuisines, delivery_minutes, delivery_fee, min_order, cover_image_url, mobile_service, address, district, city, latitude, longitude, maps_url, contact_email, contact_phone, contact_person, opens_at, closes_at, is_open_manual";
 
 /** Giriş yapmış kullanıcı kendi işletme başvurusunu oluşturur. */
 export const submitBusinessApplication = createServerFn({ method: "POST" })
@@ -258,6 +293,7 @@ export const reviewBusinessApplication = createServerFn({ method: "POST" })
             delivery_fee: application.delivery_fee,
             min_order: application.min_order,
             cover_image_url: application.cover_image_url,
+            mobile_service: application.mobile_service,
             address: application.address,
             district: application.district,
             city: application.city,

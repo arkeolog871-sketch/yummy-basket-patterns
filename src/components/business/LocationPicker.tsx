@@ -22,6 +22,8 @@ type LocationPickerProps = {
   value: PickedPoint | null;
   onChange: (point: PickedPoint) => void;
   label?: string;
+  /** "İş yerim yok" seçiliyken: harita pasif, konum gerekmiyor. */
+  disabled?: boolean;
 };
 
 const START_POINT: PickedPoint = {
@@ -36,7 +38,12 @@ const START_POINT: PickedPoint = {
  * Google anahtarı yoksa veya reddedilirse OpenStreetMap (Leaflet) ile aynı
  * işaretleme davranışı sürüyor; başvuru hiçbir koşulda kilitlenmiyor.
  */
-export function LocationPicker({ value, onChange, label = "İşletme konumu" }: LocationPickerProps) {
+export function LocationPicker({
+  value,
+  onChange,
+  label = "İşletme konumu",
+  disabled = false,
+}: LocationPickerProps) {
   const fetchMapsConfig = useServerFn(getMapsBrowserConfig);
   const hostRef = useRef<HTMLDivElement>(null);
   // Harita bir kez kurulur; sonraki işaretleme değişiklikleri effect'i yeniden
@@ -234,11 +241,13 @@ export function LocationPicker({ value, onChange, label = "İşletme konumu" }: 
         className="h-64 w-full overflow-hidden rounded-2xl border border-border bg-muted"
       />
       <p className="text-xs text-muted-foreground">
-        {value
-          ? `İşaretlenen konum: ${value.lat.toFixed(6)}, ${value.lng.toFixed(6)}`
-          : engine === "loading"
-            ? "Harita yükleniyor…"
-            : "Henüz konum işaretlenmedi. Başvuru için işletmenizin yerini işaretlemeniz gerekiyor."}
+        {disabled
+          ? "İş yeri olmadığı için konum gerekmiyor."
+          : value
+            ? `İşaretlenen konum: ${value.lat.toFixed(6)}, ${value.lng.toFixed(6)}`
+            : engine === "loading"
+              ? "Harita yükleniyor…"
+              : "Henüz konum işaretlenmedi. Başvuru için işletmenizin yerini işaretlemeniz gerekiyor."}
       </p>
     </div>
   );

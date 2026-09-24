@@ -27,6 +27,7 @@ export type RestaurantSummary = {
   latitude?: number | string | null;
   longitude?: number | string | null;
   maps_url?: string | null;
+  mobile_service?: boolean | null;
   opens_at?: string | null;
   closes_at?: string | null;
   is_open_manual?: boolean | null;

@@ -1,6 +1,12 @@
 import { MapPin, Navigation } from "lucide-react";
 import { toast } from "sonner";
-import { hasDirections, locationLabel, openDirections, type BusinessLocation } from "@/lib/maps";
+import {
+  hasDirections,
+  locationLabel,
+  MOBILE_SERVICE_LABEL,
+  openDirections,
+  type BusinessLocation,
+} from "@/lib/maps";
 
 export function LocationButton({
   business,
@@ -13,7 +19,11 @@ export function LocationButton({
   showIcon?: boolean;
   fallbackLabel?: string;
 }) {
-  const label = locationLabel(business) ?? fallbackLabel ?? null;
+  const place = locationLabel(business) ?? fallbackLabel ?? null;
+  // İş yeri olmayan işletme: konum yerine hizmet biçimi ve bölgesi.
+  const label = business.mobile_service
+    ? [MOBILE_SERVICE_LABEL, place].filter(Boolean).join(" · ")
+    : place;
   if (!label) return null;
 
   // Kesin konum (koordinat / işletmenin harita bağlantısı) yoksa ilçe-şehir

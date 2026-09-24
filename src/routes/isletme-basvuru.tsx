@@ -218,6 +218,13 @@ const NUMERIC_FIELDS = [
   { key: "longitude", label: "Boylam" },
 ] as const;
 
+type NumericKey = (typeof NUMERIC_FIELDS)[number]["key"];
+/** Konum alanları "iş yerim yok" seçilince boş (null) gider. */
+type ParsedNumbers = Record<Exclude<NumericKey, "latitude" | "longitude">, number> & {
+  latitude: number | null;
+  longitude: number | null;
+};
+
 const emptyForm = {
   name: "",
   slug: "",
@@ -229,6 +236,8 @@ const emptyForm = {
   delivery_fee: "0",
   min_order: "0",
   cover_image_url: "",
+  /** İş yerim yok: adrese giderek hizmet (harita ve açık adres istenmez). */
+  mobile_service: false,
   address: "",
   district: "",
   city: "",
@@ -293,9 +302,14 @@ function BusinessApplicationPage() {
    * gönderilmez: sunucuya NaN gidince dönen cevap "Expected number, received
    * nan" oluyordu — İngilizce ve hangi alan olduğunu söylemiyor.
    */
-  function readNumbers(): Record<(typeof NUMERIC_FIELDS)[number]["key"], number> | null {
-    const parsed = {} as Record<(typeof NUMERIC_FIELDS)[number]["key"], number>;
+  function readNumbers(): ParsedNumbers | null {
+    const parsed = {} as Record<NumericKey, number | null>;
     for (const field of NUMERIC_FIELDS) {
+      // İş yeri yoksa konum gönderilmez (haritada işaret kalmış olsa bile).
+      if (form.mobile_service && (field.key === "latitude" || field.key === "longitude")) {
+        parsed[field.key] = null;
+        continue;
+      }
       const value = parseDecimalInput(form[field.key]);
       if (value === null) {
         toast.error(`${field.label}: sayı olarak girin. Ondalık için virgül kullanabilirsiniz.`);
@@ -303,11 +317,11 @@ function BusinessApplicationPage() {
       }
       parsed[field.key] = value;
     }
-    return parsed;
+    return parsed as ParsedNumbers;
   }
 
   const submitMutation = useMutation({
-    mutationFn: (numbers: Record<(typeof NUMERIC_FIELDS)[number]["key"], number>) =>
+    mutationFn: (numbers: ParsedNumbers) =>
       submit({
         data: {
           slug: form.slug,
@@ -323,12 +337,13 @@ function BusinessApplicationPage() {
           delivery_fee: numbers.delivery_fee,
           min_order: numbers.min_order,
           cover_image_url: form.cover_image_url.trim(),
-          address: form.address.trim(),
+          mobile_service: form.mobile_service,
+          address: form.mobile_service ? null : form.address.trim(),
           district: form.district.trim(),
           city: form.city.trim(),
           latitude: numbers.latitude,
           longitude: numbers.longitude,
-          maps_url: form.maps_url.trim(),
+          maps_url: form.mobile_service ? null : form.maps_url.trim(),
           contact_email: loginEmail.trim(),
           contact_phone: form.contact_phone.trim(),
           contact_person: form.contact_person.trim(),
@@ -369,7 +384,7 @@ function BusinessApplicationPage() {
             toast.error("Kategori seçin.");
             return;
           }
-          if (!form.latitude.trim() || !form.longitude.trim()) {
+          if (!form.mobile_service && (!form.latitude.trim() || !form.longitude.trim())) {
             toast.error("Haritadan işletmenizin konumunu işaretleyin.");
             return;
           }
@@ -528,13 +543,17 @@ function BusinessApplicationPage() {
         </div>
 
         <div className="space-y-2 rounded-2xl border border-border p-3">
-          <p className="text-xs font-medium text-muted-foreground">Konum bilgileri (zorunlu)</p>
-          <Input
-            placeholder="Açık adres (Mahalle, sokak, no)"
-            value={form.address}
-            onChange={(event) => setForm({ ...form, address: event.target.value })}
-            required
-          />
+          <p className="text-xs font-medium text-muted-foreground">
+            {form.mobile_service ? "Hizmet bölgesi (zorunlu)" : "Konum bilgileri (zorunlu)"}
+          </p>
+          {form.mobile_service ? null : (
+            <Input
+              placeholder="Açık adres (Mahalle, sokak, no)"
+              value={form.address}
+              onChange={(event) => setForm({ ...form, address: event.target.value })}
+              required
+            />
+          )}
           <div className="grid grid-cols-2 gap-2">
             <Input
               placeholder="İlçe"
@@ -549,21 +568,49 @@ function BusinessApplicationPage() {
               required
             />
           </div>
-          <LocationPicker
-            value={pickedPoint}
-            onChange={(point) =>
-              setForm((prev) => ({
-                ...prev,
-                latitude: point.lat.toFixed(6),
-                longitude: point.lng.toFixed(6),
-              }))
-            }
-          />
-          <Input
-            placeholder="WhatsApp konum veya Google Maps bağlantısı (https://maps…, isteğe bağlı)"
-            value={form.maps_url}
-            onChange={(event) => setForm({ ...form, maps_url: event.target.value })}
-          />
+          {/* İş yeri yoksa harita pasif: işaretlenemez, konum gönderilmez. */}
+          <div
+            className={form.mobile_service ? "pointer-events-none select-none opacity-40" : ""}
+            aria-disabled={form.mobile_service || undefined}
+            inert={form.mobile_service || undefined}
+          >
+            <LocationPicker
+              disabled={form.mobile_service}
+              value={pickedPoint}
+              onChange={(point) =>
+                setForm((prev) => ({
+                  ...prev,
+                  latitude: point.lat.toFixed(6),
+                  longitude: point.lng.toFixed(6),
+                }))
+              }
+            />
+          </div>
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-muted/40 px-3 py-2.5">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-4 shrink-0 accent-primary"
+              checked={form.mobile_service}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, mobile_service: event.target.checked }))
+              }
+            />
+            <span className="text-sm">
+              <span className="font-medium">İş yerim yok</span>
+              <span className="block text-xs text-muted-foreground">
+                Müşterinin adresine giderek hizmet veriyorum (tesisatçı, usta, nakliye vb.). Harita
+                ve açık adres istenmez; müşterilere “Adrese gelir” ve hizmet bölgeniz (ilçe, şehir)
+                gösterilir.
+              </span>
+            </span>
+          </label>
+          {form.mobile_service ? null : (
+            <Input
+              placeholder="WhatsApp konum veya Google Maps bağlantısı (https://maps…, isteğe bağlı)"
+              value={form.maps_url}
+              onChange={(event) => setForm({ ...form, maps_url: event.target.value })}
+            />
+          )}
         </div>
 
         <div className="space-y-2 rounded-2xl border border-border p-3">
