@@ -467,6 +467,7 @@ async function activateVendorRestaurantOnFirstVerify(userId: string): Promise<vo
 /** OTP sonrası yasal onay kaydı (Kullanım Koşulları / Gizlilik / KVKK). */
 export async function recordTermsAcceptance(
   userId: string,
+  context = "signup",
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const acceptedAt = new Date().toISOString();
@@ -482,6 +483,37 @@ export async function recordTermsAcceptance(
     console.error("[legal] yasal onay kaydedilemedi", { message: error.message });
     return { ok: false, error: "Yasal onay kaydedilemedi. Lütfen tekrar deneyin." };
   }
+  // Sürümlü, değiştirilemez onay kaydı: sözleşme kabulü ile aydınlatma
+  // gösterimi ayrı satırlardır (aydınlatma bir rıza değildir).
+  const { LEGAL_VERSIONS } = await import("./legal");
+  const { hashedRequestIp } = await import("./legal-audit.server");
+  const meta = await hashedRequestIp();
+  const { error: logError } = await supabaseAdmin.from("legal_acceptances").insert([
+    {
+      user_id: userId,
+      doc_type: "terms",
+      version: LEGAL_VERSIONS.terms,
+      acceptance_type: "contract_accept",
+      context,
+      ...meta,
+    },
+    {
+      user_id: userId,
+      doc_type: "kvkk",
+      version: LEGAL_VERSIONS.kvkk,
+      acceptance_type: "notice_read",
+      context,
+      ...meta,
+    },
+  ]);
+  if (logError) console.error("[legal] onay geçmişi yazılamadı", { message: logError.message });
+  const { logAudit } = await import("./audit.server");
+  await logAudit({
+    actorId: userId,
+    action: "legal.accept",
+    entity: "legal_acceptances",
+    detail: { terms: LEGAL_VERSIONS.terms, kvkk_notice: LEGAL_VERSIONS.kvkk, context },
+  });
   return { ok: true };
 }
 

@@ -41,6 +41,10 @@ export function Footer() {
         <Link to="/hizmet-saglayici-bilgileri" className="underline-offset-4 hover:underline">
           Hizmet Sağlayıcı Bilgileri
         </Link>
+        {" · "}
+        <a href="/yasal" className="underline-offset-4 hover:underline">
+          Yasal Merkez (tümü)
+        </a>
       </div>
     </footer>
   );

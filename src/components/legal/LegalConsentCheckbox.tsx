@@ -53,13 +53,15 @@ export function LegalConsentCheckbox({ id, checked, disabled, onCheckedChange }:
         />
         <span className="text-[16px] leading-6 text-foreground">
           <LegalDocButton docId="terms" onOpen={setOpenDoc} />
-          {", "}
-          <LegalDocButton docId="privacy" onOpen={setOpenDoc} />
-          {" ve "}
-          <LegalDocButton docId="kvkk" onOpen={setOpenDoc} />
-          {"'ni okudum, kabul ediyorum."}
+          {"'nı okudum, kabul ediyorum."}
         </span>
       </div>
+      {/* Aydınlatma bir onay değildir (KVKK 2026/347): yalnızca bilgilendirme. */}
+      <p className="mt-2 pl-9 text-sm leading-5 text-muted-foreground">
+        Kişisel verileriniz <LegalDocButton docId="kvkk" onOpen={setOpenDoc} /> ve{" "}
+        <LegalDocButton docId="privacy" onOpen={setOpenDoc} /> kapsamında işlenir; bu metinler
+        bilgilendirme amaçlıdır, onayınızı gerektirmez.
+      </p>
 
       <Dialog open={Boolean(openDoc)} onOpenChange={(open) => !open && setOpenDoc(null)}>
         <DialogContent className="max-h-[min(85vh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem))] max-w-2xl overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))]">

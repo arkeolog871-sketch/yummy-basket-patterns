@@ -6,6 +6,7 @@ import { ClipboardList, MapPin, ShieldCheck, User } from "lucide-react";
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import { AddressesSection } from "@/components/account/AddressesSection";
 import { DeleteAccountSection } from "@/components/account/DeleteAccountSection";
+import { PrivacyCenterSection } from "@/components/account/PrivacyCenterSection";
 import { OrdersSection } from "@/components/account/OrdersSection";
 import { ProfileSection } from "@/components/account/ProfileSection";
 import { VendorPairingSection } from "@/components/account/VendorPairingSection";
@@ -212,6 +213,7 @@ function AccountPage() {
             </div>
           </section>
 
+          <PrivacyCenterSection />
           <DeleteAccountSection />
         </TabsContent>
       </Tabs>

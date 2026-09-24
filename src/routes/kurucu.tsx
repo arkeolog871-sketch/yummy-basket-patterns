@@ -75,6 +75,7 @@ import { ProductImportPanel } from "@/components/products/ProductImportPanel";
 import { SyncTokenPanel } from "@/components/products/SyncTokenPanel";
 import { VendorPairingPanel } from "@/components/founder/VendorPairingPanel";
 import { AuditLogPanel } from "@/components/founder/AuditLogPanel";
+import { CompliancePanel } from "@/components/founder/CompliancePanel";
 import { DeletionRequestsPanel } from "@/components/founder/DeletionRequestsPanel";
 import { shrinkFileForUse, type MediaUse } from "@/lib/image-resize";
 
@@ -364,6 +365,7 @@ function FounderDashboard({
           {isOwner ? <TabsTrigger value="silme-talepleri">Silme talepleri</TabsTrigger> : null}
           {isOwner ? <TabsTrigger value="guvenlik">Güvenlik</TabsTrigger> : null}
           <TabsTrigger value="siparisler">Siparişler</TabsTrigger>
+          {isOwner ? <TabsTrigger value="uyum">Hukuk ve Uyum</TabsTrigger> : null}
           {isOwner ? <TabsTrigger value="denetim">Denetim kaydı</TabsTrigger> : null}
           {isOwner ? <TabsTrigger value="hatalar">Sistem hataları</TabsTrigger> : null}
         </TabsList>
@@ -493,6 +495,12 @@ function FounderDashboard({
             onDone={() => void queryClient.invalidateQueries({ queryKey: ["admin-data"] })}
           />
         </TabsContent>
+
+        {isOwner ? (
+          <TabsContent value="uyum" className="mt-6">
+            <CompliancePanel />
+          </TabsContent>
+        ) : null}
 
         {isOwner ? (
           <TabsContent value="denetim" className="mt-6">

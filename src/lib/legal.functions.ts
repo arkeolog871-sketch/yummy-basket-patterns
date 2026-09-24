@@ -28,7 +28,21 @@ export const getLegalConsentRequirement = createServerFn({ method: "GET" })
       // Okunamıyorsa onay isteme: yanlış alarmla girişi kilitlemek, eksik
       // onaydan daha kötü.
       if (error) return { required: false };
-      if (profile?.terms_accepted) return { required: false };
+      if (profile?.terms_accepted) {
+        // Yeni sürüm yayınlandıysa daha önce eski sürümü kabul edenlerden
+        // yeniden kabul istenir.
+        const { LEGAL_VERSIONS } = await import("./legal");
+        const { data: last } = await context.supabase
+          .from("legal_acceptances")
+          .select("version")
+          .eq("user_id", context.userId)
+          .eq("doc_type", "terms")
+          .eq("acceptance_type", "contract_accept")
+          .order("accepted_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        return { required: Boolean(last && last.version < LEGAL_VERSIONS.terms) };
+      }
 
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data, error: adminError } = await supabaseAdmin.auth.admin.getUserById(
@@ -46,7 +60,7 @@ export const acceptLegalTerms = createServerFn({ method: "POST" })
   .handler(async ({ context }) =>
     runServerFn(async () => {
       const { recordTermsAcceptance } = await import("./otp.server");
-      const result = await recordTermsAcceptance(context.userId);
+      const result = await recordTermsAcceptance(context.userId, "consent_gate");
       if (!result.ok) throw new Error(result.error);
       return { ok: true };
     }),
