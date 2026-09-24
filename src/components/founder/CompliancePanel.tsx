@@ -1,3 +1,9 @@
+import {
+  LEGAL_CENTER_ORDER,
+  LEGAL_DOCUMENTS,
+  LEGAL_PACKAGE_LABEL,
+  LEGAL_VERSIONS,
+} from "@/lib/legal";
 import { ComplianceReviewQueue } from "./ComplianceReviewQueue";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -150,6 +156,25 @@ export function CompliancePanel() {
             </details>
           ))}
         </div>
+      </section>
+      <section className="rounded-3xl border border-border bg-card p-5">
+        <h2 className="text-lg font-semibold">Manuel doğrulama bekleyen belgeler</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {LEGAL_PACKAGE_LABEL}. Aşağıdaki metinler nihai yayından önce hukukçu tarafından kontrol
+          edilmelidir.
+        </p>
+        <ul className="mt-3 space-y-1 text-sm">
+          {LEGAL_CENTER_ORDER.filter((id) => LEGAL_DOCUMENTS[id].requiresLegalReview).map((id) => (
+            <li key={id} className="flex justify-between gap-2">
+              <a href={LEGAL_DOCUMENTS[id].path} className="underline underline-offset-4">
+                {LEGAL_DOCUMENTS[id].title}
+              </a>
+              <span className="text-muted-foreground">
+                Sürüm {LEGAL_VERSIONS[id]}.0 · manuel doğrulama
+              </span>
+            </li>
+          ))}
+        </ul>
       </section>
       <ComplianceReviewQueue />
     </div>
