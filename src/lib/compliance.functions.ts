@@ -515,3 +515,56 @@ export const getSellerDisclosure = createServerFn({ method: "GET" })
       return r;
     }),
   );
+
+/**
+ * Yasal paketi yayına alır. Eksik platform kimliği alanları KULLANICI tarafını
+ * kilitlemez (belgeler okunur/yazdırılır), yalnız bu yönetici yayın işlemini
+ * engeller: eksik alanla yayın yapılamaz.
+ */
+export const publishLegalPackage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) =>
+    runServerFn(async () => {
+      const { assertFounder } = await import("./founder.server");
+      await assertFounder(context.supabase, context.userId, context.claims as never);
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: identityRow } = await supabaseAdmin
+        .from("platform_identity")
+        .select(
+          "legal_name, brand_name, mersis_no, tax_office, tax_no, address, phone, email, kep_address, kvkk_contact, authorized_person",
+        )
+        .eq("id", "default")
+        .maybeSingle();
+      const missing = identityMissingFields((identityRow ?? {}) as PlatformIdentity);
+      if (missing.length) {
+        throw new Error(
+          `Yayın yapılamaz: eksik platform kimliği alanları — ${missing.join(", ")}`,
+        );
+      }
+      const { LEGAL_CENTER_ORDER, LEGAL_DOCUMENTS } = await import("./legal");
+      const rows = LEGAL_CENTER_ORDER.map((id) => {
+        const doc = LEGAL_DOCUMENTS[id];
+        return {
+          doc_type: id,
+          version: LEGAL_VERSIONS[id],
+          title: doc.title,
+          audience: doc.audience,
+          content: doc.paragraphs.join("\n\n"),
+          status: "published",
+          effective_at: new Date().toISOString(),
+          published_by: context.userId,
+        };
+      });
+      const { error } = await supabaseAdmin.from("legal_documents").insert(rows);
+      if (error) throw new Error(error.message);
+      const { logAudit } = await import("./audit.server");
+      await logAudit({
+        actorId: context.userId,
+        action: "legal_package.publish",
+        entity: "legal_documents",
+        entityId: "package",
+        detail: { docs: rows.length },
+      });
+      return { ok: true, published: rows.length };
+    }),
+  );
