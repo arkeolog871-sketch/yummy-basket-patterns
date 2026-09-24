@@ -24,7 +24,7 @@ import { CategoryAccordion } from "@/components/menu/CategoryAccordion";
 import { groupByCategory } from "@/lib/menu-groups";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
-import { formatPrice, formatDateTime } from "@/lib/format";
+import { formatPrice, formatDateTime, hasListedPrice, PRICE_ON_REQUEST_LABEL } from "@/lib/format";
 import { deliverySummary } from "@/lib/delivery";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { isBusinessOpen, hoursLabel, closedReason } from "@/lib/hours";
@@ -122,6 +122,7 @@ function RestaurantDetail() {
       toast.error("İşletme şu an kapalı", { description: closedReason(restaurant) });
       return;
     }
+    if (!hasListedPrice(item.price)) return;
     const switching = cart.restaurant && cart.restaurant.id !== restaurant.id;
     cart.addItem(cartRestaurant, {
       menuItemId: item.id,
@@ -347,7 +348,11 @@ function RestaurantDetail() {
                           {item.description}
                         </p>
                       ) : null}
-                      <p className="mt-2 font-semibold">{formatPrice(Number(item.price))}</p>
+                      <p className="mt-2 font-semibold">
+                        {hasListedPrice(item.price)
+                          ? formatPrice(Number(item.price))
+                          : PRICE_ON_REQUEST_LABEL}
+                      </p>
                       {item.in_stock === false ? (
                         <p className="mt-1 text-xs font-medium text-destructive">
                           Tükendi — şu an sipariş alınamıyor
@@ -357,7 +362,7 @@ function RestaurantDetail() {
                     <Button
                       size="icon"
                       className="size-10 shrink-0 rounded-full"
-                      disabled={!open || item.in_stock === false}
+                      disabled={!open || item.in_stock === false || !hasListedPrice(item.price)}
                       aria-label={`${item.name} sepete ekle`}
                       onClick={() => add(item)}
                     >

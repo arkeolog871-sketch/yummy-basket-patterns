@@ -79,6 +79,23 @@ async function placeOrder(
   const { isBusinessOpen, closedReason } = await import("./hours");
   if (!isBusinessOpen(restaurant)) throw new Error(closedReason(restaurant));
 
+  // Fiyatı 0 olan ürün "fiyat sorulur": sepetten sipariş edilemez (hem RPC
+  // hem yedek yol için burada kesilir; aksi hâlde 0 TL sipariş oluşurdu).
+  const { data: unpriced, error: unpricedError } = await supabase
+    .from("menu_items")
+    .select("name")
+    .in(
+      "id",
+      data.items.map((item) => item.menu_item_id),
+    )
+    .lte("price", 0)
+    .limit(1);
+  if (unpricedError) throw new Error(unpricedError.message);
+  const firstUnpriced = unpriced?.[0];
+  if (firstUnpriced) {
+    throw new Error(`${firstUnpriced.name} için fiyat belirtilmemiş; lütfen işletmeyi arayın.`);
+  }
+
   // Opsiyonel alanlar SQL tarafında NULL kabul ediyor; üretilen tipler bunları string olarak görüyor.
   const rpcArgs = {
     p_user_id: userId,

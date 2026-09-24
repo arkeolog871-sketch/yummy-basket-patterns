@@ -53,7 +53,7 @@ describe("vitrin stok durumu", () => {
   it("tükenen ürün için sepete ekle düğmesi kapalı", () => {
     const source = stripComments(read("src/routes/restoran.$slug.tsx"));
     expect(source).toContain("item.in_stock === false");
-    expect(source).toContain("disabled={!open || item.in_stock === false}");
+    expect(source).toMatch(/disabled=\{!open \|\| item\.in_stock === false/);
     expect(source).toContain("Tükendi");
   });
 

@@ -22,6 +22,18 @@ export function slugify(value: string): string {
     .slice(0, 60);
 }
 
+/**
+ * Fiyatı 0 (ya da geçersiz) olan ürün "fiyat sorulur" sayılır: sitede
+ * "₺0,00" yerine "Fiyat için arayın" yazar ve sepete eklenemez. Satıcı
+ * panelinde 0 fiyat girilebildiği için bu durum bilerek destekleniyor.
+ */
+export function hasListedPrice(price: unknown): boolean {
+  const amount = Number(price);
+  return Number.isFinite(amount) && amount > 0;
+}
+
+export const PRICE_ON_REQUEST_LABEL = "Fiyat için arayın";
+
 export function formatPrice(value: number): string {
   const amount = Number.isFinite(value) ? value : 0;
   return new Intl.NumberFormat("tr-TR", {

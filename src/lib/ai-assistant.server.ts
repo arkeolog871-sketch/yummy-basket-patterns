@@ -352,6 +352,8 @@ export async function runAssistant(
             .select("id, name, price, image_url")
             .eq("restaurant_id", row.id)
             .eq("is_available", true)
+            // Fiyatı 0 olan ürün "fiyat sorulur"; sepete önerilmez.
+            .gt("price", 0)
             .in("id", ids);
           if (itemsError) throw new Error(itemsError.message);
           if (!rows || rows.length === 0) return { error: "Ürünler bulunamadı." };
