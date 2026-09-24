@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { runServerFn } from "./public-error";
+import { termsReacceptanceRequired } from "./legal-consent";
 
 /**
  * Bu andan sonra açılan hesaplardan yasal onay istenir; öncekilere hiç
@@ -41,7 +42,9 @@ export const getLegalConsentRequirement = createServerFn({ method: "GET" })
           .order("accepted_at", { ascending: false })
           .limit(1)
           .maybeSingle();
-        return { required: Boolean(last && last.version < LEGAL_VERSIONS.terms) };
+        // Kabul geçmişi yoksa ya da eski sürümse yeniden sor; aynı sürüm
+        // zaten kabul edildiyse sorma.
+        return { required: termsReacceptanceRequired(last?.version ?? null, LEGAL_VERSIONS.terms) };
       }
 
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -57,8 +60,15 @@ export const getLegalConsentRequirement = createServerFn({ method: "GET" })
 /** Onay kutusu işaretlenip devam edildiğinde çağrılır. */
 export const acceptLegalTerms = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) =>
+  .inputValidator((input: unknown) => {
+    const v = (input ?? {}) as { accepted?: unknown };
+    return { accepted: v.accepted === true };
+  })
+  .handler(async ({ context, data }) =>
     runServerFn(async () => {
+      // İstemci doğrulaması atlanıp çağrılırsa reddet.
+      const { TERMS_ACCEPTANCE_REQUIRED } = await import("./legal");
+      if (!data.accepted) throw new Error(TERMS_ACCEPTANCE_REQUIRED);
       const { recordTermsAcceptance } = await import("./otp.server");
       const result = await recordTermsAcceptance(context.userId, "consent_gate");
       if (!result.ok) throw new Error(result.error);

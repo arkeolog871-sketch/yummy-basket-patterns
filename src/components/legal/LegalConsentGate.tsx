@@ -52,7 +52,7 @@ export function LegalConsentGate() {
   }, [required]);
 
   const confirm = useMutation({
-    mutationFn: async () => accept(),
+    mutationFn: async () => accept({ data: { accepted: true } }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["legal-consent"] });
     },
@@ -81,6 +81,8 @@ export function LegalConsentGate() {
           className="mt-4 w-full rounded-full"
           size="lg"
           disabled={confirm.isPending}
+          aria-disabled={!checked}
+          data-terms-checked={checked ? "true" : "false"}
           onClick={() => {
             if (!checked) {
               toast.error(TERMS_ACCEPTANCE_REQUIRED);
