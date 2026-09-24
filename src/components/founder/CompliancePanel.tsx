@@ -114,7 +114,8 @@ export function CompliancePanel() {
         <h2 className="text-lg font-semibold">Platform Kimliği</h2>
         {identity.data?.missing.length ? (
           <p className="mt-2 rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
-            Yasal sayfalar yayına hazır değil. Eksik: {identity.data.missing.join(", ")}
+            Eksik kimlik alanları: {identity.data.missing.join(", ")}. Belgeler kullanıcılar
+            tarafından okunabilir; yalnız yayına alma bu alanlar tamamlanana kadar kapalıdır.
           </p>
         ) : (
           <p className="mt-2 text-sm text-muted-foreground">Zorunlu kimlik alanları tamam.</p>
@@ -130,13 +131,19 @@ export function CompliancePanel() {
             </label>
           ))}
         </div>
-        <Button
-          className="mt-4 rounded-full"
-          disabled={save.isPending}
-          onClick={() => save.mutate()}
-        >
-          Kaydet
-        </Button>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button className="rounded-full" disabled={save.isPending} onClick={() => save.mutate()}>
+            Kaydet
+          </Button>
+          <Button
+            variant="outline"
+            className="rounded-full"
+            disabled={publish.isPending || Boolean(identity.data?.missing.length)}
+            onClick={() => publish.mutate()}
+          >
+            {publish.isPending ? "Yayınlanıyor…" : "Yasal metinleri yayına al"}
+          </Button>
+        </div>
       </section>
 
       <section>
