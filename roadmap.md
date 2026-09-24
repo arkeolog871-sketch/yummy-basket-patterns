@@ -46,3 +46,6 @@
 - [x] Hesap silmede anonimleştirme işlemi
 - [x] Sağlayıcıdan bağımsız, imzalı ödeme bildirimi ucu (kuruluş seçilince bağlanacak; PAYMENT_WEBHOOK_SECRET bekliyor)
 - [ ] Tarayıcı üzerinden uçtan uca senaryolar (A–S)
+
+- [ ] 16 hukuki belge yayından önce hukukçu onayı (engel: hukukçu incelemesi)
+- [x] Yasal Merkez: sürüm, yürürlük, hedef kitle görünür

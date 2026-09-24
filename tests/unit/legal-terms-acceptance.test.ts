@@ -40,7 +40,7 @@ describe("KVKK aydınlatma ve eksik kimlik", () => {
     expect(read("src/components/legal/LegalDocument.tsx")).not.toMatch(/type="checkbox"/);
   });
   it("eksik alan uydurulmaz, açık etiketle gösterilir", () => {
-    const out = fillLegalText("{{PLATFORM_MERSIS}}", {} as never);
+    const out = fillLegalText("{{PLATFORM_LEGAL_NAME}}", {} as never);
     expect(out).toContain(LEGAL_MISSING_LABEL);
   });
   it("yayın eksik zorunlu kimlikte engellenir", () => {

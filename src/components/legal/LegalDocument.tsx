@@ -22,29 +22,14 @@ export function usePlatformIdentity() {
 
 export function LegalDocumentBody({ docId }: { docId: LegalDocId }) {
   const doc = LEGAL_DOCUMENTS[docId];
-  const { data, isLoading } = usePlatformIdentity();
+  const { data } = usePlatformIdentity();
   const identity = (data?.identity ?? {}) as Record<string, string | null>;
-  const missing = data ? missingTokensForDoc(docId, identity) : [];
   return (
     <div className="space-y-4 text-sm leading-6 text-muted-foreground">
       <p className="text-xs">
         {LEGAL_PACKAGE_LABEL} · Sürüm {LEGAL_VERSIONS[docId]}.0 · {LEGAL_EFFECTIVE_LABEL} ·{" "}
         {doc.updatedLabel} · Hedef kitle: {doc.audience}
       </p>
-      {!isLoading && missing.length ? (
-        <div
-          role="note"
-          className="rounded-xl border border-border bg-muted/50 p-3 text-foreground"
-        >
-          <p className="font-semibold">Bu belge yayına hazır değil</p>
-          <p className="mt-1 text-muted-foreground">
-            Nedeni: platform kimlik bilgilerinin bir kısmı ({missing.length} alan) yönetici
-            tarafından henüz girilmedi. Bu alanlar metinde “Eksik — yönetici tarafından
-            tamamlanmalı” olarak gösterilir. Belgeyi okuyabilir, yazdırabilir ve uygulamayı
-            kullanmaya devam edebilirsiniz.
-          </p>
-        </div>
-      ) : null}
       {doc.paragraphs.map((paragraph, index) =>
         paragraph.startsWith("## ") ? (
           <h2 key={index} className="pt-2 text-base font-semibold text-foreground">

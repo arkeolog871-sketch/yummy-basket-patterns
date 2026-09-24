@@ -76,7 +76,13 @@ export const LEGAL_TOKENS = {
 export type LegalToken = keyof typeof LEGAL_TOKENS;
 
 /** Boş kalırsa belgeyi yayına hazır olmaktan çıkarmayan (isteğe bağlı) alanlar. */
-const OPTIONAL_TOKENS: LegalToken[] = ["PLATFORM_MERSIS", "PLATFORM_KEP", "PLATFORM_BRAND"];
+const OPTIONAL_TOKENS: LegalToken[] = [
+  "PLATFORM_MERSIS",
+  "PLATFORM_KEP",
+  "PLATFORM_BRAND",
+  "PLATFORM_TAX_OFFICE",
+  "PLATFORM_TAX_NO",
+];
 
 const BRAND = "SİLVAN CEBİMDE";
 const U = "Son güncelleme: 24 Eylül 2026";
@@ -437,22 +443,40 @@ export function missingTokensForDoc(docId: LegalDocId, identity: IdentityLike): 
   for (const p of LEGAL_DOCUMENTS[docId].paragraphs) {
     for (const m of p.matchAll(/\{\{([A-Z_]+)\}\}/g)) used.add(m[1] as LegalToken);
   }
+  const id = resolveIdentity(identity);
   return [...used].filter(
     (t) =>
-      t in LEGAL_TOKENS &&
-      !OPTIONAL_TOKENS.includes(t) &&
-      !String(identity[LEGAL_TOKENS[t]] ?? "").trim(),
+      t in LEGAL_TOKENS && !OPTIONAL_TOKENS.includes(t) && !String(id[LEGAL_TOKENS[t]] ?? "").trim(),
   );
 }
 
-/** Değişkenleri platform kimliğiyle doldurur; boş alan "—" olur (uydurulmaz). */
-/** Eksik kimlik alanı için açık etiket (değer uydurulmaz). */
+/** Eksik zorunlu kimlik alanı için açık etiket (değer uydurulmaz). */
 export const LEGAL_MISSING_LABEL = "Eksik — yönetici tarafından tamamlanmalı";
 
+/** KVKK başvurusu girilmemişse platformun kayıtlı e-postası kullanılır. */
+function resolveIdentity(identity: IdentityLike): IdentityLike {
+  const kvkk = String(identity.kvkk_contact ?? "").trim() || String(identity.email ?? "").trim();
+  return { ...identity, kvkk_contact: kvkk || null };
+}
+
+/**
+ * Değişkenleri platform kimliğiyle doldurur. İsteğe bağlı boş alanlar
+ * metinden çıkarılır; zorunlu boş alan açık etiketle gösterilir.
+ */
 export function fillLegalText(text: string, identity: IdentityLike): string {
-  return text.replace(/\{\{([A-Z_]+)\}\}/g, (_, key: string) => {
-    if (key === "PLATFORM_BRAND") return String(identity.brand_name ?? "").trim() || BRAND;
+  const id = resolveIdentity(identity);
+  const out = text.replace(/\{\{([A-Z_]+)\}\}/g, (_, key: string) => {
+    if (key === "PLATFORM_BRAND") return String(id.brand_name ?? "").trim() || BRAND;
     const col = LEGAL_TOKENS[key as LegalToken];
-    return (col && String(identity[col] ?? "").trim()) || LEGAL_MISSING_LABEL;
+    const value = col ? String(id[col] ?? "").trim() : "";
+    if (value) return value;
+    return OPTIONAL_TOKENS.includes(key as LegalToken) ? "" : LEGAL_MISSING_LABEL;
   });
+  return out
+    .replace(/\s*,\s*(?=[,.;])/g, "")
+    .replace(/\(\s*\)/g, "")
+    .replace(/[^\s:;,.()]+:\s*(?=[,.;)])/g, "")
+    .replace(/\s*,\s*(?=[,.;])/g, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([,.;])/g, "$1");
 }

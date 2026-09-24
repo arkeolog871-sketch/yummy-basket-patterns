@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { LEGAL_CENTER_ORDER, LEGAL_DOCUMENTS, LEGAL_VERSIONS } from "@/lib/legal";
+import { LEGAL_CENTER_ORDER, LEGAL_DOCUMENTS, LEGAL_EFFECTIVE_LABEL, LEGAL_VERSIONS } from "@/lib/legal";
 
 export const Route = createFileRoute("/yasal/")({
   head: () => ({
@@ -31,7 +31,7 @@ function LegalCenter() {
               <a href={doc.path} className="block p-4 hover:bg-secondary/50">
                 <span className="block font-semibold">{doc.title}</span>
                 <span className="block text-xs text-muted-foreground">
-                  {doc.audience} · Sürüm {LEGAL_VERSIONS[id]} · {doc.description}
+                  Sürüm {LEGAL_VERSIONS[id]}.0 · {LEGAL_EFFECTIVE_LABEL} · Hedef kitle: {doc.audience} · {doc.description}
                 </span>
               </a>
             </li>
