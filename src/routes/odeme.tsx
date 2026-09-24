@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { listAddresses } from "@/lib/addresses.functions";
 import { createOrder } from "@/lib/orders.functions";
+import { attachPreInformation } from "@/lib/compliance.functions";
+import { SellerDisclosure } from "@/components/legal/SellerDisclosure";
 import { useCart } from "@/hooks/useCart";
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import { formatPrice } from "@/lib/format";
@@ -38,6 +40,8 @@ function CheckoutPage() {
   const navigate = useNavigate();
   const fetchAddresses = useServerFn(listAddresses);
   const submitOrder = useServerFn(createOrder);
+  const savePreInfo = useServerFn(attachPreInformation);
+  const [preInfoRead, setPreInfoRead] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const submittingRef = useRef(false);
@@ -81,6 +85,23 @@ function CheckoutPage() {
         },
       });
       if (!result.ok) throw new Error(result.error);
+      // Ön bilgilendirmenin onay anındaki kopyası siparişe kalıcı olarak eklenir.
+      await savePreInfo({
+        data: {
+          orderId: result.id,
+          snapshot: {
+            seller: { id: cart.restaurant.id, name: cart.restaurant.name },
+            items: cart.lines.map((line) => ({
+              name: line.name,
+              quantity: line.quantity,
+              unit_price: line.price,
+            })),
+            total: cart.total,
+            delivery_fee: cart.deliveryFee,
+            payment_method: "cash_on_delivery",
+          },
+        },
+      }).catch(() => undefined);
       return result;
     },
     onSuccess: (result) => {
@@ -206,6 +227,36 @@ function CheckoutPage() {
           </div>
         </div>
         <p className="mt-3 text-xs text-muted-foreground">Ödeme: kapıda ödeme</p>
+        {cart.restaurant ? (
+          <div className="mt-4">
+            <SellerDisclosure restaurantId={cart.restaurant.id} />
+          </div>
+        ) : null}
+        <details className="mt-3 rounded-2xl border border-border/70 p-3 text-xs leading-5 text-muted-foreground">
+          <summary className="cursor-pointer font-semibold text-foreground">
+            Ön bilgilendirme
+          </summary>
+          <p className="mt-2">
+            Ürünler: {cart.lines.map((l) => `${l.quantity} × ${l.name}`).join(", ")}. Toplam
+            (KDV dahil): {formatPrice(cart.total)}; teslimat ücreti dahildir, başka ücret alınmaz.
+            Ödeme: teslimatta satıcıya kapıda ödeme. Yemek ve çabuk bozulan ürünlerde cayma hakkı
+            yoktur (Mesafeli Sözleşmeler Yönetmeliği m. 15); ayıplı ürün haklarınız saklıdır.
+            Şikâyetlerinizi sipariş sayfasından iletebilir, Tüketici Hakem Heyeti ve tüketici
+            mahkemesine başvurabilirsiniz. Bu metin siparişinizle birlikte saklanır.{" "}
+            <a href="/yasal/mesafeli-satis" className="underline underline-offset-4">
+              Tam metin
+            </a>
+          </p>
+        </details>
+        <label className="mt-3 flex items-start gap-2 text-xs text-foreground">
+          <input
+            type="checkbox"
+            className="mt-0.5 size-4 accent-primary"
+            checked={preInfoRead}
+            onChange={(event) => setPreInfoRead(event.target.checked)}
+          />
+          <span>Ön bilgilendirme ve mesafeli satış sözleşmesini okudum, onaylıyorum.</span>
+        </label>
         <p className="mt-3 text-xs leading-5 text-muted-foreground">
           Siparişi onayladığınızda toplam tutarı ödeme yükümlülüğü doğar. Ödemeyi kurye teslim
           sırasında nakit veya kredi kartıyla yaparsınız; sipariş, seçtiğiniz işletme tarafından
@@ -218,13 +269,13 @@ function CheckoutPage() {
         <Button
           className="mt-5 w-full rounded-full"
           size="lg"
-          disabled={!selectedId || place.isPending || !cart.meetsMinimum}
+          disabled={!selectedId || place.isPending || !cart.meetsMinimum || !preInfoRead}
           onClick={() => {
             if (place.isPending || submittingRef.current) return;
             place.mutate();
           }}
         >
-          {place.isPending ? "Sipariş gönderiliyor…" : "Siparişi onayla · Kapıda ödeme"}
+          {place.isPending ? "Sipariş gönderiliyor…" : "Siparişi onayla · Ödeme yükümlülüğü doğar"}
         </Button>
       </div>
     </div>

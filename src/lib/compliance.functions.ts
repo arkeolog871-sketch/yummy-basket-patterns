@@ -399,3 +399,25 @@ export const getComplianceOverview = createServerFn({ method: "GET" })
       };
     }),
   );
+
+/**
+ * Satın almadan önce gösterilmesi gereken satıcı kimlik/iletişim bilgisi.
+ * Yalnız açık işletme, yalnız müşteriye gösterilmesi zorunlu alanlar döner.
+ */
+export const getSellerDisclosure = createServerFn({ method: "GET" })
+  .inputValidator((input: unknown) => z.object({ restaurantId: z.string().uuid() }).parse(input))
+  .handler(async ({ data }) =>
+    runServerFn(async () => {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: r } = await supabaseAdmin
+        .from("restaurants")
+        .select(
+          "name, legal_name, legal_entity_type, tax_office, mersis_no, address, district, city, contact_phone, contact_email, delivery_type, delivery_fee, min_order, opens_at, closes_at, sector",
+        )
+        .eq("id", data.restaurantId)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (!r) return null;
+      return r;
+    }),
+  );
