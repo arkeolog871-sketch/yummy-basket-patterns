@@ -30,3 +30,19 @@
 - [x] Kullanıcı talimatı (kalıcı, cihazda saklanır, sistem kuralını geçersiz kılamaz)
 - [x] İnternet araştırması (searchWeb + readWebPage; rehber/pazaryeri siteleri filtreli)
 - [x] İşletme bilgisi YALNIZCA veritabanından (prompt + mekanik filtre)
+
+## Hukuki uyum mimarisi (plan onaylandı, 24 Eylül 2026)
+
+- [x] Uyum tabloları + RLS + değiştirilemez kayıtlar (legal_acceptances, audit_logs, complaint_events, communication_consents)
+- [x] Sürümlü 14 belge, Yasal Merkez (/yasal), yazdırma, tüketiciyi zayıflatan ifadeler düzeltildi
+- [x] Onay ayrımı: Kullanım Koşulları kabulü ≠ KVKK aydınlatma; sürüm değişince yeniden kabul
+- [x] Pazarlama izni/ret geçmişi (Hesabım), şikâyet oluşturma
+- [x] Ödeme: satıcı kimliği kutusu, ön bilgilendirme onayı, siparişe kalıcı kopya
+- [x] İşletme: sözleşme sürüm onayı, doğrulama durumu, bedel dökümü; belge/doğrulama olmadan yayın engeli (veritabanı)
+- [x] Kurucu: Platform Kimliği + Hukuk ve Uyum Merkezi listeleri
+- [ ] İşletme belge yükleme ekranı ve kurucu belge onay/red düğmeleri
+- [ ] Kurucu için şikâyet/iade/rapor karar ekranları, ihlal kaydı formu, ikinci onay akışı
+- [ ] Yorumda "doğrulanmış sipariş" etiketi ve "Bildir" düğmesi, satıcı cevabı
+- [ ] Hesap silmede anonimleştirme işlemi
+- [ ] Gerçek ödeme kuruluşu webhook'u (kuruluş seçilince)
+- [ ] Tarayıcı üzerinden uçtan uca senaryolar (A–S)
