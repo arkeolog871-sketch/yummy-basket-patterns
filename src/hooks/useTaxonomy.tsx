@@ -1,6 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { SECTORS } from "@/lib/sectors";
+import {
+  BUSINESS_CATEGORY_CATALOG,
+  type BusinessCategoryEntry,
+} from "@/lib/business-category-catalog";
 
 export type AppCategory = {
   id: string;
@@ -117,4 +121,41 @@ export function useServiceAreas(options?: { includeHidden?: boolean }) {
 
 export function areaLabel(area: ServiceArea) {
   return `${area.district}, ${area.city}`;
+}
+
+/**
+ * İşletme kategori kataloğu ("Alt tür" arama motoru): işletme başvurusu ve
+ * Sayfa Yöneticisi Paneli aynı tablodan okur. Tablo okunamazsa ya da boşsa
+ * koddaki liste kullanılır (aynı içerik; göçle tabloya yazılan kaynak).
+ */
+export function useBusinessCategoryCatalog() {
+  const query = useQuery({
+    queryKey: ["business-category-catalog"],
+    queryFn: async (): Promise<BusinessCategoryEntry[]> => {
+      try {
+        const { data, error } = await supabase
+          .from("business_category_catalog")
+          .select("slug, name, group_name, sector_slug, synonyms, position")
+          .order("position")
+          .order("name")
+          .limit(2000);
+        if (error) {
+          console.error("[business-category-catalog]", error.message);
+          return [];
+        }
+        return (data ?? []).map((row) => ({ ...row, synonyms: row.synonyms ?? [] }));
+      } catch (error) {
+        console.error("[business-category-catalog]", error);
+        return [];
+      }
+    },
+    retry: false,
+    staleTime: 60 * 60 * 1000,
+  });
+  const loaded = query.data ?? [];
+  return {
+    catalog: loaded.length > 0 ? loaded : BUSINESS_CATEGORY_CATALOG,
+    fromDatabase: loaded.length > 0,
+    isLoading: query.isLoading,
+  };
 }
