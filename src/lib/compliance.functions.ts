@@ -316,7 +316,7 @@ export const attachPreInformation = createServerFn({ method: "POST" })
         .maybeSingle();
       if (!order) throw new Error("Sipariş bulunamadı.");
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      await supabaseAdmin
+      const { error: snapError } = await supabaseAdmin
         .from("orders")
         .update({
           pre_information: { ...data.snapshot, captured_at: new Date().toISOString() } as never,
@@ -328,6 +328,7 @@ export const attachPreInformation = createServerFn({ method: "POST" })
         })
         .eq("id", data.orderId)
         .is("pre_information", null);
+      if (snapError) throw new Error(snapError.message);
       return { ok: true };
     }),
   );

@@ -1353,6 +1353,11 @@ export const reviewDeletionRequest = createServerFn({ method: "POST" })
             founder_note: data.note ?? null,
             reviewed_by: context.userId,
             reviewed_at: new Date().toISOString(),
+            retention_basis:
+              "Sipariş ve fatura kayıtları vergi/ticaret mevzuatındaki saklama süresi boyunca kimliksizleştirilmiş olarak tutulur.",
+            anonymized_fields: ["recipient_name", "phone", "street", "directions", "note"],
+            retained_fields: ["order_id", "total", "created_at", "restaurant_id"],
+            completed_at: new Date().toISOString(),
           })
           .eq("id", request.id)
           .eq("status", "pending");
