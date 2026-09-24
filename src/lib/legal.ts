@@ -147,6 +147,136 @@ export const LEGAL_DOCUMENTS: Record<LegalDocId, LegalDocument> = {
       "Bu politika, tüketici mevzuatından doğan yasal haklarınızı ortadan kaldırmaz veya sınırlamaz.",
     ],
   },
+  kvkk_vendor: {
+    id: "kvkk_vendor",
+    audience: "İşletme",
+    title: "KVKK Aydınlatma Metni – İşletme ve Yetkililer",
+    path: "/yasal/kvkk-isletme",
+    description: "İşletme başvurusu ve paneli kullanan yetkililerin kişisel verileri hakkında bilgilendirme.",
+    updatedLabel: "Son güncelleme: 24 Eylül 2026",
+    paragraphs: [
+      "Veri sorumlusu, Platform Kimliği kaydında yayımlanan platform işletmecisidir. Bu metin bilgilendirme amaçlıdır; onay veya açık rıza metni değildir.",
+      "İşlenen veriler: yetkili kişinin ad-soyadı, telefonu, e-postası; işletmenin unvanı, adresi, vergi ve MERSİS bilgileri, faaliyet/ruhsat ve gıda kayıt belgeleri; panel oturum ve işlem güvenliği kayıtları; sipariş ve komisyon dökümleri.",
+      "Amaçlar: işletme başvurusunun değerlendirilmesi ve satıcının doğrulanması (6563 sayılı Kanun ve ikincil mevzuattaki aracı hizmet sağlayıcı yükümlülükleri), aracılık sözleşmesinin kurulması ve ifası, müşteriye satıcı bilgilerinin gösterilmesi, şikâyet ve denetim süreçleri, yasal saklama yükümlülükleri.",
+      "Hukuki sebepler: KVKK m. 5/2 (a) kanunlarda açıkça öngörülme, (c) sözleşmenin kurulması/ifası, (ç) hukuki yükümlülük, (e) bir hakkın tesisi, kullanılması veya korunması, (f) meşru menfaat.",
+      "Satıcı bilgileri (unvan, adres, iletişim, ticari kimlik) mevzuat gereği sipariş öncesinde müşterilere gösterilir. Belgeler yalnızca doğrulama için yetkili platform personelince görülür.",
+      "KVKK m. 11 haklarınız için Platform Kimliği kaydındaki KVKK başvuru adresine başvurabilirsiniz.",
+    ],
+  },
+  cookies: {
+    id: "cookies",
+    audience: "Herkes",
+    title: "Çerez ve Kullanım Teknolojileri Politikası",
+    path: "/yasal/cerezler",
+    description: "Sitede kullanılan zorunlu teknik depolama ve isteğe bağlı teknolojiler.",
+    updatedLabel: "Son güncelleme: 24 Eylül 2026",
+    paragraphs: [
+      "Zorunlu teknik depolama: oturum anahtarı, sepet, tema ve yazı tercihleri, güvenlik ve hata kayıtları. Bunlar hizmetin çalışması için gereklidir ve tercih merkezinden kapatılamaz.",
+      "Şu an analitik, reklam veya üçüncü taraf izleme teknolojisi kullanılmamaktadır. Böyle bir teknoloji eklenirse, çalıştırılmadan önce ayrı ve isteğe bağlı izniniz istenir ve tercihiniz sürümlü olarak kaydedilir.",
+      "Harita gösterimi sırasında harita sağlayıcısı (Google Maps veya OpenStreetMap) kendi teknik verilerini işleyebilir; bu sağlayıcıların yurt dışı aktarım durumu KVKK aydınlatma metninde açıklanır.",
+    ],
+  },
+  distance_sales: {
+    id: "distance_sales",
+    audience: "Müşteri",
+    title: "Ön Bilgilendirme ve Mesafeli Satış Sözleşmesi",
+    path: "/yasal/mesafeli-satis",
+    description: "Sipariş vermeden önce sunulan ön bilgilendirmenin genel çerçevesi.",
+    updatedLabel: "Son güncelleme: 24 Eylül 2026",
+    paragraphs: [
+      "Mesafeli sözleşme, müşteri ile siparişteki işletme (satıcı) arasında kurulur. Platform, aracı hizmet sağlayıcıdır ve satıcı değildir.",
+      "Siparişi onaylamadan önce ödeme sayfasında şunlar gösterilir: satıcının unvanı, adresi ve iletişim bilgisi; platformun kimlik bilgisi; ürünlerin temel nitelikleri ve adetleri; vergiler dahil toplam fiyat; teslimat ücreti; ödeme yöntemi (kapıda ödeme); teslim bilgisi; cayma hakkı ve istisnaları; şikâyet ve başvuru yolları.",
+      "\"Siparişi onayla\" düğmesine basılmasıyla ödeme yükümlülüğü doğar. Onay anındaki ön bilgilendirme ve sözleşme metni siparişle birlikte saklanır ve sipariş detay sayfasından her zaman görüntülenip yazdırılabilir.",
+      "Cayma hakkı, istisnaları ve iade süreci İptal, İade ve Cayma Politikası'nda açıklanmıştır. Yemek ve çabuk bozulan ürünler, Mesafeli Sözleşmeler Yönetmeliği m. 15 uyarınca cayma hakkı kapsamı dışındadır; ayıplı ürün hakları saklıdır.",
+    ],
+  },
+  vendor_agreement: {
+    id: "vendor_agreement",
+    audience: "İşletme",
+    title: "İşletme Katılım ve Aracılık Sözleşmesi",
+    path: "/yasal/isletme-sozlesmesi",
+    description: "Platform ile işletme arasındaki hak ve yükümlülükler.",
+    updatedLabel: "Son güncelleme: 24 Eylül 2026",
+    paragraphs: [
+      "Taraflar: Platform Kimliği kaydında yer alan platform işletmecisi (Aracı Hizmet Sağlayıcı) ile başvuru formunda kimliği beyan edilen ve doğrulanan işletme (Satıcı).",
+      "Platformun rolü: Satıcının ürünlerini listelemek, siparişleri iletmek, şikâyet ve denetim altyapısını sağlamak. Platform, satıcı adına satış yapmaz ve müşteri ödemesini emanet olarak tutmaz; ödeme şu an kapıda doğrudan satıcıya yapılır.",
+      "Satıcının yükümlülükleri: ürün adı, açıklaması, görseli, fiyatı, stoku, alerjen ve içerik bilgisinin doğru ve güncel olması; gıda mevzuatı ve ürün güvenliği kurallarına uyum; vergi ve fatura yükümlülükleri; siparişin zamanında ve eksiksiz teslimi; tüketici şikâyetlerine süresi içinde cevap verilmesi; cayma ve iade taleplerinde tüketici mevzuatına uyulması.",
+      "Yasak içerik: sahte, yanıltıcı, hukuka aykırı, başkasının fikri mülkiyetini ihlal eden içerik ve görseller. Satıcı, yüklediği logo ve görselleri kullanma yetkisine sahip olduğunu beyan eder.",
+      "Belge ve denetim: Satıcı, vergi levhası ve faaliyetine göre gerekli ruhsat/gıda kayıt belgelerini sunar, süresi dolan belgeleri yeniler. Belgeler eksik veya süresi dolmuşsa işletme yayına alınmaz ya da geçici olarak kapatılır.",
+      "İhlal hâlinde: Platform, gerekçesini bildirerek ürünü kaldırabilir, sipariş almayı durdurabilir veya hesabı askıya alabilir; ağır ya da tekrarlanan ihlallerde sözleşmeyi feshedebilir. Satıcının kusurundan doğan ve platformun ödemek zorunda kaldığı bedeller, kanunun izin verdiği ölçüde satıcıdan talep edilebilir.",
+      "Bedeller: Platformun tahsil ettiği her bedel, hizmet kalemi bazında ve sürümlü komisyon kurallarıyla belirlenir ve işletme panelinde işlem/ay bazında gösterilir. Aracılık hizmetinin asli unsurları için ayrıca bedel istenmez; kampanya, reklam ve öne çıkarma hizmetleri isteğe bağlıdır ve geri alınabilir.",
+      "Kişisel veriler: Siparişin ifası için müşteri verisi satıcıyla paylaşılır; satıcı bu verileri yalnızca siparişi yerine getirmek için kullanır ve pazarlama amacıyla kullanamaz. Taraflar kendi işlemeleri bakımından ayrı veri sorumlusudur.",
+      "Kayıtlar, uyuşmazlık ve sürüm: İşlem ve onay kayıtları delil niteliğinde saklanır. Mücbir sebep hâlinde yükümlülükler ertelenir. Sözleşmenin yeni sürümü yayınlandığında satıcıdan yeniden onay istenir; onay verilmeden sipariş alma yeniden açılmaz. Platformun mevzuattan doğan zorunlu yükümlülükleri saklıdır.",
+    ],
+  },
+  marketing: {
+    id: "marketing",
+    audience: "Herkes",
+    title: "Ticari Elektronik İleti Tercihleri",
+    path: "/yasal/ticari-ileti",
+    description: "Kampanya ve tanıtım iletileri için izin ve ret hakkı.",
+    updatedLabel: "Son güncelleme: 24 Eylül 2026",
+    paragraphs: [
+      "Sipariş durumu, doğrulama kodu ve güvenlik bildirimleri hizmet iletisidir; pazarlama izni gerektirmez.",
+      "Kampanya, indirim ve tanıtım iletileri (SMS, e-posta, anlık bildirim) yalnızca ayrı ve isteğe bağlı izninizle gönderilir. İzin kutusu varsayılan olarak işaretsizdir.",
+      "İzninizi dilediğiniz an Hesabım sayfasından geri alabilirsiniz; ret sonrasında sistem pazarlama gönderimini teknik olarak engeller. İzin ve ret geçmişiniz İleti Yönetim Sistemi'ne (İYS) aktarılmaya uygun şekilde saklanır.",
+    ],
+  },
+  community: {
+    id: "community",
+    audience: "Herkes",
+    title: "Topluluk, İçerik ve Değerlendirme Kuralları",
+    path: "/yasal/topluluk-kurallari",
+    description: "Yorum ve içerik paylaşım kuralları.",
+    updatedLabel: "Son güncelleme: 24 Eylül 2026",
+    paragraphs: [
+      "Yorumlar gerçek deneyime dayanmalıdır. Teslim edilmiş bir siparişe bağlı yorumlar \"Doğrulanmış sipariş\" olarak işaretlenir.",
+      "Hakaret, tehdit, kişisel veri paylaşımı (telefon, adres, kimlik), reklam/spam ve yanıltıcı içerik yasaktır. Her kullanıcı işletme başına tek yorum yazabilir.",
+      "Her içerik \"Bildir\" düğmesiyle raporlanabilir. Platform raporları inceler; kaldırma kararı gerekçesiyle kayda geçirilir. İşletmenin yoruma cevap hakkı vardır.",
+      "Puan ortalaması yalnızca yayındaki yorumlardan hesaplanır; işletmeler puanı satın alamaz veya değiştiremez.",
+    ],
+  },
+  complaints: {
+    id: "complaints",
+    audience: "Herkes",
+    title: "Şikâyet ve Uyuşmazlık Çözüm Politikası",
+    path: "/yasal/sikayet",
+    description: "Şikâyetlerin nasıl alındığı ve sonuçlandırıldığı.",
+    updatedLabel: "Son güncelleme: 24 Eylül 2026",
+    paragraphs: [
+      "Şikâyetinizi sipariş detay sayfasından veya Hesabım sayfasından oluşturabilirsiniz. Şikâyet önce satıcıya iletilir, satıcı cevap vermezse veya çözüm sağlanmazsa platform incelemesine geçer.",
+      "Durumlar: Açık → Satıcı cevabı → Platform incelemesi → Çözüldü / Reddedildi / İade edildi / Üst mercie yönlendirildi. Cevap süreleri platform tarafından belirlenir ve şikâyet ekranında gösterilir.",
+      "Taraflar yalnızca şikâyetle ilgili bilgileri görür. Tüm adımlar kayıt altına alınır.",
+      "Platform süreci, Tüketici Hakem Heyeti ve tüketici mahkemesine başvuru hakkınızı ortadan kaldırmaz.",
+    ],
+  },
+  retention: {
+    id: "retention",
+    audience: "Herkes",
+    title: "Hesap Silme ve Veri Saklama Politikası",
+    path: "/yasal/veri-saklama",
+    description: "Hesap silindiğinde hangi verilerin silindiği, hangilerinin saklandığı.",
+    updatedLabel: "Son güncelleme: 24 Eylül 2026",
+    paragraphs: [
+      "Hesap silme talebinizi Hesabım sayfasından oturumunuz doğrulanmış olarak iletirsiniz. Talep incelenir ve sonuçlandırılma tarihi kaydedilir.",
+      "Silinen/anonimleştirilen veriler: profil, adres defteri, bildirim jetonları, sohbet geçmişi, pazarlama tercihleri dışındaki iletişim bilgileri.",
+      "Saklanmaya devam eden veriler: sipariş ve fatura niteliğindeki kayıtlar, onay ve işlem kayıtları; bunlar vergi ve ticaret mevzuatındaki saklama süreleri boyunca kimliğinizle ilişkilendirilmeden (anonimleştirilmiş) tutulur ve süre sonunda imha edilir.",
+      "Her silme işleminde hangi alanların silindiği ve hangilerinin hangi yasal gerekçeyle saklandığı kayda geçirilir.",
+    ],
+  },
+  security_notice: {
+    id: "security_notice",
+    audience: "Herkes",
+    title: "Güvenlik ve Kişisel Veri İhlali Bilgilendirmesi",
+    path: "/yasal/guvenlik",
+    description: "Güvenlik tedbirleri ve olası bir veri ihlalinde izlenecek süreç.",
+    updatedLabel: "Son güncelleme: 24 Eylül 2026",
+    paragraphs: [
+      "Erişimler rol bazlı sınırlandırılır; işletmeler yalnızca kendi siparişlerini görür. Doğrulama kodları ve parolalar düz metin olarak saklanmaz ve kayıtlara yazılmaz; kart verisi tutulmaz.",
+      "Olası bir kişisel veri ihlali tespit edildiğinde olay kayda alınır, etkisi değerlendirilir ve KVKK m. 12/5 uyarınca Kişisel Verileri Koruma Kurulu'na ve ilgili kişilere mevzuatta öngörülen süre ve usulle bildirim yapılır.",
+      "Güvenlik açığı bildirmek için Platform Kimliği kaydındaki iletişim kanallarını kullanabilirsiniz.",
+    ],
+  },
 };
 
 export const LEGAL_LINK_ORDER: LegalDocId[] = [
@@ -156,3 +286,25 @@ export const LEGAL_LINK_ORDER: LegalDocId[] = [
   "cancellation",
   "provider",
 ];
+
+/** Yasal Merkez'de listelenen tüm belgeler. */
+export const LEGAL_CENTER_ORDER: LegalDocId[] = [
+  "terms",
+  "distance_sales",
+  "cancellation",
+  "privacy",
+  "kvkk",
+  "kvkk_vendor",
+  "cookies",
+  "marketing",
+  "community",
+  "complaints",
+  "retention",
+  "security_notice",
+  "vendor_agreement",
+  "provider",
+];
+
+export function legalDocBySlug(slug: string): LegalDocument | null {
+  return Object.values(LEGAL_DOCUMENTS).find((doc) => doc.path === `/yasal/${slug}`) ?? null;
+}
