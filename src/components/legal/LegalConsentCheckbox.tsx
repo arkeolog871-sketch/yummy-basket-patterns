@@ -53,7 +53,7 @@ export function LegalConsentCheckbox({ id, checked, disabled, onCheckedChange }:
         />
         <span className="text-[16px] leading-6 text-foreground">
           <LegalDocButton docId="terms" onOpen={setOpenDoc} />
-          {"'nı okudum ve kabul ediyorum."}
+          {"'nı okudum, kabul ediyorum."}
         </span>
       </div>
       {/* Aydınlatma bir onay değildir (KVKK 2026/347): yalnızca bilgilendirme. */}
