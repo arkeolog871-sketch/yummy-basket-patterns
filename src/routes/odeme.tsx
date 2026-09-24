@@ -242,14 +242,17 @@ function CheckoutPage() {
           <p className="mt-2">
             Ürünler: {cart.lines.map((l) => `${l.quantity} × ${l.name}`).join(", ")}. Toplam (KDV
             dahil): {formatPrice(cart.total)}; bunun {formatPrice(cart.deliveryFee)} kısmı teslimat
-            ücretidir, başka ücret alınmaz. Ödeme:
-            teslimatta satıcıya kapıda ödeme. Yemek ve çabuk bozulan ürünlerde cayma hakkı yoktur
-            (Mesafeli Sözleşmeler Yönetmeliği m. 15); ayıplı ürün haklarınız saklıdır.
-            Şikâyetlerinizi sipariş sayfasından iletebilir, Tüketici Hakem Heyeti ve tüketici
-            mahkemesine başvurabilirsiniz. Platform (aracı hizmet sağlayıcı):{" "}
+            ücretidir, başka ücret alınmaz. Ödeme: teslimatta satıcıya kapıda ödeme. Yemek ve çabuk
+            bozulan ürünlerde cayma hakkı yoktur (Mesafeli Sözleşmeler Yönetmeliği m. 15); ayıplı
+            ürün haklarınız saklıdır. Şikâyetlerinizi sipariş sayfasından iletebilir, Tüketici Hakem
+            Heyeti ve tüketici mahkemesine başvurabilirsiniz. Platform (aracı hizmet sağlayıcı):{" "}
             {platformIdentity.data?.identity.legal_name || "SİLVAN CEBİMDE"}
-            {platformIdentity.data?.identity.email ? ` · ${platformIdentity.data.identity.email}` : ""}
-            {platformIdentity.data?.identity.phone ? ` · ${platformIdentity.data.identity.phone}` : ""}
+            {platformIdentity.data?.identity.email
+              ? ` · ${platformIdentity.data.identity.email}`
+              : ""}
+            {platformIdentity.data?.identity.phone
+              ? ` · ${platformIdentity.data.identity.phone}`
+              : ""}
             . Ön bilgilendirme sürümü {LEGAL_VERSIONS.distance_sales}.0; bu metin ve satıcı
             bilgilerinin o anki kopyası siparişinizle birlikte saklanır.{" "}
             <a href="/yasal/mesafeli-satis" className="underline underline-offset-4">
