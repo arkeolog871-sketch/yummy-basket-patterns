@@ -529,6 +529,24 @@ html[data-android-shell] [data-app-header] {
   padding-top: 0;
 }
 
+/* iPhone uygulaması: alt boşluk (ana ekran çizgisi bölgesi) dolsun.
+ * YALNIZ html[data-ios-shell] — o işaret yalnız Capacitor iOS kabuğunda
+ * konur; Android'de hiçbir şeye uymaz. Yukarıdaki kilit kuralları aynen
+ * duruyor, bunlar yalnız iPhone'da üstüne eklenir.
+ * Sayfa, ölçülen eksik kadar (--ios-bottom-bleed, ios-full-screen.ts) uzar;
+ * içerik alanının sonuna aynı pay eklenir ki son satır çizginin üstünde
+ * dursun. Değişken 0 ise (ölçüm yok / gerek yok) ikisi de hiçbir şey yapmaz. */
+html[data-ios-shell]:has([data-app-scroll]) {
+  height: calc(100% + var(--ios-bottom-bleed, 0px));
+}
+
+html[data-ios-shell] [data-app-scroll]::after {
+  content: "";
+  display: block;
+  flex: none;
+  height: var(--ios-bottom-bleed, 0px);
+}
+
 /* Görseller için son güvence: bazı <img>'ler (kapak, ürün, splash) taşıyıcı
  * boyutlarını CSS sınıflarıyla (size-full, object-cover…) alır. Eğer bu
  * sınıflar herhangi bir sebeple (WebView'de CSS yüklenme sırası/önbellek
