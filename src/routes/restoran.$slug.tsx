@@ -658,7 +658,9 @@ function ReportReviewButton({ reviewId }: { reviewId: string }) {
         const reason = e.target.value as (typeof REPORT_REASONS)[number][0];
         if (!reason) return;
         try {
-          await report({ data: { targetType: "review", targetId: reviewId, reason, details: null } });
+          await report({
+            data: { targetType: "review", targetId: reviewId, reason, details: null },
+          });
           setSent(true);
           toast.success("Bildiriminiz incelemeye alındı.");
         } catch (err) {

@@ -109,7 +109,9 @@ export const listMyBusinessDocuments = createServerFn({ method: "GET" })
 export const replyToReview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ reviewId: z.string().uuid(), reply: z.string().trim().min(2).max(600) }).parse(input),
+    z
+      .object({ reviewId: z.string().uuid(), reply: z.string().trim().min(2).max(600) })
+      .parse(input),
   )
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
@@ -270,7 +272,13 @@ export const decideRefund = createServerFn({ method: "POST" })
     z
       .object({
         id: z.string().uuid(),
-        status: z.enum(["seller_review", "platform_review", "approved", "partially_approved", "rejected"]),
+        status: z.enum([
+          "seller_review",
+          "platform_review",
+          "approved",
+          "partially_approved",
+          "rejected",
+        ]),
         note: z.string().trim().min(3).max(1000),
       })
       .parse(input),

@@ -12,6 +12,7 @@ import {
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { VendorReviewReplies } from "./VendorReviewReplies";
 
 const STATUS: Record<string, string> = {
   submitted: "İncelemede",
@@ -37,7 +38,12 @@ export function VendorDocumentsSection() {
       if (!data || !file) throw new Error("Dosya seçin.");
       if (!ALLOWED.includes(file.type)) throw new Error("Yalnız PDF veya fotoğraf yükleyin.");
       if (file.size > 10 * 1024 * 1024) throw new Error("Dosya 10 MB'tan büyük olamaz.");
-      const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "pdf";
+      const ext =
+        file.name
+          .split(".")
+          .pop()
+          ?.toLowerCase()
+          .replace(/[^a-z0-9]/g, "") || "pdf";
       const path = `${data.restaurantId}/${kind}-${Date.now()}.${ext}`;
       const { error } = await supabase.storage
         .from("business-documents")
@@ -65,68 +71,71 @@ export function VendorDocumentsSection() {
 
   if (!data) return null;
   return (
-    <section className="rounded-3xl border border-border/70 bg-card p-4 shadow-card">
-      <h3 className="font-semibold">İşletme belgeleri</h3>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Yayında kalmak için zorunlu belgeler:{" "}
-        {data.required.map((k) => BUSINESS_DOC_KINDS[k as BusinessDocKind] ?? k).join(", ")}.
-        Belgeler yalnız sizin ve platform yetkilisinin görebileceği gizli alanda saklanır.
-      </p>
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        <label className="text-sm">
-          Belge türü
-          <select
-            className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2"
-            value={kind}
-            onChange={(e) => setKind(e.target.value as BusinessDocKind)}
-          >
-            {Object.entries(BUSINESS_DOC_KINDS).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-sm">
-          Belge numarası (varsa)
-          <Input value={docNo} maxLength={80} onChange={(e) => setDocNo(e.target.value)} />
-        </label>
-        <label className="text-sm">
-          Geçerlilik bitişi (varsa)
-          <Input type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
-        </label>
-        <label className="text-sm">
-          Dosya (PDF/JPG/PNG, en çok 10 MB)
-          <Input
-            type="file"
-            accept="application/pdf,image/*"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          />
-        </label>
-      </div>
-      <Button
-        className="mt-3"
-        disabled={!file || upload.isPending}
-        onClick={() => upload.mutate()}
-      >
-        {upload.isPending ? "Yükleniyor…" : "İncelemeye gönder"}
-      </Button>
-      <ul className="mt-4 space-y-2 text-sm">
-        {data.documents.map((d) => (
-          <li key={d.id} className="rounded-2xl border border-border/60 p-3">
-            <div className="flex justify-between gap-2">
-              <span>{BUSINESS_DOC_KINDS[d.doc_kind as BusinessDocKind] ?? d.doc_kind}</span>
-              <span className="font-semibold">{STATUS[d.status] ?? d.status}</span>
-            </div>
-            {d.expires_at ? (
-              <p className="text-xs text-muted-foreground">Geçerlilik: {d.expires_at}</p>
-            ) : null}
-            {d.review_note ? (
-              <p className="mt-1 text-xs text-muted-foreground">Not: {d.review_note}</p>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-    </section>
+    <>
+      <section className="rounded-3xl border border-border/70 bg-card p-4 shadow-card">
+        <h3 className="font-semibold">İşletme belgeleri</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Yayında kalmak için zorunlu belgeler:{" "}
+          {data.required.map((k) => BUSINESS_DOC_KINDS[k as BusinessDocKind] ?? k).join(", ")}.
+          Belgeler yalnız sizin ve platform yetkilisinin görebileceği gizli alanda saklanır.
+        </p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <label className="text-sm">
+            Belge türü
+            <select
+              className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2"
+              value={kind}
+              onChange={(e) => setKind(e.target.value as BusinessDocKind)}
+            >
+              {Object.entries(BUSINESS_DOC_KINDS).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-sm">
+            Belge numarası (varsa)
+            <Input value={docNo} maxLength={80} onChange={(e) => setDocNo(e.target.value)} />
+          </label>
+          <label className="text-sm">
+            Geçerlilik bitişi (varsa)
+            <Input type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
+          </label>
+          <label className="text-sm">
+            Dosya (PDF/JPG/PNG, en çok 10 MB)
+            <Input
+              type="file"
+              accept="application/pdf,image/*"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+          </label>
+        </div>
+        <Button
+          className="mt-3"
+          disabled={!file || upload.isPending}
+          onClick={() => upload.mutate()}
+        >
+          {upload.isPending ? "Yükleniyor…" : "İncelemeye gönder"}
+        </Button>
+        <ul className="mt-4 space-y-2 text-sm">
+          {data.documents.map((d) => (
+            <li key={d.id} className="rounded-2xl border border-border/60 p-3">
+              <div className="flex justify-between gap-2">
+                <span>{BUSINESS_DOC_KINDS[d.doc_kind as BusinessDocKind] ?? d.doc_kind}</span>
+                <span className="font-semibold">{STATUS[d.status] ?? d.status}</span>
+              </div>
+              {d.expires_at ? (
+                <p className="text-xs text-muted-foreground">Geçerlilik: {d.expires_at}</p>
+              ) : null}
+              {d.review_note ? (
+                <p className="mt-1 text-xs text-muted-foreground">Not: {d.review_note}</p>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      </section>
+      <VendorReviewReplies restaurantId={data.restaurantId} />
+    </>
   );
 }
