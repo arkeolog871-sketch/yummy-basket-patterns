@@ -54,6 +54,14 @@ export function CompliancePanel() {
     onError: (e) => toast.error(toPublicErrorMessage(e, "Kaydedilemedi.")),
   });
 
+  const publish = useMutation({
+    mutationFn: () => publishLegal(),
+    onSuccess: (r) => toast.success(`Yasal metinler yayına alındı (${r.published} belge).`),
+    onError: (e) => toast.error(toPublicErrorMessage(e, "Yayınlanamadı.")),
+  });
+
+
+
   const o = overview.data;
   const lists: [string, number, string[]][] = o
     ? [
