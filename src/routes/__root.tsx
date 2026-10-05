@@ -22,6 +22,7 @@ import { IosHomeScreenGuide } from "@/components/iphone/IosHomeScreenGuide";
 import { Toaster } from "@/components/ui/sonner";
 import { AppRealtimeBridge } from "@/hooks/useAppRealtime";
 import { FcmTokenBridge } from "@/hooks/useFcmTokenBridge";
+import { BusinessPushPrompt } from "@/components/notifications/BusinessPushPrompt";
 import { GoogleOAuthRelayBridge } from "@/components/auth/GoogleOAuthRelayBridge";
 import { OrderAssistant } from "@/components/assistant/OrderAssistant";
 import { AI_UI_ENABLED } from "@/lib/ai-features";
@@ -286,6 +287,7 @@ function RootComponent() {
                 </AppErrorBoundary>
                 <AppRealtimeBridge />
                 <FcmTokenBridge />
+                <BusinessPushPrompt />
                 <GoogleOAuthRelayBridge />
                 {AI_UI_ENABLED ? <OrderAssistant /> : null}
                 <LegalConsentGate />
