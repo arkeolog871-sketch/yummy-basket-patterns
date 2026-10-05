@@ -1,3 +1,4 @@
+import type { ErrorComponentProps } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -22,6 +23,7 @@ import { IosHomeScreenGuide } from "@/components/iphone/IosHomeScreenGuide";
 import { Toaster } from "@/components/ui/sonner";
 import { AppRealtimeBridge } from "@/hooks/useAppRealtime";
 import { FcmTokenBridge } from "@/hooks/useFcmTokenBridge";
+import { BusinessPushPrompt } from "@/components/notifications/BusinessPushPrompt";
 import { GoogleOAuthRelayBridge } from "@/components/auth/GoogleOAuthRelayBridge";
 import { OrderAssistant } from "@/components/assistant/OrderAssistant";
 import { AI_UI_ENABLED } from "@/lib/ai-features";
@@ -59,7 +61,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
@@ -286,6 +288,7 @@ function RootComponent() {
                 </AppErrorBoundary>
                 <AppRealtimeBridge />
                 <FcmTokenBridge />
+                <BusinessPushPrompt />
                 <GoogleOAuthRelayBridge />
                 {AI_UI_ENABLED ? <OrderAssistant /> : null}
                 <LegalConsentGate />

@@ -103,3 +103,35 @@ export const saveFcmToken = createServerFn({ method: "POST" })
       return { ok: true };
     }),
   );
+
+/**
+ * Giriş yapmış kullanıcı bir işletmeye bağlı mı ve hesabında kayıtlı bir
+ * bildirim cihazı (native jeton ya da tarayıcı aboneliği) var mı?
+ * Tek seferlik "bildirimlere izin ver" isteğinin gösterilip gösterilmeyeceğine
+ * bu karar veriyor. Yalnız kullanıcının kendi satırlarına bakılır.
+ */
+export const getMyPushRegistrationStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) =>
+    runServerFn(async () => {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const [assignments, tokens, subs] = await Promise.all([
+        supabaseAdmin
+          .from("vendor_assignments")
+          .select("user_id", { count: "exact", head: true })
+          .eq("user_id", context.userId),
+        supabaseAdmin
+          .from("fcm_tokens")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", context.userId),
+        supabaseAdmin
+          .from("push_subscriptions")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", context.userId),
+      ]);
+      return {
+        isBusiness: (assignments.count ?? 0) > 0,
+        hasDevice: (tokens.count ?? 0) + (subs.count ?? 0) > 0,
+      };
+    }),
+  );

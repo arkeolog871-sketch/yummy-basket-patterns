@@ -53,7 +53,7 @@ const DEVICE_ID_KEY = "silvan.device.v1";
  * pencere, kapalı site verisi) kimlik üretilmiyor ve kayıt eskisi gibi
  * yalnızca token ile yapılıyor — davranış bozulmuyor.
  */
-function readOrCreateDeviceId(): string | null {
+export function readOrCreateDeviceId(): string | null {
   try {
     const existing = window.localStorage.getItem(DEVICE_ID_KEY);
     if (existing && existing.length >= 8) return existing;
