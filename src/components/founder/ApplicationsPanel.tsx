@@ -57,8 +57,8 @@ export function ApplicationsPanel({ onApproved }: { onApproved?: () => void }) {
         variables.action === "reject"
           ? "Başvuru reddedildi"
           : verificationSent
-            ? "Başvuru onaylandı, işletme e-postasına doğrulama kodu gönderildi"
-            : "Başvuru onaylandı ve işletme oluşturuldu",
+            ? "Başvuru onaylandı ve işletme yayına alındı; işletme e-postasına doğrulama kodu gönderildi"
+            : "Başvuru onaylandı ve işletme yayına alındı",
       );
       void queryClient.invalidateQueries({ queryKey: ["business-applications"] });
       onApproved?.();

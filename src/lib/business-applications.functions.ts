@@ -306,8 +306,8 @@ export const reviewBusinessApplication = createServerFn({ method: "POST" })
             opens_at: application.opens_at,
             closes_at: application.closes_at,
             is_open_manual: application.is_open_manual,
-            // Vendor hesabı e-postasını doğrulayana kadar vitrinde görünmez.
-            is_active: false,
+            // Yönetici onayı yayına almak için yeterli; başka ön koşul yok.
+            is_active: true,
           });
           if (insertError) throw new Error(insertError.message);
 
@@ -320,13 +320,6 @@ export const reviewBusinessApplication = createServerFn({ method: "POST" })
               phone: application.contact_phone,
             });
 
-            if (vendor.emailVerified) {
-              const { error: activeError } = await supabaseAdmin
-                .from("restaurants")
-                .update({ is_active: true })
-                .eq("id", businessId);
-              if (activeError) throw new Error(activeError.message);
-            }
 
             const { error: statusError } = await supabaseAdmin
               .from("business_applications")
