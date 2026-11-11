@@ -218,8 +218,9 @@ describe("merkezi veritabanı ve sayfalar", () => {
     );
   });
 
-  it("başvuru sayfası ve yönetici paneli aynı katalog ve aynı arama kutusunu kullanıyor", () => {
-    for (const path of ["src/routes/isletme-basvuru.tsx", "src/routes/kurucu.tsx"]) {
+  it("yönetici paneli katalog arama kutusunu kullanıyor; başvuruda alt tür alanı yok", () => {
+    expect(read("src/routes/isletme-basvuru.tsx")).not.toContain("<CategorySearchField");
+    for (const path of ["src/routes/kurucu.tsx"]) {
       const source = read(path);
       expect(source, path).toContain("useBusinessCategoryCatalog()");
       expect(source, path).toContain("<CategorySearchField");
@@ -228,7 +229,7 @@ describe("merkezi veritabanı ve sayfalar", () => {
   });
 
   it("alt tür hâlâ serbest metin olarak gönderiliyor (geriye dönük uyum)", () => {
-    expect(read("src/routes/isletme-basvuru.tsx")).toContain("category: form.category.trim(),");
+    expect(read("src/routes/isletme-basvuru.tsx")).toContain("form.category.trim() ||");
     expect(read("src/routes/kurucu.tsx")).toContain('category: form.category || "Genel",');
   });
 });
