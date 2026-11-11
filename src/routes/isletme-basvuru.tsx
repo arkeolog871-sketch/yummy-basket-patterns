@@ -16,7 +16,7 @@ import {
 } from "@/lib/ios-native-auth";
 import { useNativeGoogleSignIn } from "@/hooks/useNativeGoogleSignIn";
 
-import { useAppCategories, useBusinessCategoryCatalog } from "@/hooks/useTaxonomy";
+import { useAppCategories } from "@/hooks/useTaxonomy";
 import { slugify, formatDateTime } from "@/lib/format";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { parseDecimalInput } from "@/lib/decimal-input";
