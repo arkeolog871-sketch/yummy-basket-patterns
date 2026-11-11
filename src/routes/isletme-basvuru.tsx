@@ -370,7 +370,7 @@ function BusinessApplicationPage() {
         </p>
         <h1 className="mt-3 text-3xl font-semibold">İşletmenizi platforma ekleyin</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Görsel adresi ve harita bağlantısı dışındaki alanlar zorunludur. İşletmeniz
+          Harita bağlantısı dışındaki alanlar zorunludur. İşletmeniz
           giriş yaptığınız hesaba bağlanır; iletişim bilgileri hesabınızdan otomatik doldurulur.
           Başvurunuz kurucu tarafından incelenip onaylandığında işletme hesabınız etkinleşir.
         </p>
@@ -406,18 +406,9 @@ function BusinessApplicationPage() {
               setForm((current) => ({
                 ...current,
                 name,
-                slug: current.slug !== slugify(current.name) ? current.slug : slugify(name),
+                slug: slugify(name),
               }));
             }}
-            required
-          />
-        </div>
-        <div className="space-y-1">
-          <Label>URL adı</Label>
-          <Input
-            placeholder="ornek-isletme"
-            value={form.slug}
-            onChange={(event) => setForm({ ...form, slug: slugify(event.target.value) })}
             required
           />
         </div>
@@ -482,13 +473,6 @@ function BusinessApplicationPage() {
           </div>
         </div>
 
-        <div className="space-y-1">
-          <Label>Görsel adresi (https://…, isteğe bağlı)</Label>
-          <Input
-            value={form.cover_image_url}
-            onChange={(event) => setForm({ ...form, cover_image_url: event.target.value })}
-          />
-        </div>
 
         <div className="space-y-2 rounded-2xl border border-border p-3">
           <p className="text-xs font-medium text-muted-foreground">
