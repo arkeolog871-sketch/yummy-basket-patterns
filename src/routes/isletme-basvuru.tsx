@@ -333,7 +333,7 @@ function BusinessApplicationPage() {
           ).slice(0, 40),
           sector: activeSector,
           cuisines: [],
-          delivery_minutes: Number(form.delivery_minutes) || 30,
+          delivery_minutes: 30,
           delivery_fee: numbers.delivery_fee,
           min_order: numbers.min_order,
           cover_image_url: form.cover_image_url.trim(),

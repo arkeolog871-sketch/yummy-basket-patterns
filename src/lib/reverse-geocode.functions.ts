@@ -13,7 +13,7 @@ export const reverseGeocode = createServerFn({ method: "POST" })
         headers: { "User-Agent": "SilvanCebimde/1.0 (uygulamamcebimde.online)" },
       });
       if (!res.ok) return null;
-      const json = (await res.json()) as { address?: Record<string, string> };
+      const json = (await res.json()) as { address?: { [k: string]: string | undefined } Record<string, string> Partial<Record<"neighbourhood"|"suburb"|"quarter"|"road"|"house_number"|"town"|"county"|"city_district"|"municipality"|"province"|"state"|"city", string>> };
       const a = json.address ?? {};
       const street = [a.neighbourhood || a.suburb || a.quarter, a.road, a.house_number]
         .filter(Boolean)
