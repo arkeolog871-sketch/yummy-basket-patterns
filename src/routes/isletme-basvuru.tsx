@@ -17,8 +17,6 @@ import {
 import { useNativeGoogleSignIn } from "@/hooks/useNativeGoogleSignIn";
 
 import { useAppCategories, useBusinessCategoryCatalog } from "@/hooks/useTaxonomy";
-import { resolveCatalogSector } from "@/lib/business-category-catalog";
-import { CategorySearchField } from "@/components/business/CategorySearchField";
 import { slugify, formatDateTime } from "@/lib/format";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { parseDecimalInput } from "@/lib/decimal-input";
@@ -258,7 +256,6 @@ function BusinessApplicationPage() {
   const fetchMine = useServerFn(listMyBusinessApplications);
   const queryClient = useQueryClient();
   const { categories } = useAppCategories();
-  const { catalog } = useBusinessCategoryCatalog();
   const { user } = useAuth();
   const [form, setForm] = useState(emptyForm);
   // Haritaya verilen değer de ham Number() ile değil parseDecimalInput ile
