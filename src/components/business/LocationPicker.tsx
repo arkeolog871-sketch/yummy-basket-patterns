@@ -24,6 +24,8 @@ type LocationPickerProps = {
   label?: string;
   /** "İş yerim yok" seçiliyken: harita pasif, konum gerekmiyor. */
   disabled?: boolean;
+  /** "Mevcut konumu seç" ile alınan konum (adres otomatik doldurma için). */
+  onCurrentLocation?: (point: PickedPoint) => void;
 };
 
 const START_POINT: PickedPoint = {
@@ -43,6 +45,7 @@ export function LocationPicker({
   onChange,
   label = "İşletme konumu",
   disabled = false,
+  onCurrentLocation,
 }: LocationPickerProps) {
   const fetchMapsConfig = useServerFn(getMapsBrowserConfig);
   const hostRef = useRef<HTMLDivElement>(null);
@@ -210,6 +213,7 @@ export function LocationPicker({
         const point = { lat: position.coords.latitude, lng: position.coords.longitude };
         if (moveRef.current) moveRef.current(point);
         else changeRef.current(point);
+        onCurrentLocation?.(point);
       },
       () => setLocating(false),
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 5000 },
@@ -225,13 +229,12 @@ export function LocationPicker({
         </p>
         <Button
           type="button"
-          variant="outline"
           size="sm"
-          className="rounded-full"
+          className="rounded-full border-transparent bg-[hsl(217_91%_50%)] text-white hover:bg-[hsl(217_91%_44%)]"
           disabled={locating}
           onClick={useMyLocation}
         >
-          <LocateFixed className="size-3.5" /> {locating ? "Bulunuyor…" : "Konumumu kullan"}
+          <LocateFixed className="size-3.5" /> {locating ? "Bulunuyor…" : "Mevcut konumu seç"}
         </Button>
       </div>
       <div

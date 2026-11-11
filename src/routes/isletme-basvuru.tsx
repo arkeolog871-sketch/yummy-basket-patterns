@@ -32,6 +32,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { LocationPicker } from "@/components/business/LocationPicker";
+import { reverseGeocode } from "@/lib/reverse-geocode.functions";
 
 export const Route = createFileRoute("/isletme-basvuru")({
   head: () => ({
@@ -211,7 +212,6 @@ const STATUS_LABELS: Record<string, string> = {
  * alanı var ve hangisi olduğunu bulmak kullanıcıya kalıyordu.
  */
 const NUMERIC_FIELDS = [
-  { key: "delivery_minutes", label: "Teslimat süresi (dk)" },
   { key: "delivery_fee", label: "Teslimat ücreti" },
   { key: "min_order", label: "Min. sepet" },
   { key: "latitude", label: "Enlem" },
@@ -221,6 +221,7 @@ const NUMERIC_FIELDS = [
 type NumericKey = (typeof NUMERIC_FIELDS)[number]["key"];
 /** Konum alanları "iş yerim yok" seçilince boş (null) gider. */
 type ParsedNumbers = Record<Exclude<NumericKey, "latitude" | "longitude">, number> & {
+  delivery_minutes?: number;
   latitude: number | null;
   longitude: number | null;
 };
@@ -295,6 +296,7 @@ function BusinessApplicationPage() {
     queryFn: () => fetchMine(),
   });
 
+  const geocode = useServerFn(reverseGeocode);
   const activeSector = form.sector || categories[0]?.slug || "";
 
   /**
@@ -327,13 +329,14 @@ function BusinessApplicationPage() {
           slug: form.slug,
           name: form.name.trim(),
           tagline: form.tagline.trim(),
-          category: form.category.trim(),
+          category: (
+            form.category.trim() ||
+            categories.find((item) => item.slug === activeSector)?.label ||
+            activeSector
+          ).slice(0, 40),
           sector: activeSector,
-          cuisines: form.cuisines
-            .split(",")
-            .map((value) => value.trim())
-            .filter(Boolean),
-          delivery_minutes: numbers.delivery_minutes,
+          cuisines: [],
+          delivery_minutes: Number(form.delivery_minutes) || 30,
           delivery_fee: numbers.delivery_fee,
           min_order: numbers.min_order,
           cover_image_url: form.cover_image_url.trim(),
@@ -370,7 +373,7 @@ function BusinessApplicationPage() {
         </p>
         <h1 className="mt-3 text-3xl font-semibold">İşletmenizi platforma ekleyin</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Görsel adresi, harita bağlantısı ve etiketler dışındaki alanlar zorunludur. İşletmeniz
+          Görsel adresi ve harita bağlantısı dışındaki alanlar zorunludur. İşletmeniz
           giriş yaptığınız hesaba bağlanır; iletişim bilgileri hesabınızdan otomatik doldurulur.
           Başvurunuz kurucu tarafından incelenip onaylandığında işletme hesabınız etkinleşir.
         </p>
@@ -457,59 +460,7 @@ function BusinessApplicationPage() {
           </div>
         </div>
 
-        <div className="space-y-1">
-          <Label htmlFor="business-category-search">İşletme türü (Alt tür)</Label>
-          <CategorySearchField
-            inputId="business-category-search"
-            catalog={catalog}
-            value={form.category}
-            required
-            suggestSector={activeSector}
-            onChange={(category) => setForm((current) => ({ ...current, category }))}
-            onPick={(entry) =>
-              setForm((current) => ({
-                ...current,
-                category: entry.name,
-                // Eşleşen ana kategori varsa o da seçilir; yoksa seçim aynen kalır.
-                sector:
-                  resolveCatalogSector(
-                    entry,
-                    categories.map((item) => item.slug),
-                  ) ?? current.sector,
-              }))
-            }
-            sectorLabel={(entry) => {
-              const slug = resolveCatalogSector(
-                entry,
-                categories.map((item) => item.slug),
-              );
-              return categories.find((item) => item.slug === slug)?.label ?? null;
-            }}
-          />
-          <p className="text-xs text-muted-foreground">
-            Yazmaya başlayın: 400'ü aşkın işletme türü arasından seçin. Listede yoksa yazdığınız ad
-            kullanılır.
-          </p>
-        </div>
-        <div className="space-y-1">
-          <Label>Etiketler (virgülle, isteğe bağlı)</Label>
-          <Input
-            value={form.cuisines}
-            onChange={(event) => setForm({ ...form, cuisines: event.target.value })}
-          />
-        </div>
-
-        <div className="grid gap-2 sm:grid-cols-3">
-          <div className="space-y-1">
-            <Label>Teslimat süresi (dk)</Label>
-            <Input
-              type="number"
-              min={0}
-              value={form.delivery_minutes}
-              onChange={(event) => setForm({ ...form, delivery_minutes: event.target.value })}
-              required
-            />
-          </div>
+        <div className="grid gap-2 sm:grid-cols-2">
           <div className="space-y-1">
             <Label>Teslimat ücreti</Label>
             <Input
@@ -577,6 +528,17 @@ function BusinessApplicationPage() {
             <LocationPicker
               disabled={form.mobile_service}
               value={pickedPoint}
+              onCurrentLocation={(point) => {
+                void geocode({ data: point }).then((place) => {
+                  if (!place) return;
+                  setForm((prev) => ({
+                    ...prev,
+                    address: place.address || prev.address,
+                    district: place.district || prev.district,
+                    city: place.city || prev.city,
+                  }));
+                });
+              }}
               onChange={(point) =>
                 setForm((prev) => ({
                   ...prev,
