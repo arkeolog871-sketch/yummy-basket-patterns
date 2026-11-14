@@ -37,3 +37,5 @@ Kaçınmak için:
   şemasını bozar.
 
 Aynı kurallar Lovable'ın proje bilgisine (project knowledge) de yazıldı.
+
+- Keep homepage column preference browser-local and hydrate it after mount; use the card's compact variant only on the homepage so other business lists retain their layout.

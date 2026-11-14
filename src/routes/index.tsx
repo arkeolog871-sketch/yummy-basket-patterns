@@ -2,7 +2,13 @@ import { createFileRoute, useNavigate, ClientOnly } from "@tanstack/react-router
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState, Suspense, lazy } from "react";
-import { Search, Sparkles } from "lucide-react";
+import { Search, Sparkles, Rows3, Columns2, Columns3 } from "lucide-react";
+import {
+  BUSINESS_COLUMNS_KEY,
+  DEFAULT_BUSINESS_COLUMNS,
+  parseBusinessColumns,
+  type BusinessColumns,
+} from "@/lib/business-grid";
 import { RestaurantCard } from "@/components/restaurant/RestaurantCard";
 import { homeQuery, type HomeSearch } from "@/lib/catalog.queries";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -65,6 +71,8 @@ export const Route = createFileRoute("/")({
           "Yemek, restoran, kafe, eğlence, market ve giyim: mahallenizdeki tüm işletmeler tek uygulamada, dakikalar içinde kapınızda.",
       },
       { property: "og:title", content: "SİLVAN CEBİMDE — Yemek, market, kafe ve daha fazlası" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       {
         property: "og:description",
         content: "Mahallenizdeki tüm işletmeler tek uygulamada, dakikalar içinde kapınızda.",
@@ -107,6 +115,7 @@ function Index() {
   });
   const [term, setTerm] = useState(search.q ?? "");
   const [thinking, setThinking] = useState(false);
+  const [columns, setColumns] = useState<BusinessColumns>(DEFAULT_BUSINESS_COLUMNS);
   const [aiNote, setAiNote] = useState<string | null>(null);
   const interpret = useServerFn(interpretSmartSearch);
   const activeSector = search.kategori;
@@ -124,12 +133,26 @@ function Index() {
 
   useEffect(() => setTerm(search.q ?? ""), [search.q]);
 
-  const gridClass =
-    settings.layout_variant === "compact"
-      ? "mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
-      : settings.layout_variant === "spotlight"
-        ? "mt-7 grid gap-6 lg:grid-cols-2"
-        : "mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3";
+  useEffect(() => {
+    try {
+      setColumns(parseBusinessColumns(localStorage.getItem(BUSINESS_COLUMNS_KEY)));
+    } catch {
+      // Depolama kapalı olsa da görünüm seçimi çalışır.
+    }
+  }, []);
+
+  function selectColumns(next: BusinessColumns) {
+    setColumns(next);
+    try {
+      localStorage.setItem(BUSINESS_COLUMNS_KEY, String(next));
+    } catch {
+      // Tercih bu oturumda korunur.
+    }
+  }
+
+  const gridClass = `mt-7 grid items-start gap-2 sm:gap-4 ${
+    columns === 1 ? "grid-cols-1" : columns === 2 ? "grid-cols-2" : "grid-cols-3"
+  }`;
 
   function apply(next: HomeSearch) {
     navigate({ to: "/", search: next });
@@ -233,6 +256,30 @@ function Index() {
               </div>
             ) : null}
           </div>
+          <div
+            role="group"
+            aria-label="İşletme görünümü"
+            className="flex shrink-0 items-center gap-1 rounded-lg border border-border bg-card p-1"
+          >
+            {([
+              { value: 1, Icon: Rows3 },
+              { value: 2, Icon: Columns2 },
+              { value: 3, Icon: Columns3 },
+            ] as const).map(({ value, Icon }) => (
+              <Button
+                key={value}
+                type="button"
+                variant={columns === value ? "default" : "ghost"}
+                size="icon"
+                aria-label={`${value} sütun`}
+                title={`${value} sütun`}
+                aria-pressed={columns === value}
+                onClick={() => selectColumns(value)}
+              >
+                <Icon className="size-4" />
+              </Button>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -297,7 +344,7 @@ function Index() {
         </div>
 
         {loadingFirst ? (
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className={gridClass}>
             {[0, 1, 2].map((i) => (
               <div key={i} className="h-56 animate-pulse rounded-3xl bg-muted" />
             ))}
@@ -356,6 +403,7 @@ function Index() {
                 <RestaurantCard
                   key={business.id}
                   restaurant={business}
+                  compact={columns !== 1}
                   categoryColor={
                     categories.find((sector) => sector.slug === business.sector)?.color
                   }
