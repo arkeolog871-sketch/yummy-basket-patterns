@@ -256,6 +256,24 @@ function Index() {
               </div>
             ) : null}
           </div>
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-6xl px-4 py-12">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-2xl">
+              {activeSector
+                ? (categories.find((sector) => sector.slug === activeSector)?.label ?? activeSector)
+                : "Tüm işletmeler"}
+            </h2>
+            {!loadFailed && !loadingFirst ? (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {results.length} işletme listeleniyor
+                {search.q ? ` · “${search.q}” için` : ""}
+              </p>
+            ) : null}
+          </div>
           <div
             role="group"
             aria-label="İşletme görünümü"
@@ -281,24 +299,6 @@ function Index() {
                 <Icon className="size-4" />
               </Button>
             ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto w-full max-w-6xl px-4 py-12">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="text-2xl">
-              {activeSector
-                ? (categories.find((sector) => sector.slug === activeSector)?.label ?? activeSector)
-                : "Tüm işletmeler"}
-            </h2>
-            {!loadFailed && !loadingFirst ? (
-              <p className="mt-1 text-sm text-muted-foreground">
-                {results.length} işletme listeleniyor
-                {search.q ? ` · “${search.q}” için` : ""}
-              </p>
-            ) : null}
           </div>
         </div>
 
