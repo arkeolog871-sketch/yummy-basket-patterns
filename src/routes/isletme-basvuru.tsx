@@ -383,8 +383,8 @@ function BusinessApplicationPage() {
         className="space-y-4 rounded-3xl border border-border bg-card p-6"
         onSubmit={(event) => {
           event.preventDefault();
-          if (!activeSector) {
-            toast.error("Kategori seçin.");
+          if (!form.category.trim()) {
+            toast.error("İşletme türünüzü seçin. Yazıp listeden seçebilirsiniz.");
             return;
           }
           if (!form.mobile_service && (!form.latitude.trim() || !form.longitude.trim())) {
