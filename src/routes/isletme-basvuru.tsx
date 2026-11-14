@@ -429,26 +429,34 @@ function BusinessApplicationPage() {
         </div>
 
         <div className="space-y-2">
-          <Label>Kategori</Label>
-          {categories.length === 0 ? (
-            <p className="text-xs text-destructive">Şu anda seçilebilir kategori yok.</p>
-          ) : null}
-          <div className="flex flex-wrap gap-2">
-            {categories.map((sector) => (
-              <button
-                key={sector.slug}
-                type="button"
-                onClick={() => setForm({ ...form, sector: sector.slug })}
-                className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
-                  activeSector === sector.slug
-                    ? "border-transparent bg-primary text-primary-foreground"
-                    : "border-border"
-                }`}
-              >
-                {sector.label}
-              </button>
-            ))}
-          </div>
+          <Label htmlFor="business-category">Kategori</Label>
+          <CategorySearchField
+            catalog={catalog}
+            value={form.category}
+            inputId="business-category"
+            required
+            placeholder="İşletme türünüzü yazın: kasap, kuaför, oto yıkama…"
+            onChange={(category) => setForm((current) => ({ ...current, category }))}
+            onPick={(entry) =>
+              setForm((current) => ({
+                ...current,
+                category: entry.name,
+                // Seçilen alt türün bağlı olduğu ana kategori otomatik işaretlenir.
+                sector:
+                  resolveCatalogSector(
+                    entry,
+                    categories.map((item) => item.slug),
+                  ) ?? current.sector,
+              }))
+            }
+            sectorLabel={(entry) => {
+              const slug = resolveCatalogSector(
+                entry,
+                categories.map((item) => item.slug),
+              );
+              return categories.find((item) => item.slug === slug)?.label ?? null;
+            }}
+          />
         </div>
 
         <div className="grid gap-2 sm:grid-cols-2">
