@@ -890,6 +890,10 @@ function BusinessPanel({
         className="space-y-3 rounded-3xl border border-border bg-card p-6"
         onSubmit={(event) => {
           event.preventDefault();
+          if (!form.category.trim()) {
+            toast.error("Kategori seçin. Yazıp listeden seçebilirsiniz.");
+            return;
+          }
           saveMutation.mutate();
         }}
       >
@@ -921,42 +925,16 @@ function BusinessPanel({
           value={form.tagline}
           onChange={(event) => setForm({ ...form, tagline: event.target.value })}
         />
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">
-            Kategori (zorunlu) —{" "}
-            {categories.find((item) => item.slug === activeSector)?.label ?? "seçim yapılmadı"}
-          </p>
-          {categories.length === 0 ? (
-            <p className="text-xs text-destructive">
-              Önce “Kategoriler” sekmesinden en az bir kategori ekleyin.
-            </p>
-          ) : null}
-          <div className="flex flex-wrap gap-2">
-            {categories.map((sector) => (
-              <button
-                key={sector.slug}
-                type="button"
-                onClick={() => setForm({ ...form, sector: sector.slug })}
-                className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
-                  activeSector === sector.slug
-                    ? "border-transparent bg-primary text-primary-foreground"
-                    : "border-border"
-                }`}
-              >
-                {sector.label}
-              </button>
-            ))}
-          </div>
-        </div>
         <div className="space-y-1">
           <p className="text-xs font-medium text-muted-foreground">
-            İşletme türü (Alt tür) — yazın, listeden seçin
+            Kategori (zorunlu) — yazın, listeden seçin
           </p>
           <CategorySearchField
             catalog={catalog}
             value={form.category}
             suggestSector={activeSector}
-            placeholder="Alt tür ara: kasap, kuaför, oto yıkama…"
+            required
+            placeholder="Kategori ara: kasap, kuaför, oto yıkama…"
             onChange={(category) => setForm((current) => ({ ...current, category }))}
             onPick={(entry) =>
               setForm((current) => ({
