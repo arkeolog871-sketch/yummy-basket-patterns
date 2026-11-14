@@ -16,7 +16,9 @@ import {
 } from "@/lib/ios-native-auth";
 import { useNativeGoogleSignIn } from "@/hooks/useNativeGoogleSignIn";
 
-import { useAppCategories } from "@/hooks/useTaxonomy";
+import { useAppCategories, useBusinessCategoryCatalog } from "@/hooks/useTaxonomy";
+import { resolveCatalogSector } from "@/lib/business-category-catalog";
+import { CategorySearchField } from "@/components/business/CategorySearchField";
 import { slugify, formatDateTime } from "@/lib/format";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { parseDecimalInput } from "@/lib/decimal-input";
@@ -256,6 +258,7 @@ function BusinessApplicationPage() {
   const fetchMine = useServerFn(listMyBusinessApplications);
   const queryClient = useQueryClient();
   const { categories } = useAppCategories();
+  const { catalog } = useBusinessCategoryCatalog();
   const { user } = useAuth();
   const [form, setForm] = useState(emptyForm);
   // Haritaya verilen değer de ham Number() ile değil parseDecimalInput ile
@@ -326,11 +329,7 @@ function BusinessApplicationPage() {
           slug: form.slug,
           name: form.name.trim(),
           tagline: form.tagline.trim(),
-          category: (
-            form.category.trim() ||
-            categories.find((item) => item.slug === activeSector)?.label ||
-            activeSector
-          ).slice(0, 40),
+          category: form.category.trim().slice(0, 40),
           sector: activeSector,
           cuisines: [],
           delivery_minutes: 30,
@@ -380,8 +379,8 @@ function BusinessApplicationPage() {
         className="space-y-4 rounded-3xl border border-border bg-card p-6"
         onSubmit={(event) => {
           event.preventDefault();
-          if (!activeSector) {
-            toast.error("Kategori seçin.");
+          if (!form.category.trim()) {
+            toast.error("İşletme türünüzü seçin. Yazıp listeden seçebilirsiniz.");
             return;
           }
           if (!form.mobile_service && (!form.latitude.trim() || !form.longitude.trim())) {
@@ -426,26 +425,34 @@ function BusinessApplicationPage() {
         </div>
 
         <div className="space-y-2">
-          <Label>Kategori</Label>
-          {categories.length === 0 ? (
-            <p className="text-xs text-destructive">Şu anda seçilebilir kategori yok.</p>
-          ) : null}
-          <div className="flex flex-wrap gap-2">
-            {categories.map((sector) => (
-              <button
-                key={sector.slug}
-                type="button"
-                onClick={() => setForm({ ...form, sector: sector.slug })}
-                className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
-                  activeSector === sector.slug
-                    ? "border-transparent bg-primary text-primary-foreground"
-                    : "border-border"
-                }`}
-              >
-                {sector.label}
-              </button>
-            ))}
-          </div>
+          <Label htmlFor="business-category">Kategori</Label>
+          <CategorySearchField
+            catalog={catalog}
+            value={form.category}
+            inputId="business-category"
+            required
+            placeholder="İşletme türünüzü yazın: kasap, kuaför, oto yıkama…"
+            onChange={(category) => setForm((current) => ({ ...current, category }))}
+            onPick={(entry) =>
+              setForm((current) => ({
+                ...current,
+                category: entry.name,
+                // Seçilen alt türün bağlı olduğu ana kategori otomatik işaretlenir.
+                sector:
+                  resolveCatalogSector(
+                    entry,
+                    categories.map((item) => item.slug),
+                  ) ?? current.sector,
+              }))
+            }
+            sectorLabel={(entry) => {
+              const slug = resolveCatalogSector(
+                entry,
+                categories.map((item) => item.slug),
+              );
+              return categories.find((item) => item.slug === slug)?.label ?? null;
+            }}
+          />
         </div>
 
         <div className="grid gap-2 sm:grid-cols-2">
