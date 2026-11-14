@@ -258,6 +258,7 @@ function BusinessApplicationPage() {
   const fetchMine = useServerFn(listMyBusinessApplications);
   const queryClient = useQueryClient();
   const { categories } = useAppCategories();
+  const { catalog } = useBusinessCategoryCatalog();
   const { user } = useAuth();
   const [form, setForm] = useState(emptyForm);
   // Haritaya verilen değer de ham Number() ile değil parseDecimalInput ile
