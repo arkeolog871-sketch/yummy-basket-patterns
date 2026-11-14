@@ -329,11 +329,7 @@ function BusinessApplicationPage() {
           slug: form.slug,
           name: form.name.trim(),
           tagline: form.tagline.trim(),
-          category: (
-            form.category.trim() ||
-            categories.find((item) => item.slug === activeSector)?.label ||
-            activeSector
-          ).slice(0, 40),
+          category: form.category.trim().slice(0, 40),
           sector: activeSector,
           cuisines: [],
           delivery_minutes: 30,
