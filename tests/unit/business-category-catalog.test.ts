@@ -231,6 +231,12 @@ describe("merkezi veritabanı ve sayfalar", () => {
     const source = read("src/routes/isletme-basvuru.tsx");
     expect(source).toContain("form.category.trim().slice(0, 40)");
     expect(source).toContain('toast.error("İşletme türünüzü seçin.');
-    expect(read("src/routes/kurucu.tsx")).toContain('category: form.category || "Genel",');
+  });
+
+  it("yönetici panelinde de kategori tek ve zorunlu; hazır kategori düğmeleri yok", () => {
+    const source = read("src/routes/kurucu.tsx");
+    expect(source).toContain('toast.error("Kategori seçin.');
+    expect(source).toContain("Kategori (zorunlu) — yazın, listeden seçin");
+    expect(source).not.toContain("onClick={() => setForm({ ...form, sector: sector.slug })}");
   });
 });
