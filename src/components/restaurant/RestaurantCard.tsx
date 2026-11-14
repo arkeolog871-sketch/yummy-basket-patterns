@@ -69,9 +69,11 @@ export function RestaurantCard({
             style={categoryColor ? { backgroundColor: `${categoryColor}33` } : undefined}
           />
         )}
-        {!compact ? <span className="absolute left-3 top-3 rounded-full bg-background/90 px-3 py-1 text-xs font-semibold">
-          {restaurant.category}
-        </span> : null}
+        {!compact ? (
+          <span className="absolute left-3 top-3 rounded-full bg-background/90 px-3 py-1 text-xs font-semibold">
+            {restaurant.category}
+          </span>
+        ) : null}
         {compact ? null : !open ? (
           <span className="absolute right-3 top-3 rounded-full bg-foreground/85 px-3 py-1 text-xs font-semibold text-background">
             Şu An Kapalı
@@ -90,7 +92,9 @@ export function RestaurantCard({
               {restaurant.category}
             </span>
             {!open ? (
-              <span className="rounded bg-foreground/85 px-1.5 py-0.5 text-background">Şu An Kapalı</span>
+              <span className="rounded bg-foreground/85 px-1.5 py-0.5 text-background">
+                Şu An Kapalı
+              </span>
             ) : null}
           </div>
         ) : null}
@@ -103,8 +107,18 @@ export function RestaurantCard({
           </p>
         ) : null}
 
-        <div className={compact ? "flex flex-col items-start gap-1.5" : "flex items-start justify-between gap-3"}>
-          <div className={compact ? "flex min-w-0 w-full items-start gap-1.5" : "flex min-w-0 items-center gap-3"}>
+        <div
+          className={
+            compact ? "flex flex-col items-start gap-1.5" : "flex items-start justify-between gap-3"
+          }
+        >
+          <div
+            className={
+              compact
+                ? "flex min-w-0 w-full items-start gap-1.5"
+                : "flex min-w-0 items-center gap-3"
+            }
+          >
             {restaurant.logo_url ? (
               <img
                 src={restaurant.logo_url}
@@ -116,8 +130,18 @@ export function RestaurantCard({
               />
             ) : null}
             <div className="min-w-0">
-              <h3 className={compact ? "break-words text-sm font-semibold leading-snug [overflow-wrap:anywhere]" : "truncate text-base font-semibold"}>{restaurant.name}</h3>
-              <p className={`mt-0.5 line-clamp-1 text-muted-foreground ${compact ? "text-xs" : "text-sm"}`}>
+              <h3
+                className={
+                  compact
+                    ? "break-words text-sm font-semibold leading-snug [overflow-wrap:anywhere]"
+                    : "truncate text-base font-semibold"
+                }
+              >
+                {restaurant.name}
+              </h3>
+              <p
+                className={`mt-0.5 line-clamp-1 text-muted-foreground ${compact ? "text-xs" : "text-sm"}`}
+              >
                 {restaurant.tagline}
               </p>
               {restaurant.matched_products?.length ? (
@@ -133,7 +157,9 @@ export function RestaurantCard({
           </span>
         </div>
 
-        <div className={`flex flex-wrap items-center gap-y-1 text-xs text-muted-foreground ${compact ? "gap-x-2 [overflow-wrap:anywhere]" : "gap-x-4"}`}>
+        <div
+          className={`flex flex-wrap items-center gap-y-1 text-xs text-muted-foreground ${compact ? "gap-x-2 [overflow-wrap:anywhere]" : "gap-x-4"}`}
+        >
           <span className="flex items-center gap-1">
             <Clock className="size-3.5" /> {restaurant.delivery_minutes} dk
           </span>
@@ -144,7 +170,10 @@ export function RestaurantCard({
           <span>Min. {formatPrice(Number(restaurant.min_order))}</span>
         </div>
 
-        <LocationButton business={restaurant} className="max-w-full text-xs text-muted-foreground" />
+        <LocationButton
+          business={restaurant}
+          className="max-w-full text-xs text-muted-foreground"
+        />
       </div>
     </Link>
   );

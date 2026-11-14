@@ -261,11 +261,13 @@ function Index() {
             aria-label="İşletme görünümü"
             className="flex shrink-0 items-center gap-1 rounded-lg border border-border bg-card p-1"
           >
-            {([
-              { value: 1, Icon: Rows3 },
-              { value: 2, Icon: Columns2 },
-              { value: 3, Icon: Columns3 },
-            ] as const).map(({ value, Icon }) => (
+            {(
+              [
+                { value: 1, Icon: Rows3 },
+                { value: 2, Icon: Columns2 },
+                { value: 3, Icon: Columns3 },
+              ] as const
+            ).map(({ value, Icon }) => (
               <Button
                 key={value}
                 type="button"
