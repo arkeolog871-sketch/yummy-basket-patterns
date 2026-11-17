@@ -47,6 +47,7 @@ export function formatDateTime(iso: string): string {
   return new Intl.DateTimeFormat("tr-TR", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: "Europe/Istanbul",
   }).format(new Date(iso));
 }
 
