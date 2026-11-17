@@ -8,6 +8,13 @@
       "when": 1792498934911,
       "tag": "0000_suspend_restaurant_publish_gate",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794953198384,
+      "tag": "0001_multi_business_per_account",
+      "breakpoints": true
     }
   ]
 }

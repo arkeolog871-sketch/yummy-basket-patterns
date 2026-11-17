@@ -144,6 +144,25 @@ export const applicationSchema = z
 const APPLICATION_COLUMNS =
   "id, applicant_user_id, status, founder_note, reviewed_at, created_at, slug, name, tagline, category, sector, cuisines, delivery_minutes, delivery_fee, min_order, cover_image_url, mobile_service, address, district, city, latitude, longitude, maps_url, contact_email, contact_phone, contact_person, opens_at, closes_at, is_open_manual";
 
+/** Telefon başka bir işletmede ya da bekleyen başka bir başvuruda varsa reddeder. */
+async function assertBusinessPhoneAvailable(phone: string, ignoreApplicationId: string | null) {
+  const { isPhoneTaken, DUPLICATE_BUSINESS_PHONE_ERROR } = await import("./business-phone");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const [restaurants, applications] = await Promise.all([
+    supabaseAdmin.from("restaurants").select("contact_phone"),
+    supabaseAdmin.from("business_applications").select("id, contact_phone").eq("status", "pending"),
+  ]);
+  if (restaurants.error) throw new Error(restaurants.error.message);
+  if (applications.error) throw new Error(applications.error.message);
+  const phones = [
+    ...(restaurants.data ?? []).map((row) => row.contact_phone),
+    ...(applications.data ?? [])
+      .filter((row) => row.id !== ignoreApplicationId)
+      .map((row) => row.contact_phone),
+  ];
+  if (isPhoneTaken(phone, phones)) throw new Error(DUPLICATE_BUSINESS_PHONE_ERROR);
+}
+
 /** Giriş yapmış kullanıcı kendi işletme başvurusunu oluşturur. */
 export const submitBusinessApplication = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -153,16 +172,9 @@ export const submitBusinessApplication = createServerFn({ method: "POST" })
       const { assertVerifiedEmail } = await import("./otp.server");
       await assertVerifiedEmail(context.userId);
 
-      const { data: pending, error: pendingError } = await context.supabase
-        .from("business_applications")
-        .select("id")
-        .eq("applicant_user_id", context.userId)
-        .eq("status", "pending")
-        .limit(1);
-      if (pendingError) throw new Error(pendingError.message);
-      if ((pending ?? []).length > 0) {
-        throw new Error("Bekleyen bir başvurunuz var; sonuçlanmasını bekleyin.");
-      }
+      // Aynı hesaptan birden fazla işletme başvurusu yapılabilir; tek koşul her
+      // işletmenin telefonunun farklı olması.
+      await assertBusinessPhoneAvailable(data.contact_phone, null);
 
       const { error } = await context.supabase.from("business_applications").insert({
         ...data,
@@ -246,6 +258,9 @@ export const reviewBusinessApplication = createServerFn({ method: "POST" })
       if (application.status !== "pending") throw new Error("Bu başvuru zaten sonuçlandırılmış");
       // Bölge yöneticisi yalnızca kendi bölgesine yapılan başvuruyu sonuçlandırabilir.
       assertRegionAllowed(access, application.city, application.district);
+      if (data.action === "approve") {
+        await assertBusinessPhoneAvailable(application.contact_phone, application.id);
+      }
 
       return audited(
         {

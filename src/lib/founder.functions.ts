@@ -1072,11 +1072,18 @@ export const setVendorAssignment = createServerFn({ method: "POST" })
           return { ok: true };
         }
 
+        // Kurucu ataması kullanıcının tek işletmesini belirler (önceki davranış).
+        const { error: clearError } = await supabaseAdmin
+          .from("vendor_assignments")
+          .delete()
+          .eq("user_id", data.userId)
+          .neq("restaurant_id", data.restaurantId);
+        if (clearError) throw new Error(clearError.message);
         const { error } = await supabaseAdmin
           .from("vendor_assignments")
           .upsert(
-            { user_id: data.userId, restaurant_id: data.restaurantId },
-            { onConflict: "user_id" },
+            { user_id: data.userId, restaurant_id: data.restaurantId, is_selected: true },
+            { onConflict: "user_id,restaurant_id" },
           );
         if (error) throw new Error(error.message);
         const { error: roleError } = await supabaseAdmin

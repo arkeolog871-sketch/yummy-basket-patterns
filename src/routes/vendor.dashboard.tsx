@@ -58,6 +58,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { changeVendorPassword } from "@/lib/vendor-auth.functions";
+import { listMyVendorRestaurants, selectVendorRestaurant } from "@/lib/vendor-selection.functions";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VendorCompliancePanel } from "@/components/vendor/VendorCompliancePanel";
@@ -369,7 +370,7 @@ function VendorDashboard() {
               <Store className="size-4" />
             </span>
             <div className="min-w-0 leading-tight">
-              <p className="truncate font-display text-sm font-semibold">{restaurant.name}</p>
+              <VendorRestaurantSwitcher currentName={restaurant.name} />
               <p className="text-xs text-muted-foreground">İşletme paneli</p>
             </div>
           </div>
@@ -919,5 +920,39 @@ function StatCard({ label, value }: { label: string; value: string }) {
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-semibold">{value}</p>
     </div>
+  );
+}
+
+function VendorRestaurantSwitcher({ currentName }: { currentName: string }) {
+  const queryClient = useQueryClient();
+  const fetchList = useServerFn(listMyVendorRestaurants);
+  const select = useServerFn(selectVendorRestaurant);
+  const list = useQuery({ queryKey: ["vendor-restaurants"], queryFn: () => fetchList() });
+  const change = useMutation({
+    mutationFn: (restaurantId: string) => select({ data: { restaurantId } }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries();
+    },
+    onError: (error) => toast.error(toPublicErrorMessage(error)),
+  });
+  const items = list.data ?? [];
+  if (items.length < 2) {
+    return <p className="truncate font-display text-sm font-semibold">{currentName}</p>;
+  }
+  const current = items.find((item) => item.selected) ?? items[0];
+  return (
+    <select
+      aria-label="İşletme seç"
+      className="max-w-[14rem] truncate rounded-md border border-border bg-background px-2 py-1 font-display text-sm font-semibold"
+      value={current?.id}
+      disabled={change.isPending}
+      onChange={(event) => change.mutate(event.target.value)}
+    >
+      {items.map((item) => (
+        <option key={item.id} value={item.id}>
+          {item.name}
+        </option>
+      ))}
+    </select>
   );
 }

@@ -449,16 +449,16 @@ export async function createVerifiedSession(
 /** İlk e-posta doğrulamasında işletme kaydını vitrine açar. */
 async function activateVendorRestaurantOnFirstVerify(userId: string): Promise<void> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: assignment, error } = await supabaseAdmin
+  const { data: assignments, error } = await supabaseAdmin
     .from("vendor_assignments")
     .select("restaurant_id")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (error || !assignment?.restaurant_id) return;
+    .eq("user_id", userId);
+  const ids = (assignments ?? []).map((row) => row.restaurant_id);
+  if (error || ids.length === 0) return;
   const { error: updateError } = await supabaseAdmin
     .from("restaurants")
     .update({ is_active: true })
-    .eq("id", assignment.restaurant_id);
+    .in("id", ids);
   if (updateError) {
     console.error("[vendor-signup] işletme aktifleştirilemedi", { message: updateError.message });
   }

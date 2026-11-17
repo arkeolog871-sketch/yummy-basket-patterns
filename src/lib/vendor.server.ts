@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
-/** İşletme kullanıcısının atandığı tek işletmenin kimliğini döner. */
+/** İşletme kullanıcısının panelde seçili (yoksa ilk) işletmesinin kimliğini döner. */
 export async function getVendorRestaurantId(
   supabase: SupabaseClient<Database>,
   userId: string,
@@ -10,6 +10,9 @@ export async function getVendorRestaurantId(
     .from("vendor_assignments")
     .select("restaurant_id")
     .eq("user_id", userId)
+    .order("is_selected", { ascending: false })
+    .order("created_at", { ascending: true })
+    .limit(1)
     .maybeSingle();
   if (error) throw new Error(error.message);
   return data?.restaurant_id ?? null;

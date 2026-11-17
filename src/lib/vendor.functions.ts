@@ -351,3 +351,4 @@ export const markVendorOrderAlertRead = createServerFn({ method: "POST" })
       return { ok: true };
     }),
   );
+

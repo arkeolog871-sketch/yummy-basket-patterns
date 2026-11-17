@@ -214,20 +214,6 @@ export async function ensureBusinessVendorAccount(
   }
   if (!matchedUserId) throw new Error("İşletme hesabı oluşturulamadı");
 
-  const { data: otherAssignment, error: otherAssignmentError } = await supabaseAdmin
-    .from("vendor_assignments")
-    .select("restaurant_id")
-    .eq("user_id", matchedUserId)
-    .maybeSingle();
-  if (otherAssignmentError) {
-    if (created) await rollbackNewVendorUser(matchedUserId, email);
-    throw new Error(otherAssignmentError.message);
-  }
-  if (otherAssignment && otherAssignment.restaurant_id !== input.restaurantId) {
-    if (created) await rollbackNewVendorUser(matchedUserId, email);
-    throw new Error("Bu e-posta başka bir işletme hesabına atanmış");
-  }
-
   const emailVerified = await isEmailVerified(matchedUserId);
   let verificationSent = false;
   if (!emailVerified) {
@@ -263,12 +249,20 @@ export async function ensureBusinessVendorAccount(
     .upsert({ user_id: matchedUserId, role: "vendor" }, { onConflict: "user_id,role" });
   if (roleError) throw new Error(roleError.message);
 
-  const { error: assignmentError } = await supabaseAdmin
+  // Bir hesap birden fazla işletmeye bağlanabilir; seçili işletmesi yoksa bu seçilir.
+  const { count: selectedCount } = await supabaseAdmin
     .from("vendor_assignments")
-    .upsert(
-      { user_id: matchedUserId, restaurant_id: input.restaurantId },
-      { onConflict: "user_id" },
-    );
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", matchedUserId)
+    .eq("is_selected", true);
+  const { error: assignmentError } = await supabaseAdmin.from("vendor_assignments").upsert(
+    {
+      user_id: matchedUserId,
+      restaurant_id: input.restaurantId,
+      ...(selectedCount ? {} : { is_selected: true }),
+    },
+    { onConflict: "user_id,restaurant_id" },
+  );
   if (assignmentError) throw new Error(assignmentError.message);
 
   return { userId: matchedUserId, created, verificationSent, emailVerified };
