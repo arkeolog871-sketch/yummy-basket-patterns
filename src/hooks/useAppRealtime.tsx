@@ -44,6 +44,9 @@ export function AppRealtimeBridge() {
         .on("postgres_changes", { event: "*", schema: "public", table: "restaurants" }, () => {
           invalidateAll(queryClient, CATALOG_KEYS);
         })
+        .on("postgres_changes", { event: "*", schema: "public", table: "app_categories" }, () => {
+          invalidateAll(queryClient, CATALOG_KEYS);
+        })
         .on("postgres_changes", { event: "*", schema: "public", table: "menu_items" }, () => {
           invalidateAll(queryClient, CATALOG_KEYS);
         })
