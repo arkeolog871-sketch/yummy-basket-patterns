@@ -15,6 +15,13 @@
       "when": 1794953198384,
       "tag": "0001_multi_business_per_account",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794953632457,
+      "tag": "0002_lock_profile_consent_columns",
+      "breakpoints": true
     }
   ]
 }

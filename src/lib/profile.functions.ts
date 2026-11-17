@@ -44,19 +44,12 @@ export const updateMyProfile = createServerFn({ method: "POST" })
   .validator((input: unknown) => profileSchema.parse(input))
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
-      const { data: current } = await context.supabase
-        .from("profiles")
-        .select("phone")
-        .eq("id", context.userId)
-        .maybeSingle();
-      const phoneChanged = current?.phone !== data.phone;
-
+      // Telefon değişince doğrulama durumunu veritabanı tetikleyicisi sıfırlar.
       const { error } = await context.supabase.from("profiles").upsert(
         {
           id: context.userId,
           full_name: data.full_name,
           phone: data.phone,
-          ...(phoneChanged ? { phone_verified: false } : {}),
         },
         { onConflict: "id" },
       );
