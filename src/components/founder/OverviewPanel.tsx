@@ -104,30 +104,43 @@ export function OverviewStatGrid({
  *
  * Her zaman görünen, çoğu zaman "0" yazan bir uyarı kutusu birkaç gün sonra
  * görünmez oluyor. Sıfırsa hiç çizmiyoruz ki çizildiğinde okunsun.
+ *
+ * Liste adları artık burada yazılmıyor: işletme sayısı arttıkça satır tüm
+ * paneli kaplıyordu. Tıklanınca aynı liste açılır pencerede (OverviewDetailDialog)
+ * görünüyor; satır tek biçimde kalıyor.
  */
 function Warning({
   icon,
   title,
-  names,
+  count,
   action,
+  onOpen,
 }: {
   icon: React.ReactNode;
   title: string;
-  names: string[];
+  count: number;
   action: string;
+  onOpen: () => void;
 }) {
-  if (names.length === 0) return null;
+  if (count === 0) return null;
   return (
-    <div className="flex gap-3 rounded-2xl border border-accent/40 bg-accent/10 p-4">
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={`${title} listesini aç`}
+      className="flex w-full gap-3 rounded-2xl border border-accent/40 bg-accent/10 p-4 text-left transition-colors hover:bg-accent/15 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+    >
       <span className="mt-0.5 shrink-0 text-primary">{icon}</span>
-      <div className="min-w-0">
-        <p className="text-sm font-semibold">
-          {title} ({names.length})
+      <div className="min-w-0 flex-1">
+        <p className="flex items-center justify-between gap-2 text-sm font-semibold">
+          <span>
+            {title} ({count})
+          </span>
+          <ChevronRight className="size-4 shrink-0 opacity-60" />
         </p>
-        <p className="mt-1 break-words text-sm text-muted-foreground">{names.join(" · ")}</p>
         <p className="mt-1 text-xs text-muted-foreground">{action}</p>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -175,14 +188,16 @@ export function OverviewPanel() {
         <Warning
           icon={<PackageOpen className="size-4" />}
           title="Vitrini boş işletme"
-          names={businesses.emptyCatalog}
-          action="Müşteri bu işletmelere girdiğinde boş sayfa görüyor. Ürün ekleyin."
+          count={businesses.emptyCatalog.length}
+          action="Müşteri bu işletmelere girdiğinde boş sayfa görüyor. Listeyi açmak için dokunun."
+          onOpen={() => setDetail("emptyCatalog")}
         />
         <Warning
           icon={<BellOff className="size-4" />}
           title="Bildirim alamayan işletme"
-          names={businesses.withoutPush}
-          action="Buraya düşen sipariş kimseye ulaşmaz. İşletmeler sekmesindeki Bildirim bağlantısı bölümünden durumu görüp bağlama kodu üretin — sahip Apple/Google ile girdiyse hesabı işletmeye kodla bağlanır."
+          count={businesses.withoutPush.length}
+          action="Buraya düşen sipariş kimseye ulaşmaz. Listeyi açmak için dokunun."
+          onOpen={() => setDetail("withoutPush")}
         />
         {queue.applications > 0 || queue.deletions > 0 ? (
           <div className="flex gap-3 rounded-2xl border border-border/60 bg-background/60 p-4">

@@ -18,6 +18,8 @@ function codeOnly(relative: string): string {
 const functions = codeOnly("src/lib/founder.functions.ts");
 const panel = codeOnly("src/components/founder/OverviewPanel.tsx");
 const route = codeOnly("src/routes/kurucu.tsx");
+const detailFunctions = codeOnly("src/lib/founder-overview-detail.functions.ts");
+const detailDialog = codeOnly("src/components/founder/OverviewDetailDialog.tsx");
 
 /**
  * Özet, toplam kullanıcı ve cihaz sayısı gibi hesap geneli bilgiyi
@@ -52,7 +54,20 @@ describe("kurucu özeti harekete geçiriyor", () => {
   });
 
   it("sorun yokken uyarı çizilmiyor", () => {
-    expect(panel).toContain("if (names.length === 0) return null;");
+    expect(panel).toContain("if (count === 0) return null;");
+  });
+
+  it("uyarı, işletme adlarını tek tek yazmak yerine açılır pencere açıyor", () => {
+    expect(panel).not.toMatch(/names\.join/);
+    expect(panel).toContain('setDetail("emptyCatalog")');
+    expect(panel).toContain('setDetail("withoutPush")');
+  });
+
+  it("açılır pencere türü ve sunucu doğrulayıcısı yeni iki listeyi tanıyor", () => {
+    expect(detailDialog).toMatch(/"emptyCatalog"/);
+    expect(detailDialog).toMatch(/"withoutPush"/);
+    expect(detailFunctions).toMatch(/"emptyCatalog"/);
+    expect(detailFunctions).toMatch(/"withoutPush"/);
   });
 
   it("özet yüklenemezse panelin geri kalanı ayakta kalıyor", () => {

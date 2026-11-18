@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/dialog";
 import { getOverviewDetail } from "@/lib/founder-overview-detail.functions";
 
-export type OverviewMetric = "users" | "devices" | "businesses" | "openOrders" | "orders";
+export type OverviewMetric =
+  "users" | "devices" | "businesses" | "emptyCatalog" | "withoutPush" | "openOrders" | "orders";
 
 /**
  * Genel durum kartına tıklandığında sayının arkasındaki satırları gösterir.
