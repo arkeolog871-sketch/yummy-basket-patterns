@@ -37,7 +37,15 @@ const OPEN_STATUSES = ["pending", "confirmed", "preparing", "on_the_way"] as con
 const ROW_LIMIT = 50;
 
 const detailSchema = z.object({
-  metric: z.enum(["users", "devices", "businesses", "openOrders", "orders"]),
+  metric: z.enum([
+    "users",
+    "devices",
+    "businesses",
+    "emptyCatalog",
+    "withoutPush",
+    "openOrders",
+    "orders",
+  ]),
 });
 
 type AdminUser = { id: string; email: string | null; created_at: string };
@@ -143,7 +151,11 @@ export const getOverviewDetail = createServerFn({ method: "GET" })
         } satisfies OverviewDetail;
       }
 
-      if (data.metric === "businesses") {
+      if (
+        data.metric === "businesses" ||
+        data.metric === "emptyCatalog" ||
+        data.metric === "withoutPush"
+      ) {
         const [restaurants, items, assignments, tokens, webPush, openOrders] = await Promise.all([
           supabaseAdmin
             .from("restaurants")
@@ -178,22 +190,49 @@ export const getOverviewDetail = createServerFn({ method: "GET" })
             .map((row) => row.restaurant_id),
         );
 
-        return {
-          title: "Aktif işletmeler",
-          note: null,
-          rows: (restaurants.data ?? []).map((restaurant) => {
-            const products = productCount.get(restaurant.id) ?? 0;
-            const open = openCount.get(restaurant.id) ?? 0;
-            const canNotify = reachable.has(restaurant.id);
-            return {
-              id: restaurant.id,
-              primary: restaurant.name,
-              secondary: `${restaurant.category} · ${products} ürün${open > 0 ? ` · ${open} açık sipariş` : ""}`,
-              meta: canNotify ? "bildirim açık" : "bildirim YOK",
-              tone: canNotify && products > 0 ? ("ok" as const) : ("warn" as const),
-            };
-          }),
-        } satisfies OverviewDetail;
+        // Kartın kendisi yalnızca ilgili alt kümeyi gösterir ki açılır pencere
+        // uzun bir "aktif işletmeler" listesi değil, aranan soruyu yanıtlasın.
+        let restaurantRows = restaurants.data ?? [];
+        if (data.metric === "emptyCatalog") {
+          restaurantRows = restaurantRows.filter(
+            (restaurant) => (productCount.get(restaurant.id) ?? 0) === 0,
+          );
+        } else if (data.metric === "withoutPush") {
+          restaurantRows = restaurantRows.filter((restaurant) => !reachable.has(restaurant.id));
+        }
+
+        const rows = restaurantRows.map((restaurant) => {
+          const products = productCount.get(restaurant.id) ?? 0;
+          const open = openCount.get(restaurant.id) ?? 0;
+          const canNotify = reachable.has(restaurant.id);
+          return {
+            id: restaurant.id,
+            primary: restaurant.name,
+            secondary: `${restaurant.category} · ${products} ürün${open > 0 ? ` · ${open} açık sipariş` : ""}`,
+            meta: canNotify ? "bildirim açık" : "bildirim YOK",
+            tone: canNotify && products > 0 ? ("ok" as const) : ("warn" as const),
+          };
+        });
+
+        if (data.metric === "emptyCatalog") {
+          return {
+            title: "Vitrini boş işletmeler",
+            note: rows.length
+              ? "Müşteri bu işletmelere girdiğinde boş sayfa görüyor. Ürün ekleyin."
+              : "Vitrini boş işletme yok.",
+            rows,
+          } satisfies OverviewDetail;
+        }
+        if (data.metric === "withoutPush") {
+          return {
+            title: "Bildirim alamayan işletmeler",
+            note: rows.length
+              ? "Buraya düşen sipariş kimseye ulaşmaz. İşletmeler sekmesindeki Bildirim bağlantısı bölümünden durumu görüp bağlama kodu üretin."
+              : "Tüm işletmeler bildirim alabiliyor.",
+            rows,
+          } satisfies OverviewDetail;
+        }
+        return { title: "Aktif işletmeler", note: null, rows } satisfies OverviewDetail;
       }
 
       // openOrders ve orders: aynı sorgu, farklı süzgeç.
