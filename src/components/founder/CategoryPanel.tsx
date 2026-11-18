@@ -54,6 +54,7 @@ import {
   // Ulaşım ve lojistik
   Truck,
   Car,
+  CarTaxiFront,
   Bike,
   Fuel,
   Warehouse,
@@ -139,7 +140,7 @@ const ICON_GROUPS = [
   },
   {
     label: "Ulaşım ve lojistik",
-    icons: ["Truck", "Car", "Bike", "Fuel", "Warehouse"],
+    icons: ["Truck", "Car", "CarTaxiFront", "Bike", "Fuel", "Warehouse"],
   },
   {
     label: "Teknoloji",
@@ -207,6 +208,7 @@ const ICON_REGISTRY: Record<string, ComponentType<{ className?: string }>> = {
   Key,
   Truck,
   Car,
+  CarTaxiFront,
   Bike,
   Fuel,
   Warehouse,
