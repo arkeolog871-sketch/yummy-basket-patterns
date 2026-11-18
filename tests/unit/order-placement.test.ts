@@ -140,7 +140,7 @@ describe("order placement column fallback", () => {
 describe("createOrder input validation", () => {
   const valid = {
     restaurant_id: "557b3793-1b1c-4198-817a-a31f6db43eb4",
-    items: [{ menu_item_id: "11111111-1111-1111-1111-111111111111", quantity: 1 }],
+    items: [{ menu_item_id: "11111111-1111-4111-8111-111111111111", quantity: 1 }],
     recipient_name: "Ahmet Yılmaz",
     phone: "05430000000",
     city: "Diyarbakır",

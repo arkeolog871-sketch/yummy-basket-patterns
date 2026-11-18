@@ -41,19 +41,9 @@ export const applicationSchema = z
     // "Expected number, received nan" — İngilizce ve hangi alandan bahsettiğini
     // söylemiyor. İstemci zaten önceden doğruluyor; bu, o doğrulama atlanırsa
     // kullanıcının gördüğü son savunma.
-    delivery_minutes: z
-      .number({ invalid_type_error: "Teslimat süresini sayı olarak girin" })
-      .int()
-      .min(0)
-      .max(600),
-    delivery_fee: z
-      .number({ invalid_type_error: "Teslimat ücretini sayı olarak girin" })
-      .min(0)
-      .max(10000),
-    min_order: z
-      .number({ invalid_type_error: "Min. sepet tutarını sayı olarak girin" })
-      .min(0)
-      .max(100000),
+    delivery_minutes: z.number("Teslimat süresini sayı olarak girin").int().min(0).max(600),
+    delivery_fee: z.number("Teslimat ücretini sayı olarak girin").min(0).max(10000),
+    min_order: z.number("Min. sepet tutarını sayı olarak girin").min(0).max(100000),
     cover_image_url: z
       .string()
       .trim()
@@ -75,18 +65,8 @@ export const applicationSchema = z
       .default(null),
     district: z.string().trim().min(2, "İlçe girin").max(80, "İlçe en fazla 80 karakter olabilir"),
     city: z.string().trim().min(2, "Şehir girin").max(80, "Şehir en fazla 80 karakter olabilir"),
-    latitude: z
-      .number({ invalid_type_error: "Enlemi sayı olarak girin" })
-      .min(-90)
-      .max(90)
-      .nullable()
-      .default(null),
-    longitude: z
-      .number({ invalid_type_error: "Boylamı sayı olarak girin" })
-      .min(-180)
-      .max(180)
-      .nullable()
-      .default(null),
+    latitude: z.number("Enlemi sayı olarak girin").min(-90).max(90).nullable().default(null),
+    longitude: z.number("Boylamı sayı olarak girin").min(-180).max(180).nullable().default(null),
     maps_url: z
       .string()
       .trim()
