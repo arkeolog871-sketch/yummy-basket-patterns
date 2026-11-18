@@ -67,13 +67,26 @@ export const applicationSchema = z
     city: z.string().trim().min(2, "Şehir girin").max(80, "Şehir en fazla 80 karakter olabilir"),
     latitude: z.number("Enlemi sayı olarak girin").min(-90).max(90).nullable().default(null),
     longitude: z.number("Boylamı sayı olarak girin").min(-180).max(180).nullable().default(null),
+    // Alan "WhatsApp konum paylaşın, yapıştırın" diyor; WhatsApp'ın paylaştığı
+    // metin linkten önce başlık/boşluk içerebiliyor ("Konumum: https://…").
+    // Eskiden yalnızca metnin TAMAMI http(s):// ile mi başlıyor diye bakılıyordu;
+    // bu yüzden geçerli bir link içeren meşru bir yapıştırma bile reddediliyor,
+    // başvuru tek bir genel mesajla tıkanıyordu. Artık metnin İÇİNDEKİ linki ayıklıyoruz.
     maps_url: z
       .string()
       .trim()
       .max(500)
       .nullable()
       .default(null)
-      .refine((value) => !value || /^https?:\/\//i.test(value), "Geçerli bir bağlantı girin"),
+      .transform((value) => {
+        if (!value) return value;
+        const match = value.match(/https?:\/\/\S+/i);
+        return match ? match[0] : value;
+      })
+      .refine(
+        (value) => !value || /^https?:\/\//i.test(value),
+        "Harita bağlantısı anlaşılamadı. http:// veya https:// ile başlayan bir Google Maps/WhatsApp konum linki yapıştırın, ya da bu alanı boş bırakın.",
+      ),
     contact_email: z
       .string()
       .trim()

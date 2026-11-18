@@ -236,11 +236,21 @@ const businessSchema = z.object({
   city: z.string().trim().max(80).nullable().default(null),
   latitude: z.number().min(-90).max(90).nullable().default(null),
   longitude: z.number().min(-180).max(180).nullable().default(null),
+  // WhatsApp konum paylaşımı linkten önce metin içerebiliyor ("Konumum: https://…");
+  // metnin İÇİNDEKİ linki ayıklıyoruz (bkz. business-applications.functions.ts).
   maps_url: z
     .string()
     .trim()
     .max(500)
-    .refine((value) => value === "" || /^https?:\/\//i.test(value), "Geçerli bir bağlantı girin")
+    .transform((value) => {
+      if (!value) return value;
+      const match = value.match(/https?:\/\/\S+/i);
+      return match ? match[0] : value;
+    })
+    .refine(
+      (value) => value === "" || /^https?:\/\//i.test(value),
+      "Harita bağlantısı anlaşılamadı. http:// veya https:// ile başlayan bir Google Maps/WhatsApp konum linki yapıştırın, ya da bu alanı boş bırakın.",
+    )
     .nullable()
     .default(null),
   contact_email: z
