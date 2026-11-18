@@ -71,7 +71,7 @@ describe("işletme başvurusu sayı alanları", () => {
   });
 
   it("sunucu da Türkçe mesaj veriyor", () => {
-    expect(schema).toContain("invalid_type_error");
+    expect(schema).toContain("sayı olarak girin");
     expect(schema).not.toMatch(/latitude: z\.number\(\)/);
   });
 });
