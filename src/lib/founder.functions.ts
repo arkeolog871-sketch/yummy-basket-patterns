@@ -39,18 +39,14 @@ const founderContactSchema = z.object({
     .transform((value) => value.toLowerCase()),
 });
 
-const heroSchema = z.object({
-  hero_badge: z.string().trim().min(2).max(120),
-  hero_title: z.string().trim().min(2).max(120),
-  hero_title_accent: z.string().trim().max(120),
-  hero_subtitle: z.string().trim().min(2).max(300),
+const footerSchema = z.object({
   footer_tagline: z.string().trim().min(2).max(160),
   footer_delivery_hours: z.string().trim().min(2).max(80),
 });
 
-export const updateHeroContent = createServerFn({ method: "POST" })
+export const updateFooterContent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => heroSchema.parse(input))
+  .validator((input: unknown) => footerSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { assertFounder } = await import("./founder.server");
     const { audited } = await import("./audit.server");
@@ -62,7 +58,7 @@ export const updateHeroContent = createServerFn({ method: "POST" })
       await logAudit({
         actorId: context.userId,
         actorEmail,
-        action: "hero.update",
+        action: "footer.update",
         entity: "site_settings",
         entityId: "global",
         status: "denied",
@@ -76,7 +72,7 @@ export const updateHeroContent = createServerFn({ method: "POST" })
       {
         actorId: context.userId,
         actorEmail,
-        action: "hero.update",
+        action: "footer.update",
         entity: "site_settings",
         entityId: "global",
         detail: { ...data },

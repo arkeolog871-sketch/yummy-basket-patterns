@@ -37,13 +37,6 @@ export type SiteSettings = {
   typographyConfigured: boolean;
 };
 
-export type HeroContent = {
-  hero_badge: string;
-  hero_title: string;
-  hero_title_accent: string;
-  hero_subtitle: string;
-};
-
 export type FounderContactInfo = {
   founder_contact_phone: string;
   founder_contact_email: string;
@@ -71,14 +64,6 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   typographyConfigured: false,
 };
 
-export const DEFAULT_HERO: HeroContent = {
-  hero_badge: "işletme, dakikalar içinde kapınızda",
-  hero_title: "Mahalleniz hazır,",
-  hero_title_accent: "kapınıza geliyor",
-  hero_subtitle:
-    "Yemek, restoran, kafe, eğlence, market ve giyim: mahallenizdeki tüm işletmeler tek uygulamada.",
-};
-
 export const DEFAULT_FOUNDER_CONTACT: FounderContactInfo = {
   founder_contact_phone: "0546 696 31 33",
   founder_contact_email: "arkeolog871@gmail.com",
@@ -91,7 +76,6 @@ export const DEFAULT_FOOTER: FooterContent = {
 
 type SiteSettingsContextValue = {
   settings: SiteSettings;
-  hero: HeroContent;
   founderContact: FounderContactInfo;
   footer: FooterContent;
   isFounder: boolean;
@@ -103,7 +87,6 @@ type SiteSettingsContextValue = {
 
 const SiteSettingsContext = createContext<SiteSettingsContextValue>({
   settings: DEFAULT_SETTINGS,
-  hero: DEFAULT_HERO,
   founderContact: DEFAULT_FOUNDER_CONTACT,
   footer: DEFAULT_FOOTER,
   isFounder: false,
@@ -140,19 +123,18 @@ function usePrefersDark(): boolean {
 
 function mergeSettings(
   row: Record<string, unknown> | null | undefined,
-): SiteSettings & HeroContent & FounderContactInfo & FooterContent {
+): SiteSettings & FounderContactInfo & FooterContent {
   const raw = row ?? {};
   const rest = { ...raw };
   delete rest["typography"];
   return {
     ...DEFAULT_SETTINGS,
-    ...DEFAULT_HERO,
     ...DEFAULT_FOUNDER_CONTACT,
     ...DEFAULT_FOOTER,
     ...rest,
     typography: parseTypography(raw["typography"]),
     typographyConfigured: isTypographyConfigured(raw["typography"]),
-  } as SiteSettings & HeroContent & FounderContactInfo & FooterContent;
+  } as SiteSettings & FounderContactInfo & FooterContent;
 }
 
 export function SiteSettingsProvider({ children }: { children: ReactNode }) {
@@ -161,7 +143,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
 
   const settingsQuery = useQuery({
     queryKey: ["site-settings"],
-    queryFn: async (): Promise<SiteSettings & HeroContent & FounderContactInfo & FooterContent> => {
+    queryFn: async (): Promise<SiteSettings & FounderContactInfo & FooterContent> => {
       try {
         const withTypography = await supabase
           .from("site_settings")
@@ -283,12 +265,6 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     <SiteSettingsContext.Provider
       value={{
         settings,
-        hero: {
-          hero_badge: merged.hero_badge ?? DEFAULT_HERO.hero_badge,
-          hero_title: merged.hero_title ?? DEFAULT_HERO.hero_title,
-          hero_title_accent: merged.hero_title_accent ?? DEFAULT_HERO.hero_title_accent,
-          hero_subtitle: merged.hero_subtitle ?? DEFAULT_HERO.hero_subtitle,
-        },
         founderContact: {
           founder_contact_phone:
             merged.founder_contact_phone ?? DEFAULT_FOUNDER_CONTACT.founder_contact_phone,

@@ -35,7 +35,7 @@ import { AppearancePanel } from "@/components/founder/AppearancePanel";
 import { TypographyPanel } from "@/components/founder/TypographyPanel";
 import { BrandingPanel } from "@/components/founder/BrandingPanel";
 import { MediaCleanupPanel } from "@/components/founder/MediaCleanupPanel";
-import { HeroContentPanel } from "@/components/founder/HeroContentPanel";
+import { FooterContentPanel } from "@/components/founder/FooterContentPanel";
 import { ContactPanel } from "@/components/founder/ContactPanel";
 import { NotificationsPanel } from "@/components/founder/NotificationsPanel";
 import { AdsPanel } from "@/components/founder/AdsPanel";
@@ -350,7 +350,7 @@ function FounderDashboard({
           {isOwner ? <TabsTrigger value="gorunum">Görünüm</TabsTrigger> : null}
           {isOwner ? <TabsTrigger value="tipografi">Tipografi</TabsTrigger> : null}
           {isOwner ? <TabsTrigger value="gorseller">Görseller</TabsTrigger> : null}
-          {isOwner ? <TabsTrigger value="anasayfa">Ana sayfa</TabsTrigger> : null}
+          {isOwner ? <TabsTrigger value="anasayfa">Alt bilgi</TabsTrigger> : null}
           {isOwner ? <TabsTrigger value="iletisim">İletişim</TabsTrigger> : null}
           {isOwner ? <TabsTrigger value="bildirimler">Bildirimler</TabsTrigger> : null}
           {isOwner ? <TabsTrigger value="reklamlar">Reklamlar</TabsTrigger> : null}
@@ -393,7 +393,7 @@ function FounderDashboard({
 
         {isOwner ? (
           <TabsContent value="anasayfa" className="mt-6">
-            <HeroContentPanel />
+            <FooterContentPanel />
           </TabsContent>
         ) : null}
 
