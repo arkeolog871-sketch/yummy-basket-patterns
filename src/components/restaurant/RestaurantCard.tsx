@@ -3,7 +3,7 @@ import { Star, Clock, Bike } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { deliverySummary } from "@/lib/delivery";
 import { LocationButton } from "@/components/business/LocationButton";
-import { isBusinessOpen, hoursLabel } from "@/lib/hours";
+import { isWithinHours, hoursLabel } from "@/lib/hours";
 
 export type RestaurantSummary = {
   id: string;
@@ -45,7 +45,11 @@ export function RestaurantCard({
   categoryColor?: string | null | undefined;
   compact?: boolean;
 }) {
-  const open = isBusinessOpen(restaurant);
+  // Yalnızca çalışma saatlerine bakılır: "sipariş alıyor" anahtarı kapalı
+  // (yalnızca vitrin/reklam amaçlı işletme) kartta "Kapalı" göstermez —
+  // kart normal bir aktif ilan gibi görünmeye devam eder. Sipariş
+  // engellemesi işletme sayfasındaki menüde ve sepet ekleme adımında kalır.
+  const open = isWithinHours(restaurant);
   const hours = hoursLabel(restaurant);
   return (
     <Link

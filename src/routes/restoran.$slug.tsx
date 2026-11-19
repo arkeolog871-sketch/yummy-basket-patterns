@@ -27,7 +27,7 @@ import { useCart } from "@/hooks/useCart";
 import { formatPrice, formatDateTime, hasListedPrice, PRICE_ON_REQUEST_LABEL } from "@/lib/format";
 import { deliverySummary } from "@/lib/delivery";
 import { toPublicErrorMessage } from "@/lib/public-error";
-import { isBusinessOpen, hoursLabel, closedReason } from "@/lib/hours";
+import { isBusinessOpen, isWithinHours, hoursLabel, closedReason } from "@/lib/hours";
 import { useAppCategories } from "@/hooks/useTaxonomy";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -110,7 +110,13 @@ function RestaurantDetail() {
   const items = Array.isArray(data.items) ? data.items : [];
   const gallery = Array.isArray(data.gallery) ? data.gallery : [];
   const reviews = Array.isArray(data.reviews) ? data.reviews : [];
+  // "open" sipariş alıp alamayacağını belirler (manuel anahtar + çalışma
+  // saati); menüyü soluklaştırmak ve sepete eklemeyi kapatmak için kullanılır.
+  // "withinHours" yalnızca çalışma saatine bakar: yalnızca "sipariş alıyor"
+  // anahtarı kapalı (vitrin/reklam amaçlı işletme) olan bir işletme, saat
+  // içindeyse üstteki rozette/uyarıda "Kapalı" göstermez.
   const open = isBusinessOpen(restaurant);
+  const withinHours = isWithinHours(restaurant);
   const hours = hoursLabel(restaurant);
 
   // groupByCategory tek geçişte dağıtır. Eski hali her kategori için tüm
@@ -217,10 +223,12 @@ function RestaurantDetail() {
           ) : null}
           <span
             className={`rounded-full px-3 py-1 text-xs font-semibold ${
-              open ? "bg-success text-success-foreground" : "bg-foreground/85 text-background"
+              withinHours
+                ? "bg-success text-success-foreground"
+                : "bg-foreground/85 text-background"
             }`}
           >
-            {open ? "Şu An Açık" : "Şu An Kapalı"}
+            {withinHours ? "Şu An Açık" : "Şu An Kapalı"}
           </span>
           <LocationButton business={restaurant} className="text-muted-foreground" />
         </div>
@@ -231,7 +239,7 @@ function RestaurantDetail() {
           className="mt-4"
         />
 
-        {open ? null : (
+        {withinHours ? null : (
           <div className="mt-4 rounded-3xl border border-border bg-warm px-4 py-3 text-sm text-warm-foreground">
             {closedReason(restaurant)} Sepete ürün ekleyemezsiniz.
           </div>
@@ -319,7 +327,12 @@ function RestaurantDetail() {
               ucundaki "sepete ekle" butonu da ekran dışında kalıp erişilemez
               oluyordu. min-w-0 kolonu viewport'a sabitler; ad artık
               line-clamp-2 ile iki satıra kadar sarıyor. */}
-          <div className="min-w-0">
+          {/* Sipariş alınamıyorsa (manuel kapalı ya da saat dışı) menü
+              soluklaşır; ürünler görünür kalır ama "sepete ekle" düğmeleri
+              zaten ayrı ayrı disabled. Vitrin/reklam amaçlı işletmelerde
+              (yalnızca manuel kapalı) üstte "Kapalı" rozeti/uyarısı
+              görünmez — tek işaret bu soluklaşmadır. */}
+          <div className={`min-w-0 ${open ? "" : "opacity-50"}`}>
             {menuGroups.length === 0 ? (
               <div className="rounded-3xl border border-dashed border-border bg-card p-10 text-center">
                 <p className="font-semibold">Bu işletmede şu an menü yok</p>
