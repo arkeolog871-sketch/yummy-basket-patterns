@@ -59,8 +59,22 @@ describe("kurucu özeti harekete geçiriyor", () => {
 
   it("uyarı, işletme adlarını tek tek yazmak yerine açılır pencere açıyor", () => {
     expect(panel).not.toMatch(/names\.join/);
-    expect(panel).toContain('setDetail("emptyCatalog")');
-    expect(panel).toContain('setDetail("withoutPush")');
+    expect(panel).toContain('openDetail("emptyCatalog")');
+    expect(panel).toContain('openDetail("withoutPush")');
+  });
+
+  it("genel durum iki etaplı açılır pencere: başlığa dokununca alt başlıklar, alt başlığa dokununca ayrıntı listesi açılıyor", () => {
+    // İlk pencere (alt başlıklar menüsü) "Genel durum" başlığına dokununca açılır.
+    expect(panel).toContain("const [menuOpen, setMenuOpen] = useState(false);");
+    expect(panel).toContain("onClick={() => setMenuOpen(true)}");
+    // Bir alt başlığa dokununca ilk pencere kapanıp ikinci pencere (ayrıntı) açılır.
+    expect(panel).toMatch(
+      /function openDetail\(metric: OverviewMetric\) \{\s*setMenuOpen\(false\);\s*setDetail\(metric\);/,
+    );
+    // Ayrıntı penceresi kapatılınca alt başlıklar menüsüne geri dönülür.
+    expect(panel).toMatch(
+      /function closeDetail\(\) \{\s*setDetail\(null\);\s*setMenuOpen\(true\);/,
+    );
   });
 
   it("açılır pencere türü ve sunucu doğrulayıcısı yeni iki listeyi tanıyor", () => {

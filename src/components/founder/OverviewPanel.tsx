@@ -8,6 +8,13 @@ import {
   OverviewDetailDialog,
   type OverviewMetric,
 } from "@/components/founder/OverviewDetailDialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 /**
  * Sayının arkasındaki satırlar tek tıkla açılsın diye kart bir düğme.
@@ -145,6 +152,13 @@ function Warning({
 }
 
 export function OverviewPanel() {
+  // İki etaplı açılır pencere: "Genel durum" başlığına dokununca ilk pencere
+  // (alt başlıklar) açılır; bir alt başlığa dokununca o pencere kapanıp
+  // ayrıntı listesi (OverviewDetailDialog) açılır. Ayrıntı penceresi
+  // kapatıldığında kullanıcı başka bir alt başlığa bakabilsin diye ilk
+  // pencereye geri dönülür. Eskiden bu alt başlıkların hepsi sayfada her
+  // zaman açık duruyor, paneli gereksiz yere uzatıyordu.
+  const [menuOpen, setMenuOpen] = useState(false);
   const [detail, setDetail] = useState<OverviewMetric | null>(null);
   const fetchOverview = useServerFn(getFounderOverview);
   const { data, isLoading, isError } = useQuery({
@@ -152,6 +166,16 @@ export function OverviewPanel() {
     queryFn: () => fetchOverview(),
     refetchInterval: 60000,
   });
+
+  function openDetail(metric: OverviewMetric) {
+    setMenuOpen(false);
+    setDetail(metric);
+  }
+
+  function closeDetail() {
+    setDetail(null);
+    setMenuOpen(true);
+  }
 
   if (isLoading) {
     return (
@@ -172,44 +196,71 @@ export function OverviewPanel() {
   }
 
   const { users, businesses, orders, queue } = data;
+  const hasQueue = queue.applications > 0 || queue.deletions > 0;
 
   return (
     <section className="mt-8 rounded-3xl border border-border/70 bg-card p-5 shadow-card">
-      <div className="flex items-center gap-2">
-        <Users className="size-4 text-primary" />
-        <h2 className="text-lg font-semibold">Genel durum</h2>
-      </div>
+      <button
+        type="button"
+        onClick={() => setMenuOpen(true)}
+        aria-label="Genel durum ayrıntılarını aç"
+        className="flex w-full items-center justify-between gap-2 rounded-xl text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      >
+        <span className="flex items-center gap-2">
+          <Users className="size-4 text-primary" />
+          <h2 className="text-lg font-semibold">Genel durum</h2>
+        </span>
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+      </button>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Kullanıcı, işletme ve sipariş ayrıntılarını görmek için dokunun.
+      </p>
 
-      <OverviewStatGrid users={users} businesses={businesses} orders={orders} onOpen={setDetail} />
+      <Dialog open={menuOpen} onOpenChange={(open) => (open ? null : setMenuOpen(false))}>
+        <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Genel durum</DialogTitle>
+            <DialogDescription>Ayrıntısını görmek istediğiniz başlığa dokunun.</DialogDescription>
+          </DialogHeader>
 
-      <OverviewDetailDialog metric={detail} onClose={() => setDetail(null)} />
+          <OverviewStatGrid
+            users={users}
+            businesses={businesses}
+            orders={orders}
+            onOpen={openDetail}
+          />
 
-      <div className="mt-4 space-y-3">
-        <Warning
-          icon={<PackageOpen className="size-4" />}
-          title="Vitrini boş işletme"
-          count={businesses.emptyCatalog.length}
-          action="Müşteri bu işletmelere girdiğinde boş sayfa görüyor. Listeyi açmak için dokunun."
-          onOpen={() => setDetail("emptyCatalog")}
-        />
-        <Warning
-          icon={<BellOff className="size-4" />}
-          title="Bildirim alamayan işletme"
-          count={businesses.withoutPush.length}
-          action="Buraya düşen sipariş kimseye ulaşmaz. Listeyi açmak için dokunun."
-          onOpen={() => setDetail("withoutPush")}
-        />
-        {queue.applications > 0 || queue.deletions > 0 ? (
-          <div className="flex gap-3 rounded-2xl border border-border/60 bg-background/60 p-4">
-            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              Bekleyen {queue.applications > 0 ? `${queue.applications} işletme başvurusu` : null}
-              {queue.applications > 0 && queue.deletions > 0 ? ", " : null}
-              {queue.deletions > 0 ? `${queue.deletions} hesap silme talebi` : null} var.
-            </p>
+          <div className="mt-4 space-y-3">
+            <Warning
+              icon={<PackageOpen className="size-4" />}
+              title="Vitrini boş işletme"
+              count={businesses.emptyCatalog.length}
+              action="Müşteri bu işletmelere girdiğinde boş sayfa görüyor. Listeyi açmak için dokunun."
+              onOpen={() => openDetail("emptyCatalog")}
+            />
+            <Warning
+              icon={<BellOff className="size-4" />}
+              title="Bildirim alamayan işletme"
+              count={businesses.withoutPush.length}
+              action="Buraya düşen sipariş kimseye ulaşmaz. Listeyi açmak için dokunun."
+              onOpen={() => openDetail("withoutPush")}
+            />
+            {hasQueue ? (
+              <div className="flex gap-3 rounded-2xl border border-border/60 bg-background/60 p-4">
+                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Bekleyen{" "}
+                  {queue.applications > 0 ? `${queue.applications} işletme başvurusu` : null}
+                  {queue.applications > 0 && queue.deletions > 0 ? ", " : null}
+                  {queue.deletions > 0 ? `${queue.deletions} hesap silme talebi` : null} var.
+                </p>
+              </div>
+            ) : null}
           </div>
-        ) : null}
-      </div>
+        </DialogContent>
+      </Dialog>
+
+      <OverviewDetailDialog metric={detail} onClose={closeDetail} />
     </section>
   );
 }
