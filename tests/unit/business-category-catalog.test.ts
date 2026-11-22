@@ -230,13 +230,26 @@ describe("merkezi veritabanı ve sayfalar", () => {
   it("başvuruda kategori tek ve zorunlu; seçilen alt tür gönderiliyor", () => {
     const source = read("src/routes/isletme-basvuru.tsx");
     expect(source).toContain("form.category.trim().slice(0, 40)");
-    expect(source).toContain('toast.error("İşletme türünüzü seçin.');
+    expect(source).toContain(
+      'toast.error("İşletme türünüzü yazıp listeden bir öneriye dokunarak seçin.',
+    );
   });
 
   it("yönetici panelinde de kategori tek ve zorunlu; hazır kategori düğmeleri yok", () => {
     const source = read("src/routes/kurucu.tsx");
     expect(source).toContain('toast.error("Kategori seçin.');
     expect(source).toContain("Kategori (zorunlu) — yazın, listeden seçin");
+    // Alt tür seçilmeden sector hiç belirlenmiyordu ve kayıt sessizce ilk
+    // kategoriye (Kafe) düşüyordu; artık sector boşsa gönderim engelleniyor
+    // ve ilk kategoriye sessiz düşen bir yedek değer kalmadı.
+    expect(source).toContain("if (!form.sector) {");
+    expect(source).not.toMatch(/sector:\s*form\.sector \|\| categories\[0\]/);
+  });
+
+  it("başvuruda alt tür seçilmeden sector belirlenmiyor; sessiz ilk-kategori yedeği kalmadı", () => {
+    const source = read("src/routes/isletme-basvuru.tsx");
+    expect(source).toContain("pickedCategory.name !== form.category.trim()");
+    expect(source).not.toMatch(/activeSector = form\.sector \|\| categories\[0\]/);
     expect(source).not.toContain("onClick={() => setForm({ ...form, sector: sector.slug })}");
   });
 });
