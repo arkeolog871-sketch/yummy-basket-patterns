@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, ClientOnly } from "@tanstack/react-router
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState, Suspense, lazy } from "react";
-import { Search, Sparkles, Rows3, Columns2, Columns3 } from "lucide-react";
+import { Search, Rows3, Columns2, Columns3 } from "lucide-react";
 import {
   BUSINESS_COLUMNS_KEY,
   DEFAULT_BUSINESS_COLUMNS,
@@ -18,8 +18,6 @@ import { fetchPublicBanners } from "@/lib/advertisements";
 import { HeroBannerSlider, legacySlidesToBanners } from "@/components/home/HeroBannerSlider";
 import { BusinessApplyCta } from "@/components/home/BusinessApplyCta";
 import { useAppCategories } from "@/hooks/useTaxonomy";
-import { interpretSmartSearch } from "@/lib/ai-search.functions";
-import { AI_UI_ENABLED } from "@/lib/ai-features";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -114,10 +112,7 @@ function Index() {
     refetchOnWindowFocus: true,
   });
   const [term, setTerm] = useState(search.q ?? "");
-  const [thinking, setThinking] = useState(false);
   const [columns, setColumns] = useState<BusinessColumns>(DEFAULT_BUSINESS_COLUMNS);
-  const [aiNote, setAiNote] = useState<string | null>(null);
-  const interpret = useServerFn(interpretSmartSearch);
   const activeSector = search.kategori;
   const liveBanners = bannersQuery.data && bannersQuery.data.length > 0 ? bannersQuery.data : [];
   // Eski tek banner yalnız reklam listesi GELDİKTEN sonra ve boşsa yedek.
@@ -158,45 +153,11 @@ function Index() {
     navigate({ to: "/", search: next });
   }
 
-  /**
-   * Akıllı arama: "ucuz kahvaltı" gibi serbest cümleler yapay zekâ ile
-   * kategori + anahtar kelimeye çevrilir. Tek kelimelik aramalar (marka/ürün
-   * adı) doğrudan normal aramaya gider; yapay zekâ yanıt vermezse de normal
-   * arama çalışır — arama hiçbir koşulda yapay zekâya bağımlı değildir.
-   */
-  async function runSearch() {
+  function runSearch() {
     const raw = term.trim();
-    setAiNote(null);
     if (!raw) {
       apply({ kategori: activeSector });
       return;
-    }
-    const looksLikeSentence = raw.split(/\s+/).length >= 2;
-    if (!looksLikeSentence || !AI_UI_ENABLED) {
-      apply({ kategori: activeSector, q: raw });
-      return;
-    }
-
-    setThinking(true);
-    try {
-      const { intent } = await interpret({
-        data: {
-          query: raw,
-          sectors: categories.map((sector) => ({ slug: sector.slug, label: sector.label })),
-        },
-      });
-      if (intent && (intent.sector || intent.keywords)) {
-        setAiNote(intent.note ?? null);
-        apply({
-          kategori: intent.sector ?? activeSector,
-          q: intent.keywords ?? raw,
-        });
-        return;
-      }
-    } catch {
-      // Yapay zekâ yanıt vermedi; normal aramaya düşülür.
-    } finally {
-      setThinking(false);
     }
     apply({ kategori: activeSector, q: raw });
   }
@@ -217,7 +178,7 @@ function Index() {
                 className="max-w-md"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  void runSearch();
+                  runSearch();
                 }}
               >
                 <div className="flex gap-2">
@@ -232,21 +193,10 @@ function Index() {
                       className="h-12 rounded-full bg-card pl-9"
                     />
                   </div>
-                  <Button
-                    type="submit"
-                    size="lg"
-                    className="h-12 rounded-full px-6"
-                    disabled={thinking}
-                  >
-                    {thinking ? "Anlıyor…" : "Ara"}
+                  <Button type="submit" size="lg" className="h-12 rounded-full px-6">
+                    Ara
                   </Button>
                 </div>
-                {aiNote ? (
-                  <p className="mt-2 flex items-start gap-2 text-sm text-muted-foreground">
-                    <Sparkles className="mt-0.5 size-4 shrink-0" />
-                    <span>{aiNote}</span>
-                  </p>
-                ) : null}
               </form>
             </div>
 

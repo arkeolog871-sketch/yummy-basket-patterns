@@ -30,8 +30,4 @@ describe("fiyatı 0 olan ürün (fiyat sorulur)", () => {
     expect(guard).toBeGreaterThan(-1);
     expect(guard).toBeLessThan(src.indexOf('supabase.rpc("place_customer_order"'));
   });
-
-  it("asistan 0 fiyatlı ürünü sepete önermez", () => {
-    expect(read("src/lib/ai-assistant.server.ts")).toContain('.gt("price", 0)');
-  });
 });
