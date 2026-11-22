@@ -64,7 +64,7 @@ export const applicationSchema = z
       .nullable()
       .default(null),
     district: z.string().trim().min(2, "İlçe girin").max(80, "İlçe en fazla 80 karakter olabilir"),
-    city: z.string().trim().min(2, "Şehir girin").max(80, "Şehir en fazla 80 karakter olabilir"),
+    city: z.string().trim().min(2, "İl girin").max(80, "İl en fazla 80 karakter olabilir"),
     latitude: z.number("Enlemi sayı olarak girin").min(-90).max(90).nullable().default(null),
     longitude: z.number("Boylamı sayı olarak girin").min(-180).max(180).nullable().default(null),
     maps_url: z
@@ -314,7 +314,6 @@ export const reviewBusinessApplication = createServerFn({ method: "POST" })
               email: application.contact_email,
               phone: application.contact_phone,
             });
-
 
             const { error: statusError } = await supabaseAdmin
               .from("business_applications")

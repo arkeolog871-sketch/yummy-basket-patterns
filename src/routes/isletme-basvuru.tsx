@@ -369,9 +369,9 @@ function BusinessApplicationPage() {
         </p>
         <h1 className="mt-3 text-3xl font-semibold">İşletmenizi platforma ekleyin</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Harita bağlantısı dışındaki alanlar zorunludur. İşletmeniz
-          giriş yaptığınız hesaba bağlanır; iletişim bilgileri hesabınızdan otomatik doldurulur.
-          Başvurunuz kurucu tarafından incelenip onaylandığında işletme hesabınız etkinleşir.
+          Harita bağlantısı dışındaki alanlar zorunludur. İşletmeniz giriş yaptığınız hesaba
+          bağlanır; iletişim bilgileri hesabınızdan otomatik doldurulur. Başvurunuz kurucu
+          tarafından incelenip onaylandığında işletme hesabınız etkinleşir.
         </p>
       </header>
 
@@ -480,7 +480,6 @@ function BusinessApplicationPage() {
           </div>
         </div>
 
-
         <div className="space-y-2 rounded-2xl border border-border p-3">
           <p className="text-xs font-medium text-muted-foreground">
             {form.mobile_service ? "Hizmet bölgesi (zorunlu)" : "Konum bilgileri (zorunlu)"}
@@ -501,7 +500,7 @@ function BusinessApplicationPage() {
               required
             />
             <Input
-              placeholder="Şehir"
+              placeholder="İl"
               value={form.city}
               onChange={(event) => setForm({ ...form, city: event.target.value })}
               required
@@ -549,7 +548,7 @@ function BusinessApplicationPage() {
               <span className="font-medium">İş yerim yok</span>
               <span className="block text-xs text-muted-foreground">
                 Müşterinin adresine giderek hizmet veriyorum (tesisatçı, usta, nakliye vb.). Harita
-                ve açık adres istenmez; müşterilere “Adrese gelir” ve hizmet bölgeniz (ilçe, şehir)
+                ve açık adres istenmez; müşterilere “Adrese gelir” ve hizmet bölgeniz (ilçe, il)
                 gösterilir.
               </span>
             </span>
