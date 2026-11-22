@@ -25,18 +25,3 @@ describe("ana sayfa hidrasyonu", () => {
     expect(page).toContain("initialDataUpdatedAt: () => loaderData?.loadedAt,");
   });
 });
-
-/**
- * ÖLÇÜLDÜ (canlı hata kaydı): "Failed to set the 'currentTime' property".
- * Sesli sohbette araya girince çalan ses susturulurken currentTime'a
- * `duration` yazılıyordu; canlı WebRTC akışında duration = Infinity.
- */
-describe("sesli sohbette araya girme", () => {
-  it("canlı akışta currentTime'a sonsuz yazılmaz", () => {
-    const voice = readFileSync("src/components/assistant/useRealtimeVoice.ts", "utf8");
-    expect(voice).not.toContain("element.currentTime = element.duration || 0;");
-    expect(voice).toContain(
-      "if (Number.isFinite(element.duration)) element.currentTime = element.duration;",
-    );
-  });
-});

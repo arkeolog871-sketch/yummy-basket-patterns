@@ -13,14 +13,8 @@ export const SECURITY_HEADERS: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "X-Permitted-Cross-Domain-Policies": "none",
-  // microphone=(self): sesli asistanın mikrofonu AÇIK olarak listelenmeli.
-  // Boş liste — microphone=() — "hiçbir origin, kendimiz dâhil" demek ve
-  // getUserMedia'yı işletim sistemi izni ZATEN VERİLMİŞ olsa bile
-  // NotAllowedError ile reddettirir; kullanıcıya izin sorusu hiç sorulmaz.
-  // Belirti tam olarak buydu: Android ayarlarında mikrofon izni verili
-  // görünüyor ama asistan "Mikrofon izni verilmedi" diyordu.
   "Permissions-Policy":
-    "geolocation=(self), camera=(self), microphone=(self), payment=(), usb=(), interest-cohort=()",
+    "geolocation=(self), camera=(self), microphone=(), payment=(), usb=(), interest-cohort=()",
   "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
   "X-DNS-Prefetch-Control": "off",
   "X-Frame-Options": "SAMEORIGIN",
@@ -33,11 +27,7 @@ export const SECURITY_HEADERS: Record<string, string> = {
     "font-src 'self' data: https://fonts.gstatic.com https://unpkg.com; " +
     "img-src 'self' data: blob: https:; " +
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://oauth2.googleapis.com https://accounts.google.com " +
-    // api.openai.com: gerçek zamanlı sesin WebRTC el sıkışması (SDP) buraya
-    // gider ve YALNIZ sunucunun ürettiği ~60 saniyelik geçici jetonu taşır;
-    // kalıcı anahtar tarayıcıya çıkmaz.
-    "https://maps.googleapis.com https://unpkg.com https://api.openai.com " +
-    `https://tile.openstreetmap.org${DEV_CONNECT_SRC}; ` +
+    `https://maps.googleapis.com https://unpkg.com https://tile.openstreetmap.org${DEV_CONNECT_SRC}; ` +
     "frame-src 'self' https://www.openstreetmap.org https://accounts.google.com; " +
     "media-src 'self' blob: https:",
 };

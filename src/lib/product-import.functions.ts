@@ -57,9 +57,6 @@ export type ImportChunkResult = {
  * Aktarımı kimin yapabileceği: işletme kendi kataloğunu, kurucu/bölge
  * yöneticisi ise yetki alanındaki işletmenin kataloğunu aktarabilir.
  * İstemciden gelen restaurantId asla doğrudan kullanılmaz.
- *
- * Fotoğraftan ürün çıkarma (ai-menu-import.functions.ts) da aynı yetki
- * yolunu kullanır; bu yüzden dışa açıktır.
  */
 export async function assertImportAccess(
   context: {

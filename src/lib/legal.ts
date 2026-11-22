@@ -139,8 +139,6 @@ export const LEGAL_DOCUMENTS: Record<LegalDocId, LegalDocument> = {
       "Platformun kullandığı dış hizmetler için veri işleme rolleri ve yurt dışı aktarım hukuki dayanakları ayrı veri envanterinde tutulur. KVKK m.9 kapsamında uygun mekanizma bulunmayan yurt dışı aktarım aktif hale getirilmez.",
       "## Güvenlik",
       "Kart bilgileri platform veritabanında tutulmaz. Kimlik doğrulama kodları düz metin olarak loglanmaz.",
-      "Sesli asistan veya yapay zekâ özelliği aktif edilirse ayrı veri akışı değerlendirmesi yapılır; hukuki metinler gerçek uygulama davranışıyla birebir eşleşmeden özellik yayına alınmaz.",
-      "Uygulama mikrofona yalnız sesli asistanı siz başlattığınızda erişir; arka planda dinleme yapılmaz ve ses kaydı platform veritabanında saklanmaz. Sesli asistan şu anda kapalıdır.",
       "## Saklama",
       "Veriler saklama ve imha politikasına göre tutulur. Hesap silme talebi, yasal saklama yükümlülükleri saklı kalmak üzere sonuçlandırılır.",
     ],
@@ -159,7 +157,6 @@ export const LEGAL_DOCUMENTS: Record<LegalDocId, LegalDocument> = {
       "{{PLATFORM_LEGAL_NAME}}, {{PLATFORM_ADDRESS}}, {{PLATFORM_EMAIL}}, {{PLATFORM_PHONE}}, {{PLATFORM_KEP}}.",
       "## 2. İşlenen veri kategorileri",
       "Kimlik; iletişim; müşteri işlem; işlem güvenliği; adres/teslimat; talep/şikâyet; yorum ve değerlendirme; cihaz/uygulama teknik kayıtları; hukuken gerekli olduğu ölçüde konum verisi.",
-      "Sesli asistan veya yapay zekâ özelliği açıldığında, yalnız sizin başlattığınız konuşmada ses kaydı yazıya çevrilmek üzere işlenir; bu özellik şu anda kapalıdır.",
       "## 3. İşleme amaçları",
       "Üyelik, hesap güvenliği, OTP doğrulaması, siparişin alınması ve ilgili işletmeye iletilmesi, teslimatın sağlanması, müşteri desteği, şikâyetlerin sonuçlandırılması, yorumların yönetimi, sahtecilik/kötüye kullanımın önlenmesi, yasal yükümlülükler, işlem kayıtlarının tutulması ve hakların tesisi/kullanılması/korunması.",
       "## 4. Hukuki sebepler",
@@ -205,8 +202,6 @@ export const LEGAL_DOCUMENTS: Record<LegalDocId, LegalDocument> = {
       "Açık rıza sadece gerçekten gerekli olan ve başka bir KVKK işleme şartına dayandırılamayan işlemler için kullanılır. Rıza kutuları varsayılan olarak işaretli gelmez; aydınlatma metniyle birleştirilmez.",
       "## Pazarlama iletişimi (isteğe bağlı)",
       "“İsteğe bağlı pazarlama iletişimleri kapsamında kişisel verilerimin kampanya, indirim ve tanıtım amacıyla işlenmesine ve ticari elektronik ileti gönderilmesine, ilgili iletişim kanalı için ayrıca verdiğim onay doğrultusunda açık rıza veriyorum.”",
-      "## Ses/yapay zekâ gibi özel işlemler (yalnız özellik açıldığında)",
-      "“Belirli bir hizmetin sunulması kapsamında ses verimin işlenmesine ilişkin aydınlatmayı okudum ve belirli amaçla, özgür irademle açık rıza veriyorum.” Bu özellik şu anda uygulamada kapalıdır.",
       "Hizmetin kurulması için zorunlu olmayan rızanın reddedilmesi halinde temel hizmet sırf bu nedenle engellenmez. Rıza, Hesabım sayfasındaki tercihlerden her zaman ücretsiz geri alınabilir.",
     ],
   },
@@ -446,7 +441,9 @@ export function missingTokensForDoc(docId: LegalDocId, identity: IdentityLike): 
   const id = resolveIdentity(identity);
   return [...used].filter(
     (t) =>
-      t in LEGAL_TOKENS && !OPTIONAL_TOKENS.includes(t) && !String(id[LEGAL_TOKENS[t]] ?? "").trim(),
+      t in LEGAL_TOKENS &&
+      !OPTIONAL_TOKENS.includes(t) &&
+      !String(id[LEGAL_TOKENS[t]] ?? "").trim(),
   );
 }
 
