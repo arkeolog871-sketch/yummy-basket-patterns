@@ -47,7 +47,6 @@ import { PageManagerPanel } from "@/components/founder/PageManagerPanel";
 import { useAppCategories, useBusinessCategoryCatalog } from "@/hooks/useTaxonomy";
 import { resolveCatalogSector } from "@/lib/business-category-catalog";
 import { CategorySearchField } from "@/components/business/CategorySearchField";
-import { SECTORS } from "@/lib/sectors";
 import { formatPrice, formatDateTime, ORDER_STATUS_LABELS, slugify } from "@/lib/format";
 import { formatPhoneDisplay } from "@/lib/phone";
 import {
@@ -795,7 +794,7 @@ function BusinessPanel({
   const [form, setForm] = useState(blankBusiness);
   const [pickedCover, setPickedCover] = useState<PickedImage | null>(null);
   const [search, setSearch] = useState("");
-  const activeSector = form.sector || categories[0]?.slug || "";
+  const activeSector = form.sector;
   const visibleBusinesses = businesses.filter((business) =>
     matchesBusinessSearch(business, search),
   );
@@ -818,7 +817,7 @@ function BusinessPanel({
           name: form.name,
           tagline: form.tagline || null,
           category: form.category || "Genel",
-          sector: form.sector || categories[0]?.slug || SECTORS[0].slug,
+          sector: form.sector,
           cuisines: form.cuisines
             .split(",")
             .map((value) => value.trim())
@@ -892,6 +891,14 @@ function BusinessPanel({
           event.preventDefault();
           if (!form.category.trim()) {
             toast.error("Kategori seçin. Yazıp listeden seçebilirsiniz.");
+            return;
+          }
+          // "Kategori" alanı serbest metin: yazıp öneriye dokunulmazsa ana
+          // kategori (sector) hiç belirlenmiyordu ve kayıt sessizce ilk
+          // kategoriye (o an "Kafe") düşüyordu. Düzenlemede mevcut işletmenin
+          // sector'ü zaten dolu geldiği için bu yalnız yeni kayıtları etkiler.
+          if (!form.sector) {
+            toast.error("Ana kategori belirlenemedi: kategori alanında listeden bir öneri seçin.");
             return;
           }
           saveMutation.mutate();

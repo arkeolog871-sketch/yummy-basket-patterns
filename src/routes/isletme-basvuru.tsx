@@ -17,7 +17,7 @@ import {
 import { useNativeGoogleSignIn } from "@/hooks/useNativeGoogleSignIn";
 
 import { useAppCategories, useBusinessCategoryCatalog } from "@/hooks/useTaxonomy";
-import { resolveCatalogSector } from "@/lib/business-category-catalog";
+import { resolveCatalogSector, type BusinessCategoryEntry } from "@/lib/business-category-catalog";
 import { CategorySearchField } from "@/components/business/CategorySearchField";
 import { slugify, formatDateTime } from "@/lib/format";
 import { toPublicErrorMessage } from "@/lib/public-error";
@@ -261,6 +261,12 @@ function BusinessApplicationPage() {
   const { catalog } = useBusinessCategoryCatalog();
   const { user } = useAuth();
   const [form, setForm] = useState(emptyForm);
+  // Yazıp listeden seçilen kategori. "Kategori" alanı serbest metin olduğu
+  // için yazı tek başına yeterli değil: esnaf öneriye dokunmadan devam
+  // ederse sektör hiç belirlenmiyordu ve gönderimde sessizce ilk kategoriye
+  // (o an "Kafe") düşüyordu. Artık gönderim, gerçekten bir öneriye
+  // dokunulmuş (ya da Enter'la seçilmiş) olmasını şart koşuyor.
+  const [pickedCategory, setPickedCategory] = useState<BusinessCategoryEntry | null>(null);
   // Haritaya verilen değer de ham Number() ile değil parseDecimalInput ile
   // okunur: virgüllü yazımda ("38,15") Number() NaN döndürüp işaretçiyi
   // sessizce kaybediyordu.
@@ -297,7 +303,7 @@ function BusinessApplicationPage() {
   });
 
   const geocode = useServerFn(reverseGeocode);
-  const activeSector = form.sector || categories[0]?.slug || "";
+  const activeSector = form.sector;
 
   /**
    * Sayı alanları gönderimden önce burada okunur. Biri okunamazsa istek hiç
@@ -379,8 +385,8 @@ function BusinessApplicationPage() {
         className="space-y-4 rounded-3xl border border-border bg-card p-6"
         onSubmit={(event) => {
           event.preventDefault();
-          if (!form.category.trim()) {
-            toast.error("İşletme türünüzü seçin. Yazıp listeden seçebilirsiniz.");
+          if (!pickedCategory || pickedCategory.name !== form.category.trim()) {
+            toast.error("İşletme türünüzü yazıp listeden bir öneriye dokunarak seçin.");
             return;
           }
           if (!form.mobile_service && (!form.latitude.trim() || !form.longitude.trim())) {
@@ -432,8 +438,14 @@ function BusinessApplicationPage() {
             inputId="business-category"
             required
             placeholder="İşletme türünüzü yazın: kasap, kuaför, oto yıkama…"
-            onChange={(category) => setForm((current) => ({ ...current, category }))}
-            onPick={(entry) =>
+            onChange={(category) => {
+              // Yazı değişince önceki seçim artık geçerli değil: yeniden
+              // listeden seçilmeden gönderim engellenir.
+              setPickedCategory(null);
+              setForm((current) => ({ ...current, category, sector: "" }));
+            }}
+            onPick={(entry) => {
+              setPickedCategory(entry);
               setForm((current) => ({
                 ...current,
                 category: entry.name,
@@ -443,8 +455,8 @@ function BusinessApplicationPage() {
                     entry,
                     categories.map((item) => item.slug),
                   ) ?? current.sector,
-              }))
-            }
+              }));
+            }}
             sectorLabel={(entry) => {
               const slug = resolveCatalogSector(
                 entry,
