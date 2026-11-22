@@ -25,7 +25,7 @@ describe("başvuru şeması Türkçe hata veriyor", () => {
       /\.max\(160, "Kısa tanıtım/,
       /\.max\(240, "Adres/,
       /\.max\(80, "İlçe/,
-      /\.max\(80, "Şehir/,
+      /\.max\(80, "İl/,
       /\.max\(160, "E-posta/,
       /\.max\(120, "Yetkili/,
     ];
