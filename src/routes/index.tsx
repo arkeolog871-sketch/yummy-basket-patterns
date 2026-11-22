@@ -227,7 +227,7 @@ function Index() {
                       value={term}
                       name="q"
                       onChange={(event) => setTerm(event.target.value)}
-                      placeholder="Ne arıyorsunuz? Örn. ucuz kahvaltı yapan kafe"
+                      placeholder="Ne arıyorsun?"
                       aria-label="İşletme ara"
                       className="h-12 rounded-full bg-card pl-9"
                     />
