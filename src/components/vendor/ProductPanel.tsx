@@ -3,7 +3,8 @@ import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { toPublicErrorMessage } from "@/lib/public-error";
-import { Loader2, Pencil, Plus, Trash2, Package } from "lucide-react";
+import { Loader2, Pencil, Plus, Trash2, Package, Sparkles } from "lucide-react";
+import { writeProductDescription } from "@/lib/product-description.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -101,6 +102,8 @@ export function ProductPanel({
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [picked, setPicked] = useState<PickedImage | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<VendorProduct | null>(null);
+  const [writing, setWriting] = useState(false);
+  const writeDescriptionFn = useServerFn(writeProductDescription);
   const [newCategory, setNewCategory] = useState("");
 
   const categoryNames = useMemo(
@@ -364,6 +367,27 @@ export function ProductPanel({
             <div className="space-y-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <Label htmlFor="product-description">Açıklama</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 rounded-full"
+                  disabled={writing || form.name.trim().length < 2}
+                  onClick={async () => {
+                    setWriting(true);
+                    try {
+                      const r = await writeDescriptionFn({ data: { name: form.name.trim() } });
+                      setForm((prev) => ({ ...prev, description: r.description }));
+                    } catch (e) {
+                      toast.error(toPublicErrorMessage(e));
+                    } finally {
+                      setWriting(false);
+                    }
+                  }}
+                >
+                  {writing ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                  Yapay zekâ ile yaz
+                </Button>
               </div>
               <Textarea
                 id="product-description"
