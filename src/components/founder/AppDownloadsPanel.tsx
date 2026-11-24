@@ -56,9 +56,16 @@ export function AppDownloadsPanel() {
                 </p>
               </>
             ) : (
-              <p className="mt-1 text-sm text-muted-foreground">
-                {reasonLabel(data.android.reason)}
-              </p>
+              <>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {reasonLabel(data.android.reason)}
+                </p>
+                {data.android.detail ? (
+                  <p className="mt-1 text-[10px] break-words text-muted-foreground/70">
+                    {data.android.detail}
+                  </p>
+                ) : null}
+              </>
             )}
           </div>
           <div className="rounded-xl border border-border/60 bg-background/60 p-3">
@@ -71,7 +78,14 @@ export function AppDownloadsPanel() {
                 </p>
               </>
             ) : (
-              <p className="mt-1 text-sm text-muted-foreground">{reasonLabel(data.ios.reason)}</p>
+              <>
+                <p className="mt-1 text-sm text-muted-foreground">{reasonLabel(data.ios.reason)}</p>
+                {data.ios.detail ? (
+                  <p className="mt-1 text-[10px] break-words text-muted-foreground/70">
+                    {data.ios.detail}
+                  </p>
+                ) : null}
+              </>
             )}
           </div>
         </div>
