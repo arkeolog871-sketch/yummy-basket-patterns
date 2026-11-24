@@ -29,6 +29,13 @@
       "when": 1794953925983,
       "tag": "0003_realtime_app_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795505465236,
+      "tag": "0004_restaurant_extra_sectors",
+      "breakpoints": true
     }
   ]
 }
