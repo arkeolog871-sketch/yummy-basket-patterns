@@ -30,6 +30,7 @@ import { readTwoFactorState, clearTwoFactorFlag } from "@/lib/two-factor";
 import { CategoryAccordion } from "@/components/menu/CategoryAccordion";
 import { groupByCategory } from "@/lib/menu-groups";
 import { OverviewPanel } from "@/components/founder/OverviewPanel";
+import { AppDownloadsPanel } from "@/components/founder/AppDownloadsPanel";
 import { SecurityPanel } from "@/components/founder/SecurityPanel";
 import { AppearancePanel } from "@/components/founder/AppearancePanel";
 import { TypographyPanel } from "@/components/founder/TypographyPanel";
@@ -343,6 +344,7 @@ function FounderDashboard({
         Sunucu tarafı da aynı sınırı ayrıca uyguluyor.
       */}
       {isOwner ? <OverviewPanel /> : null}
+      {isOwner ? <AppDownloadsPanel /> : null}
 
       <Tabs defaultValue={isOwner ? "gorunum" : "isletmeler"} className="mt-8">
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
