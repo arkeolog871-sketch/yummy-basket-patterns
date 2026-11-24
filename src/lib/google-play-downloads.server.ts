@@ -103,7 +103,10 @@ async function listInstallFiles(bucket: string, accessToken: string): Promise<St
   const url = `https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(bucket)}/o?prefix=${encodeURIComponent("stats/installs/")}&fields=${encodeURIComponent("items(name,updated)")}`;
   const response = await fetch(url, { headers: { authorization: `Bearer ${accessToken}` } });
   if (!response.ok) {
-    throw new Error(`Play kurulum dosyaları listelenemedi: ${response.status}`);
+    const body = await response.text();
+    throw new Error(
+      `Play kurulum dosyaları listelenemedi: ${response.status} ${body.slice(0, 300)}`,
+    );
   }
   const json = (await response.json()) as { items?: StorageObject[] };
   return json.items ?? [];
@@ -117,7 +120,8 @@ async function downloadObject(
   const url = `https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(bucket)}/o/${encodeURIComponent(objectName)}?alt=media`;
   const response = await fetch(url, { headers: { authorization: `Bearer ${accessToken}` } });
   if (!response.ok) {
-    throw new Error(`Play kurulum dosyası indirilemedi: ${response.status}`);
+    const body = await response.text();
+    throw new Error(`Play kurulum dosyası indirilemedi: ${response.status} ${body.slice(0, 300)}`);
   }
   return response.arrayBuffer();
 }
