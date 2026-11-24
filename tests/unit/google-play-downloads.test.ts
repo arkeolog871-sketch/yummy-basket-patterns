@@ -1,35 +1,25 @@
 import { describe, expect, it } from "vitest";
 import {
+  candidateInstallFiles,
   decodeInstallCsv,
   parseInstallCsv,
-  pickOverviewInstallFile,
 } from "@/lib/google-play-downloads.server";
 
-describe("pickOverviewInstallFile", () => {
-  it("boyutlu dosyaları atlayıp genel dosyayı seçer", () => {
-    const files = [
+describe("candidateInstallFiles", () => {
+  it("bu ayın overview/country dosyalarını önce, geçen ayınkileri sonra dener", () => {
+    const files = candidateInstallFiles(new Date(Date.UTC(2026, 10, 24)));
+    expect(files).toEqual([
+      "stats/installs/installs_online.uygulamamcebimde.app_202611_overview.csv",
       "stats/installs/installs_online.uygulamamcebimde.app_202611_country.csv",
-      "stats/installs/installs_online.uygulamamcebimde.app_202611_overview.csv",
-      "stats/installs/installs_online.uygulamamcebimde.app_202611_device.csv",
-    ];
-    expect(pickOverviewInstallFile(files)).toBe(
-      "stats/installs/installs_online.uygulamamcebimde.app_202611_overview.csv",
-    );
+      "stats/installs/installs_online.uygulamamcebimde.app_202610_overview.csv",
+      "stats/installs/installs_online.uygulamamcebimde.app_202610_country.csv",
+    ]);
   });
 
-  it('"overview" yoksa boyut eki taşımayan dosyaya düşer', () => {
-    const files = [
-      "stats/installs/installs_online.uygulamamcebimde.app_202611_country.csv",
-      "stats/installs/installs_online.uygulamamcebimde.app_202611.csv",
-    ];
-    expect(pickOverviewInstallFile(files)).toBe(
-      "stats/installs/installs_online.uygulamamcebimde.app_202611.csv",
-    );
-  });
-
-  it("hiçbir genel dosya yoksa null döner", () => {
-    const files = ["stats/installs/installs_x_202611_country.csv"];
-    expect(pickOverviewInstallFile(files)).toBeNull();
+  it("yıl sınırını doğru geçer (Ocak → bir önceki Aralık)", () => {
+    const files = candidateInstallFiles(new Date(Date.UTC(2027, 0, 5)));
+    expect(files[0]).toContain("_202701_");
+    expect(files[2]).toContain("_202612_");
   });
 });
 
@@ -53,7 +43,7 @@ describe("decodeInstallCsv", () => {
 });
 
 describe("parseInstallCsv", () => {
-  it("son satırdaki kümülatif kurulum sayısını okur", () => {
+  it("boyutsuz dosyada en güncel satırdaki kümülatif kurulum sayısını okur", () => {
     const csv = [
       "Date,Package Name,Daily Device Installs,Total User Installs",
       "2026-11-18,online.uygulamamcebimde.app,2,40",
@@ -64,12 +54,22 @@ describe("parseInstallCsv", () => {
     expect(result.totalInstalls).toBe(44);
     expect(result.periodInstalls).toBe(6);
     expect(result.lastDate).toBe("2026-11-20");
-    expect(result.columns).toEqual([
-      "Date",
-      "Package Name",
-      "Daily Device Installs",
-      "Total User Installs",
-    ]);
+  });
+
+  it("ülke boyutlu dosyada en güncel tarihteki tüm ülkelerin toplamını verir", () => {
+    const csv = [
+      "Date,Package Name,Daily Device Installs,Total User Installs,Country",
+      "2026-11-19,online.uygulamamcebimde.app,2,30,TR",
+      "2026-11-19,online.uygulamamcebimde.app,1,10,DE",
+      "2026-11-20,online.uygulamamcebimde.app,3,33,TR",
+      "2026-11-20,online.uygulamamcebimde.app,2,12,DE",
+    ].join("\n");
+    const result = parseInstallCsv(csv);
+    // En güncel tarih 2026-11-20: 33 (TR) + 12 (DE) = 45.
+    expect(result.totalInstalls).toBe(45);
+    // Dönem toplamı tüm satırlar: 2+1+3+2 = 8.
+    expect(result.periodInstalls).toBe(8);
+    expect(result.lastDate).toBe("2026-11-20");
   });
 
   it("beklenen sütunlar yoksa null döner, çökmez", () => {

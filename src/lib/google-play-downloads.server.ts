@@ -7,7 +7,13 @@ import { SignJWT, importPKCS8 } from "jose";
  * Cloud Storage kovasına (gs://pubsite_prod_<hesap kimliği>/stats/installs/...)
  * aylık CSV olarak düşüyor. Erişim, servis hesabına Play Console'da hesap
  * düzeyinde "Uygulama bilgilerini görüntüleme ve toplu raporları indirme"
- * izni verilerek açılıyor (ayrıca GCS IAM'e dokunmaya gerek yok).
+ * izni verilerek açılıyor.
+ *
+ * ÖLÇÜLDÜ (canlı): bu izin yalnızca tek bir dosyayı adıyla İNDİRMEYE
+ * (storage.objects.get) yetiyor, dizini LİSTELEMEYE (storage.objects.list)
+ * yetmiyor — "Permission 'storage.objects.list' denied" ile reddediliyor.
+ * Bu yüzden dosya adı listeden bulunmuyor, Play'in belgelenen adlandırma
+ * kalıbına göre doğrudan tahmin edilip indiriliyor.
  */
 
 type ServiceAccount = {
@@ -76,49 +82,43 @@ async function getAccessToken(account: ServiceAccount): Promise<string> {
   return json.access_token;
 }
 
-/** Kurulum raporu dosya adlarının taşıdığı boyut ekleri — bunlar "genel" dosya değil. */
-const DIMENSION_SUFFIXES = [
-  "_app_version",
-  "_country",
-  "_device",
-  "_language",
-  "_os_version",
-  "_carrier",
-];
+/** Yayınlanan Android paket adı (capacitor.config.json / google-services.json ile aynı). */
+const PACKAGE_NAME = "online.uygulamamcebimde.app";
 
-/** `stats/installs/` altındaki dosyalardan boyuta bölünmemiş (genel) olanı seçer. */
-export function pickOverviewInstallFile(fileNames: string[]): string | null {
-  const csvs = fileNames.filter((name) => name.endsWith(".csv"));
-  const overview = csvs.find((name) => /overview/i.test(name));
-  if (overview) return overview;
-  const plain = csvs.find(
-    (name) => !DIMENSION_SUFFIXES.some((suffix) => name.toLowerCase().includes(`${suffix}.csv`)),
-  );
-  return plain ?? null;
+function yyyyMM(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  return `${year}${month}`;
 }
 
-type StorageObject = { name: string; updated?: string };
-
-async function listInstallFiles(bucket: string, accessToken: string): Promise<StorageObject[]> {
-  const url = `https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(bucket)}/o?prefix=${encodeURIComponent("stats/installs/")}&fields=${encodeURIComponent("items(name,updated)")}`;
-  const response = await fetch(url, { headers: { authorization: `Bearer ${accessToken}` } });
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(
-      `Play kurulum dosyaları listelenemedi: ${response.status} ${body.slice(0, 300)}`,
-    );
+/**
+ * Play'in belgelediği dosya adı kalıbı: installs_<paket>_<yyyyMM>_<boyut>.csv.
+ * "overview" (boyutsuz) dosyanın her zaman var olduğu belgelerde teyit
+ * edilemedi; "country" boyutlu dosya kesin var ve her ülkenin kümülatif
+ * sütunu toplanarak aynı toplam elde edilir (bkz. parseInstallCsv). Bu ay
+ * henüz rapor düşmemiş olabileceği için bir önceki ay da denenir.
+ */
+export function candidateInstallFiles(now: Date): string[] {
+  const thisMonth = yyyyMM(now);
+  const previousMonth = yyyyMM(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)));
+  const files: string[] = [];
+  for (const month of [thisMonth, previousMonth]) {
+    for (const dimension of ["overview", "country"]) {
+      files.push(`stats/installs/installs_${PACKAGE_NAME}_${month}_${dimension}.csv`);
+    }
   }
-  const json = (await response.json()) as { items?: StorageObject[] };
-  return json.items ?? [];
+  return files;
 }
 
-async function downloadObject(
+/** `objectName` yoksa (404) null döner; her başka durumda (yetki vb.) fırlatır. */
+async function downloadObjectIfExists(
   bucket: string,
   objectName: string,
   accessToken: string,
-): Promise<ArrayBuffer> {
+): Promise<ArrayBuffer | null> {
   const url = `https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(bucket)}/o/${encodeURIComponent(objectName)}?alt=media`;
   const response = await fetch(url, { headers: { authorization: `Bearer ${accessToken}` } });
+  if (response.status === 404) return null;
   if (!response.ok) {
     const body = await response.text();
     throw new Error(`Play kurulum dosyası indirilemedi: ${response.status} ${body.slice(0, 300)}`);
@@ -143,11 +143,11 @@ export function decodeInstallCsv(bytes: ArrayBuffer): string {
 }
 
 export type InstallStats = {
-  /** "Total User Installs" sütunu varsa son satırdaki (kümülatif) değer. */
+  /** "Total User Installs" sütunu varsa en güncel tarihteki (tüm boyut satırları toplanmış) kümülatif değer. */
   totalInstalls: number | null;
   /** O sütun yoksa yedek: "Daily Device Installs" sütununun toplamı (dosya kapsamındaki dönem). */
   periodInstalls: number | null;
-  /** Dosyadaki son tarih. */
+  /** Dosyadaki en güncel tarih. */
   lastDate: string | null;
   /** Teşhis için: dosyada gerçekte bulunan sütun adları. */
   columns: string[];
@@ -174,6 +174,13 @@ function parseCsvLines(text: string): string[][] {
     .map((line) => line.split(","));
 }
 
+/**
+ * Dosya boyuta bölünmüş olabilir (ör. "country"): aynı tarihte birden çok
+ * satır olur, her biri bir ülkenin kümülatif toplamını taşır. En güncel
+ * tarihteki TÜM satırların toplamı, boyutsuz dosyadaki tek satırla aynı
+ * global toplamı verir — bu yüzden "son satır" yerine "en güncel tarihteki
+ * satırların toplamı" kullanılıyor.
+ */
 export function parseInstallCsv(text: string): InstallStats {
   const rows = parseCsvLines(text);
   if (rows.length === 0) {
@@ -191,18 +198,26 @@ export function parseInstallCsv(text: string): InstallStats {
     return Number.isFinite(value) ? value : null;
   };
 
+  const lastDate =
+    dateIndex !== -1 && dataRows.length > 0
+      ? dataRows.reduce<string | null>((latest, row) => {
+          const value = row[dateIndex];
+          if (!value) return latest;
+          return !latest || value > latest ? value : latest;
+        }, null)
+      : null;
+
   let totalInstalls: number | null = null;
-  if (totalIndex !== -1 && dataRows.length > 0) {
-    totalInstalls = toNumber(dataRows[dataRows.length - 1]![totalIndex]);
+  if (totalIndex !== -1 && lastDate !== null) {
+    totalInstalls = dataRows
+      .filter((row) => row[dateIndex] === lastDate)
+      .reduce((sum, row) => sum + (toNumber(row[totalIndex]) ?? 0), 0);
   }
 
   let periodInstalls: number | null = null;
   if (periodIndex !== -1) {
     periodInstalls = dataRows.reduce((sum, row) => sum + (toNumber(row[periodIndex]) ?? 0), 0);
   }
-
-  const lastDate =
-    dateIndex !== -1 && dataRows.length > 0 ? (dataRows.at(-1)![dateIndex] ?? null) : null;
 
   return { totalInstalls, periodInstalls, lastDate, columns: header };
 }
@@ -224,15 +239,14 @@ export async function getPlayDownloadStats(): Promise<PlayDownloadStats> {
 
   try {
     const accessToken = await getAccessToken(account);
-    const files = await listInstallFiles(PLAY_REPORTS_BUCKET, accessToken);
-    const fileName = pickOverviewInstallFile(files.map((file) => file.name));
-    if (!fileName) {
-      return { ok: false, reason: "no_report_file" };
+    for (const fileName of candidateInstallFiles(new Date())) {
+      const bytes = await downloadObjectIfExists(PLAY_REPORTS_BUCKET, fileName, accessToken);
+      if (bytes === null) continue;
+      const text = decodeInstallCsv(bytes);
+      const stats = parseInstallCsv(text);
+      return { ok: true, stats, sourceFile: fileName };
     }
-    const bytes = await downloadObject(PLAY_REPORTS_BUCKET, fileName, accessToken);
-    const text = decodeInstallCsv(bytes);
-    const stats = parseInstallCsv(text);
-    return { ok: true, stats, sourceFile: fileName };
+    return { ok: false, reason: "no_report_file" };
   } catch (error) {
     console.error("[play-downloads] indirme istatistiği alınamadı", error);
     return {
