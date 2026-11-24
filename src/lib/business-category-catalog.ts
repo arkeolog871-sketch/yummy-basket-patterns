@@ -630,6 +630,13 @@ export type BusinessCategoryEntry = {
   group_name: string;
   /** Eşleşen ana kategori (app_categories.slug); yoksa null. */
   sector_slug: string | null;
+  /**
+   * Grubun kendi varsayılan sektörü (satırın özel sector_slug'ından BAĞIMSIZ).
+   * "Dönerci" gibi satırlar grubun ("Yeme-İçme" → restoran) yerine kendi
+   * sektörünü (yemek) taşır; işletme ikisinde BİRDEN görünsün diye bu alan
+   * ayrıca tutulur (bkz. resolveExtraCatalogSectors).
+   */
+  group_sector_slug: string;
   synonyms: string[];
   position: number;
 };
@@ -648,6 +655,7 @@ export const BUSINESS_CATEGORY_CATALOG: readonly BusinessCategoryEntry[] = GROUP
     name,
     group_name: group.group,
     sector_slug: sector === undefined ? group.sector : sector,
+    group_sector_slug: group.sector ?? slugify(group.group),
     synonyms: splitSynonyms(synonyms),
     position: 0,
   })),
@@ -668,4 +676,21 @@ export function resolveCatalogSector(
   if (entry.sector_slug && availableSlugs.includes(entry.sector_slug)) return entry.sector_slug;
   const groupSlug = slugify(entry.group_name);
   return availableSlugs.includes(groupSlug) ? groupSlug : null;
+}
+
+/**
+ * Kullanıcı isteği: bir işletme (ör. dönerci) aynı anda birden fazla ana
+ * kategoride görünsün — hem kendi özel sektöründe (yemek) hem grubunun
+ * doğal sektöründe (restoran). Birincil sektörle (resolveCatalogSector)
+ * AYNIYSA ya da geçerli bir ana kategori değilse ek sektör döndürülmez;
+ * tekrar eklenip aynı kategoride iki kez sayılmasın.
+ */
+export function resolveExtraCatalogSectors(
+  entry: Pick<BusinessCategoryEntry, "sector_slug" | "group_name" | "group_sector_slug">,
+  availableSlugs: readonly string[],
+): string[] {
+  const primary = resolveCatalogSector(entry, availableSlugs);
+  if (entry.group_sector_slug === primary) return [];
+  if (!availableSlugs.includes(entry.group_sector_slug)) return [];
+  return [entry.group_sector_slug];
 }

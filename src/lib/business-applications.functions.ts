@@ -305,6 +305,11 @@ export const reviewBusinessApplication = createServerFn({ method: "POST" })
             is_active: true,
           });
           if (insertError) throw new Error(insertError.message);
+          const { syncRestaurantExtraSectors } = await import("./restaurant-extra-sectors.server");
+          await syncRestaurantExtraSectors(supabaseAdmin, {
+            restaurantId: businessId,
+            category: application.category,
+          });
 
           try {
             const vendor = await ensureBusinessVendorAccount({

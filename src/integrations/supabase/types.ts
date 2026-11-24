@@ -1842,6 +1842,32 @@ export type Database = {
         }
         Relationships: []
       }
+      restaurant_extra_sectors: {
+        Row: {
+          created_at: string
+          restaurant_id: string
+          sector_slug: string
+        }
+        Insert: {
+          created_at?: string
+          restaurant_id: string
+          sector_slug: string
+        }
+        Update: {
+          created_at?: string
+          restaurant_id?: string
+          sector_slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_extra_sectors_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       restaurant_sync_tokens: {
         Row: {
           created_at: string
