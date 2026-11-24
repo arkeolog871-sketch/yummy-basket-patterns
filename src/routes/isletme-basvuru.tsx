@@ -244,7 +244,6 @@ const emptyForm = {
   city: "",
   latitude: "",
   longitude: "",
-  maps_url: "",
   contact_email: "",
   contact_phone: "",
   contact_person: "",
@@ -348,7 +347,6 @@ function BusinessApplicationPage() {
           city: form.city.trim(),
           latitude: numbers.latitude,
           longitude: numbers.longitude,
-          maps_url: form.mobile_service ? null : form.maps_url.trim(),
           contact_email: loginEmail.trim(),
           contact_phone: form.contact_phone.trim(),
           contact_person: form.contact_person.trim(),
@@ -375,9 +373,9 @@ function BusinessApplicationPage() {
         </p>
         <h1 className="mt-3 text-3xl font-semibold">İşletmenizi platforma ekleyin</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Harita bağlantısı dışındaki alanlar zorunludur. İşletmeniz giriş yaptığınız hesaba
-          bağlanır; iletişim bilgileri hesabınızdan otomatik doldurulur. Başvurunuz kurucu
-          tarafından incelenip onaylandığında işletme hesabınız etkinleşir.
+          Aşağıdaki alanların hepsi zorunludur. İşletmeniz giriş yaptığınız hesaba bağlanır;
+          iletişim bilgileri hesabınızdan otomatik doldurulur. Başvurunuz kurucu tarafından
+          incelenip onaylandığında işletme hesabınız etkinleşir.
         </p>
       </header>
 
@@ -546,6 +544,22 @@ function BusinessApplicationPage() {
                 }))
               }
             />
+            {/* Haritaya dokunmadan doğrudan koordinat girmek isteyenler için;
+                buraya yazılan değer haritadaki işaretçiyi de taşır. */}
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <Input
+                placeholder="Enlem (ör. 38.139300)"
+                inputMode="decimal"
+                value={form.latitude}
+                onChange={(event) => setForm({ ...form, latitude: event.target.value })}
+              />
+              <Input
+                placeholder="Boylam (ör. 41.001200)"
+                inputMode="decimal"
+                value={form.longitude}
+                onChange={(event) => setForm({ ...form, longitude: event.target.value })}
+              />
+            </div>
           </div>
           <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-muted/40 px-3 py-2.5">
             <input
@@ -565,13 +579,6 @@ function BusinessApplicationPage() {
               </span>
             </span>
           </label>
-          {form.mobile_service ? null : (
-            <Input
-              placeholder="WhatsApp konum veya Google Maps bağlantısı (https://maps…, isteğe bağlı)"
-              value={form.maps_url}
-              onChange={(event) => setForm({ ...form, maps_url: event.target.value })}
-            />
-          )}
         </div>
 
         <div className="space-y-2 rounded-2xl border border-border p-3">
