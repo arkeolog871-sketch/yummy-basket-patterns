@@ -5,7 +5,6 @@ import {
   BUSINESS_CATEGORY_CATALOG,
   type BusinessCategoryEntry,
 } from "@/lib/business-category-catalog";
-import { slugify } from "@/lib/format";
 
 export type AppCategory = {
   id: string;
@@ -144,14 +143,14 @@ export function useBusinessCategoryCatalog() {
           console.error("[business-category-catalog]", error.message);
           return [];
         }
-        // group_sector_slug tabloda yok (yalnız koddaki GROUPS'ta anlamlı);
-        // sunucu tarafı ek sektör eşlemesini zaten statik kataloktan
-        // (BUSINESS_CATEGORY_CATALOG) hesaplıyor. Burada yalnız tip
-        // uyumluluğu için zararsız bir yedek değer veriliyor.
+        // extra_sector_slugs tabloda yok (yalnız koddaki GROUPS'ta elle
+        // işaretlenir); sunucu tarafı ek sektör eşlemesini zaten statik
+        // kataloktan (BUSINESS_CATEGORY_CATALOG) hesaplıyor. Burada yalnız
+        // tip uyumluluğu için zararsız bir yedek değer veriliyor.
         return (data ?? []).map((row) => ({
           ...row,
           synonyms: row.synonyms ?? [],
-          group_sector_slug: row.sector_slug ?? slugify(row.group_name),
+          extra_sector_slugs: [],
         }));
       } catch (error) {
         console.error("[business-category-catalog]", error);

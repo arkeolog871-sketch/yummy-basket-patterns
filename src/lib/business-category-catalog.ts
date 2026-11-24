@@ -26,7 +26,18 @@ import { slugify } from "./format";
  * seçim işletmeye bırakılır (mevcut 14 kategoriden biri seçilir).
  */
 
-type Row = readonly [name: string, synonyms?: string, sector?: string | null];
+type Row = readonly [
+  name: string,
+  synonyms?: string,
+  sector?: string | null | undefined,
+  /**
+   * Bu alt türün, kendi birincil sektörünün YANINDA görünmesi istenen ek ana
+   * kategoriler (ör. "Restoran" aynı zamanda "Yemek" filtresinde de görünsün).
+   * Elle, tek tek seçilir — gruba göre otomatik türetilmez: bir dönerci veya
+   * büfe "Restoran" filtresine sızmasın diye (bkz. kullanıcı geri bildirimi).
+   */
+  extraSectors?: readonly string[],
+];
 
 type Group = { group: string; sector: string | null; rows: readonly Row[] };
 
@@ -35,37 +46,42 @@ const GROUPS: readonly Group[] = [
     group: "Yeme-İçme",
     sector: "restoran",
     rows: [
-      ["Restoran", "lokanta, bistro, aile restoranı, yemek salonu"],
+      ["Restoran", "lokanta, bistro, aile restoranı, yemek salonu", undefined, ["yemek"]],
       ["Ev yemekleri", "esnaf lokantası, sulu yemek, tabldot, hazır yemek", "yemek"],
-      ["Kebapçı", "kebap, ocakbaşı, mangal, adana, urfa, cağ kebabı"],
+      ["Kebapçı", "kebap, ocakbaşı, mangal, adana, urfa, cağ kebabı", undefined, ["yemek"]],
       ["Dönerci", "döner, et döner, tavuk döner, iskender", "yemek"],
       ["Pide ve lahmacun", "pideci, lahmacun, etli ekmek, kıymalı pide", "yemek"],
       ["Pizzacı", "pizza, pizzeria, italyan pizza", "yemek"],
       ["Hamburgerci", "burger, hamburger, cheeseburger", "yemek"],
       ["Köfteci", "köfte, ızgara köfte, piyaz", "yemek"],
       ["Tavukçu", "tavuk, piliç çevirme, kanat, tavuk şiş", "yemek"],
-      ["Balık restoranı", "balık, deniz ürünleri, balık ekmek, kalamar"],
+      ["Balık restoranı", "balık, deniz ürünleri, balık ekmek, kalamar", undefined, ["yemek"]],
       ["Çiğ köfteci", "çiğköfte, çiğ köfte dürüm", "yemek"],
       ["Kokoreççi", "kokoreç, uykuluk", "yemek"],
       ["Tantuni", "tantunici, tantuni dürüm", "yemek"],
       ["Dürümcü", "dürüm, wrap, lavaş", "yemek"],
       ["Ciğerci", "ciğer, ciğer şiş, arnavut ciğeri", "yemek"],
-      ["Tandır ve kuzu çevirme", "tandır, kuzu çevirme, büryan"],
-      ["Et restoranı", "steakhouse, biftek, antrikot, et lokantası"],
+      ["Tandır ve kuzu çevirme", "tandır, kuzu çevirme, büryan", undefined, ["yemek"]],
+      ["Et restoranı", "steakhouse, biftek, antrikot, et lokantası", undefined, ["yemek"]],
       ["Mantı evi", "mantı, kayseri mantısı", "yemek"],
       ["Gözlemeci", "gözleme, sac böreği, bazlama", "yemek"],
       ["Çorbacı", "çorba, işkembe, kelle paça, mercimek çorbası", "yemek"],
       ["Pilavcı", "nohutlu pilav, pilav üstü, tavuklu pilav", "yemek"],
       ["Kahvaltı salonu", "kahvaltıcı, serpme kahvaltı, brunch", "kafe"],
-      ["Büfe ve tostçu", "büfe, tost, sandviç, ayvalık tostu, sucuk ekmek", "yemek"],
+      ["Büfe ve tostçu", "büfe, tost, sandviç, ayvalık tostu, sucuk ekmek", "yemek", ["market"]],
       ["Midyeci", "midye dolma, midye tava", "yemek"],
-      ["Yöresel mutfak", "yöresel yemek, kaburga dolması, meftune, yöre yemekleri"],
-      ["Uzak Doğu mutfağı", "sushi, çin yemeği, japon, noodle, wok"],
-      ["Dünya mutfağı", "italyan, meksika, makarna, fusion"],
+      [
+        "Yöresel mutfak",
+        "yöresel yemek, kaburga dolması, meftune, yöre yemekleri",
+        undefined,
+        ["yemek"],
+      ],
+      ["Uzak Doğu mutfağı", "sushi, çin yemeği, japon, noodle, wok", undefined, ["yemek"]],
+      ["Dünya mutfağı", "italyan, meksika, makarna, fusion", undefined, ["yemek"]],
       ["Vegan ve vejetaryen", "vegan, vejetaryen, bitkisel yemek"],
       ["Sağlıklı ve fit yemek", "diyet yemek, fit menü, salata bar, bowl", "yemek"],
       ["Catering ve toplu yemek", "yemek firması, tabldot servisi, organizasyon yemeği", "yemek"],
-      ["Meyhane", "rakı, meze, fasıl"],
+      ["Meyhane", "rakı, meze, fasıl", undefined, ["yemek"]],
       ["Bar ve pub", "bar, pub, bira, kokteyl", "eglence"],
       ["Kafe", "kafeterya, cafe, kafe restoran", "kafe"],
       ["Kahveci", "kahve, kahve dükkanı, espresso, türk kahvesi, 3. nesil kahve", "kafe"],
@@ -174,8 +190,9 @@ const GROUPS: readonly Group[] = [
         "Kadın kuaförü",
         "kuaför, bayan kuaför, fön, röfle, saç boyama, keratin, ombre, gelin başı",
         "sac-bakimi",
+        ["kisisel-bakim"],
       ],
-      ["Berber", "erkek kuaförü, tıraş, sakal, saç kesimi, jilet", "berber"],
+      ["Berber", "erkek kuaförü, tıraş, sakal, saç kesimi, jilet", "berber", ["kisisel-bakim"]],
       ["Çocuk kuaförü", "çocuk saç kesimi", "sac-bakimi"],
       ["Güzellik salonu", "cilt bakımı, estetik salonu, güzellik merkezi"],
       ["Lazer epilasyon", "epilasyon, ağda, ipl, tüy alma"],
@@ -631,12 +648,10 @@ export type BusinessCategoryEntry = {
   /** Eşleşen ana kategori (app_categories.slug); yoksa null. */
   sector_slug: string | null;
   /**
-   * Grubun kendi varsayılan sektörü (satırın özel sector_slug'ından BAĞIMSIZ).
-   * "Dönerci" gibi satırlar grubun ("Yeme-İçme" → restoran) yerine kendi
-   * sektörünü (yemek) taşır; işletme ikisinde BİRDEN görünsün diye bu alan
-   * ayrıca tutulur (bkz. resolveExtraCatalogSectors).
+   * Bu alt türün, birincil sektörünün YANINDA görünmesi istenen ek ana
+   * kategoriler (elle seçilir, bkz. resolveExtraCatalogSectors).
    */
-  group_sector_slug: string;
+  extra_sector_slugs: readonly string[];
   synonyms: string[];
   position: number;
 };
@@ -650,12 +665,12 @@ function splitSynonyms(value: string | undefined): string[] {
 
 /** Kataloğun tamamı, ekrandaki sırasıyla. */
 export const BUSINESS_CATEGORY_CATALOG: readonly BusinessCategoryEntry[] = GROUPS.flatMap((group) =>
-  group.rows.map(([name, synonyms, sector]) => ({
+  group.rows.map(([name, synonyms, sector, extraSectors]) => ({
     slug: slugify(name),
     name,
     group_name: group.group,
     sector_slug: sector === undefined ? group.sector : sector,
-    group_sector_slug: group.sector ?? slugify(group.group),
+    extra_sector_slugs: extraSectors ?? [],
     synonyms: splitSynonyms(synonyms),
     position: 0,
   })),
@@ -679,18 +694,19 @@ export function resolveCatalogSector(
 }
 
 /**
- * Kullanıcı isteği: bir işletme (ör. dönerci) aynı anda birden fazla ana
- * kategoride görünsün — hem kendi özel sektöründe (yemek) hem grubunun
- * doğal sektöründe (restoran). Birincil sektörle (resolveCatalogSector)
- * AYNIYSA ya da geçerli bir ana kategori değilse ek sektör döndürülmez;
- * tekrar eklenip aynı kategoride iki kez sayılmasın.
+ * Kullanıcı isteği: bir işletme aynı anda birden fazla ana kategoride
+ * görünsün — ama yalnızca elle (satırda extraSectors ile) işaretlenmiş
+ * durumlarda. Örnek: "Restoran" kendi kategorisinde kalır, AYRICA "Yemek"
+ * filtresinde de görünür; ama "Dönerci" veya "Büfe" gibi alt türler
+ * "Restoran" filtresine sızmaz (gruba göre otomatik türetilmiyor — bu,
+ * önceki sürümde yanlış sonuç veriyordu).
  */
 export function resolveExtraCatalogSectors(
-  entry: Pick<BusinessCategoryEntry, "sector_slug" | "group_name" | "group_sector_slug">,
+  entry: Pick<BusinessCategoryEntry, "sector_slug" | "group_name" | "extra_sector_slugs">,
   availableSlugs: readonly string[],
 ): string[] {
   const primary = resolveCatalogSector(entry, availableSlugs);
-  if (entry.group_sector_slug === primary) return [];
-  if (!availableSlugs.includes(entry.group_sector_slug)) return [];
-  return [entry.group_sector_slug];
+  return entry.extra_sector_slugs.filter(
+    (slug) => slug !== primary && availableSlugs.includes(slug),
+  );
 }
