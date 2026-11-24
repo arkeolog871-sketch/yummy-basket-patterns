@@ -56,6 +56,15 @@ export function LocationPicker({
   const [locating, setLocating] = useState(false);
   const [engine, setEngine] = useState<"loading" | "google" | "osm">("loading");
   const moveRef = useRef<((point: PickedPoint) => void) | null>(null);
+  // Haritanın kendi tıklama/sürükleme olaylarından gelen noktayı tutar: elle
+  // koordinat girişini haritaya yansıtan effect, haritanın az önce kendisinin
+  // bildirdiği aynı noktayı tekrar yazıp gereksiz bir geri bildirim turuna
+  // yol açmasın diye bununla karşılaştırır.
+  const lastReportedRef = useRef<PickedPoint | null>(null);
+  function report(point: PickedPoint) {
+    lastReportedRef.current = point;
+    changeRef.current(point);
+  }
 
   const mapsConfig = useQuery({
     queryKey: ["maps-browser-config"],
@@ -99,7 +108,7 @@ export function LocationPicker({
         const marker = L.marker([start.lat, start.lng], { draggable: true }).addTo(map);
         const publish = (lat: number, lng: number) => {
           marker.setLatLng([lat, lng]);
-          changeRef.current({ lat, lng });
+          report({ lat, lng });
         };
         (marker as unknown as { on: (name: string, fn: (event: unknown) => void) => void }).on(
           "dragend",
@@ -108,7 +117,7 @@ export function LocationPicker({
               event as { target?: { getLatLng?: () => { lat: number; lng: number } } }
             ).target;
             const point = target?.getLatLng?.();
-            if (point) changeRef.current({ lat: point.lat, lng: point.lng });
+            if (point) report({ lat: point.lat, lng: point.lng });
           },
         );
         (map as unknown as { on: (name: string, fn: (event: unknown) => void) => void }).on(
@@ -158,19 +167,19 @@ export function LocationPicker({
         });
         googleMarker.addListener("dragend", (event: unknown) => {
           const latLng = (event as { latLng?: { lat: () => number; lng: () => number } }).latLng;
-          if (latLng) changeRef.current({ lat: latLng.lat(), lng: latLng.lng() });
+          if (latLng) report({ lat: latLng.lat(), lng: latLng.lng() });
         });
         googleMap.addListener("click", (event: unknown) => {
           const latLng = (event as { latLng?: { lat: () => number; lng: () => number } }).latLng;
           if (!latLng) return;
           const point = { lat: latLng.lat(), lng: latLng.lng() };
           googleMarker?.setPosition(point);
-          changeRef.current(point);
+          report(point);
         });
         moveRef.current = (point) => {
           googleMarker?.setPosition(point);
           googleMap?.setCenter(point);
-          changeRef.current(point);
+          report(point);
         };
         setEngine("google");
         stopAuthWatch = subscribeMapsAuthFailure(() => {
@@ -204,6 +213,20 @@ export function LocationPicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configLoaded, mapsApiKey]);
 
+  // Elle koordinat girilince (ör. "Enlem"/"Boylam" alanlarına yazarak)
+  // haritadaki işaretçi de taşınır. `engine` bağımlılığı, kullanıcı harita
+  // henüz yüklenirken yazdıysa harita hazır olduğunda da bu noktayı yakalar.
+  useEffect(() => {
+    if (!value || !moveRef.current) return;
+    const last = lastReportedRef.current;
+    if (last && Math.abs(last.lat - value.lat) < 1e-6 && Math.abs(last.lng - value.lng) < 1e-6) {
+      return;
+    }
+    moveRef.current(value);
+    lastReportedRef.current = value;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value?.lat, value?.lng, engine]);
+
   function useMyLocation() {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
     setLocating(true);
@@ -212,7 +235,7 @@ export function LocationPicker({
         setLocating(false);
         const point = { lat: position.coords.latitude, lng: position.coords.longitude };
         if (moveRef.current) moveRef.current(point);
-        else changeRef.current(point);
+        else report(point);
         onCurrentLocation?.(point);
       },
       () => setLocating(false),
