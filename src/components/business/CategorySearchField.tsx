@@ -27,7 +27,7 @@ export function CategorySearchField({
   value: string;
   onChange: (value: string) => void;
   onPick: (entry: BusinessCategoryEntry) => void;
-  /** Ana kategori adı (ör. "sac-bakimi" → "Saç bakımı"); yoksa gösterilmez. */
+  /** Ana kategori adı (ör. "kisisel-bakim" → "Kişisel Bakım"); yoksa gösterilmez. */
   sectorLabel?: (entry: BusinessCategoryEntry) => string | null;
   /** Kutu boşken bu ana kategoriye bağlı kategoriler önerilir. */
   suggestSector?: string | null;

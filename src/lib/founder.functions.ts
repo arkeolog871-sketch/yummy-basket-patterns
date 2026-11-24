@@ -621,11 +621,6 @@ export const saveBusiness = createServerFn({ method: "POST" })
             ? await supabaseAdmin.from("restaurants").update(values).eq("id", id)
             : await supabaseAdmin.from("restaurants").insert({ ...values, id: businessId });
           if (error) throw new Error(error.message);
-          const { syncRestaurantExtraSectors } = await import("./restaurant-extra-sectors.server");
-          await syncRestaurantExtraSectors(supabaseAdmin, {
-            restaurantId: businessId,
-            category: values.category,
-          });
           try {
             const vendor = await ensureBusinessVendorAccount({
               restaurantId: businessId,

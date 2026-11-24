@@ -32,20 +32,7 @@ export const listRestaurants = createServerFn({ method: "GET" })
       .limit(100);
 
     if (data.category) query = query.eq("category", data.category);
-    if (data.sector) {
-      // Kullanıcı isteği: bir işletme (ör. dönerci) birincil sektörünün
-      // ("yemek") yanında grubunun doğal sektöründe ("restoran") de
-      // görünsün. restaurant_extra_sectors o ek eşleşmeleri tutar.
-      const { data: extraRows } = await supabase
-        .from("restaurant_extra_sectors")
-        .select("restaurant_id")
-        .eq("sector_slug", data.sector);
-      const extraIds = (extraRows ?? []).map((row) => row.restaurant_id);
-      query =
-        extraIds.length > 0
-          ? query.or(`sector.eq.${data.sector},id.in.(${extraIds.join(",")})`)
-          : query.eq("sector", data.sector);
-    }
+    if (data.sector) query = query.eq("sector", data.sector);
 
     const { data: rows, error } = await query;
     if (error) throw new Error(error.message);

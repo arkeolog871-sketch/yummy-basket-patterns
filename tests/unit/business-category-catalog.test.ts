@@ -12,22 +12,26 @@ import { foldSearchText } from "@/lib/catalog-search";
 
 const read = (path: string) => readFileSync(resolve(__dirname, "../..", path), "utf8");
 
-/** Canlıdaki 14 ana kategori (app_categories.slug, 24.09.2026). */
+/**
+ * Canlıdaki 13 sabit ana kategori (app_categories.slug, 24.11.2026).
+ * Bilerek az ve sabit: Restoran/Berber/Saç bakımı/Kaynak ustası artık ayrı
+ * ana kategori değil (Yemek / Kişisel Bakım / Usta ve Tesisat Hizmetleri'ne
+ * katıldı); nadir iş kolları "Diğer" çatısında.
+ */
 const LIVE_SECTORS = [
   "kafe",
-  "restoran",
   "yemek",
   "market",
   "giyim",
-  "berber",
   "kisisel-bakim",
-  "sac-bakimi",
   "nakliye",
   "tesisat",
-  "kaynak-ustasi",
   "hayvancilik",
   "eglence",
   "bilisim-ve-teknoloji",
+  "oto-servisi",
+  "taksi",
+  "diger",
 ];
 
 const top = (query: string) => searchCategories(BUSINESS_CATEGORY_CATALOG, query, 5)[0]?.entry.name;
@@ -90,7 +94,7 @@ describe("işletme kategori kataloğu", () => {
     }
   });
 
-  it("ana kategori bağlantıları yalnız mevcut 14 kategoriye (yeni ana kategori açılmadı)", () => {
+  it("ana kategori bağlantıları yalnız mevcut 13 kategoriye (yeni ana kategori açılmadı)", () => {
     for (const entry of BUSINESS_CATEGORY_CATALOG) {
       if (entry.sector_slug) expect(LIVE_SECTORS, entry.name).toContain(entry.sector_slug);
     }
@@ -101,6 +105,13 @@ describe("işletme kategori kataloğu", () => {
         sector,
       ).toBe(true);
     }
+  });
+
+  it("hiçbir alt tür ana kategorisiz kalmıyor (resolveCatalogSector hiçbirinde null dönmüyor)", () => {
+    const unresolved = BUSINESS_CATEGORY_CATALOG.filter(
+      (entry) => resolveCatalogSector(entry, LIVE_SECTORS) === null,
+    );
+    expect(unresolved.map((entry) => entry.name)).toEqual([]);
   });
 
   it("canlıdaki işletmelerin alt türleri katalogdan bulunuyor", () => {
@@ -179,8 +190,8 @@ describe("kategori arama motoru", () => {
 describe("ana kategori eşleşmesi", () => {
   it("kayıttaki ana kategori etkinse o seçilir", () => {
     expect(
-      resolveCatalogSector({ sector_slug: "berber", group_name: "Güzellik" }, LIVE_SECTORS),
-    ).toBe("berber");
+      resolveCatalogSector({ sector_slug: "kisisel-bakim", group_name: "Güzellik" }, LIVE_SECTORS),
+    ).toBe("kisisel-bakim");
   });
 
   it("ana kategori yoksa grup adıyla eşleşir, o da yoksa seçim değişmez (null)", () => {
@@ -192,8 +203,8 @@ describe("ana kategori eşleşmesi", () => {
   it("gizlenmiş ana kategori seçilmez", () => {
     expect(
       resolveCatalogSector(
-        { sector_slug: "berber", group_name: "Güzellik" },
-        LIVE_SECTORS.filter((slug) => slug !== "berber"),
+        { sector_slug: "kisisel-bakim", group_name: "Güzellik" },
+        LIVE_SECTORS.filter((slug) => slug !== "kisisel-bakim"),
       ),
     ).toBeNull();
   });
@@ -201,9 +212,12 @@ describe("ana kategori eşleşmesi", () => {
 
 describe("merkezi veritabanı ve sayfalar", () => {
   const migration = read("supabase/migrations/20260924150000_business_category_catalog.sql");
+  // Veri (sector_slug eşlemesi) en güncel hâliyle bu göçte; tablo/RLS/izin
+  // kurulumu değişmedi, yukarıdaki orijinal göçte kalıyor.
+  const reseed = read("supabase/migrations/20261124100000_business_category_catalog_v2.sql");
 
-  it("göç dosyası kataloğun bugünkü hâliyle aynı", () => {
-    expect(migration).toContain(businessCategorySeedSql(BUSINESS_CATEGORY_CATALOG));
+  it("en güncel göç dosyası kataloğun bugünkü hâliyle aynı", () => {
+    expect(reseed).toContain(businessCategorySeedSql(BUSINESS_CATEGORY_CATALOG));
   });
 
   it("tablo herkese yalnız okunur; mevcut kategori tablosuna dokunulmuyor", () => {
@@ -214,6 +228,9 @@ describe("merkezi veritabanı ve sayfalar", () => {
     );
     expect(migration).not.toMatch(/GRANT (INSERT|UPDATE|DELETE|ALL)[^;]*TO (anon|authenticated)/);
     expect(migration).not.toMatch(
+      /app_categories\s*(SET|ADD|DROP|RENAME)|(ALTER|DROP|DELETE FROM|UPDATE)\s+(TABLE\s+)?public\.app_categories/i,
+    );
+    expect(reseed).not.toMatch(
       /app_categories\s*(SET|ADD|DROP|RENAME)|(ALTER|DROP|DELETE FROM|UPDATE)\s+(TABLE\s+)?public\.app_categories/i,
     );
   });

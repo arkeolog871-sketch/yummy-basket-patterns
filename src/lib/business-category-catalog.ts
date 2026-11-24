@@ -4,11 +4,19 @@ import { slugify } from "./format";
  * İşletme kategori kataloğu (işletme başvurusu ve Sayfa Yöneticisi Paneli'ndeki
  * "Alt tür" arama motoru).
  *
- * Mevcut 14 ana kategori (app_categories: Kafe, Market, Berber…) aynen
- * duruyor; ana sayfadaki düğmeler onlardan geliyor. Bu katalog onların
- * ALTINDA, işletmenin ne iş yaptığını anlatan ayrıntılı adları tutar.
- * Seçilen ad `restaurants.category` alanına yazılır (bugünkü "Alt tür"
- * alanıyla aynı yer); eşleşen ana kategori varsa o da seçilir.
+ * Ana kategoriler (app_categories) BİLEREK AZ VE SABİT tutulur — 13 adet:
+ * Yemek, Kafe, Market, Giyim, Kişisel Bakım, Oto Servisi, Usta ve Tesisat
+ * Hizmetleri, Nakliye, Taksi, Bilişim ve Teknoloji, Hayvancılık ve Tarım,
+ * Eğlence, Diğer (bu sonuncusu da aktif bir ana sayfa çipidir — şimdilik
+ * nadir görülen iş kollarının ortak çatısı). Bu katalogdaki HER satır bu
+ * 13'ten birine bağlanır (bkz. resolveCatalogSector); boş/eşleşmeyen sektör
+ * bilerek YOK — önceden bu boşluk "Sayfa Yöneticisi" panelinde başvurunun
+ * kategorisi hiç seçilmemiş gibi göründüğü bir hataya yol açıyordu.
+ *
+ * Bu katalog ana kategorilerin ALTINDA, işletmenin ne iş yaptığını anlatan
+ * ayrıntılı adları tutar. Seçilen ad `restaurants.category` alanına yazılır
+ * (bugünkü "Alt tür" alanıyla aynı yer); bağlı olduğu ana kategori de ayrıca
+ * `restaurants.sector`'a yazılır.
  *
  * Kaynak: Ticaret Bakanlığı esnaf ve sanatkâr meslek kolları listesi ile
  * Google İşletme Profili'nin kategori yapısı (bir ana, en çok 9 ek kategori)
@@ -26,45 +34,45 @@ import { slugify } from "./format";
  * seçim işletmeye bırakılır (mevcut 14 kategoriden biri seçilir).
  */
 
-type Row = readonly [name: string, synonyms?: string, sector?: string | null];
+type Row = readonly [name: string, synonyms?: string, sector?: string | null | undefined];
 
 type Group = { group: string; sector: string | null; rows: readonly Row[] };
 
 const GROUPS: readonly Group[] = [
   {
     group: "Yeme-İçme",
-    sector: "restoran",
+    sector: "yemek",
     rows: [
       ["Restoran", "lokanta, bistro, aile restoranı, yemek salonu"],
-      ["Ev yemekleri", "esnaf lokantası, sulu yemek, tabldot, hazır yemek", "yemek"],
+      ["Ev yemekleri", "esnaf lokantası, sulu yemek, tabldot, hazır yemek"],
       ["Kebapçı", "kebap, ocakbaşı, mangal, adana, urfa, cağ kebabı"],
-      ["Dönerci", "döner, et döner, tavuk döner, iskender", "yemek"],
-      ["Pide ve lahmacun", "pideci, lahmacun, etli ekmek, kıymalı pide", "yemek"],
-      ["Pizzacı", "pizza, pizzeria, italyan pizza", "yemek"],
-      ["Hamburgerci", "burger, hamburger, cheeseburger", "yemek"],
-      ["Köfteci", "köfte, ızgara köfte, piyaz", "yemek"],
-      ["Tavukçu", "tavuk, piliç çevirme, kanat, tavuk şiş", "yemek"],
+      ["Dönerci", "döner, et döner, tavuk döner, iskender"],
+      ["Pide ve lahmacun", "pideci, lahmacun, etli ekmek, kıymalı pide"],
+      ["Pizzacı", "pizza, pizzeria, italyan pizza"],
+      ["Hamburgerci", "burger, hamburger, cheeseburger"],
+      ["Köfteci", "köfte, ızgara köfte, piyaz"],
+      ["Tavukçu", "tavuk, piliç çevirme, kanat, tavuk şiş"],
       ["Balık restoranı", "balık, deniz ürünleri, balık ekmek, kalamar"],
-      ["Çiğ köfteci", "çiğköfte, çiğ köfte dürüm", "yemek"],
-      ["Kokoreççi", "kokoreç, uykuluk", "yemek"],
-      ["Tantuni", "tantunici, tantuni dürüm", "yemek"],
-      ["Dürümcü", "dürüm, wrap, lavaş", "yemek"],
-      ["Ciğerci", "ciğer, ciğer şiş, arnavut ciğeri", "yemek"],
+      ["Çiğ köfteci", "çiğköfte, çiğ köfte dürüm"],
+      ["Kokoreççi", "kokoreç, uykuluk"],
+      ["Tantuni", "tantunici, tantuni dürüm"],
+      ["Dürümcü", "dürüm, wrap, lavaş"],
+      ["Ciğerci", "ciğer, ciğer şiş, arnavut ciğeri"],
       ["Tandır ve kuzu çevirme", "tandır, kuzu çevirme, büryan"],
       ["Et restoranı", "steakhouse, biftek, antrikot, et lokantası"],
-      ["Mantı evi", "mantı, kayseri mantısı", "yemek"],
-      ["Gözlemeci", "gözleme, sac böreği, bazlama", "yemek"],
-      ["Çorbacı", "çorba, işkembe, kelle paça, mercimek çorbası", "yemek"],
-      ["Pilavcı", "nohutlu pilav, pilav üstü, tavuklu pilav", "yemek"],
+      ["Mantı evi", "mantı, kayseri mantısı"],
+      ["Gözlemeci", "gözleme, sac böreği, bazlama"],
+      ["Çorbacı", "çorba, işkembe, kelle paça, mercimek çorbası"],
+      ["Pilavcı", "nohutlu pilav, pilav üstü, tavuklu pilav"],
       ["Kahvaltı salonu", "kahvaltıcı, serpme kahvaltı, brunch", "kafe"],
-      ["Büfe ve tostçu", "büfe, tost, sandviç, ayvalık tostu, sucuk ekmek", "yemek"],
-      ["Midyeci", "midye dolma, midye tava", "yemek"],
+      ["Büfe ve tostçu", "büfe, tost, sandviç, ayvalık tostu, sucuk ekmek"],
+      ["Midyeci", "midye dolma, midye tava"],
       ["Yöresel mutfak", "yöresel yemek, kaburga dolması, meftune, yöre yemekleri"],
       ["Uzak Doğu mutfağı", "sushi, çin yemeği, japon, noodle, wok"],
       ["Dünya mutfağı", "italyan, meksika, makarna, fusion"],
       ["Vegan ve vejetaryen", "vegan, vejetaryen, bitkisel yemek"],
-      ["Sağlıklı ve fit yemek", "diyet yemek, fit menü, salata bar, bowl", "yemek"],
-      ["Catering ve toplu yemek", "yemek firması, tabldot servisi, organizasyon yemeği", "yemek"],
+      ["Sağlıklı ve fit yemek", "diyet yemek, fit menü, salata bar, bowl"],
+      ["Catering ve toplu yemek", "yemek firması, tabldot servisi, organizasyon yemeği"],
       ["Meyhane", "rakı, meze, fasıl"],
       ["Bar ve pub", "bar, pub, bira, kokteyl", "eglence"],
       ["Kafe", "kafeterya, cafe, kafe restoran", "kafe"],
@@ -170,13 +178,9 @@ const GROUPS: readonly Group[] = [
     group: "Güzellik ve Kişisel Bakım",
     sector: "kisisel-bakim",
     rows: [
-      [
-        "Kadın kuaförü",
-        "kuaför, bayan kuaför, fön, röfle, saç boyama, keratin, ombre, gelin başı",
-        "sac-bakimi",
-      ],
-      ["Berber", "erkek kuaförü, tıraş, sakal, saç kesimi, jilet", "berber"],
-      ["Çocuk kuaförü", "çocuk saç kesimi", "sac-bakimi"],
+      ["Kadın kuaförü", "kuaför, bayan kuaför, fön, röfle, saç boyama, keratin, ombre, gelin başı"],
+      ["Berber", "erkek kuaförü, tıraş, sakal, saç kesimi, jilet"],
+      ["Çocuk kuaförü", "çocuk saç kesimi"],
       ["Güzellik salonu", "cilt bakımı, estetik salonu, güzellik merkezi"],
       ["Lazer epilasyon", "epilasyon, ağda, ipl, tüy alma"],
       ["Manikür ve pedikür", "tırnak, protez tırnak, kalıcı oje, nail art"],
@@ -187,14 +191,14 @@ const GROUPS: readonly Group[] = [
       ["Hamam", "türk hamamı, kese köpük"],
       ["Solaryum", "bronzlaşma, sprey bronz"],
       ["Dövme ve piercing", "tattoo, dövme, piercing, hızma"],
-      ["Protez saç ve peruk", "peruk, saç protezi, postiş", "sac-bakimi"],
+      ["Protez saç ve peruk", "peruk, saç protezi, postiş"],
       ["Kozmetik ve parfümeri", "kozmetik, parfüm, makyaj malzemesi, cilt bakım ürünleri"],
       ["Zayıflama merkezi", "bölgesel incelme, selülit, vücut şekillendirme"],
     ],
   },
   {
     group: "Sağlık",
-    sector: null,
+    sector: "diger",
     rows: [
       ["Diş kliniği", "dişçi, diş hekimi, implant, diş beyazlatma, ortodonti"],
       ["Poliklinik", "tıp merkezi, muayenehane, sağlık merkezi"],
@@ -223,7 +227,7 @@ const GROUPS: readonly Group[] = [
   },
   {
     group: "Eczane ve Medikal",
-    sector: null,
+    sector: "diger",
     rows: [
       ["Eczane", "nöbetçi eczane, ilaç, eczacı"],
       ["Medikal malzeme", "tıbbi cihaz, tansiyon aleti, hasta bezi, oksijen tüpü"],
@@ -234,7 +238,7 @@ const GROUPS: readonly Group[] = [
   },
   {
     group: "Otomotiv",
-    sector: null,
+    sector: "oto-servisi",
     rows: [
       ["Oto tamir servisi", "oto tamirci, sanayi, mekanik, motor tamiri, araba tamiri"],
       ["Oto elektrikçi", "akü, marş motoru, şarj dinamosu, akücü"],
@@ -264,7 +268,7 @@ const GROUPS: readonly Group[] = [
   },
   {
     group: "Teknik Servis ve Onarım",
-    sector: null,
+    sector: "tesisat",
     rows: [
       ["Beyaz eşya servisi", "buzdolabı tamiri, çamaşır makinesi tamiri, bulaşık makinesi tamiri"],
       ["Kombi servisi", "kombi bakımı, petek temizliği, kombi tamiri", "tesisat"],
@@ -321,33 +325,33 @@ const GROUPS: readonly Group[] = [
       ["Su tesisatçısı", "tesisatçı, sıhhi tesisat, su kaçağı, musluk tamiri"],
       ["Doğalgaz tesisatı", "doğalgaz projesi, gaz tesisatı, doğalgaz ustası"],
       ["Tıkanıklık açma", "kanal açma, lavabo açma, logar, vidanjör, septik"],
-      ["Kaynakçı ve demir doğrama", "kaynak, demir doğrama, ferforje, korkuluk", "kaynak-ustasi"],
-      ["Boya badana", "boyacı, badana, duvar kağıdı, iç cephe boya", null],
-      ["Alçı ve sıva", "alçıpan, asma tavan, sıva ustası, kartonpiyer", null],
-      ["Fayans ve seramik ustası", "fayansçı, seramik döşeme, derz", null],
-      ["Parke ustası", "parke, laminat, parke cilası", null],
-      ["Marangoz", "ahşap işleri, mobilya tamiri, doğramacı ahşap", null],
-      ["PVC ve alüminyum doğrama", "pvc pencere, alüminyum doğrama, cam balkon, sineklik", null],
-      ["Camcı", "cam kesimi, ayna, cam montajı", null],
-      ["Çatı ustası", "çatı tamiri, oluk, kiremit, çatı aktarma", null],
-      ["Yalıtım", "ısı yalıtımı, mantolama, su yalıtımı, izolasyon", null],
-      ["İnşaat firması", "müteahhit, yapı firması, inşaat", null],
-      ["Tadilat ve dekorasyon", "tadilat, anahtar teslim, renovasyon, ev tamiri", null],
-      ["İç mimar", "iç mimarlık, dekorasyon tasarımı", null],
-      ["Mimarlık ofisi", "mimar, proje çizimi, ruhsat projesi", null],
-      ["Mühendislik bürosu", "statik proje, harita mühendisi, elektrik projesi", null],
-      ["Çilingir", "kapı açma, kilit değişimi, anahtar kopyalama, anahtarcı", null],
-      ["Mermerci", "mermer, granit, mezar taşı, mutfak tezgâhı", null],
-      ["Tente ve pergola", "tente, gölgelik, pergola, branda", null],
-      ["Kepenk ve otomatik kapı", "kepenk, otomatik kapı, bariyer, garaj kapısı", null],
-      ["Havuz yapım ve bakım", "havuz, havuz bakımı, havuz temizliği", null],
-      ["Su kuyusu ve sondaj", "sondaj, su kuyusu, kuyu açma", null],
-      ["Mobilya montajı", "mobilya kurulumu, tv askı, montaj ustası", null],
+      ["Kaynakçı ve demir doğrama", "kaynak, demir doğrama, ferforje, korkuluk"],
+      ["Boya badana", "boyacı, badana, duvar kağıdı, iç cephe boya"],
+      ["Alçı ve sıva", "alçıpan, asma tavan, sıva ustası, kartonpiyer"],
+      ["Fayans ve seramik ustası", "fayansçı, seramik döşeme, derz"],
+      ["Parke ustası", "parke, laminat, parke cilası"],
+      ["Marangoz", "ahşap işleri, mobilya tamiri, doğramacı ahşap"],
+      ["PVC ve alüminyum doğrama", "pvc pencere, alüminyum doğrama, cam balkon, sineklik"],
+      ["Camcı", "cam kesimi, ayna, cam montajı"],
+      ["Çatı ustası", "çatı tamiri, oluk, kiremit, çatı aktarma"],
+      ["Yalıtım", "ısı yalıtımı, mantolama, su yalıtımı, izolasyon"],
+      ["İnşaat firması", "müteahhit, yapı firması, inşaat"],
+      ["Tadilat ve dekorasyon", "tadilat, anahtar teslim, renovasyon, ev tamiri"],
+      ["İç mimar", "iç mimarlık, dekorasyon tasarımı"],
+      ["Mimarlık ofisi", "mimar, proje çizimi, ruhsat projesi"],
+      ["Mühendislik bürosu", "statik proje, harita mühendisi, elektrik projesi"],
+      ["Çilingir", "kapı açma, kilit değişimi, anahtar kopyalama, anahtarcı"],
+      ["Mermerci", "mermer, granit, mezar taşı, mutfak tezgâhı"],
+      ["Tente ve pergola", "tente, gölgelik, pergola, branda"],
+      ["Kepenk ve otomatik kapı", "kepenk, otomatik kapı, bariyer, garaj kapısı"],
+      ["Havuz yapım ve bakım", "havuz, havuz bakımı, havuz temizliği"],
+      ["Su kuyusu ve sondaj", "sondaj, su kuyusu, kuyu açma"],
+      ["Mobilya montajı", "mobilya kurulumu, tv askı, montaj ustası"],
     ],
   },
   {
     group: "Yapı Malzemesi ve Hırdavat",
-    sector: null,
+    sector: "tesisat",
     rows: [
       ["Hırdavat", "nalbur, vida, el aleti, hırdavatçı"],
       ["Yapı market", "yapı malzemesi, bahçe malzemesi, dekorasyon market"],
@@ -365,7 +369,7 @@ const GROUPS: readonly Group[] = [
   },
   {
     group: "Mobilya ve Ev Eşyası",
-    sector: null,
+    sector: "diger",
     rows: [
       ["Mobilya mağazası", "koltuk takımı, yatak odası, yemek odası, mobilyacı"],
       ["Yatak ve baza", "yatak, baza, başlık, ortopedik yatak"],
@@ -389,7 +393,7 @@ const GROUPS: readonly Group[] = [
   },
   {
     group: "Temizlik",
-    sector: null,
+    sector: "diger",
     rows: [
       ["Ev temizliği", "temizlikçi, gündelikçi, ev temizlik hizmeti"],
       ["Temizlik şirketi", "ofis temizliği, bina temizliği, inşaat sonrası temizlik"],
@@ -419,9 +423,9 @@ const GROUPS: readonly Group[] = [
   },
   {
     group: "Ulaşım ve Seyahat",
-    sector: null,
+    sector: "nakliye",
     rows: [
-      ["Taksi durağı", "taksi, taksi çağır"],
+      ["Taksi durağı", "taksi, taksi çağır", "taksi"],
       ["Servis ve transfer", "personel servisi, okul servisi, havalimanı transferi, vip transfer"],
       ["Otobüs firması", "şehirlerarası otobüs, otobüs bileti, yazıhane"],
       ["Seyahat acentesi", "tur, uçak bileti, otel rezervasyonu, turizm"],
@@ -431,7 +435,7 @@ const GROUPS: readonly Group[] = [
   },
   {
     group: "Konaklama",
-    sector: null,
+    sector: "diger",
     rows: [
       ["Otel", "butik otel, konaklama, oda"],
       ["Pansiyon", "misafirhane, öğretmenevi, ev pansiyonu"],
@@ -443,7 +447,7 @@ const GROUPS: readonly Group[] = [
   },
   {
     group: "Eğitim",
-    sector: null,
+    sector: "diger",
     rows: [
       ["Etüt ve kurs merkezi", "dershane, etüt, lgs, yks, kpss kursu"],
       ["Özel ders", "birebir ders, öğretmen, matematik dersi"],
@@ -494,12 +498,12 @@ const GROUPS: readonly Group[] = [
       ["Gelinlik", "gelinlikçi, gelinlik kiralama", "giyim"],
       ["Davetiye ve nikah şekeri", "davetiye, nikah şekeri, söz çikolatası"],
       ["Sünnet organizasyonu", "sünnet düğünü, sünnet kıyafeti"],
-      ["Çiçekçi", "çiçek, buket, çelenk, saksı çiçeği, gelin arabası süsleme", null],
+      ["Çiçekçi", "çiçek, buket, çelenk, saksı çiçeği, gelin arabası süsleme", "diger"],
     ],
   },
   {
     group: "Fotoğraf ve Video",
-    sector: null,
+    sector: "diger",
     rows: [
       ["Fotoğrafçı", "fotoğraf stüdyosu, vesikalık, düğün fotoğrafçısı"],
       ["Video çekimi", "kameraman, drone çekimi, klip çekimi"],
@@ -508,7 +512,7 @@ const GROUPS: readonly Group[] = [
   },
   {
     group: "Spor ve Hobi",
-    sector: null,
+    sector: "diger",
     rows: [
       ["Spor salonu", "fitness, gym, vücut geliştirme, spor merkezi"],
       ["Pilates ve yoga", "pilates, yoga, reformer pilates"],
@@ -549,7 +553,7 @@ const GROUPS: readonly Group[] = [
   },
   {
     group: "Tarım ve Bahçe",
-    sector: null,
+    sector: "hayvancilik",
     rows: [
       ["Zirai ilaç, gübre ve tohum", "zirai ilaç, gübre, tohum, tarım ilaçları"],
       ["Fidanlık", "fidan, fide, çiçek fidesi, saksı, toprak"],
@@ -562,7 +566,7 @@ const GROUPS: readonly Group[] = [
   },
   {
     group: "Kırtasiye, Kitap ve Hediye",
-    sector: null,
+    sector: "diger",
     rows: [
       ["Kırtasiye", "kalem, defter, okul malzemesi, kırtasiyeci"],
       ["Kitabevi", "kitap, kitapçı, test kitabı"],
@@ -580,7 +584,7 @@ const GROUPS: readonly Group[] = [
   },
   {
     group: "Mesleki Hizmetler",
-    sector: null,
+    sector: "diger",
     rows: [
       ["Avukat", "hukuk bürosu, dava, hukuki danışmanlık, avukatlık"],
       ["Mali müşavir", "muhasebe, muhasebeci, vergi, smmm"],
@@ -600,7 +604,7 @@ const GROUPS: readonly Group[] = [
   },
   {
     group: "Emlak, Finans ve Sigorta",
-    sector: null,
+    sector: "diger",
     rows: [
       ["Emlakçı", "emlak ofisi, kiralık ev, satılık ev, gayrimenkul"],
       ["Gayrimenkul değerleme", "değerleme, gayrimenkul ekspertizi"],
@@ -613,7 +617,7 @@ const GROUPS: readonly Group[] = [
   },
   {
     group: "Enerji ve Yakıt",
-    sector: null,
+    sector: "diger",
     rows: [
       ["Akaryakıt istasyonu", "benzinlik, petrol, mazot, benzin"],
       ["Tüp bayii", "lpg tüp, mutfak tüpü, piknik tüpü, tüpçü"],
@@ -630,13 +634,6 @@ export type BusinessCategoryEntry = {
   group_name: string;
   /** Eşleşen ana kategori (app_categories.slug); yoksa null. */
   sector_slug: string | null;
-  /**
-   * Grubun kendi varsayılan sektörü (satırın özel sector_slug'ından BAĞIMSIZ).
-   * "Dönerci" gibi satırlar grubun ("Yeme-İçme" → restoran) yerine kendi
-   * sektörünü (yemek) taşır; işletme ikisinde BİRDEN görünsün diye bu alan
-   * ayrıca tutulur (bkz. resolveExtraCatalogSectors).
-   */
-  group_sector_slug: string;
   synonyms: string[];
   position: number;
 };
@@ -655,7 +652,6 @@ export const BUSINESS_CATEGORY_CATALOG: readonly BusinessCategoryEntry[] = GROUP
     name,
     group_name: group.group,
     sector_slug: sector === undefined ? group.sector : sector,
-    group_sector_slug: group.sector ?? slugify(group.group),
     synonyms: splitSynonyms(synonyms),
     position: 0,
   })),
@@ -676,21 +672,4 @@ export function resolveCatalogSector(
   if (entry.sector_slug && availableSlugs.includes(entry.sector_slug)) return entry.sector_slug;
   const groupSlug = slugify(entry.group_name);
   return availableSlugs.includes(groupSlug) ? groupSlug : null;
-}
-
-/**
- * Kullanıcı isteği: bir işletme (ör. dönerci) aynı anda birden fazla ana
- * kategoride görünsün — hem kendi özel sektöründe (yemek) hem grubunun
- * doğal sektöründe (restoran). Birincil sektörle (resolveCatalogSector)
- * AYNIYSA ya da geçerli bir ana kategori değilse ek sektör döndürülmez;
- * tekrar eklenip aynı kategoride iki kez sayılmasın.
- */
-export function resolveExtraCatalogSectors(
-  entry: Pick<BusinessCategoryEntry, "sector_slug" | "group_name" | "group_sector_slug">,
-  availableSlugs: readonly string[],
-): string[] {
-  const primary = resolveCatalogSector(entry, availableSlugs);
-  if (entry.group_sector_slug === primary) return [];
-  if (!availableSlugs.includes(entry.group_sector_slug)) return [];
-  return [entry.group_sector_slug];
 }
