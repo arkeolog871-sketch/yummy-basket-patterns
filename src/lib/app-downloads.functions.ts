@@ -9,8 +9,10 @@ export type AppDownloadsOverview = {
         periodInstalls: number | null;
         lastDate: string | null;
       }
-    | { ok: false; reason: string };
-  ios: { ok: true; totalDownloads: number; date: string | null } | { ok: false; reason: string };
+    | { ok: false; reason: string; detail?: string };
+  ios:
+    | { ok: true; totalDownloads: number; date: string | null }
+    | { ok: false; reason: string; detail?: string };
 };
 
 /**
@@ -38,9 +40,17 @@ export const getAppDownloadsOverview = createServerFn({ method: "GET" })
             periodInstalls: play.stats.periodInstalls,
             lastDate: play.stats.lastDate,
           }
-        : { ok: false, reason: play.reason },
+        : {
+            ok: false,
+            reason: play.reason,
+            ...("detail" in play && play.detail ? { detail: play.detail } : {}),
+          },
       ios: apple.ok
         ? { ok: true, totalDownloads: apple.totalDownloads, date: apple.date }
-        : { ok: false, reason: apple.reason },
+        : {
+            ok: false,
+            reason: apple.reason,
+            ...("detail" in apple && apple.detail ? { detail: apple.detail } : {}),
+          },
     };
   });
