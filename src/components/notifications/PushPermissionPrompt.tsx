@@ -8,6 +8,7 @@ import { readOrCreateDeviceId } from "@/hooks/useFcmTokenBridge";
 import { getMyPushRegistrationStatus, saveFcmToken } from "@/lib/push.functions";
 import { getNativeIosFcmToken, hasNativeIosPush } from "@/lib/ios-native-push";
 import { isNativeApp } from "@/lib/native-notify";
+import { reportAppError } from "@/lib/errors.functions";
 
 const DONE_KEY = (userId: string) => `silvan.push-prompt.v1.${userId}`;
 
@@ -26,6 +27,7 @@ export function PushPermissionPrompt() {
   const { user } = useAuth();
   const checkStatus = useServerFn(getMyPushRegistrationStatus);
   const saveToken = useServerFn(saveFcmToken);
+  const reportError = useServerFn(reportAppError);
   const web = usePushNotifications();
   const [open, setOpen] = useState(false);
   const [isBusiness, setIsBusiness] = useState(false);
@@ -106,7 +108,18 @@ export function PushPermissionPrompt() {
         return;
       }
       await web.enable();
-    } catch {
+    } catch (error) {
+      // YAŞANDI: bu hata hiç kaydedilmiyordu; neden başarısız olduğunu
+      // (ör. aynı cihazda önceki hesabın abonelik satırı) geriye dönük
+      // teşhis etmenin yolu yoktu.
+      void reportError({
+        data: {
+          message: `[push-prompt] izin kaydı başarısız: ${
+            error instanceof Error ? error.message : String(error)
+          }`.slice(0, 1_000),
+          path: "push-permission-prompt",
+        },
+      }).catch(() => undefined);
       setMessage("Kayıt şu anda yapılamadı. Lütfen tekrar deneyin.");
     } finally {
       setBusy(false);

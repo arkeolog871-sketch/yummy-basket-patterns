@@ -64,3 +64,25 @@ describe("cihaz jetonu tekilliği", () => {
     expect(bridge).toContain("...(deviceId ? { deviceId } : {})");
   });
 });
+
+/**
+ * YAŞANDI: push_subscriptions (tarayıcı aboneliği), fcm_tokens'ın aksine,
+ * aynı cihazda önceki bir hesabın bıraktığı satırı temizlemiyordu. Abonelik
+ * (endpoint) kullanıcıya değil cihaza/tarayıcıya bağlı olduğu için, aynı
+ * telefonda hesap değiştirildiğinde upsert "yalnızca kendi satırını
+ * güncelleyebilir" RLS kuralına takılıp sessizce "Kayıt şu anda yapılamadı"
+ * hatası veriyordu.
+ */
+describe("tarayıcı push aboneliği tekilliği", () => {
+  const fn = codeOnly("src/lib/push.functions.ts");
+
+  it("kayıt sırasında aynı endpoint'in önceki sahibini siliyor", () => {
+    const handler = fn.slice(
+      fn.indexOf("export const savePushSubscription"),
+      fn.indexOf("export const savePushSubscription") + 1500,
+    );
+    expect(handler).toContain('.eq("endpoint", data.endpoint)');
+    expect(handler).toContain('.neq("user_id", context.userId)');
+    expect(handler).toContain("supabaseAdmin");
+  });
+});

@@ -17,6 +17,22 @@ export const savePushSubscription = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
       const userAgent = (getRequestHeader("user-agent") ?? "").slice(0, 300) || null;
+      // Abonelik (endpoint) tarayıcı/cihaza bağlıdır, kullanıcıya değil: aynı
+      // cihazda önce başka bir hesapla giriş yapılmış olabilir (aile üyeleri
+      // aynı telefonu/tarayıcıyı paylaşıyor, ya da çıkış yapıp başka hesapla
+      // girildi). Eski sahibin satırı önceden silinmezse upsert, "yalnızca
+      // kendi satırını güncelleyebilir" RLS kuralına takılıp sessizce
+      // başarısız oluyordu (YAŞANDI: "Kayıt şu anda yapılamadı" — aynı sınıf
+      // hata `fcm_tokens`'ta deviceId temizliğiyle daha önce çözülmüştü,
+      // web push tarafı unutulmuştu).
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { error: cleanupError } = await supabaseAdmin
+        .from("push_subscriptions")
+        .delete()
+        .eq("endpoint", data.endpoint)
+        .neq("user_id", context.userId);
+      if (cleanupError) console.error("[push] eski abonelik sahibi temizlenemedi");
+
       const { error } = await context.supabase.from("push_subscriptions").upsert(
         {
           user_id: context.userId,
