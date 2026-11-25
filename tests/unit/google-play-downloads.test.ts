@@ -72,6 +72,31 @@ describe("parseInstallCsv", () => {
     expect(result.lastDate).toBe("2026-11-20");
   });
 
+  it("en güncel günün kümülatif hücresi boşsa bir önceki dolu güne düşer (YAŞANDI: panelde yanlışlıkla 0 görünüyordu)", () => {
+    const csv = [
+      "Date,Package Name,Daily Device Installs,Total User Installs",
+      "2026-11-18,online.uygulamamcebimde.app,2,40",
+      "2026-11-19,online.uygulamamcebimde.app,1,41",
+      // Play en güncel günün kümülatif sütununu henüz doldurmamış: hücre boş.
+      "2026-11-20,online.uygulamamcebimde.app,3,",
+    ].join("\n");
+    const result = parseInstallCsv(csv);
+    expect(result.totalInstalls).toBe(41);
+    expect(result.lastDate).toBe("2026-11-19");
+    // Dönem toplamı yine tüm günleri kapsar, boş hücre 0 sayılır.
+    expect(result.periodInstalls).toBe(6);
+  });
+
+  it("boş hücre Number('')===0 yüzünden sahte sıfır üretmez", () => {
+    const csv = [
+      "Date,Package Name,Total User Installs",
+      "2026-11-20,online.uygulamamcebimde.app,",
+    ].join("\n");
+    const result = parseInstallCsv(csv);
+    expect(result.totalInstalls).toBeNull();
+    expect(result.lastDate).toBe("2026-11-20");
+  });
+
   it("beklenen sütunlar yoksa null döner, çökmez", () => {
     const csv = "Something,Else\n1,2";
     const result = parseInstallCsv(csv);
