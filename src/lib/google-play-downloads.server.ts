@@ -262,14 +262,25 @@ export async function getPlayDownloadStats(): Promise<PlayDownloadStats> {
 
   try {
     const accessToken = await getAccessToken(account);
+    // İlk bulunan dosyada durmuyoruz: "overview" dosyası her zaman var ama
+    // GÜNCEL kalması belgelerde teyit edilemiyor (bkz. dosya başı not).
+    // YAŞANDI: kasım ayının "overview" dosyası 2026-11-18'den sonra hiç
+    // güncellenmemişti ve o günün kümülatif sütunu gerçekten "0" taşıyordu;
+    // kod ilk bulduğu (overview) dosyada durup daha güncel veri taşıyan
+    // "country" dosyasına hiç bakmıyordu. Artık adaylar taranıp en güncel
+    // `lastDate`'e sahip sonuç seçiliyor.
+    let best: { stats: InstallStats; sourceFile: string } | null = null;
     for (const fileName of candidateInstallFiles(new Date())) {
       const bytes = await downloadObjectIfExists(PLAY_REPORTS_BUCKET, fileName, accessToken);
       if (bytes === null) continue;
       const text = decodeInstallCsv(bytes);
       const stats = parseInstallCsv(text);
-      return { ok: true, stats, sourceFile: fileName };
+      if (!best || (stats.lastDate ?? "") > (best.stats.lastDate ?? "")) {
+        best = { stats, sourceFile: fileName };
+      }
     }
-    return { ok: false, reason: "no_report_file" };
+    if (!best) return { ok: false, reason: "no_report_file" };
+    return { ok: true, stats: best.stats, sourceFile: best.sourceFile };
   } catch (error) {
     console.error("[play-downloads] indirme istatistiği alınamadı", error);
     return {
