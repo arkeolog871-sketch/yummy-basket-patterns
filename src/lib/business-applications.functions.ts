@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { checkFullName } from "@/lib/name-validation";
 import { runServerFn } from "./public-error";
 
 /**
@@ -89,7 +90,11 @@ export const applicationSchema = z
       .string()
       .trim()
       .min(2, "Yetkili ad soyad girin")
-      .max(120, "Yetkili adı en fazla 120 karakter olabilir"),
+      .max(120, "Yetkili adı en fazla 120 karakter olabilir")
+      .superRefine((value, ctx) => {
+        const result = checkFullName(value);
+        if (!result.ok) ctx.addIssue({ code: "custom", message: result.reason });
+      }),
     opens_at: z
       .string()
       .trim()
