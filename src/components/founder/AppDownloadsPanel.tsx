@@ -53,14 +53,6 @@ export function AppDownloadsPanel() {
                 </p>
                 <p className="mt-1 text-[11px] text-muted-foreground">
                   {data.android.lastDate ? `son veri: ${data.android.lastDate}` : "toplam kurulum"}
-                  {data.android.totalInstalls === null && data.android.periodInstalls !== null
-                    ? " (dönem toplamı — kümülatif sütun yok)"
-                    : ""}
-                </p>
-                {/* Teşhis: sadece kurucu görür. "0" gerçek mi yoksa sütun/veri
-                    eksik mi ayırt etmek için hangi dosya ve sütunlar okundu. */}
-                <p className="mt-1 text-[10px] break-words text-muted-foreground/50">
-                  {data.android.sourceFile} · sütunlar: {data.android.columns.join(", ") || "—"}
                 </p>
               </>
             ) : (
