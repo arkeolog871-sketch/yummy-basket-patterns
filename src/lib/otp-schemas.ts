@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { checkFullName } from "@/lib/name-validation";
 
 /** iOS otomatik büyük harfi e-posta eşleşmesini bozmasın. */
 const authEmail = z
@@ -26,7 +27,15 @@ export const verifyOtpSchema = otpVerifySchema;
 export const registerSchema = z.object({
   email: authEmail,
   password: z.string().min(6, "Şifre en az 6 karakter olmalı").max(72),
-  fullName: z.string().trim().min(2, "Ad soyad girin").max(120),
+  fullName: z
+    .string()
+    .trim()
+    .min(2, "Ad soyad girin")
+    .max(120)
+    .superRefine((value, ctx) => {
+      const result = checkFullName(value);
+      if (!result.ok) ctx.addIssue({ code: "custom", message: result.reason });
+    }),
   phone: z
     .string()
     .trim()

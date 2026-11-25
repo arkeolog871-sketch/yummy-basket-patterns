@@ -1,10 +1,23 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { checkFullName } from "@/lib/name-validation";
 import { runServerFn } from "./public-error";
 
 const profileSchema = z.object({
-  full_name: z.string().trim().max(120).nullable(),
+  // Boş/null bırakmaya izin verilir (kullanıcı adını silebilir — bir sonraki
+  // girişte zorunlu tamamlama adımı yeniden karşısına çıkar); ama bir değer
+  // GİRİLİYORSA argo/gerçek dışı isim reddedilir.
+  full_name: z
+    .string()
+    .trim()
+    .max(120)
+    .nullable()
+    .superRefine((value, ctx) => {
+      if (!value) return;
+      const result = checkFullName(value);
+      if (!result.ok) ctx.addIssue({ code: "custom", message: result.reason });
+    }),
   phone: z
     .string()
     .trim()
@@ -39,7 +52,15 @@ export const getMyProfile = createServerFn({ method: "GET" })
   );
 
 export const fullNameSchema = z.object({
-  full_name: z.string().trim().min(2, "Ad soyad girin").max(120),
+  full_name: z
+    .string()
+    .trim()
+    .min(2, "Ad soyad girin")
+    .max(120)
+    .superRefine((value, ctx) => {
+      const result = checkFullName(value);
+      if (!result.ok) ctx.addIssue({ code: "custom", message: result.reason });
+    }),
 });
 
 /**
