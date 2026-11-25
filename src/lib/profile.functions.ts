@@ -38,6 +38,29 @@ export const getMyProfile = createServerFn({ method: "GET" })
     }),
   );
 
+export const fullNameSchema = z.object({
+  full_name: z.string().trim().min(2, "Ad soyad girin").max(120),
+});
+
+/**
+ * Kayıt sonrası zorunlu ad-soyad tamamlama adımı için: yalnızca `full_name`
+ * yazar, telefonu etkilemez. `updateMyProfile` telefon olmadan kaydetmeye
+ * izin vermiyor (bkz. şema) — ad soyadın kendi başına, telefon beklemeden
+ * kaydedilebilmesi için ayrı bir fonksiyon.
+ */
+export const completeFullName = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => fullNameSchema.parse(input))
+  .handler(async ({ data, context }) =>
+    runServerFn(async () => {
+      const { error } = await context.supabase
+        .from("profiles")
+        .upsert({ id: context.userId, full_name: data.full_name }, { onConflict: "id" });
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }),
+  );
+
 /** Ad ve telefonu günceller. Telefon değişirse doğrulama durumu sıfırlanır. */
 export const updateMyProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

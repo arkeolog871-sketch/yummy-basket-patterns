@@ -1,13 +1,16 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccess } from "@/hooks/useAccess";
 import { useServerFn } from "@tanstack/react-start";
 import { registerWithEmailCode } from "@/lib/otp.functions";
+import { getMyProfile, completeFullName } from "@/lib/profile.functions";
 import { reportAppError } from "@/lib/errors.functions";
 import { humanizeAuthError } from "@/lib/auth-error";
+import { toPublicErrorMessage } from "@/lib/public-error";
 import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
 import { VendorPhoneLogin } from "@/components/auth/VendorPhoneLogin";
 import {
@@ -97,6 +100,9 @@ function AuthPage() {
   const navigate = useNavigate();
   const register = useServerFn(registerWithEmailCode);
   const reportError = useServerFn(reportAppError);
+  const fetchProfile = useServerFn(getMyProfile);
+  const saveFullName = useServerFn(completeFullName);
+  const queryClient = useQueryClient();
 
   /**
    * Giriş ekranında ham hata metni gösterilmez: Apple incelemesinde
@@ -150,6 +156,17 @@ function AuthPage() {
     email: string;
     startAtCode: boolean;
   } | null>(null);
+  // Kayıt yöntemi ne olursa olsun (şifre, e-posta kodu, Google, Apple) ad
+  // soyad zorunlu: Google/Apple hesabı paylaşmayabiliyor, bu durumda e-posta
+  // doğrulandıktan sonra burada tamamlanması istenir.
+  const [needsFullName, setNeedsFullName] = useState(false);
+  const [fullNameInput, setFullNameInput] = useState("");
+  const isCustomerAccount = !access.isVendor && !access.isFounder && !access.isPageManager;
+  const profileQuery = useQuery({
+    queryKey: ["my-profile-gate", user?.id ?? "anon"],
+    enabled: Boolean(user) && isCustomerAccount,
+    queryFn: () => fetchProfile(),
+  });
   // Sunucu URL'deki OAuth dönüş parametrelerini göremez, bu yüzden ilk
   // render'da mutlaka false olmalı. Değeri useState başlatıcısında okumak,
   // sunucunun bastığı giriş formuyla istemcinin bastığı "tamamlanıyor"
@@ -266,6 +283,17 @@ function AuthPage() {
       if (user.email) setPendingVerification({ email: user.email, startAtCode: false });
       return;
     }
+    // Vendor/kurucu hesapları iletişim bilgisini ayrı akışlardan alır
+    // (işletme başvurusu, sayfa yöneticisi paneli); bu adım yalnızca müşteri
+    // hesapları için.
+    if (isCustomerAccount) {
+      if (profileQuery.isLoading) return;
+      if (!profileQuery.data?.full_name?.trim()) {
+        setNeedsFullName(true);
+        return;
+      }
+    }
+    setNeedsFullName(false);
 
     // Kullanıcı hangi sayfadan girişe başladıysa oraya geri döner (beyaz liste).
     let target: string | null = null;
@@ -296,9 +324,36 @@ function AuthPage() {
       return;
     }
     navigate({ to: "/", replace: true });
-  }, [user, access.loading, access.homePath, redirect, navigate]);
+  }, [
+    user,
+    access.loading,
+    access.homePath,
+    isCustomerAccount,
+    profileQuery.isLoading,
+    profileQuery.data,
+    redirect,
+    navigate,
+  ]);
 
   const vendorPortal = portal === "vendor";
+
+  async function submitFullName(event: React.FormEvent) {
+    event.preventDefault();
+    const trimmed = fullNameInput.trim();
+    if (trimmed.length < 2) {
+      toast.error("Ad soyad girin.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await saveFullName({ data: { full_name: trimmed } });
+      await queryClient.invalidateQueries({ queryKey: ["my-profile-gate", user?.id ?? "anon"] });
+    } catch (error) {
+      toast.error(toPublicErrorMessage(error, "Ad soyad kaydedilemedi."));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -581,6 +636,30 @@ function AuthPage() {
               toast.success("E-postanız doğrulandı, hoş geldiniz!");
             }}
           />
+        </div>
+      ) : needsFullName ? (
+        <div className="mt-6 space-y-4 rounded-3xl border border-border/70 bg-card p-4 shadow-card sm:p-6">
+          <p className="text-sm text-muted-foreground">
+            Hesabınızı tamamlamak için <strong>ad soyadınızı</strong> girin. Bu, Google/Apple ile
+            girişte paylaşılmamış olabilir; sipariş ve teslimat için gereklidir.
+          </p>
+          <form onSubmit={(event) => void submitFullName(event)} className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="complete-full-name">Ad soyad</Label>
+              <Input
+                id="complete-full-name"
+                autoComplete="name"
+                value={fullNameInput}
+                onChange={(event) => setFullNameInput(event.target.value)}
+                required
+                autoFocus
+                className="rounded-xl"
+              />
+            </div>
+            <Button type="submit" disabled={busy} className="w-full rounded-full" size="lg">
+              {busy ? "Kaydediliyor…" : "Devam et"}
+            </Button>
+          </form>
         </div>
       ) : mode === "signin" && method === "code" ? (
         <div className="mt-6 rounded-3xl border border-border/70 bg-card p-4 shadow-card sm:p-6">
