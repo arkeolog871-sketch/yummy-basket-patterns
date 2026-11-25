@@ -9,20 +9,26 @@ import { getMyPushRegistrationStatus, saveFcmToken } from "@/lib/push.functions"
 import { getNativeIosFcmToken, hasNativeIosPush } from "@/lib/ios-native-push";
 import { isNativeApp } from "@/lib/native-notify";
 
-const DONE_KEY = (userId: string) => `silvan.business-push-prompt.v1.${userId}`;
+const DONE_KEY = (userId: string) => `silvan.push-prompt.v1.${userId}`;
 
 /**
- * Hesabında hiç kayıtlı bildirim cihazı olmayan işletmelere, girişten sonra
- * bir kez "anlık bildirimlere izin ver" isteği gösterir. Kabul edilince
- * telefon hemen kaydedilir. Seçim (izin ya da "Daha sonra") bu cihazda
- * hatırlanır; istek bir daha çıkmaz.
+ * Hesabında hiç kayıtlı bildirim cihazı olmayan HER girişli kullanıcıya
+ * (müşteri ya da işletme), girişten sonra bir kez "anlık bildirimlere izin
+ * ver" isteği gösterir. Kabul edilince telefon hemen kaydedilir. Seçim
+ * (izin ya da "Daha sonra") bu cihazda hatırlanır; istek bir daha çıkmaz.
+ *
+ * YAŞANDI: bu istek eskiden yalnızca işletme hesaplarına gösteriliyordu
+ * (`status.isBusiness` kontrolü). Sıradan bir müşteri "Bildirimler"
+ * sayfasını kendi açmadıkça hiç sorulmuyordu — hesapların büyük
+ * çoğunluğunda bildirim cihazı kaydı olmamasının en büyük tek sebebi buydu.
  */
-export function BusinessPushPrompt() {
+export function PushPermissionPrompt() {
   const { user } = useAuth();
   const checkStatus = useServerFn(getMyPushRegistrationStatus);
   const saveToken = useServerFn(saveFcmToken);
   const web = usePushNotifications();
   const [open, setOpen] = useState(false);
+  const [isBusiness, setIsBusiness] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -42,11 +48,11 @@ export function BusinessPushPrompt() {
       void checkStatus()
         .then((status) => {
           if (cancelled) return;
-          if (!status.isBusiness) return;
           if (status.hasDevice) {
             window.localStorage.setItem(DONE_KEY(user.id), "registered");
             return;
           }
+          setIsBusiness(status.isBusiness);
           setOpen(true);
         })
         .catch(() => {});
@@ -119,7 +125,7 @@ export function BusinessPushPrompt() {
   return (
     <div
       role="dialog"
-      aria-labelledby="business-push-title"
+      aria-labelledby="push-prompt-title"
       className="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-md rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-lg"
     >
       <div className="flex items-start gap-3">
@@ -127,12 +133,15 @@ export function BusinessPushPrompt() {
           <BellRing className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <p id="business-push-title" className="font-display text-sm font-semibold">
-            Siparişleri telefonunuzda anında görün
+          <p id="push-prompt-title" className="font-display text-sm font-semibold">
+            {isBusiness
+              ? "Siparişleri telefonunuzda anında görün"
+              : "Sipariş durumunuzu anında öğrenin"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Bu telefon bildirim için kayıtlı değil. İzin verirseniz yeni sipariş ve randevular
-            uygulama kapalıyken de telefonunuza gelir.
+            {isBusiness
+              ? "Bu telefon bildirim için kayıtlı değil. İzin verirseniz yeni sipariş ve randevular uygulama kapalıyken de telefonunuza gelir."
+              : "Bu telefon bildirim için kayıtlı değil. İzin verirseniz siparişiniz hazırlanırken ve yola çıktığında uygulama kapalıyken de telefonunuza haber gelir."}
           </p>
           {webBlocked ? (
             <p className="mt-2 text-xs text-destructive">
