@@ -143,11 +143,16 @@ export function decodeInstallCsv(bytes: ArrayBuffer): string {
 }
 
 export type InstallStats = {
-  /** "Total User Installs" sütunu varsa en güncel tarihteki (tüm boyut satırları toplanmış) kümülatif değer. */
+  /**
+   * "Total User Installs" sütunu varsa, o sütunu DOLU olarak taşıyan en
+   * güncel tarihteki (tüm boyut satırları toplanmış) kümülatif değer. Play
+   * en güncel günün bu hücresini bazen boş yayınlıyor; o gün atlanıp bir
+   * önceki dolu güne düşülür (bkz. `lastDate`).
+   */
   totalInstalls: number | null;
   /** O sütun yoksa yedek: "Daily Device Installs" sütununun toplamı (dosya kapsamındaki dönem). */
   periodInstalls: number | null;
-  /** Dosyadaki en güncel tarih. */
+  /** `totalInstalls`'ın ait olduğu tarih; o hesaplanamadıysa dosyadaki en güncel tarih. */
   lastDate: string | null;
   /** Teşhis için: dosyada gerçekte bulunan sütun adları. */
   columns: string[];
@@ -194,24 +199,42 @@ export function parseInstallCsv(text: string): InstallStats {
 
   const toNumber = (raw: string | undefined): number | null => {
     if (raw === undefined) return null;
-    const value = Number(raw.trim());
+    const trimmed = raw.trim();
+    // Boş hücreyi sayı say(ma): Number("") === 0 olduğu için boş bırakılmış bir
+    // hücre sessizce "0" olarak toplanıyordu (YAŞANDI: Play en güncel günün
+    // kümülatif sütununu bazen henüz doldurmadan yayınlıyor, bu da gerçek
+    // kurulum sayısı yerine panelde "0" göstermeye yol açtı).
+    if (trimmed === "") return null;
+    const value = Number(trimmed);
     return Number.isFinite(value) ? value : null;
   };
 
-  const lastDate =
-    dateIndex !== -1 && dataRows.length > 0
-      ? dataRows.reduce<string | null>((latest, row) => {
-          const value = row[dateIndex];
-          if (!value) return latest;
-          return !latest || value > latest ? value : latest;
-        }, null)
-      : null;
-
+  // "En güncel tarih" yerine "kümülatif sütunu dolu olan en güncel tarih"
+  // kullanılır: o günün hücresi henüz boşsa bir önceki (dolu) güne düşülür.
   let totalInstalls: number | null = null;
-  if (totalIndex !== -1 && lastDate !== null) {
-    totalInstalls = dataRows
-      .filter((row) => row[dateIndex] === lastDate)
-      .reduce((sum, row) => sum + (toNumber(row[totalIndex]) ?? 0), 0);
+  let lastDate: string | null = null;
+  if (totalIndex !== -1 && dateIndex !== -1) {
+    const sumsByDate = new Map<string, number>();
+    for (const row of dataRows) {
+      const date = row[dateIndex];
+      const value = toNumber(row[totalIndex]);
+      if (!date || value === null) continue;
+      sumsByDate.set(date, (sumsByDate.get(date) ?? 0) + value);
+    }
+    const latestWithData = [...sumsByDate.keys()].sort().at(-1) ?? null;
+    if (latestWithData !== null) {
+      totalInstalls = sumsByDate.get(latestWithData)!;
+      lastDate = latestWithData;
+    }
+  }
+  // Toplam sütunu hiç bulunamadıysa (ör. sütun adı eşleşmedi) yine de
+  // dosyadaki en güncel tarihi raporla; teşhis için faydalı.
+  if (lastDate === null && dateIndex !== -1) {
+    lastDate = dataRows.reduce<string | null>((latest, row) => {
+      const value = row[dateIndex];
+      if (!value) return latest;
+      return !latest || value > latest ? value : latest;
+    }, null);
   }
 
   let periodInstalls: number | null = null;
