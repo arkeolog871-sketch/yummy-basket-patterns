@@ -8,6 +8,9 @@ export type AppDownloadsOverview = {
         totalInstalls: number | null;
         periodInstalls: number | null;
         lastDate: string | null;
+        /** Teşhis: hangi dosya okundu ve dosyada gerçekte hangi sütunlar var. */
+        sourceFile: string;
+        columns: string[];
       }
     | { ok: false; reason: string; detail?: string };
   ios:
@@ -39,6 +42,8 @@ export const getAppDownloadsOverview = createServerFn({ method: "GET" })
             totalInstalls: play.stats.totalInstalls,
             periodInstalls: play.stats.periodInstalls,
             lastDate: play.stats.lastDate,
+            sourceFile: play.sourceFile,
+            columns: play.stats.columns,
           }
         : {
             ok: false,
