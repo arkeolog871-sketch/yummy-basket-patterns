@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Store } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { EmailCodeLogin } from "@/components/auth/EmailCodeLogin";
+import { FullNameGate } from "@/components/auth/FullNameGate";
 import { startAppleOAuth, humanizeOAuthError as humanizeAppleOAuthError } from "@/lib/apple-oauth";
 import { nativeOAuthBridge, startGoogleOAuth } from "@/lib/google-oauth";
 import {
@@ -197,7 +198,11 @@ function BusinessApplicationGate() {
     );
   }
 
-  return <BusinessApplicationPage />;
+  return (
+    <FullNameGate>
+      <BusinessApplicationPage />
+    </FullNameGate>
+  );
 }
 
 const STATUS_LABELS: Record<string, string> = {
