@@ -135,6 +135,12 @@ function RestaurantDetail() {
   };
 
   function add(item: { id: string; name: string; price: number; image_url: string | null }) {
+    if (restaurant.onsite_only) {
+      toast.error("Bu işletme sipariş almıyor", {
+        description: "Yalnızca yerinde hizmet veriyor.",
+      });
+      return;
+    }
     if (!open) {
       toast.error("İşletme şu an kapalı", { description: closedReason(restaurant) });
       return;
@@ -206,30 +212,40 @@ function RestaurantDetail() {
               ({restaurant.review_count} değerlendirme)
             </span>
           </span>
-          <span className="flex items-center gap-1.5 text-muted-foreground">
-            <Clock className="size-4" /> {restaurant.delivery_minutes} dk
-          </span>
-          <span className="flex items-center gap-1.5 text-muted-foreground">
-            <Bike className="size-4" />
-            {deliverySummary(restaurant.delivery_type, Number(restaurant.delivery_fee))}
-          </span>
-          <span className="text-muted-foreground">
-            Min. sepet {formatPrice(Number(restaurant.min_order))}
-          </span>
+          {restaurant.onsite_only ? null : (
+            <>
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <Clock className="size-4" /> {restaurant.delivery_minutes} dk
+              </span>
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <Bike className="size-4" />
+                {deliverySummary(restaurant.delivery_type, Number(restaurant.delivery_fee))}
+              </span>
+              <span className="text-muted-foreground">
+                Min. sepet {formatPrice(Number(restaurant.min_order))}
+              </span>
+            </>
+          )}
           {hours ? (
             <span className="flex items-center gap-1.5 text-muted-foreground">
               <Clock className="size-4" /> {hours}
             </span>
           ) : null}
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-              withinHours
-                ? "bg-success text-success-foreground"
-                : "bg-foreground/85 text-background"
-            }`}
-          >
-            {withinHours ? "Şu An Açık" : "Şu An Kapalı"}
-          </span>
+          {restaurant.onsite_only ? (
+            <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
+              Yerinde hizmet
+            </span>
+          ) : (
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                withinHours
+                  ? "bg-success text-success-foreground"
+                  : "bg-foreground/85 text-background"
+              }`}
+            >
+              {withinHours ? "Şu An Açık" : "Şu An Kapalı"}
+            </span>
+          )}
           <LocationButton business={restaurant} className="text-muted-foreground" />
         </div>
 
@@ -239,7 +255,11 @@ function RestaurantDetail() {
           className="mt-4"
         />
 
-        {withinHours ? null : (
+        {restaurant.onsite_only ? (
+          <div className="mt-4 rounded-3xl border border-border bg-warm px-4 py-3 text-sm text-warm-foreground">
+            Bu işletme sipariş almıyor, yalnızca yerinde hizmet veriyor. Sepete ürün ekleyemezsiniz.
+          </div>
+        ) : withinHours ? null : (
           <div className="mt-4 rounded-3xl border border-border bg-warm px-4 py-3 text-sm text-warm-foreground">
             {closedReason(restaurant)} Sepete ürün ekleyemezsiniz.
           </div>
@@ -392,7 +412,12 @@ function RestaurantDetail() {
                     <Button
                       size="icon"
                       className="size-10 shrink-0 rounded-full"
-                      disabled={!open || item.in_stock === false || !hasListedPrice(item.price)}
+                      disabled={
+                        restaurant.onsite_only ||
+                        !open ||
+                        item.in_stock === false ||
+                        !hasListedPrice(item.price)
+                      }
                       aria-label={`${item.name} sepete ekle`}
                       onClick={() => add(item)}
                     >
@@ -406,7 +431,11 @@ function RestaurantDetail() {
 
           <aside className="h-fit min-w-0 rounded-3xl border border-border/70 bg-card p-5 shadow-card lg:sticky lg:top-24">
             <h2 className="text-lg">Sepetim</h2>
-            {cart.lines.length === 0 || cart.restaurant?.id !== restaurant.id ? (
+            {restaurant.onsite_only ? (
+              <p className="mt-3 text-sm text-muted-foreground">
+                Bu işletme sipariş almıyor, yalnızca yerinde hizmet veriyor.
+              </p>
+            ) : cart.lines.length === 0 || cart.restaurant?.id !== restaurant.id ? (
               <p className="mt-3 text-sm text-muted-foreground">
                 Sepetiniz bu restoran için henüz boş. Menüden ürün ekleyin.
               </p>
