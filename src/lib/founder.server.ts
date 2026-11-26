@@ -281,7 +281,8 @@ export type PanelAccess = {
   regions: PanelRegion[];
 };
 
-function normalizeRegionPart(value: string | null | undefined): string {
+/** Şehir/ilçe adlarını karşılaştırmaya hazırlar (boşluk, Türkçe büyük/küçük harf). */
+export function normalizeRegionPart(value: string | null | undefined): string {
   return (value ?? "").trim().toLocaleLowerCase("tr");
 }
 
