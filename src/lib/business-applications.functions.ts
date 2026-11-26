@@ -167,6 +167,15 @@ export const submitBusinessApplication = createServerFn({ method: "POST" })
         status: "pending",
       });
       if (error) throw new Error(error.message);
+
+      const { notifyFoundersOfNewApplication } =
+        await import("./business-application-alert.server");
+      await notifyFoundersOfNewApplication({
+        businessName: data.name,
+        city: data.city,
+        district: data.district,
+      });
+
       return { ok: true };
     }),
   );

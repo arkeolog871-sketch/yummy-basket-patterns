@@ -35,3 +35,59 @@ export async function notifyApplicantOfApplicationReview(
     });
   }
 }
+
+/**
+ * Yeni bir işletme başvurusu geldiğinde kurucuya (ve admin rolündekilere) ve
+ * başvurunun şehir/ilçesine yetkili sayfa yöneticilerine push bildirimi
+ * gönderir. Bölge yöneticisi yalnızca kendi bölgesine düşen başvuruyu panelde
+ * zaten görebiliyor (bkz. `accessAllowsRegion`); bildirim de aynı kapsamla
+ * sınırlı — görmediği bir başvuru için bildirim almaz.
+ *
+ * Başvuru zaten kaydedildi; push başarısız olsa da başvuru akışını bozmaz.
+ */
+export async function notifyFoundersOfNewApplication(input: {
+  businessName: string;
+  city: string | null;
+  district: string | null;
+}): Promise<void> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { normalizeRegionPart } = await import("./founder.server");
+
+    const [foundersResult, pageManagersResult] = await Promise.all([
+      supabaseAdmin.from("user_roles").select("user_id").in("role", ["founder", "admin"]),
+      supabaseAdmin
+        .from("page_manager_roles")
+        .select("user_id, city, district")
+        .eq("is_active", true),
+    ]);
+
+    const founderIds = (foundersResult.data ?? []).map((row) => row.user_id);
+    const targetCity = normalizeRegionPart(input.city);
+    const targetDistrict = normalizeRegionPart(input.district);
+    const pageManagerIds =
+      targetCity && targetDistrict
+        ? (pageManagersResult.data ?? [])
+            .filter(
+              (row) =>
+                normalizeRegionPart(row.city) === targetCity &&
+                normalizeRegionPart(row.district) === targetDistrict,
+            )
+            .map((row) => row.user_id)
+        : [];
+
+    const userIds = [...new Set([...founderIds, ...pageManagerIds])];
+    if (userIds.length === 0) return;
+
+    const { sendPushToUserIds } = await import("./push.server");
+    await sendPushToUserIds(userIds, {
+      title: "Yeni işletme başvurusu",
+      body: `${input.businessName} başvuru gönderdi.`,
+      url: "/kurucu",
+    });
+  } catch (error) {
+    console.error("[business-application-alert] push bildirimi başarısız (yeni başvuru)", {
+      code: error && typeof error === "object" && "code" in error ? error.code : undefined,
+    });
+  }
+}
