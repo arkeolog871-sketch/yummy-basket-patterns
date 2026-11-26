@@ -669,6 +669,7 @@ type BusinessRow = {
   longitude?: number | string | null;
   maps_url?: string | null;
   mobile_service?: boolean | null;
+  onsite_only?: boolean | null;
   contact_email?: string | null;
   contact_phone?: string | null;
   contact_person?: string | null;
@@ -725,6 +726,8 @@ const emptyBusiness = {
   delivery_minutes: 30,
   delivery_fee: 0,
   min_order: 0,
+  /** Yerinde hizmet: dışarıya sipariş/teslimat yok (teslimat ücreti/min. sepet pasif). */
+  onsite_only: false,
   cover_image_url: "",
   address: "",
   district: "",
@@ -825,8 +828,10 @@ function BusinessPanel({
             .map((value) => value.trim())
             .filter(Boolean),
           delivery_minutes: Number(form.delivery_minutes),
-          delivery_fee: Number(form.delivery_fee),
-          min_order: Number(form.min_order),
+          // Yerinde hizmette teslimat ücreti/min. sepet anlamsız; 0'a sabitlenir.
+          delivery_fee: form.onsite_only ? 0 : Number(form.delivery_fee),
+          min_order: form.onsite_only ? 0 : Number(form.min_order),
+          onsite_only: form.onsite_only,
           cover_image_url: form.cover_image_url || null,
           coverImage: pickedCover
             ? {
@@ -971,6 +976,25 @@ function BusinessPanel({
           value={form.cuisines}
           onChange={(event) => setForm({ ...form, cuisines: event.target.value })}
         />
+        <div className="flex items-center justify-between rounded-2xl border border-border p-3">
+          <span className="text-sm">
+            <span className="font-medium">Yerinde hizmet</span>
+            <span className="block text-xs text-muted-foreground">
+              Dışarıya sipariş/teslimat yapmıyor (oto yıkama, kuaför, usta vb.). Müşteriler bu
+              işletmeden sipariş veremez.
+            </span>
+          </span>
+          <Switch
+            checked={form.onsite_only}
+            onCheckedChange={(checked) =>
+              setForm({
+                ...form,
+                onsite_only: checked,
+                ...(checked ? { delivery_fee: 0, min_order: 0 } : {}),
+              })
+            }
+          />
+        </div>
         <div className="grid grid-cols-3 gap-2">
           <Input
             type="number"
@@ -986,6 +1010,7 @@ function BusinessPanel({
             placeholder="Teslimat"
             value={form.delivery_fee}
             onChange={(event) => setForm({ ...form, delivery_fee: Number(event.target.value) })}
+            disabled={form.onsite_only}
           />
           <Input
             type="number"
@@ -994,6 +1019,7 @@ function BusinessPanel({
             placeholder="Min. sepet"
             value={form.min_order}
             onChange={(event) => setForm({ ...form, min_order: Number(event.target.value) })}
+            disabled={form.onsite_only}
           />
         </div>
         {/* İşletme kapak görseli: esnaf URL üretemediği için kurucu telefondan/
@@ -1287,6 +1313,7 @@ function BusinessPanel({
                     <p className="text-xs text-muted-foreground">
                       {business.category} · /{business.slug}
                       {business.mobile_service ? " · Adrese gelir (iş yeri yok)" : ""}
+                      {business.onsite_only ? " · Yerinde hizmet (sipariş yok)" : ""}
                     </p>
                   </div>
                 </div>
@@ -1309,6 +1336,7 @@ function BusinessPanel({
                         delivery_minutes: business.delivery_minutes,
                         delivery_fee: Number(business.delivery_fee),
                         min_order: Number(business.min_order),
+                        onsite_only: Boolean(business.onsite_only),
                         cover_image_url: business.cover_image_url ?? "",
                         address: business.address ?? "",
                         district: business.district ?? "",

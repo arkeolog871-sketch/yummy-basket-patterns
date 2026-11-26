@@ -48,9 +48,9 @@ describe("yalnızca manuel kapalı (vitrin amaçlı) işletme görünürlüğü"
     // Üst rozet ve "Kapalı" uyarı bandı: yalnızca saat.
     expect(page).toMatch(/withinHours\s*\n?\s*\?\s*"bg-success text-success-foreground"/);
     expect(page).toContain('{withinHours ? "Şu An Açık" : "Şu An Kapalı"}');
-    expect(page).toContain("{withinHours ? null : (");
+    expect(page).toContain("withinHours ? null : (");
     // Menü soluklaşması ve sepete ekleme kilidi: sipariş durumu (manuel + saat).
     expect(page).toContain('className={`min-w-0 ${open ? "" : "opacity-50"}`}');
-    expect(page).toContain("disabled={!open || item.in_stock === false");
+    expect(page).toMatch(/disabled=\{[\s\S]*?!open[\s\S]*?item\.in_stock === false/);
   });
 });

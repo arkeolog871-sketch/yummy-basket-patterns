@@ -28,6 +28,8 @@ export type RestaurantSummary = {
   longitude?: number | string | null;
   maps_url?: string | null;
   mobile_service?: boolean | null;
+  /** Dışarıya sipariş/teslimat yapmıyor (oto yıkama, kuaför, usta vb.): sepet/sipariş gizlenir. */
+  onsite_only?: boolean | null;
   opens_at?: string | null;
   closes_at?: string | null;
   is_open_manual?: boolean | null;
@@ -82,6 +84,10 @@ export function RestaurantCard({
           <span className="absolute right-3 top-3 rounded-full bg-foreground/85 px-3 py-1 text-xs font-semibold text-background">
             Şu An Kapalı
           </span>
+        ) : restaurant.onsite_only ? (
+          <span className="absolute right-3 top-3 rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
+            Yerinde hizmet
+          </span>
         ) : (
           <span className="absolute right-3 top-3 rounded-full bg-success px-3 py-1 text-xs font-semibold text-success-foreground">
             {deliverySummary(restaurant.delivery_type, Number(restaurant.delivery_fee))}
@@ -98,6 +104,10 @@ export function RestaurantCard({
             {!open ? (
               <span className="rounded bg-foreground/85 px-1.5 py-0.5 text-background">
                 Şu An Kapalı
+              </span>
+            ) : restaurant.onsite_only ? (
+              <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">
+                Yerinde hizmet
               </span>
             ) : null}
           </div>
@@ -164,14 +174,20 @@ export function RestaurantCard({
         <div
           className={`flex flex-wrap items-center gap-y-1 text-xs text-muted-foreground ${compact ? "gap-x-2 [overflow-wrap:anywhere]" : "gap-x-4"}`}
         >
-          <span className="flex items-center gap-1">
-            <Clock className="size-3.5" /> {restaurant.delivery_minutes} dk
-          </span>
-          <span className="flex items-center gap-1">
-            <Bike className="size-3.5" />
-            {deliverySummary(restaurant.delivery_type, Number(restaurant.delivery_fee))}
-          </span>
-          <span>Min. {formatPrice(Number(restaurant.min_order))}</span>
+          {restaurant.onsite_only ? (
+            <span>Sipariş alınmıyor, yalnızca yerinde hizmet veriliyor</span>
+          ) : (
+            <>
+              <span className="flex items-center gap-1">
+                <Clock className="size-3.5" /> {restaurant.delivery_minutes} dk
+              </span>
+              <span className="flex items-center gap-1">
+                <Bike className="size-3.5" />
+                {deliverySummary(restaurant.delivery_type, Number(restaurant.delivery_fee))}
+              </span>
+              <span>Min. {formatPrice(Number(restaurant.min_order))}</span>
+            </>
+          )}
         </div>
 
         <LocationButton
