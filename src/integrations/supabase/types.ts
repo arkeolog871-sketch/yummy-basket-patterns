@@ -386,6 +386,7 @@ export type Database = {
           min_order: number
           mobile_service: boolean
           name: string
+          onsite_only: boolean
           opens_at: string | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -419,6 +420,7 @@ export type Database = {
           min_order?: number
           mobile_service?: boolean
           name: string
+          onsite_only?: boolean
           opens_at?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -452,6 +454,7 @@ export type Database = {
           min_order?: number
           mobile_service?: boolean
           name?: string
+          onsite_only?: boolean
           opens_at?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -1918,6 +1921,7 @@ export type Database = {
           min_order: number
           mobile_service: boolean
           name: string
+          onsite_only: boolean
           opens_at: string | null
           pairing_code: string | null
           pairing_code_expires_at: string | null
@@ -1964,6 +1968,7 @@ export type Database = {
           min_order?: number
           mobile_service?: boolean
           name: string
+          onsite_only?: boolean
           opens_at?: string | null
           pairing_code?: string | null
           pairing_code_expires_at?: string | null
@@ -2010,6 +2015,7 @@ export type Database = {
           min_order?: number
           mobile_service?: boolean
           name?: string
+          onsite_only?: boolean
           opens_at?: string | null
           pairing_code?: string | null
           pairing_code_expires_at?: string | null

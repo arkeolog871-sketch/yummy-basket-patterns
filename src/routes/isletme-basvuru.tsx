@@ -242,6 +242,8 @@ const emptyForm = {
   delivery_fee: "0",
   min_order: "0",
   cover_image_url: "",
+  /** Yerinde hizmet: dışarıya sipariş/teslimat yok (teslimat ücreti/min. sepet pasif). */
+  onsite_only: false,
   /** İş yerim yok: adrese giderek hizmet (harita ve açık adres istenmez). */
   mobile_service: false,
   address: "",
@@ -346,6 +348,7 @@ function BusinessApplicationPage() {
           delivery_fee: numbers.delivery_fee,
           min_order: numbers.min_order,
           cover_image_url: form.cover_image_url.trim(),
+          onsite_only: form.onsite_only,
           mobile_service: form.mobile_service,
           address: form.mobile_service ? null : form.address.trim(),
           district: form.district.trim(),
@@ -470,6 +473,26 @@ function BusinessApplicationPage() {
           />
         </div>
 
+        <div className="flex items-center justify-between rounded-2xl border border-border p-3">
+          <span className="text-sm">
+            <span className="font-medium">Yerinde hizmet</span>
+            <span className="block text-xs text-muted-foreground">
+              Dışarıya sipariş/teslimat yapmıyorum (oto yıkama, kuaför, usta vb.). Müşteriler bu
+              işletmeden sipariş veremez, sadece bilgi görür.
+            </span>
+          </span>
+          <Switch
+            checked={form.onsite_only}
+            onCheckedChange={(checked) =>
+              setForm({
+                ...form,
+                onsite_only: checked,
+                ...(checked ? { delivery_fee: "0", min_order: "0" } : {}),
+              })
+            }
+          />
+        </div>
+
         <div className="grid gap-2 sm:grid-cols-2">
           <div className="space-y-1">
             <Label>Teslimat ücreti</Label>
@@ -479,7 +502,8 @@ function BusinessApplicationPage() {
               step="0.01"
               value={form.delivery_fee}
               onChange={(event) => setForm({ ...form, delivery_fee: event.target.value })}
-              required
+              disabled={form.onsite_only}
+              required={!form.onsite_only}
             />
           </div>
           <div className="space-y-1">
@@ -490,7 +514,8 @@ function BusinessApplicationPage() {
               step="0.01"
               value={form.min_order}
               onChange={(event) => setForm({ ...form, min_order: event.target.value })}
-              required
+              disabled={form.onsite_only}
+              required={!form.onsite_only}
             />
           </div>
         </div>

@@ -45,6 +45,10 @@ export const applicationSchema = z
     delivery_minutes: z.number("Teslimat süresini sayı olarak girin").int().min(0).max(600),
     delivery_fee: z.number("Teslimat ücretini sayı olarak girin").min(0).max(10000),
     min_order: z.number("Min. sepet tutarını sayı olarak girin").min(0).max(100000),
+    // Yerinde hizmet: işletme dışarıya sipariş/teslimat yapmıyor (oto yıkama,
+    // kuaför, usta vb.). Teslimat ücreti ve min. sepet 0'a sabitlenir
+    // (aşağıdaki transform), müşteri tarafında sipariş akışı tamamen gizlenir.
+    onsite_only: z.boolean().default(false),
     cover_image_url: z
       .string()
       .trim()
@@ -124,10 +128,12 @@ export const applicationSchema = z
     value.mobile_service
       ? { ...value, address: null, latitude: null, longitude: null, maps_url: null }
       : value,
-  );
+  )
+  // Yerinde hizmette teslimat ücreti/min. sepet anlamsız; 0'a sabitlenir.
+  .transform((value) => (value.onsite_only ? { ...value, delivery_fee: 0, min_order: 0 } : value));
 
 const APPLICATION_COLUMNS =
-  "id, applicant_user_id, status, founder_note, reviewed_at, created_at, slug, name, tagline, category, sector, cuisines, delivery_minutes, delivery_fee, min_order, cover_image_url, mobile_service, address, district, city, latitude, longitude, maps_url, contact_email, contact_phone, contact_person, opens_at, closes_at, is_open_manual";
+  "id, applicant_user_id, status, founder_note, reviewed_at, created_at, slug, name, tagline, category, sector, cuisines, delivery_minutes, delivery_fee, min_order, cover_image_url, mobile_service, onsite_only, address, district, city, latitude, longitude, maps_url, contact_email, contact_phone, contact_person, opens_at, closes_at, is_open_manual";
 
 /** Telefon başka bir işletmede ya da bekleyen başka bir başvuruda varsa reddeder. */
 async function assertBusinessPhoneAvailable(phone: string, ignoreApplicationId: string | null) {
@@ -303,6 +309,7 @@ export const reviewBusinessApplication = createServerFn({ method: "POST" })
             min_order: application.min_order,
             cover_image_url: application.cover_image_url,
             mobile_service: application.mobile_service,
+            onsite_only: application.onsite_only,
             address: application.address,
             district: application.district,
             city: application.city,

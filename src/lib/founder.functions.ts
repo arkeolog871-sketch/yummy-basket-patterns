@@ -221,6 +221,9 @@ const businessSchema = z.object({
   delivery_minutes: z.number().int().min(0).max(600),
   delivery_fee: z.number().min(0).max(10000),
   min_order: z.number().min(0).max(100000),
+  // Yerinde hizmet: işletme dışarıya sipariş/teslimat yapmıyor. Kaydederken
+  // teslimat ücreti/min. sepet 0'a sabitlenir (bkz. handler).
+  onsite_only: z.boolean().default(false),
   cover_image_url: z.string().trim().max(500).nullable().default(null),
   // Telefondan/galeriden yüklenen kapak görseli (opsiyonel). Varsa yüklenip
   // cover_image_url onunla değiştirilir; yoksa metin alanı kullanılır.
@@ -581,6 +584,11 @@ export const saveBusiness = createServerFn({ method: "POST" })
         values.latitude = null;
         values.longitude = null;
         values.maps_url = null;
+      }
+      // Yerinde hizmette teslimat ücreti/min. sepet anlamsız; 0'a sabitlenir.
+      if (values.onsite_only) {
+        values.delivery_fee = 0;
+        values.min_order = 0;
       }
       // Bölge yöneticisi yalnızca kendi bölgesindeki işletmeyi düzenleyebilir ve
       // yeni işletmeyi de yalnızca kendi bölgesine ekleyebilir.
