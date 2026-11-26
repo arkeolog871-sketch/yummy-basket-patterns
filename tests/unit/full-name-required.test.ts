@@ -48,4 +48,25 @@ describe("ad soyad zorunluluğu", () => {
       /completeFullName[\s\S]*upsert\(\{ id: context\.userId, full_name: data\.full_name \}/,
     );
   });
+
+  /**
+   * YAŞANDI: ad soyad zorunluluğu yalnızca /auth sayfasının kendi akışına
+   * eklenmişti. İşletme başvuru sayfasının (isletme-basvuru.tsx) ayrı,
+   * bağımsız Google/Apple giriş düğmeleri hiç /auth'a uğramadığı için,
+   * oradan (Apple genelde isim paylaşmaz) giriş yapıp başvuruyu yarıda
+   * bırakanlar adı hiç girmeden hesap açabiliyordu.
+   */
+  it("işletme başvuru sayfası da paylaşılan FullNameGate ile sarmalı", () => {
+    const page = read("src/routes/isletme-basvuru.tsx");
+    expect(page).toContain('import { FullNameGate } from "@/components/auth/FullNameGate";');
+    expect(page).toMatch(/<FullNameGate>\s*<BusinessApplicationPage \/>\s*<\/FullNameGate>/);
+  });
+
+  it("FullNameGate de yalnızca müşteri hesaplarını kapsıyor, vendor/kurucuyu değil", () => {
+    const gate = read("src/components/auth/FullNameGate.tsx");
+    expect(gate).toContain(
+      "const isCustomerAccount = !access.isVendor && !access.isFounder && !access.isPageManager;",
+    );
+    expect(gate).toContain("completeFullName");
+  });
 });
