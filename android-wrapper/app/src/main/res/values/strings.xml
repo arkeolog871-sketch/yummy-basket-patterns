@@ -12,4 +12,7 @@
     <string name="battery_prompt_open">Ayarı aç</string>
     <string name="battery_prompt_later">Şimdi değil</string>
     <string name="battery_prompt_failed">Pil ayarı ekranı açılamadı. Ayarlar &gt; Uygulamalar &gt; SİLVAN CEBİMDE &gt; Pil yolunu izleyebilirsiniz.</string>
+    <string name="autostart_prompt_title">Bildirimler gecikmesin</string>
+    <string name="autostart_prompt_body">Telefonunuzun üreticisi, uygulamaları arka planda kapatan ek bir pil yönetimi kullanıyor; bu yüzden sipariş ve duyuru bildirimleri hiç gelmeyebilir.\n\nAçılacak ekranda SİLVAN CEBİMDE\'yi bulup \"Otomatik başlatmaya izin ver\" (bazı telefonlarda \"Arka planda çalışsın\") seçeneğini açarsanız bildirimler düzenli gelir.</string>
+    <string name="autostart_prompt_open">Ayarı aç</string>
 </resources>

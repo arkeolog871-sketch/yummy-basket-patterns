@@ -7,6 +7,7 @@ import android.app.AlertDialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.ActivityNotFoundException;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
@@ -1765,8 +1766,16 @@ public class MainActivity extends Activity {
      * Bu yüzden izin istenmiyor; kullanıcı sistemin kendi ayar ekranına
      * yönderiliyor. Sonuç aynı, politika riski yok.
      *
-     * Uyarı ısrarcı değil: muafiyet zaten varsa hiç çıkmaz, reddedilirse iki
-     * hafta boyunca bir daha çıkmaz.
+     * Xiaomi/Redmi/POCO, Huawei/Honor, Oppo/Realme ve Vivo/iQOO'da asıl engel
+     * genelde bu stock ekran değil: bu üreticiler Android'in pil
+     * optimizasyonundan TAMAMEN AYRI, kendi "otomatik başlatma / arka plan
+     * kısıtlaması" ekranını kullanıyor ve bildirimleri çoğunlukla orası
+     * kesiyor. O ekran da resmi bir Android API'si değil (üretici özel),
+     * dolayısıyla "zaten açık mı" diye sorgulanamıyor — bu yüzden stock
+     * muafiyet zaten varsa bile bu üreticilerde uyarı yine gösterilir.
+     *
+     * Uyarı ısrarcı değil: (agresif üretici olmayan telefonlarda) muafiyet
+     * zaten varsa hiç çıkmaz, reddedilirse iki hafta boyunca bir daha çıkmaz.
      */
     private void maybeOfferBatteryExemption() {
         if (batteryPromptChecked) return;
@@ -1782,14 +1791,31 @@ public class MainActivity extends Activity {
             return;
         }
 
+        String aggressiveOem = aggressiveAutoStartManufacturer();
         PowerManager power = getSystemService(PowerManager.class);
-        if (power == null || power.isIgnoringBatteryOptimizations(getPackageName())) return;
+        boolean alreadyExempt = power != null && power.isIgnoringBatteryOptimizations(getPackageName());
+        if (alreadyExempt && aggressiveOem == null) return;
 
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         long now = System.currentTimeMillis();
         long lastAsked = prefs.getLong(KEY_BATTERY_PROMPT_AT, 0L);
         if (lastAsked > 0 && now - lastAsked < BATTERY_PROMPT_INTERVAL_MS) return;
         prefs.edit().putLong(KEY_BATTERY_PROMPT_AT, now).apply();
+
+        if (aggressiveOem != null) {
+            boolean batteryAlreadyOk = alreadyExempt;
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.autostart_prompt_title)
+                    .setMessage(R.string.autostart_prompt_body)
+                    .setPositiveButton(R.string.autostart_prompt_open,
+                            (dialog, which) -> {
+                                boolean opened = openAutoStartSettings(aggressiveOem);
+                                if (!opened && !batteryAlreadyOk) openBatteryOptimizationSettings();
+                            })
+                    .setNegativeButton(R.string.battery_prompt_later, null)
+                    .show();
+            return;
+        }
 
         new AlertDialog.Builder(this)
                 .setTitle(R.string.battery_prompt_title)
@@ -1798,6 +1824,83 @@ public class MainActivity extends Activity {
                         (dialog, which) -> openBatteryOptimizationSettings())
                 .setNegativeButton(R.string.battery_prompt_later, null)
                 .show();
+    }
+
+    /**
+     * `Build.MANUFACTURER`/`Build.BRAND` bilinen agresif üreticilerden birine
+     * (alt markalar dâhil) mi ait? Değilse null döner, stock pil akışı sürer.
+     */
+    private String aggressiveAutoStartManufacturer() {
+        String manufacturer = Build.MANUFACTURER == null ? "" : Build.MANUFACTURER;
+        String brand = Build.BRAND == null ? "" : Build.BRAND;
+        String combined = (manufacturer + " " + brand).toLowerCase(java.util.Locale.ROOT);
+        if (combined.contains("xiaomi") || combined.contains("redmi") || combined.contains("poco")) {
+            return "xiaomi";
+        }
+        if (combined.contains("huawei") || combined.contains("honor")) return "huawei";
+        if (combined.contains("oppo") || combined.contains("realme")) return "oppo";
+        if (combined.contains("vivo") || combined.contains("iqoo")) return "vivo";
+        return null;
+    }
+
+    /**
+     * Üreticinin kendi "otomatik başlatma" ekranını açmayı dener. Üretici
+     * yazılım sürümüne göre ekranın bileşen adı değişebiliyor; bilinen adaylar
+     * sırayla denenir, ilk açılan kullanılır. Hiçbiri yoksa false döner —
+     * çağıran taraf stock pil ayarına düşer.
+     */
+    private boolean openAutoStartSettings(String oem) {
+        ComponentName[] candidates;
+        switch (oem) {
+            case "xiaomi":
+                candidates = new ComponentName[] {
+                        new ComponentName("com.miui.securitycenter",
+                                "com.miui.permcenter.autostart.AutoStartManagementActivity"),
+                        new ComponentName("com.miui.securitycenter",
+                                "com.miui.permcenter.permissions.PermissionsEditorActivity"),
+                };
+                break;
+            case "huawei":
+                candidates = new ComponentName[] {
+                        new ComponentName("com.huawei.systemmanager",
+                                "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity"),
+                        new ComponentName("com.huawei.systemmanager",
+                                "com.huawei.systemmanager.optimize.process.ProtectActivity"),
+                };
+                break;
+            case "oppo":
+                candidates = new ComponentName[] {
+                        new ComponentName("com.coloros.safecenter",
+                                "com.coloros.safecenter.permission.startup.StartupAppListActivity"),
+                        new ComponentName("com.coloros.safecenter",
+                                "com.coloros.safecenter.startupapp.StartupAppListActivity"),
+                        new ComponentName("com.oppo.safe",
+                                "com.oppo.safe.permission.startup.StartupAppListActivity"),
+                };
+                break;
+            case "vivo":
+                candidates = new ComponentName[] {
+                        new ComponentName("com.vivo.permissionmanager",
+                                "com.vivo.permissionmanager.activity.BgStartUpManagerActivity"),
+                        new ComponentName("com.iqoo.secure",
+                                "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity"),
+                };
+                break;
+            default:
+                return false;
+        }
+        for (ComponentName candidate : candidates) {
+            try {
+                Intent intent = new Intent();
+                intent.setComponent(candidate);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+                return true;
+            } catch (ActivityNotFoundException | SecurityException ignored) {
+                // Sıradaki adaya geç.
+            }
+        }
+        return false;
     }
 
     /**
