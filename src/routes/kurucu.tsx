@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useCallback, useEffect, useState } from "react";
+import { useMemo, useCallback, useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { toPublicErrorMessage } from "@/lib/public-error";
 import { LATITUDE_FIELD_PLACEHOLDER, LONGITUDE_FIELD_PLACEHOLDER } from "@/lib/location";
@@ -18,9 +18,25 @@ import {
   Search,
   ArrowUp,
   ArrowDown,
+  GripVertical,
   ImagePlus,
   X,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccess } from "@/hooks/useAccess";
@@ -800,18 +816,49 @@ function BusinessPanel({
   const [pickedCover, setPickedCover] = useState<PickedImage | null>(null);
   const [search, setSearch] = useState("");
   const activeSector = form.sector;
-  const visibleBusinesses = businesses.filter((business) =>
+  const visibleBusinessesBase = businesses.filter((business) =>
     matchesBusinessSearch(business, search),
   );
   // Sıralama yalnızca arama YOKKEN anlamlı: filtrelenmiş listede "bir üste"
   // taşımak, ekranda görünmeyen işletmelerin arasına düşerdi. Bu yüzden arama
-  // kutusu doluyken oklar gizlenir; liste, sunucunun döndüğü etkin sırayı yansıtır.
+  // kutusu doluyken oklar/sürükleme gizlenir; liste, sunucunun döndüğü etkin
+  // sırayı yansıtır.
   const canReorder = search.trim().length === 0;
+  // Sürükleyip bıraktıktan sonra, sunucu kaydedip liste tazelenene kadar
+  // sırayı burada gösteriyoruz; aksi hâlde eski sıraya kısa bir "geri sıçrama"
+  // olurdu. `businesses` prop'u tazelenince (invalidate sonrası) temizlenir.
+  const [dragOrder, setDragOrder] = useState<string[] | null>(null);
+  useEffect(() => setDragOrder(null), [businesses]);
+  const visibleBusinesses =
+    dragOrder && canReorder
+      ? (dragOrder
+          .map((id) => visibleBusinessesBase.find((business) => business.id === id))
+          .filter((business): business is BusinessRow => Boolean(business)) as BusinessRow[])
+      : visibleBusinessesBase;
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
+  );
   const moveMutation = useMutation({
-    mutationFn: (vars: { id: string; direction: "up" | "down" }) => move({ data: vars }),
+    mutationFn: (
+      vars: { id: string; direction: "up" | "down" } | { id: string; toIndex: number },
+    ) => move({ data: vars }),
     onSuccess: () => onDone(),
-    onError: (error: Error) => toast.error(toPublicErrorMessage(error, "Sıra değiştirilemedi.")),
+    onError: (error: Error) => {
+      setDragOrder(null);
+      toast.error(toPublicErrorMessage(error, "Sıra değiştirilemedi."));
+    },
   });
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const order = dragOrder ?? visibleBusinesses.map((business) => business.id);
+    const oldIndex = order.indexOf(String(active.id));
+    const newIndex = order.indexOf(String(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
+    setDragOrder(arrayMove(order, oldIndex, newIndex));
+    moveMutation.mutate({ id: String(active.id), toIndex: newIndex });
+  }
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -1273,111 +1320,174 @@ function BusinessPanel({
           ) : visibleBusinesses.length === 0 ? (
             <p className="p-6 text-sm text-muted-foreground">"{search}" ile eşleşen işletme yok.</p>
           ) : (
-            visibleBusinesses.map((business, index) => (
-              <div
-                key={business.id}
-                className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 p-4 last:border-0"
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={visibleBusinesses.map((business) => business.id)}
+                strategy={verticalListSortingStrategy}
               >
-                <div className="flex min-w-0 items-center gap-2">
-                  {canReorder ? (
-                    <div className="flex flex-col">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-6 rounded-full"
-                        aria-label="Yukarı taşı"
-                        disabled={index === 0 || moveMutation.isPending}
-                        onClick={() => moveMutation.mutate({ id: business.id, direction: "up" })}
-                      >
-                        <ArrowUp className="size-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-6 rounded-full"
-                        aria-label="Aşağı taşı"
-                        disabled={index === visibleBusinesses.length - 1 || moveMutation.isPending}
-                        onClick={() => moveMutation.mutate({ id: business.id, direction: "down" })}
-                      >
-                        <ArrowDown className="size-4" />
-                      </Button>
-                    </div>
-                  ) : null}
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">
-                      {business.name}
-                      {business.is_active ? null : (
-                        <span className="ml-2 text-xs text-muted-foreground">(gizli)</span>
-                      )}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {business.category} · /{business.slug}
-                      {business.mobile_service ? " · Adrese gelir (iş yeri yok)" : ""}
-                      {business.onsite_only ? " · Yerinde hizmet (sipariş yok)" : ""}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-1">
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="rounded-full"
-                    aria-label="Düzenle"
-                    onClick={() => {
-                      setEditingId(business.id);
-                      setPickedCover(null);
-                      setForm({
-                        slug: business.slug,
-                        name: business.name,
-                        tagline: business.tagline ?? "",
-                        category: business.category,
-                        sector: business.sector ?? "",
-                        cuisines: (business.cuisines ?? []).join(", "),
-                        delivery_minutes: business.delivery_minutes,
-                        delivery_fee: Number(business.delivery_fee),
-                        min_order: Number(business.min_order),
-                        onsite_only: Boolean(business.onsite_only),
-                        cover_image_url: business.cover_image_url ?? "",
-                        address: business.address ?? "",
-                        district: business.district ?? "",
-                        city: business.city ?? "",
-                        latitude:
-                          business.latitude === null || business.latitude === undefined
-                            ? ""
-                            : String(business.latitude),
-                        longitude:
-                          business.longitude === null || business.longitude === undefined
-                            ? ""
-                            : String(business.longitude),
-                        maps_url: business.maps_url ?? "",
-                        mobile_service: Boolean(business.mobile_service),
-                        contact_email: business.contact_email ?? "",
-                        contact_phone: business.contact_phone ?? "",
-                        contact_person: business.contact_person ?? "",
-                        is_active: business.is_active,
-                        opens_at: (business.opens_at ?? "").slice(0, 5),
-                        closes_at: (business.closes_at ?? "").slice(0, 5),
-                        is_open_manual: business.is_open_manual !== false,
-                      });
-                    }}
-                  >
-                    <Pencil className="size-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="rounded-full"
-                    aria-label="Sil"
-                    onClick={() => deleteMutation.mutate(business.id)}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              </div>
-            ))
+                {visibleBusinesses.map((business, index) => (
+                  <SortableBusinessRow key={business.id} id={business.id} disabled={!canReorder}>
+                    {({ attributes, listeners }) => (
+                      <>
+                        <div className="flex min-w-0 items-center gap-2">
+                          {canReorder ? (
+                            <>
+                              <button
+                                type="button"
+                                className="touch-none cursor-grab rounded-full p-1 text-muted-foreground active:cursor-grabbing"
+                                aria-label="Basılı tutup sürükleyerek sırala"
+                                {...attributes}
+                                {...listeners}
+                              >
+                                <GripVertical className="size-4" />
+                              </button>
+                              <div className="flex flex-col">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="size-6 rounded-full"
+                                  aria-label="Yukarı taşı"
+                                  disabled={index === 0 || moveMutation.isPending}
+                                  onClick={() =>
+                                    moveMutation.mutate({ id: business.id, direction: "up" })
+                                  }
+                                >
+                                  <ArrowUp className="size-4" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="size-6 rounded-full"
+                                  aria-label="Aşağı taşı"
+                                  disabled={
+                                    index === visibleBusinesses.length - 1 || moveMutation.isPending
+                                  }
+                                  onClick={() =>
+                                    moveMutation.mutate({ id: business.id, direction: "down" })
+                                  }
+                                >
+                                  <ArrowDown className="size-4" />
+                                </Button>
+                              </div>
+                            </>
+                          ) : null}
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">
+                              {business.name}
+                              {business.is_active ? null : (
+                                <span className="ml-2 text-xs text-muted-foreground">(gizli)</span>
+                              )}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {business.category} · /{business.slug}
+                              {business.mobile_service ? " · Adrese gelir (iş yeri yok)" : ""}
+                              {business.onsite_only ? " · Yerinde hizmet (sipariş yok)" : ""}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="rounded-full"
+                            aria-label="Düzenle"
+                            onClick={() => {
+                              setEditingId(business.id);
+                              setPickedCover(null);
+                              setForm({
+                                slug: business.slug,
+                                name: business.name,
+                                tagline: business.tagline ?? "",
+                                category: business.category,
+                                sector: business.sector ?? "",
+                                cuisines: (business.cuisines ?? []).join(", "),
+                                delivery_minutes: business.delivery_minutes,
+                                delivery_fee: Number(business.delivery_fee),
+                                min_order: Number(business.min_order),
+                                onsite_only: Boolean(business.onsite_only),
+                                cover_image_url: business.cover_image_url ?? "",
+                                address: business.address ?? "",
+                                district: business.district ?? "",
+                                city: business.city ?? "",
+                                latitude:
+                                  business.latitude === null || business.latitude === undefined
+                                    ? ""
+                                    : String(business.latitude),
+                                longitude:
+                                  business.longitude === null || business.longitude === undefined
+                                    ? ""
+                                    : String(business.longitude),
+                                maps_url: business.maps_url ?? "",
+                                mobile_service: Boolean(business.mobile_service),
+                                contact_email: business.contact_email ?? "",
+                                contact_phone: business.contact_phone ?? "",
+                                contact_person: business.contact_person ?? "",
+                                is_active: business.is_active,
+                                opens_at: (business.opens_at ?? "").slice(0, 5),
+                                closes_at: (business.closes_at ?? "").slice(0, 5),
+                                is_open_manual: business.is_open_manual !== false,
+                              });
+                            }}
+                          >
+                            <Pencil className="size-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="rounded-full"
+                            aria-label="Sil"
+                            onClick={() => deleteMutation.mutate(business.id)}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </SortableBusinessRow>
+                ))}
+              </SortableContext>
+            </DndContext>
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * İşletme satırını sürüklenebilir yapar. Basılı tutma gecikmesi (bkz.
+ * `sensors` — 250ms) sayesinde normal dokunma/kaydırma ile çakışmaz; sadece
+ * tutamaç (`GripVertical`) basılı tutulunca sürükleme başlar.
+ */
+function SortableBusinessRow({
+  id,
+  disabled,
+  children,
+}: {
+  id: string;
+  disabled: boolean;
+  children: (handle: {
+    attributes: ReturnType<typeof useSortable>["attributes"];
+    listeners: ReturnType<typeof useSortable>["listeners"];
+  }) => ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+    disabled,
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`flex flex-wrap items-center justify-between gap-3 border-b border-border/60 p-4 last:border-0 ${
+        isDragging ? "relative z-10 bg-card shadow-lifted" : ""
+      }`}
+    >
+      {children({ attributes, listeners })}
     </div>
   );
 }

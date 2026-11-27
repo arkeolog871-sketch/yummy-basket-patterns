@@ -696,7 +696,8 @@ export const deleteBusiness = createServerFn({ method: "POST" })
   });
 
 /**
- * İşletmeyi listede bir sıra yukarı/aşağı taşır.
+ * İşletmeyi listede bir sıra yukarı/aşağı taşır (direction) veya doğrudan
+ * belirli bir sıraya taşır (toIndex — basılı tutup sürükleme).
  *
  * Yetki: sahip her işletmeyi sıralar; sayfa yöneticisi yalnızca kendi
  * bölgesindeki işletmeleri. Sıra, kategori sıralamasıyla aynı mantıkta
@@ -712,7 +713,18 @@ export const deleteBusiness = createServerFn({ method: "POST" })
 export const moveRestaurant = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) =>
-    z.object({ id: z.string().uuid(), direction: z.enum(["up", "down"]) }).parse(input),
+    z
+      .object({
+        id: z.string().uuid(),
+        direction: z.enum(["up", "down"]).optional(),
+        // Sürükle-bırak: hedef sıra doğrudan verilir (bkz. kurucu.tsx basılı
+        // tutup kaydırma). direction ile toIndex karşılıklı dışlar.
+        toIndex: z.number().int().min(0).optional(),
+      })
+      .refine((value) => (value.direction == null) !== (value.toIndex == null), {
+        message: "direction veya toIndex gerekir",
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) =>
     runServerFn(async () => {
@@ -750,7 +762,12 @@ export const moveRestaurant = createServerFn({ method: "POST" })
 
       const index = scoped.findIndex((row) => row.id === data.id);
       if (index < 0) throw new Error("Forbidden: bu işletmeyi sıralayamazsınız");
-      const targetIndex = data.direction === "up" ? index - 1 : index + 1;
+      const targetIndex =
+        data.toIndex != null
+          ? Math.min(Math.max(data.toIndex, 0), scoped.length - 1)
+          : data.direction === "up"
+            ? index - 1
+            : index + 1;
       if (targetIndex < 0 || targetIndex >= scoped.length) return { ok: true };
 
       const reordered = [...scoped];
@@ -776,7 +793,11 @@ export const moveRestaurant = createServerFn({ method: "POST" })
         entity: "restaurants",
         entityId: data.id,
         status: "success",
-        detail: { direction: data.direction, changed: writes.length },
+        detail: {
+          direction: data.direction ?? null,
+          toIndex: data.toIndex ?? null,
+          changed: writes.length,
+        },
       });
       return { ok: true };
     }),
