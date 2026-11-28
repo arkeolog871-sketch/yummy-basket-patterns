@@ -17,6 +17,7 @@
 
 const PLUGIN_NAME = "SilvanPush";
 const METHOD = "getFcmToken";
+const PERMISSION_METHOD = "requestNotificationPermission";
 
 type CapacitorPluginHeader = { name: string; methods?: { name: string }[] };
 
@@ -66,5 +67,47 @@ export async function getNativeIosFcmToken(): Promise<string | null> {
   } catch (error) {
     console.error("[ios-push] token alınamadı", error);
     return null;
+  }
+}
+
+/**
+ * "Soft-ask": Apple'ın sistem izin penceresini YALNIZCA burası açar — kullanıcı
+ * bizim kendi açıklama ekranımızda "İzin ver"e bastığı an. Uygulama açılışında
+ * artık otomatik istenmiyor (bkz. AppDelegate.swift): Apple bu izni cihaz
+ * başına ömür boyu bir kez soruyor, bağlamsız/erken bir açılışta harcanırsa
+ * kullanıcı düşünmeden reddedip bir daha asla sorulamaz hâle gelebiliyordu.
+ */
+export async function requestNativeIosNotificationPermission(): Promise<boolean> {
+  const cap = capacitorGlobal();
+  if (!hasNativeIosPush() || !cap?.nativePromise) return false;
+  try {
+    const result = await cap.nativePromise<{ granted?: boolean }>(
+      PLUGIN_NAME,
+      PERMISSION_METHOD,
+      {},
+    );
+    return Boolean(result?.granted);
+  } catch (error) {
+    console.error("[ios-push] izin isteği başarısız", error);
+    return false;
+  }
+}
+
+/**
+ * İzin verildikten hemen sonra token'ın hazır olması, Apple'ın APNs kaydını
+ * tamamlamasına (gerçek bir ağ turu) bağlı — anlık değil. Tek deneme yerine
+ * kısa aralıklarla birkaç kez denenir; kullanıcı "İzin ver"e bastığında ekranda
+ * makul bir sürede (en fazla ~12sn) sonuç almasını sağlar. Bu süre içinde
+ * başarısız olursa arka plandaki daha uzun soluklu deneme (useFcmTokenBridge,
+ * 45sn'ye kadar) token'ı yine de yakalayıp sessizce kaydeder.
+ */
+export async function waitForNativeIosToken(maxWaitMs = 12_000): Promise<string | null> {
+  const stepMs = 2_000;
+  const deadline = Date.now() + maxWaitMs;
+  for (;;) {
+    const token = await getNativeIosFcmToken();
+    if (token) return token;
+    if (Date.now() >= deadline) return null;
+    await new Promise((resolve) => setTimeout(resolve, stepMs));
   }
 }

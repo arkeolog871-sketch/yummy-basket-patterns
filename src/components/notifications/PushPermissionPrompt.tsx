@@ -1,27 +1,83 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { BellRing, X } from "lucide-react";
+import { BellRing, PlusSquare, Share2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { readOrCreateDeviceId } from "@/hooks/useFcmTokenBridge";
 import { getMyPushRegistrationStatus, saveFcmToken } from "@/lib/push.functions";
-import { getNativeIosFcmToken, hasNativeIosPush } from "@/lib/ios-native-push";
+import {
+  hasNativeIosPush,
+  requestNativeIosNotificationPermission,
+  waitForNativeIosToken,
+} from "@/lib/ios-native-push";
 import { isNativeApp } from "@/lib/native-notify";
+import { detectIosInstallKind } from "@/lib/iphone-install";
 import { reportAppError } from "@/lib/errors.functions";
 
-const DONE_KEY = (userId: string) => `silvan.push-prompt.v1.${userId}`;
+type StoredStatus = "registered" | "declined" | "home-screen-hint-shown";
+type StoredState = { status: StoredStatus; at: number };
+
+const STATE_KEY = (userId: string) => `silvan.push-prompt.v2.${userId}`;
+/**
+ * "Reddedildi"/"ana ekrana ekle ipucu gösterildi" durumları SONSUZA KADAR
+ * sessiz kalmaz: kullanıcı fikrini Ayarlar'dan değiştirmiş ya da siteyi artık
+ * ana ekrana eklemiş olabilir, bunu asla öğrenemeyiz. Bu süre sonunda bir kez
+ * daha sorulur. "registered" bu kurala tabi değil — kalıcı.
+ */
+const RETRY_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
+
+function readState(userId: string): StoredState | null {
+  try {
+    const raw = window.localStorage.getItem(STATE_KEY(userId));
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      "status" in parsed &&
+      "at" in parsed &&
+      typeof (parsed as StoredState).at === "number"
+    ) {
+      return parsed as StoredState;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function writeState(userId: string, status: StoredStatus) {
+  try {
+    window.localStorage.setItem(STATE_KEY(userId), JSON.stringify({ status, at: Date.now() }));
+  } catch {
+    /* yok say */
+  }
+}
 
 /**
  * Hesabında hiç kayıtlı bildirim cihazı olmayan HER girişli kullanıcıya
  * (müşteri ya da işletme), girişten sonra bir kez "anlık bildirimlere izin
- * ver" isteği gösterir. Kabul edilince telefon hemen kaydedilir. Seçim
- * (izin ya da "Daha sonra") bu cihazda hatırlanır; istek bir daha çıkmaz.
+ * ver" isteği gösterir. Kabul edilince telefon hemen kaydedilir.
  *
- * YAŞANDI: bu istek eskiden yalnızca işletme hesaplarına gösteriliyordu
- * (`status.isBusiness` kontrolü). Sıradan bir müşteri "Bildirimler"
- * sayfasını kendi açmadıkça hiç sorulmuyordu — hesapların büyük
- * çoğunluğunda bildirim cihazı kaydı olmamasının en büyük tek sebebi buydu.
+ * YAŞANDI (iOS): Apple'ın sistem izni uygulama açılır açılmaz, hiçbir
+ * açıklama olmadan isteniyordu ve bildirim "anahtarı" yalnızca bellekte
+ * tutuluyordu. Bellek her soğuk açılışta sıfırlandığı için, bu ekrandaki
+ * "İzin ver" her seferinde Apple'dan anahtarı yeniden istemek zorunda
+ * kalıyordu — bu gerçek bir ağ gecikmesi. Erken basılırsa anahtar gelmeden
+ * istek düşüyor, "bir daha sorma" hiç işaretlenmediği için bir dahaki girişte
+ * AYNI yarış tekrarlanıyordu: "izin verdim ama sürekli soruyor" şikâyeti.
+ * Ayrıca Safari'de (uygulama kurulmadan) bildirim Apple tarafından TEKNİK
+ * OLARAK imkânsız (yalnızca ana ekrana eklenmiş sitelerde çalışıyor); eski
+ * kod bunu hiç kontrol etmeden yine de sorup duruyordu.
+ *
+ * Artık: (1) Apple'ın izni yalnızca kullanıcı burada "İzin ver"e basınca
+ * isteniyor (soft-ask) — uygulama açılışında değil; (2) anahtar native
+ * tarafta kalıcı saklanıyor, bir sonraki açılışta Apple'dan beklemeden
+ * kullanılıyor; (3) Safari'den (ana ekrana eklenmeden) gelenlere imkânsız bir
+ * izni sormak yerine "ana ekrana ekle" adımları gösteriliyor; (4) red/ipucu
+ * durumları kalıcı değil, 30 günde bir tekrar denenir; (5) başarısızlıklar
+ * artık Sistem Hataları'na da düşüyor.
  */
 export function PushPermissionPrompt() {
   const { user } = useAuth();
@@ -30,6 +86,7 @@ export function PushPermissionPrompt() {
   const reportError = useServerFn(reportAppError);
   const web = usePushNotifications();
   const [open, setOpen] = useState(false);
+  const [showHomeScreenGuide, setShowHomeScreenGuide] = useState(false);
   const [isBusiness, setIsBusiness] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -39,11 +96,29 @@ export function PushPermissionPrompt() {
       setOpen(false);
       return;
     }
-    try {
-      if (window.localStorage.getItem(DONE_KEY(user.id))) return;
-    } catch {
+    const saved = readState(user.id);
+    if (saved?.status === "registered") return;
+    if (saved && Date.now() - saved.at < RETRY_COOLDOWN_MS) return;
+
+    // Safari'de (ana ekrana eklenmeden) bildirim Apple tarafından teknik
+    // olarak imkânsız — sunucuya sormaya gerek yok, doğrudan "ana ekrana
+    // ekle" rehberi gösterilir.
+    if (!isNativeApp() && detectIosInstallKind() === "safari") {
+      setShowHomeScreenGuide(true);
+      setOpen(true);
       return;
     }
+
+    // Tarayıcı teknik olarak desteklemiyorsa (eski tarayıcı, VAPID
+    // yapılandırılmamış vb.) hiçbir şey yapılamaz — sormanın anlamı yok ve
+    // kullanıcıya tepkisiz/yanıtsız bir pencere bırakmamak için hiç
+    // açılmıyor. "checking"/"loading" henüz sonuçlanmadıysa bir sonraki
+    // render'da (web.status bağımlılığı sayesinde) yeniden denenir.
+    if (!isNativeApp()) {
+      if (web.status === "checking" || web.status === "loading") return;
+      if (web.status === "unsupported" || web.status === "unconfigured") return;
+    }
+
     let cancelled = false;
     // Native köprünün jetonu kendiliğinden kaydetmesine birkaç saniye tanınır.
     const timer = setTimeout(() => {
@@ -51,7 +126,7 @@ export function PushPermissionPrompt() {
         .then((status) => {
           if (cancelled) return;
           if (status.hasDevice) {
-            window.localStorage.setItem(DONE_KEY(user.id), "registered");
+            writeState(user.id, "registered");
             return;
           }
           setIsBusiness(status.isBusiness);
@@ -63,17 +138,39 @@ export function PushPermissionPrompt() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [user, checkStatus]);
+  }, [user, checkStatus, web.status]);
 
   if (!open || !user) return null;
 
-  const finish = (value: string) => {
-    try {
-      window.localStorage.setItem(DONE_KEY(user.id), value);
-    } catch {
-      /* yok say */
-    }
+  const finish = (status: StoredStatus) => {
+    writeState(user.id, status);
     setOpen(false);
+  };
+
+  const allowNativeIos = async () => {
+    const granted = await requestNativeIosNotificationPermission();
+    if (!granted) {
+      finish("declined");
+      return;
+    }
+    const token = await waitForNativeIosToken();
+    if (!token) {
+      // İzin verildi ama anahtar bu ekranın beklediği sürede gelmedi.
+      // Arka plandaki daha uzun soluklu deneme (useFcmTokenBridge, 45sn'ye
+      // kadar) yakalayıp sessizce kaydedebilir; burada yalnızca kaydı
+      // bırakıyoruz, 30 gün sonra hâlâ kayıtsızsa tekrar sorulur.
+      void reportError({
+        data: {
+          message: "[push-prompt] iOS izin verildi ama anahtar zaman aşımına uğradı",
+          path: "push-permission-prompt",
+        },
+      }).catch(() => undefined);
+      finish("declined");
+      return;
+    }
+    const deviceId = readOrCreateDeviceId();
+    await saveToken({ data: { token, ...(deviceId ? { deviceId } : {}) } });
+    finish("registered");
   };
 
   const allow = async () => {
@@ -81,16 +178,7 @@ export function PushPermissionPrompt() {
     setMessage(null);
     try {
       if (hasNativeIosPush()) {
-        const token = await getNativeIosFcmToken();
-        if (!token) {
-          setMessage(
-            "Telefon bildirim kimliği veremedi. Ayarlar > Bildirimler'den bu uygulamaya izin verip tekrar deneyin.",
-          );
-          return;
-        }
-        const deviceId = readOrCreateDeviceId();
-        await saveToken({ data: { token, ...(deviceId ? { deviceId } : {}) } });
-        finish("registered");
+        await allowNativeIos();
         return;
       }
       if (isNativeApp()) {
@@ -132,8 +220,56 @@ export function PushPermissionPrompt() {
   }
 
   const webBlocked = !isNativeApp() && web.status === "denied";
-  const webUnsupported =
-    !isNativeApp() && (web.status === "unsupported" || web.status === "unconfigured");
+
+  if (showHomeScreenGuide) {
+    return (
+      <div
+        role="dialog"
+        aria-labelledby="push-prompt-title"
+        className="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-md rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-lg"
+      >
+        <div className="flex items-start gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+            <BellRing className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p id="push-prompt-title" className="font-display text-sm font-semibold">
+              Bildirim için önce ana ekrana ekleyin
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              iPhone'da Safari'den anlık bildirim gönderilemiyor — Apple bunu yalnızca ana ekrana
+              eklenmiş uygulamalarda açıyor.
+            </p>
+            <ol className="mt-2 space-y-1 text-xs text-muted-foreground">
+              <li className="flex items-center gap-1.5">
+                <Share2 className="size-3.5 shrink-0" /> Alttaki Paylaş düğmesine dokunun
+              </li>
+              <li className="flex items-center gap-1.5">
+                <PlusSquare className="size-3.5 shrink-0" /> "Ana Ekrana Ekle"yi seçin
+              </li>
+            </ol>
+            <div className="mt-3 flex gap-2">
+              <Button
+                size="sm"
+                className="h-10 rounded-full px-5"
+                onClick={() => finish("home-screen-hint-shown")}
+              >
+                Anladım
+              </Button>
+            </div>
+          </div>
+          <button
+            type="button"
+            aria-label="Kapat"
+            className="rounded-full p-1 text-muted-foreground"
+            onClick={() => finish("home-screen-hint-shown")}
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -161,17 +297,12 @@ export function PushPermissionPrompt() {
               Bildirim izni tarayıcı ayarlarından engellenmiş; oradan açmanız gerekiyor.
             </p>
           ) : null}
-          {webUnsupported ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Bu tarayıcı anlık bildirimi desteklemiyor. Uygulamayı kullanmanızı öneririz.
-            </p>
-          ) : null}
           {message ? <p className="mt-2 text-xs text-destructive">{message}</p> : null}
           <div className="mt-3 flex gap-2">
             <Button
               size="sm"
               className="h-10 rounded-full px-5"
-              disabled={busy || webBlocked || webUnsupported}
+              disabled={busy || webBlocked}
               onClick={() => void allow()}
             >
               {busy ? "Kaydediliyor…" : "İzin ver"}
@@ -180,7 +311,7 @@ export function PushPermissionPrompt() {
               size="sm"
               variant="ghost"
               className="h-10 rounded-full"
-              onClick={() => finish("dismissed")}
+              onClick={() => finish("declined")}
             >
               Daha sonra
             </Button>
@@ -190,7 +321,7 @@ export function PushPermissionPrompt() {
           type="button"
           aria-label="Kapat"
           className="rounded-full p-1 text-muted-foreground"
-          onClick={() => finish("dismissed")}
+          onClick={() => finish("declined")}
         >
           <X className="size-4" />
         </button>

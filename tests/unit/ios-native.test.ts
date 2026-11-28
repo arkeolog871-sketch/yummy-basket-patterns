@@ -112,3 +112,34 @@ describe("iOS sesli asistan ses oturumu", () => {
     expect(appDelegate).toMatch(/defaultToSpeaker/);
   });
 });
+
+/**
+ * YAŞANDI: izin uygulama açılır açılmaz, hiçbir açıklama olmadan isteniyordu
+ * ve bildirim "anahtarı" yalnızca bellekte tutuluyordu. Bellek her soğuk
+ * açılışta sıfırlandığı için "İzin ver" ekranı anahtarı her seferinde
+ * Apple'dan yeniden istemek zorunda kalıyordu (gerçek bir ağ gecikmesi);
+ * erken basılırsa istek düşüyor, "bir daha sorma" hiç işaretlenmediği için
+ * bir dahaki girişte aynı yarış tekrarlanıyordu — "izin verdim ama sürekli
+ * soruyor" şikâyetinin kaynağı buydu.
+ */
+describe("iOS bildirim izni: soft-ask ve kalıcı token", () => {
+  const appDelegate = readFileSync(join(ROOT, "ios/App/App/AppDelegate.swift"), "utf8");
+  const plugin = readFileSync(join(ROOT, "ios/App/App/SilvanPushPlugin.swift"), "utf8");
+
+  it("AppDelegate açılışta izin İSTEMİYOR, yalnızca zaten izinliyse APNs'i tazeliyor", () => {
+    expect(appDelegate).not.toMatch(/didFinishLaunchingWithOptions[\s\S]*?requestAuthorization/);
+    expect(appDelegate).toContain("getNotificationSettings");
+    expect(appDelegate).toContain("settings.authorizationStatus == .authorized");
+  });
+
+  it("gerçek izin isteği yalnızca yeni native köprü metodunda yapılıyor", () => {
+    expect(plugin).toContain("requestNotificationPermission");
+    expect(plugin).toContain('CAPPluginMethod(name: "requestNotificationPermission"');
+    expect(plugin).toMatch(/func requestNotificationPermission[\s\S]*?requestAuthorization/);
+  });
+
+  it("token bellek yerine kalıcı depoda (UserDefaults) tutuluyor", () => {
+    expect(plugin).toContain("UserDefaults.standard");
+    expect(plugin).not.toContain("private static var cachedToken: String?\n");
+  });
+});
