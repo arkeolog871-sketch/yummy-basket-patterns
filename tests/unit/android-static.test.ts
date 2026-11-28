@@ -120,6 +120,85 @@ describe("Android wrapper static controls", () => {
 });
 
 /**
+ * Xiaomi/Huawei/Oppo/Vivo gibi üreticiler Android'in stock pil
+ * optimizasyonundan AYRI kendi "otomatik başlatma" ekranını kullanıyor;
+ * bildirimleri asıl kesen genelde orası. REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+ * izni Play politikasında kısıtlı olduğundan (yayından kaldırma riski)
+ * kullanılmıyor — hem stock pil ayarı hem üretici ekranı için kullanıcı
+ * kendi sistem ekranına yönlendiriliyor.
+ */
+describe("Android üretici otomatik-başlatma ayarı", () => {
+  const activity = readFileSync(
+    join(ROOT, "android-wrapper/app/src/main/java/online/uygulamamcebimde/app/MainActivity.java"),
+    "utf8",
+  );
+  const manifest = readFileSync(
+    join(ROOT, "android-wrapper/app/src/main/AndroidManifest.xml"),
+    "utf8",
+  );
+  const strings = readFileSync(
+    join(ROOT, "android-wrapper/app/src/main/res/values/strings.xml"),
+    "utf8",
+  );
+
+  it("kısıtlı REQUEST_IGNORE_BATTERY_OPTIMIZATIONS iznini istemiyor", () => {
+    expect(manifest).not.toMatch(/REQUEST_IGNORE_BATTERY_OPTIMIZATIONS/);
+    expect(activity).not.toMatch(/Settings\.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS/);
+  });
+
+  it("dört büyük agresif üreticiyi (alt markalar dahil) tanıyor", () => {
+    const start = activity.indexOf("private String aggressiveAutoStartManufacturer()");
+    expect(start).toBeGreaterThan(-1);
+    const body = activity.slice(start, activity.indexOf("\n    }", start));
+    for (const brand of [
+      "xiaomi",
+      "redmi",
+      "poco",
+      "huawei",
+      "honor",
+      "oppo",
+      "realme",
+      "vivo",
+      "iqoo",
+    ]) {
+      expect(body).toContain(`"${brand}"`);
+    }
+  });
+
+  it("üretici ekranı bulunamazsa stock pil ayarına düşüyor", () => {
+    const start = activity.indexOf("private boolean openAutoStartSettings(String oem)");
+    expect(start).toBeGreaterThan(-1);
+    const body = activity.slice(start, activity.indexOf("\n    }", start));
+    expect(body).toContain("ActivityNotFoundException");
+    expect(body).toContain("com.miui.securitycenter");
+    expect(body).toContain("com.huawei.systemmanager");
+    expect(body).toContain("com.coloros.safecenter");
+    expect(body).toContain("com.vivo.permissionmanager");
+
+    const callSite = activity.indexOf("openAutoStartSettings(aggressiveOem)");
+    expect(callSite).toBeGreaterThan(-1);
+    const callBody = activity.slice(callSite - 50, callSite + 150);
+    expect(callBody).toContain("openBatteryOptimizationSettings()");
+  });
+
+  it("agresif üreticide stock pil muafiyeti varsa bile uyarı atlanmıyor", () => {
+    const start = activity.indexOf("private void maybeOfferBatteryExemption()");
+    const body = activity.slice(
+      start,
+      activity.indexOf("aggressiveAutoStartManufacturer()", start) + 400,
+    );
+    expect(body).toContain("alreadyExempt && aggressiveOem == null");
+  });
+
+  it("üretici uyarı metinleri tanımlı", () => {
+    expect(strings).toContain('name="autostart_prompt_title"');
+    expect(strings).toContain('name="autostart_prompt_body"');
+    expect(strings).toContain('name="autostart_prompt_open"');
+    expect(activity).toContain("R.string.autostart_prompt_title");
+  });
+});
+
+/**
  * Sesli asistan: yanıt sunucudan geldikten sonra çalıyor, yani WebView'in
  * gözünde kullanıcı dokunuşu bitmiş olabiliyor. Ayar açık kalırsa ses hiç
  * duyulmuyor ve hiçbir hata görünmüyor — bu yüzden ayrı bir test var.

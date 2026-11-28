@@ -138,10 +138,11 @@ describe("pil optimizasyonu muafiyeti", () => {
     expect(activity).toContain("isIgnoringBatteryOptimizations");
   });
 
-  it("muafiyet zaten varsa hiç sormuyor", () => {
-    expect(activity).toMatch(
-      /power\.isIgnoringBatteryOptimizations\(getPackageName\(\)\)\)\s*return;/,
+  it("muafiyet zaten varsa hiç sormuyor (agresif üretici değilse)", () => {
+    expect(activity).toContain(
+      "alreadyExempt = power != null && power.isIgnoringBatteryOptimizations(getPackageName());",
     );
+    expect(activity).toContain("if (alreadyExempt && aggressiveOem == null) return;");
   });
 
   it("reddedilirse ısrar etmiyor", () => {
