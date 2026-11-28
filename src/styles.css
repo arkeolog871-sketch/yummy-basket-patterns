@@ -123,11 +123,6 @@
 
   --gradient-hero: linear-gradient(145deg, oklch(0.947 0.026 90.1) 0%, oklch(0.790 0.136 84.7) 100%);
   --gradient-warm: linear-gradient(120deg, oklch(0.440 0.150 18.7) 0%, oklch(0.550 0.150 30.7) 100%);
-  --gradient-fade-up: linear-gradient(
-    to top,
-    oklch(0.22 0.03 50 / 0.88) 0%,
-    oklch(0.22 0.03 50 / 0) 72%
-  );
 
   --app-font-size: 100%;
   --app-text-color: var(--foreground);
@@ -353,10 +348,6 @@
 
 @utility bg-gradient-warm {
   background-image: var(--gradient-warm);
-}
-
-@utility bg-gradient-fade-up {
-  background-image: var(--gradient-fade-up);
 }
 
 @utility no-scrollbar {

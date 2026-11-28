@@ -373,11 +373,37 @@ describe("amblem", () => {
   });
 });
 
-describe("koyu temada fotoğraf üstü yazı", () => {
-  /** YAŞANDI (canlı, koyu tema): işletme adı text-background idi, koyu kaldı. */
-  it("işletme sayfasında ad ve slogan fotoğraf karartması üstünde beyaz", () => {
-    const page = readFileSync("src/routes/restoran.$slug.tsx", "utf8");
+/**
+ * YAŞANDI: işletme adı/slogan kapak fotoğrafının üstüne (karartma +
+ * sabit beyaz yazı ile) biniyordu; işletmeler tanıtım görsellerini
+ * (menü, kampanya vb.) kullanınca yazı görseli örtüyor, tanıtım
+ * okunaksızlaşıyordu. Artık kapak fotoğrafı tamamen temiz: ad/slogan
+ * fotoğrafın altındaki kendi satırında, temaya uyan normal renklerle.
+ */
+describe("kapak fotoğrafının üstünde yazı yok", () => {
+  const page = readFileSync("src/routes/restoran.$slug.tsx", "utf8");
+
+  it("fotoğraf karartması ve sabit beyaz yazı kaldırıldı", () => {
+    expect(page).not.toContain("bg-gradient-fade-up");
+    expect(page).not.toMatch(/<h1[^>]*text-white/);
     expect(page).not.toMatch(/<h1[^>]*text-background/);
-    expect(page).toContain('className="truncate text-3xl text-white sm:text-4xl"');
+  });
+
+  it("ad ve slogan fotoğrafın altında, temaya uyan renklerle gösteriliyor", () => {
+    const imgEnd = page.indexOf("alt={`${restaurant.name} mutfağı`}");
+    const h1Index = page.indexOf("<h1", imgEnd);
+    expect(h1Index).toBeGreaterThan(imgEnd);
+    expect(page.slice(h1Index, h1Index + 80)).toContain(
+      'className="truncate text-3xl sm:text-4xl"',
+    );
+    expect(page).toContain(
+      '<p className="mt-1 text-sm text-muted-foreground">{restaurant.tagline}</p>',
+    );
+  });
+
+  it("artık kullanılmayan karartma değişkeni/yardımcı sınıfı depoda kalmıyor", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    expect(css).not.toContain("--gradient-fade-up");
+    expect(css).not.toContain("bg-gradient-fade-up");
   });
 });

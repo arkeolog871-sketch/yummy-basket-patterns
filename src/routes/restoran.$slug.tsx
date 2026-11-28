@@ -160,6 +160,10 @@ function RestaurantDetail() {
 
   return (
     <div>
+      {/* Kapak fotoğrafının üstünde artık hiç yazı yok: işletmeler tanıtım
+          görselini (menü, kampanya, logo vb.) metinle örtülmeden
+          kullanabiliyor. İşletme adı/etiket/tanıtım yazısı fotoğrafın
+          altındaki kendi satırına taşındı. */}
       <div className="relative h-56 w-full overflow-hidden sm:h-72">
         {restaurant.cover_image_url ? (
           <img
@@ -178,9 +182,11 @@ function RestaurantDetail() {
             style={categoryColor ? { backgroundColor: `${categoryColor}33` } : undefined}
           />
         )}
-        <div className="absolute inset-0 bg-gradient-fade-up" />
-        <div className="absolute inset-x-0 bottom-0 mx-auto w-full max-w-6xl px-4 pb-6">
-          <span className="rounded-full bg-background/90 px-3 py-1 text-xs font-semibold">
+      </div>
+
+      <div className="mx-auto w-full max-w-6xl px-4">
+        <div className="pt-4">
+          <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
             {restaurant.category}
           </span>
           <div className="mt-3 flex items-center gap-3">
@@ -190,21 +196,17 @@ function RestaurantDetail() {
                 alt={`${restaurant.name} logosu`}
                 width={56}
                 height={56}
-                className="size-14 shrink-0 rounded-full border-2 border-background object-cover shadow-card"
+                className="size-14 shrink-0 rounded-full border border-border/70 object-cover shadow-card"
               />
             ) : null}
             <div className="min-w-0">
-              {/* Fotoğrafın üstündeki karartma (gradient-fade-up) iki temada da koyu;
-                  yazı hep beyaz. text-background koyu temada koyu kalıyordu. */}
-              <h1 className="truncate text-3xl text-white sm:text-4xl">{restaurant.name}</h1>
-              <p className="mt-1 text-sm text-white/85">{restaurant.tagline}</p>
+              <h1 className="truncate text-3xl sm:text-4xl">{restaurant.name}</h1>
+              <p className="mt-1 text-sm text-muted-foreground">{restaurant.tagline}</p>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="mx-auto w-full max-w-6xl px-4">
-        <div className="relative z-10 -mt-6 flex flex-wrap gap-4 rounded-3xl border border-border/70 bg-card p-4 text-sm shadow-card">
+        <div className="relative z-10 mt-4 flex flex-wrap gap-4 rounded-3xl border border-border/70 bg-card p-4 text-sm shadow-card">
           <span className="flex items-center gap-1.5 font-semibold">
             <Star className="size-4 fill-primary text-primary" />
             {Number(restaurant.rating).toFixed(1)}
