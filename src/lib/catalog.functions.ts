@@ -36,8 +36,37 @@ export const listRestaurants = createServerFn({ method: "GET" })
 
     const { data: rows, error } = await query;
     if (error) throw new Error(error.message);
-    const all: Array<NonNullable<typeof rows>[number] & { matched_products?: string[] }> =
-      rows ?? [];
+    const base: Array<NonNullable<typeof rows>[number]> = rows ?? [];
+
+    // Ürün eklememiş işletme zaten sipariş alamaz (sepete eklenecek bir şey
+    // yok); müşteri tarafı bunu manuel "yerinde hizmet" (onsite_only) ile
+    // aynı şekilde gösteriyor — aksi hâlde teslimat süresi/ücreti gibi
+    // yanıltıcı bilgiler boş bir işletme için de görünüyordu.
+    const withProducts = new Set<string>();
+    if (base.length > 0) {
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { data: productRows, error: productsError } = await supabaseAdmin
+          .from("menu_items")
+          .select("restaurant_id")
+          .eq("is_available", true)
+          .in(
+            "restaurant_id",
+            base.map((row) => row.id),
+          );
+        if (productsError) throw new Error(productsError.message);
+        for (const item of productRows ?? []) withProducts.add(item.restaurant_id);
+      } catch (productsError) {
+        // Servis anahtarı yoksa (yerel/ön izleme) hiçbir işletmeyi "ürünsüz"
+        // sayma — var olan davranış bozulmasın.
+        console.error("[catalog] ürün durumu kontrol edilemedi:", productsError);
+        for (const row of base) withProducts.add(row.id);
+      }
+    }
+
+    const all: Array<
+      NonNullable<typeof rows>[number] & { matched_products?: string[]; has_products: boolean }
+    > = base.map((row) => ({ ...row, has_products: withProducts.has(row.id) }));
     if (!data.search) return all;
 
     // Arama bellekte yapılır: `ilike` aksana duyarlı ("kuafor" "Kuaför"ü

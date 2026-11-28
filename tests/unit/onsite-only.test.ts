@@ -105,6 +105,9 @@ describe("müşteri tarafı", () => {
 
     const page = read("src/routes/restoran.$slug.tsx");
     expect(page).toContain("Bu işletme sipariş almıyor");
-    expect(page).toContain("restaurant.onsite_only ||");
+    // Sepete ekleme kilidi artık yalnızca elle işaretlenen onsite_only'e
+    // değil, ürünü hiç olmayan işletmeleri de kapsayan türetilmiş bayrağa
+    // bakıyor (bkz. onsite-only-equivalent.test.ts).
+    expect(page).toContain("isOnsiteOnly ||");
   });
 });
