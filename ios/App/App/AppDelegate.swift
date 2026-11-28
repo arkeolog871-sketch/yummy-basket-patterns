@@ -25,7 +25,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         configureVoiceAudioSession()
 
         UNUserNotificationCenter.current().delegate = self
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in
+        // Soft-ask: izin burada İSTENMİYOR. Yalnızca kullanıcı web tarafındaki
+        // kendi ekranımızda "İzin ver"e basınca SilvanPushPlugin.
+        // requestNotificationPermission çağrılır. Burada yapılan tek şey,
+        // izin DAHA ÖNCEDEN verilmişse (eski kullanıcılar, ya da bu açılışta
+        // kullanıcı az önce izin verdiyse) APNs kaydını sessizce tazelemek —
+        // bu durumda Apple zaten bir pencere göstermiyor, risk yok.
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            guard settings.authorizationStatus == .authorized else { return }
             DispatchQueue.main.async {
                 application.registerForRemoteNotifications()
             }

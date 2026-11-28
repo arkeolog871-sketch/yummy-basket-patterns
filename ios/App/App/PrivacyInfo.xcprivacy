@@ -8,13 +8,24 @@
 	  uygulama hedefinin kendi kodunu anlatır.
 
 	  Uygulama hedefindeki Swift kodu (AppDelegate, SceneDelegate,
-	  SilvanAuthPlugin, SilvanPushPlugin) Apple'ın gerekçe istediği API'lerin
-	  hiçbirini kullanmıyor: UserDefaults yok, dosya zaman damgası yok, disk
-	  alanı yok, sistem açılış süresi yok, etkin klavye listesi yok. Liste bu
-	  yüzden bilerek boş; doldurulmuş olsaydı beyan yanlış olurdu.
+	  SilvanAuthPlugin, SilvanPushPlugin) Apple'ın gerekçe istediği API'lerden
+	  yalnızca UserDefaults kullanıyor: SilvanPushPlugin, bildirim token'ını
+	  kalıcı saklamak için (3B52.1 — yalnızca uygulamanın kendi içinde
+	  erişilebilir bilgi okuma/yazma, başka bir uygulama/grupla paylaşılmıyor).
+	  Dosya zaman damgası, disk alanı, sistem açılış süresi, etkin klavye
+	  listesi kullanılmıyor.
 	-->
 	<key>NSPrivacyAccessedAPITypes</key>
-	<array/>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>3B52.1</string>
+			</array>
+		</dict>
+	</array>
 	<!-- Uygulama reklam veya ölçüm amacıyla kullanıcı takibi yapmıyor. -->
 	<key>NSPrivacyTracking</key>
 	<false/>

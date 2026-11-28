@@ -332,22 +332,28 @@ describe("gizlilik bildirimi", () => {
   /**
    * Beyanın doğruluğu koda bağlı: uygulama hedefi gerekçe isteyen bir API
    * kullanmaya başlarsa bu test kırmızıya döner ve bildirim güncellenmeli.
+   *
+   * SilvanPushPlugin artık bildirim token'ını UserDefaults'ta kalıcı
+   * saklıyor (bkz. "iOS bildirim izni" testleri) — bu, gerekçe isteyen tek
+   * API. Diğerlerinin (sistem açılış süresi, dosya zaman damgaları, disk
+   * alanı, etkin klavye listesi) hâlâ kullanılmadığı ayrıca doğrulanır.
    */
   it("beyan, uygulama kodunun gerçekten kullandığıyla tutarlı", () => {
     const swift = ["AppDelegate", "SceneDelegate", "SilvanAuthPlugin", "SilvanPushPlugin"]
       .map((name) => readFileSync(join(ROOT, `ios/App/App/${name}.swift`), "utf8"))
       .join("\n");
-    const reasonApis = [
-      "UserDefaults",
+    const otherReasonApis = [
       "systemUptime",
       "creationDate",
       "modificationDate",
       "volumeAvailableCapacity",
       "activeInputModes",
     ];
-    const used = reasonApis.filter((api) => swift.includes(api));
+    const used = otherReasonApis.filter((api) => swift.includes(api));
     expect(used).toEqual([]);
-    expect(manifest).toMatch(/<key>NSPrivacyAccessedAPITypes<\/key>\s*<array\/>/);
+    expect(swift).toContain("UserDefaults");
+    expect(manifest).toContain("NSPrivacyAccessedAPICategoryUserDefaults");
+    expect(manifest).toContain("3B52.1");
   });
 });
 
