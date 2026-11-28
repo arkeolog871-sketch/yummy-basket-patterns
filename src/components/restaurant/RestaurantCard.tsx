@@ -30,6 +30,8 @@ export type RestaurantSummary = {
   mobile_service?: boolean | null;
   /** Dışarıya sipariş/teslimat yapmıyor (oto yıkama, kuaför, usta vb.): sepet/sipariş gizlenir. */
   onsite_only?: boolean | null;
+  /** Hiç ürün eklenmemişse zaten sipariş alınamaz; "yerinde hizmet" gibi gösterilir. */
+  has_products?: boolean;
   opens_at?: string | null;
   closes_at?: string | null;
   is_open_manual?: boolean | null;
@@ -53,6 +55,9 @@ export function RestaurantCard({
   // engellemesi işletme sayfasındaki menüde ve sepet ekleme adımında kalır.
   const open = isWithinHours(restaurant);
   const hours = hoursLabel(restaurant);
+  // Hiç ürün eklenmemiş işletme zaten sipariş alamaz; "yerinde hizmet"
+  // bayrağı elle işaretlenmemiş olsa bile aynı şekilde gösterilir.
+  const isOnsiteOnly = Boolean(restaurant.onsite_only) || restaurant.has_products === false;
   return (
     <Link
       to="/restoran/$slug"
@@ -84,7 +89,7 @@ export function RestaurantCard({
           <span className="absolute right-3 top-3 rounded-full bg-foreground/85 px-3 py-1 text-xs font-semibold text-background">
             Şu An Kapalı
           </span>
-        ) : restaurant.onsite_only ? (
+        ) : isOnsiteOnly ? (
           <span className="absolute right-3 top-3 rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
             Yerinde hizmet
           </span>
@@ -105,7 +110,7 @@ export function RestaurantCard({
               <span className="rounded bg-foreground/85 px-1.5 py-0.5 text-background">
                 Şu An Kapalı
               </span>
-            ) : restaurant.onsite_only ? (
+            ) : isOnsiteOnly ? (
               <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">
                 Yerinde hizmet
               </span>
@@ -174,7 +179,7 @@ export function RestaurantCard({
         <div
           className={`flex flex-wrap items-center gap-y-1 text-xs text-muted-foreground ${compact ? "gap-x-2 [overflow-wrap:anywhere]" : "gap-x-4"}`}
         >
-          {restaurant.onsite_only ? (
+          {isOnsiteOnly ? (
             <span>Sipariş alınmıyor, yalnızca yerinde hizmet veriliyor</span>
           ) : (
             <>

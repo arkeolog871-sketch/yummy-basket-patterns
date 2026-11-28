@@ -108,6 +108,10 @@ function RestaurantDetail() {
   const categoryColor = sectors.find((sector) => sector.slug === restaurant.sector)?.color;
   const categories = Array.isArray(data.categories) ? data.categories : [];
   const items = Array.isArray(data.items) ? data.items : [];
+  // Hiç ürün eklenmemiş işletme zaten sipariş alamaz (sepete eklenecek bir
+  // şey yok); "yerinde hizmet" bayrağı elle işaretlenmemiş olsa bile aynı
+  // şekilde gösterilir — teslimat süresi/ücreti gibi bilgiler yanıltıcı olur.
+  const isOnsiteOnly = Boolean(restaurant.onsite_only) || items.length === 0;
   const gallery = Array.isArray(data.gallery) ? data.gallery : [];
   const reviews = Array.isArray(data.reviews) ? data.reviews : [];
   // "open" sipariş alıp alamayacağını belirler (manuel anahtar + çalışma
@@ -135,7 +139,7 @@ function RestaurantDetail() {
   };
 
   function add(item: { id: string; name: string; price: number; image_url: string | null }) {
-    if (restaurant.onsite_only) {
+    if (isOnsiteOnly) {
       toast.error("Bu işletme sipariş almıyor", {
         description: "Yalnızca yerinde hizmet veriyor.",
       });
@@ -214,7 +218,7 @@ function RestaurantDetail() {
               ({restaurant.review_count} değerlendirme)
             </span>
           </span>
-          {restaurant.onsite_only ? null : (
+          {isOnsiteOnly ? null : (
             <>
               <span className="flex items-center gap-1.5 text-muted-foreground">
                 <Clock className="size-4" /> {restaurant.delivery_minutes} dk
@@ -233,7 +237,7 @@ function RestaurantDetail() {
               <Clock className="size-4" /> {hours}
             </span>
           ) : null}
-          {restaurant.onsite_only ? (
+          {isOnsiteOnly ? (
             <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
               Yerinde hizmet
             </span>
@@ -257,7 +261,7 @@ function RestaurantDetail() {
           className="mt-4"
         />
 
-        {restaurant.onsite_only ? (
+        {isOnsiteOnly ? (
           <div className="mt-4 rounded-3xl border border-border bg-warm px-4 py-3 text-sm text-warm-foreground">
             Bu işletme sipariş almıyor, yalnızca yerinde hizmet veriyor. Sepete ürün ekleyemezsiniz.
           </div>
@@ -415,7 +419,7 @@ function RestaurantDetail() {
                       size="icon"
                       className="size-10 shrink-0 rounded-full"
                       disabled={
-                        restaurant.onsite_only ||
+                        isOnsiteOnly ||
                         !open ||
                         item.in_stock === false ||
                         !hasListedPrice(item.price)
@@ -433,7 +437,7 @@ function RestaurantDetail() {
 
           <aside className="h-fit min-w-0 rounded-3xl border border-border/70 bg-card p-5 shadow-card lg:sticky lg:top-24">
             <h2 className="text-lg">Sepetim</h2>
-            {restaurant.onsite_only ? (
+            {isOnsiteOnly ? (
               <p className="mt-3 text-sm text-muted-foreground">
                 Bu işletme sipariş almıyor, yalnızca yerinde hizmet veriyor.
               </p>
